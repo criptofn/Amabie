@@ -25,6 +25,13 @@ changed*; the evidence ledgers record *what was observed*.
 - `canary doctor` and the completion hook now advise restoring deleted verification files from the
   sealed base, including staged, unstaged, and already committed deletions. Already committed
   restorations must be committed before Canary can clear the block.
+- Subjective UI classification recognizes explicitly evaluative phrases such as “feels calmer” and
+  “the spacing is calmer”; a functional requirement such as “the calm mode persists after restart”
+  still needs sealed proof.
+- The Windows trust-store lock retry now observes its deadline when `EPERM` races with a missing lock
+  directory, so repeated permission errors fail closed instead of spinning indefinitely.
+- CLI help now labels `work`/`finish` as the isolated expert path, matching setup's everyday hook workflow.
+- Subcommand `--help`/`-h` now prints usage before running checks or setup; MCP retains its own help output.
 - Hook and doctor repair commands now name the installed CLI path, preventing a global Canary
   installation from being used for a focused recheck.
 - Hook setup now refuses CLI paths with shell expansion characters, and unsafe paths cannot fall
@@ -32,9 +39,13 @@ changed*; the evidence ledgers record *what was observed*.
 - `canary setup` now explains that `READY` covers the configured checks and hooks, and shows how to
   register and bind task-specific acceptance criteria before handing work to an agent.
 - The everyday `canary_task` MCP tool now requires exact user criteria, rejects generic placeholders,
-  labels binding guidance as operator-only, and keeps unbound work `NOT PROVEN` while allowing code work.
+  labels binding guidance as trusted-operator work and discloses LOCAL's same-UID CLI limit; unbound work stays `NOT PROVEN` while code work can continue.
 - `canary task` now reports existing sealed requirement bindings instead of asking the operator to
   bind them again. Numeric bench/E2E targets require a proof binding to the matching check type.
+- Expert handoff and the confined model transport now stop before execution when a numeric target
+  lacks a matching sealed check, including targets stated only in the task intent.
+- Task, setup, doctor, and hook guidance now point to the operator's `canary bind --reseal` path;
+  binding a numeric target to the wrong check type is refused before the declaration is written.
 - Subjective acceptance eligibility is now recorded per requirement digest. A subjective criterion
   cannot make a separate unmeasured objective requirement acceptance-eligible; older records without
   this classification fail closed until the task is registered again.

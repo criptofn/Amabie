@@ -13,8 +13,8 @@
  *     CONNECTED (a statement about state; never a claim the project passes).
  *   - Subdirectory entry routes to the repo root (the agent's cwd is not a
  *     config problem to solve manually).
- *   - Bare `canary` shows compact read-only state and the next commands;
- *     the full command list remains available with --help, exit still 3.
+ *   - Bare `canary` shows compact read-only state and the next commands, and
+ *     remains a usage error; explicit --help succeeds with the full command list.
  *   - Unattended `setup` without --yes (no TTY) runs the smoke test like
  *     doctor already does; a failing project still never reads READY.
  */
@@ -202,7 +202,7 @@ check('tracked config (git-committed .canary/canary.local.json): never CONNECTED
   assertStable(root, before, 'tracked');
 });
 
-check('bare `canary`: compact read-only state, full help remains explicit, exit still 3', () => {
+check('bare `canary` remains a usage error; explicit help succeeds with the full command list', () => {
   const root = makeRepo('bare');
   const before = manifest(root);
   const r = canary([], root);
@@ -213,7 +213,7 @@ check('bare `canary`: compact read-only state, full help remains explicit, exit 
   assert(/canary result/.test(r.stdout) && /canary --help/.test(r.stdout), 'names verification state and full help');
   assert(!/canary isolate|canary accept|canary bind/.test(r.stdout), 'bare entry must not print the expert command list');
   const help = canary(['--help'], root);
-  assertEq(help.status, 3, 'explicit help keeps its existing exit code');
+  assertEq(help.status, 0, 'explicit help succeeds');
   assert(/canary isolate/.test(help.stdout) && /canary bind/.test(help.stdout), 'full help keeps the expert commands');
   assertStable(root, before, 'bare and explicit help');
   assert(!fs.existsSync(path.join(root, 'sentinel.txt')), 'bare/help must not execute project checks');

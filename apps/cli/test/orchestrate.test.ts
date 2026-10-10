@@ -119,6 +119,37 @@ describe('1.1 workflow: work registers and opens in one step', () => {
     assert.ok(!fs.existsSync(path.join(root, '.canary', 'candidates', 'flagged.json')),
       'the refusal must not have opened a candidate');
   });
+
+  it('refuses numeric targets before work until a matching sealed check is bound', () => {
+    const root = fixture('work-unbound-target');
+    const packagePath = path.join(root, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8')) as Record<string, any>;
+    pkg.scripts.bench = `node "${path.join(FIXTURES, 'f-pass.js')}"`;
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    assert.equal(canary(['setup', '--yes'], root).status, 0);
+
+    const intentTarget = canary(['work', 'intent-target', 'improve response time below 200 ms', '--kind', 'performance'], root);
+    assert.equal(intentTarget.status, 2, intentTarget.stdout + intentTarget.stderr);
+    assert.match(intentTarget.stdout + intentTarget.stderr, /OBJECTIVE TARGET UNBOUND/);
+    assert.ok(!fs.existsSync(path.join(root, '.canary', 'candidates', 'intent-target.json')));
+
+    const requirement = 'response time below 200 ms';
+    const digest = materialDigest(requirement);
+    pkg.canary = { proofs: { [digest]: 'test' } };
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    const wrongKind = canary(['work', 'wrong-kind', 'improve response time', '--kind', 'performance', '--requirement', requirement], root);
+    assert.equal(wrongKind.status, 2, wrongKind.stdout + wrongKind.stderr);
+    assert.match(wrongKind.stdout + wrongKind.stderr, /REQUIREMENT UNBOUND/);
+    assert.ok(!fs.existsSync(path.join(root, '.canary', 'candidates', 'wrong-kind.json')));
+
+    pkg.canary.proofs[digest] = 'bench';
+    fs.writeFileSync(packagePath, JSON.stringify(pkg, null, 2));
+    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    const bound = canary(['work', 'bound', 'improve response time', '--kind', 'performance', '--requirement', requirement], root);
+    assert.equal(bound.status, 0, bound.stdout + bound.stderr);
+    assert.ok(fs.existsSync(path.join(root, '.canary', 'candidates', 'bound.json')));
+  });
 });
 
 describe('v1.3: work never hands a worker a task that nothing could judge', () => {

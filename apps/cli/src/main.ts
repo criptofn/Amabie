@@ -135,12 +135,12 @@ usage:
                             commands, never authority: the script must already be part of the
                             sealed plan. Without a sealed binding a registered requirement
                             stays NOT PROVEN — acceptance cannot replace measurement for an
-                            objective requirement, and an agent cannot bind its own duties
-                            away
+                            objective requirement. Task registration only adds duties;
+                            LOCAL does not isolate same-UID workers from CLI bind/setup commands
   canary work <name> "<intent>" [--kind k] [--requirement "…"]…
-                            the ORDINARY path: register the intent and open the
-                            candidate in one step. The intent is frozen into the
-                            candidate at isolation, so it can only add duties
+                            the ISOLATED expert path: register the intent and
+                            open a separate candidate; work there, then verify
+                            and promote it with canary finish when ready
   canary finish <name>      verify the candidate from outside it, then promote if
                             every objective duty holds. A subjective duty is NOT
                             closed here — that stays canary accept, in a terminal
@@ -394,6 +394,7 @@ function cmdReport(evidencePath: string | undefined, outPath?: string): number {
 
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
+  if (cmd !== 'mcp' && (argv.includes('--help') || argv.includes('-h'))) return usage(0);
   if (cmd === 'version' || argv.includes('--version')) {
     console.log(`canary ${CANARY_VERSION}`);
     if (argv.includes('--verbose')) {

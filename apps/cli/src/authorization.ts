@@ -22,7 +22,7 @@ export interface TaskIdentity {
   subjectivePerformance: boolean;
   objectiveTargets: ObjectiveTarget[];
 }
-const aesthetic = /\b(prett\w*|beautiful\w*|aesthetic\w*|stylish|elegan\w*|warmer|cooler|calm\w*|nicer|polish\w*|better[- ]looking|look and feel|make it pop)\b/i;
+const aesthetic = /\b(prett\w*|beautiful\w*|aesthetic\w*|stylish|elegan\w*|warmer|cooler|calmer|feel(?:s|ing)? calm\w*|nicer|polish\w*|better[- ]looking|look and feel|make it pop)\b/i;
 const subjectivePerformance = /\b(feel\w*|snapp\w*|smooth\w*|responsive\w*)\b/i;
 const numericPerformance = /\d+(?:\.\d+)?\s*(?:ms|msecs?|secs?|seconds?|minutes?|fps|[kmgt]?bytes?|[kmgt]b|%|hz)\b|\d+(?:\.\d+)?\s*%/i;
 const numericUi = /#[\da-f]{3,8}\b|\d+(?:\.\d+)?\s*(?:px|rem|em)\b/i;

@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
 import * as store from '../src/trust-store.js';
@@ -145,6 +145,7 @@ describe('the level probe measures, it never inflates', () => {
 // ---------------------------------------------------------------------------
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const SEAL_FIXTURE = path.join(REPO, 'tooling', 'test-support', 'fixtures', 'trust-seal-once.mjs');
+const LOCK_DENIAL_FIXTURE = path.join(REPO, 'tooling', 'test-support', 'fixtures', 'trust-lock-denial.mjs');
 const unique = (what: string): string => path.join(TMP, `${what}-${process.pid}-${n++}`);
 
 describe('1.1 hardening — custody refusals', () => {
@@ -218,6 +219,20 @@ describe('1.1 hardening — minting is serialized', () => {
     assert.equal(lockAttempts, 2, 'the EPERM path waited for the existing lock and retried');
     assert.equal(env.seq, 1);
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'valid');
+  });
+
+  it('persistent EPERM with a missing lock is refused within the lock deadline', () => {
+    const s = freshStore();
+    const result = spawnSync(process.execPath, [LOCK_DENIAL_FIXTURE, s.root], {
+      encoding: 'utf8', windowsHide: true, timeout: 10_000,
+    });
+    assert.equal(result.error, undefined, `the lock retry exceeded its bound: ${result.error?.message}`);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const observed = JSON.parse(result.stdout.trim()) as { lockAttempts: number; waits: number; elapsedMs: number };
+    assert.equal(observed.lockAttempts, observed.waits + 1);
+    assert.ok(observed.waits > 100, `the monotonic deadline did not allow the bounded wait: ${observed.waits}`);
+    assert.ok(observed.elapsedMs >= 5_000 && observed.elapsedMs < 9_000,
+      `the retry should track elapsed time despite a frozen wall clock: ${observed.elapsedMs} ms`);
   });
 
   it('concurrent minters never share a generation (no lost ledger update)', async () => {

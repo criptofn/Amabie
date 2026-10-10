@@ -46,6 +46,7 @@ function prepare(name) {
   const fixtures = path.join(temp, name, 'tooling', 'test-support', 'fixtures');
   fs.mkdirSync(fixtures, { recursive: true });
   fs.copyFileSync(path.join(root, 'tooling/test-support/fixtures/trust-seal-once.mjs'), path.join(fixtures, 'trust-seal-once.mjs'));
+  fs.copyFileSync(path.join(root, 'tooling/test-support/fixtures/trust-lock-denial.mjs'), path.join(fixtures, 'trust-lock-denial.mjs'));
   // v1.4 — MIRROR MODULE RESOLUTION TOO. MEASURED FAILURE: the mirrored tree had no
   // node_modules, so as soon as a copied module gained a legitimate internal import edge
   // (`trust-store.js` -> `@canary-rn/support`, added with the Windows path-canonicalisation

@@ -318,7 +318,9 @@ describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
     const unbound = canary(['task', 'add a trimming greeting', '--requirement', plainRequirement], plainRoot);
     assert.equal(unbound.status, 0, unbound.stdout + unbound.stderr);
     assert.match(unbound.stdout, /needs sealed proof/);
-    assert.match(unbound.stdout, /operator action only/);
+    assert.match(unbound.stdout, /trusted operator action/);
+    assert.match(unbound.stdout, /same-UID workers can invoke CLI in LOCAL/);
+    assert.match(unbound.stdout, /canary bind <sealed plan script> --requirement "<exact registered text>" --reseal/);
 
     const plainPackagePath = path.join(plainRoot, 'package.json');
     const plainPackage = JSON.parse(fs.readFileSync(plainPackagePath, 'utf8')) as Record<string, any>;
@@ -328,7 +330,7 @@ describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
     const bound = canary(['task', 'add a trimming greeting', '--requirement', plainRequirement], plainRoot);
     assert.equal(bound.status, 0, bound.stdout + bound.stderr);
     assert.match(bound.stdout, /bound to sealed proof "test"/);
-    assert.doesNotMatch(bound.stdout, /operator action only/);
+    assert.doesNotMatch(bound.stdout, /trusted operator action/);
 
     const targetRoot = makeProject('task-target-guidance');
     const targetPackagePath = path.join(targetRoot, 'package.json');
@@ -343,16 +345,25 @@ describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
     const wrongKind = canary(['task', 'improve runtime', '--requirement', targetRequirement], targetRoot);
     assert.equal(wrongKind.status, 0, wrongKind.stdout + wrongKind.stderr);
     assert.match(wrongKind.stdout, /objective bench target: .*needs a matching sealed proof binding/);
-    assert.match(wrongKind.stdout, /operator action only .*sealed bench script/);
+    assert.match(wrongKind.stdout, /trusted operator action .*sealed bench script/);
+    assert.match(wrongKind.stdout, /canary bind <sealed bench script> --requirement "<exact registered text>" --reseal/);
 
-    targetPackage.canary = { proofs: { [targetDigest]: 'bench' } };
+    targetPackage.canary = { proofs: {} };
     fs.writeFileSync(targetPackagePath, JSON.stringify(targetPackage, null, 2));
     assert.equal(canary(['setup', '--yes', targetRoot]).status, 0);
+    const rejectedBind = canary(['bind', 'test', '--requirement', targetRequirement], targetRoot);
+    assert.equal(rejectedBind.status, 2, rejectedBind.stdout + rejectedBind.stderr);
+    assert.match(rejectedBind.stdout, /cannot prove this objective bench target/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(targetPackagePath, 'utf8')).canary.proofs, {}, 'wrong-kind binding must write nothing');
+    const acceptedBind = canary(['bind', 'bench', '--requirement', targetRequirement], targetRoot);
+    assert.equal(acceptedBind.status, 0, acceptedBind.stdout + acceptedBind.stderr);
+    assert.equal(JSON.parse(fs.readFileSync(targetPackagePath, 'utf8')).canary.proofs[targetDigest], 'bench');
+    assert.equal(canary(['setup', '--yes'], targetRoot).status, 0);
     const targetBound = canary(['task', 'improve runtime', '--requirement', targetRequirement], targetRoot);
     assert.equal(targetBound.status, 0, targetBound.stdout + targetBound.stderr);
     assert.match(targetBound.stdout, /objective bench target: .*bound to sealed "bench" check/);
     assert.match(targetBound.stdout, /requirement \[objective bench target bound to "bench"\]/);
-    assert.doesNotMatch(targetBound.stdout, /operator action only/);
+    assert.doesNotMatch(targetBound.stdout, /trusted operator action/);
   });
   it('registering a task against no setup / no git says so; nothing is written', () => {
     const bare = path.join(TMP, 'task-nosetup');

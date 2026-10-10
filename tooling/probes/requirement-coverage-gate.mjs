@@ -159,9 +159,8 @@ const tasked = makeRepo('tasked', true);
 
   /**
    * THE POSITIVE HALF: the invariant must be SATISFIABLE, not only fail-closed. `canary task` prints
-   * each requirement's digest; binding that digest in `package.json` `canary.proofs` to a script the
-   * sealed plan runs, then re-running setup, must turn the duty MET — coverage inside Canary's
-   * declared proof boundary.
+   * each requirement and the actionable `canary bind <script> --requirement "<text>" --reseal`
+   * command beside it; the operator's command must turn the duty MET inside the sealed plan.
    */
   const taskOut = spawnSync(process.execPath, [CLI, 'task', 'add a greeting that trims whitespace',
     '--requirement', 'the greeting trims leading and trailing whitespace',
@@ -171,7 +170,13 @@ const tasked = makeRepo('tasked', true);
   console.log(`   registration printed ${digests.length} requirement digest(s)`);
   check('5. the registration prints each requirement digest, with the binding recipe', () => {
     assert(digests.length === 2, `expected both requirement digests to be printed, got ${digests.length}:\n${String(taskOut.stdout ?? '').slice(0, 600)}`);
-    assert(/canary": \{ "proofs"/.test(String(taskOut.stdout ?? '')), 'the binding recipe must be printed next to the digest');
+    const lines = String(taskOut.stdout ?? '').split(/\r?\n/);
+    for (const digest of digests) {
+      const index = lines.findIndex((line) => line.includes(`: ${digest} —`));
+      assert(index >= 0, `requirement digest ${digest} is missing from the task output`);
+      assert(/trusted operator action .*canary bind <sealed plan script> --requirement "<exact registered text>" --reseal/.test(lines[index + 1] ?? ''),
+        `the executable binding recipe must follow digest ${digest}`);
+    }
   });
   if (digests.length === 2) {
     /**

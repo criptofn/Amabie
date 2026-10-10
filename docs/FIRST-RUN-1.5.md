@@ -216,7 +216,7 @@ removed exactly Canary's three; the corrupt-config path never pretended to verif
 
 ## 4. What changed, and what deliberately did not
 
-Changed (source only — see the PENDING-REBUILD caveat at the top):
+Changed during the journey (source-only at that time; rebuilt and remeasured afterwards as noted above):
 
 | File | Change | Friction |
 |---|---|---|
@@ -230,8 +230,6 @@ Changed (source only — see the PENDING-REBUILD caveat at the top):
 
 **Deliberately NOT changed**
 
-- **`canary --help` exit 3** (F1): a documented contract in `README.md:681-686`; changing it is an
-  owner decision, not a first-run wording fix.
 - **F9, F10, F11**: cosmetic or already-disclosed; changing them buys nothing a user can act on.
 - **The dedicated unwritable-store message** (`onboarding.ts:2624`) was left as-is: my input reaches
   the last-resort handler instead, so rerouting it would be an unmeasured change.

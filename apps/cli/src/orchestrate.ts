@@ -96,16 +96,22 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
   if (cfg !== null && cfg !== 'corrupt') {
     const report = unboundRequirements(root, cfg);
     if (report.unbound.length > 0 && !report.subjective) {
+      const requirements = report.unbound.filter((item) => item.source === 'requirement');
+      const targets = report.unbound.filter((item) => item.source === 'objective-target');
+      const label = requirements.length > 0 ? 'REQUIREMENT UNBOUND' : 'OBJECTIVE TARGET UNBOUND';
       // Every line is emitted BEFORE the verdict: in `--json` mode `verdict()` writes the single
       // stdout envelope, so anything said after it would be printed outside the envelope.
-      o.say('REQUIREMENT UNBOUND — worker execution was NOT started and no candidate was opened.');
-      o.say(`  ${report.unbound.length} registered requirement(s) have no sealed proof, so no check can measure them.`);
+      o.say(`${label} — worker execution was NOT started and no candidate was opened.`);
+      if (requirements.length > 0) o.say(`  ${requirements.length} registered requirement(s) have no sealed proof, so no check can measure them.`);
+      if (targets.length > 0) o.say(`  ${targets.length} objective target(s) have no matching sealed proof.`);
       o.say(`  sealed plan script(s) available to bind: ${report.planScripts.length > 0 ? report.planScripts.join(', ') : '(none — this plan has no script that could measure a requirement)'}`);
-      for (const req of report.unbound) o.say(`  unbound: ${req.digest}`);
+      for (const item of report.unbound) {
+        o.say(item.source === 'requirement' ? `  unbound: ${item.digest}` : `  unbound objective target (${item.targetKind}): ${item.digest}`);
+      }
       o.say('  (a purely subjective requirement is closed differently: register it with a subjective marker and a human runs `canary accept` in a terminal)');
       o.verdict('NEEDS ATTENTION',
-        'REQUIREMENT UNBOUND — a registered requirement has no sealed proof, so no check can measure it. Spending model effort on it could not have discharged it, so the worker was never started.',
-        'bind each digest to a script the sealed plan runs, then re-seal: package.json "canary": { "proofs": { "<digest>": "<script>" } } → canary setup');
+        `${label} — the registered criteria have no matching sealed proof. Spending model effort on them could not discharge the objective duty, so the worker was never started.`,
+        'operator action only: canary bind <matching sealed script> --requirement "<exact task or requirement text>" --reseal');
       return 2;
     }
   }

@@ -2028,7 +2028,7 @@ export function discriminationObligation(root: string, cfg: CanaryConfig, timeou
     ...disc.modifiedChecks.map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`),
   ];
   const workerCaveat = workerAuthored.length > 0
-    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. This is a provenance caveat, not a failed obligation; retain it in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (package.json canary.proofs, or canary.project.json proofs) or a human's acceptance`
+    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. This is a provenance caveat, not a failed obligation; retain it in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (canary bind <script> --requirement "<exact text>" --reseal) or a human's acceptance`
     : undefined;
   const pendingCaveat = disc.pendingCountIncreases?.length
     ? `the test runner reported more skipped/pending cases on the candidate than on the comparison baseline (${disc.pendingCountIncreases.map((x) => `test check ${x.testRun}: ${x.baseline}→${x.candidate} (${x.runner})`).join(', ')}); review those cases because a green exit code alone does not show that they ran${disc.baselineEvidence ? `; baseline comparison evidence: ${disc.baselineEvidence}` : ''}`
@@ -2500,7 +2500,7 @@ export function obligationsFor(
     const bound = script !== undefined && authority!.plan.some(s => s.script === script && s.kind === target.kind);
     add({ id: `target-${target.kind}-${target.digest}`, mode: 'objective', status: bound ? 'met' : 'unproven',
       note: bound ? `sealed ${script} checks target ${target.digest}; its successful exit is required independently`
-        : `objective target ${target.digest} has no sealed ${target.kind} proof binding. Bind this digest to the matching script in package.json canary.proofs and run setup; acceptance cannot replace measurement.` });
+        : `objective target ${target.digest} has no sealed ${target.kind} proof binding. The operator can run canary bind <sealed ${target.kind} script> --requirement "<exact task or requirement text>" --reseal; acceptance cannot replace measurement.` });
   }
   /**
    * PER-REQUIREMENT COVERAGE, and the binding path that makes it attainable.
@@ -2547,7 +2547,7 @@ export function obligationsFor(
     const completionPath = !taskIdentityMatchesCount
       ? 'register each exact requirement with canary task before isolation'
       : uncoveredObjective.length > 0
-        ? 'bind each uncovered objective digest in package.json canary.proofs to a script your plan runs and re-run canary setup'
+        ? 'the operator can bind each uncovered requirement with canary bind <sealed script> --requirement "<exact text>" --reseal'
         : 'review and accept the subjective result from an interactive terminal (canary accept <candidate>)';
     add({ id: 'per-requirement', mode: !taskIdentityMatchesCount || uncoveredObjective.length > 0 || requirementCount === 0 ? 'objective' : 'non-objective', status: 'unproven', note: requirementCount > 0
       ? `multi-part task: ${requirementCount} registered requirement(s), ${uncoveredObjective.length} objective part(s) with NO sealed proof${uncoveredSubjective.length ? `, ${uncoveredSubjective.length} subjective part(s) waiting for human judgment` : ''} — a green plan proves the plan, NOT each objective part. ${completionPath} — until then UNPROVEN, never permanently dead`
@@ -2556,18 +2556,20 @@ export function obligationsFor(
   return out;
 }
 
-/** One requirement that no sealed check measures, with the plan scripts it could be bound to. */
-export interface UnboundRequirement {
+/** One requirement or objective target that lacks a matching sealed proof. */
+export interface UnboundCriterion {
   digest: string;
   /** Distinct plan scripts that do NOT already carry a binding — the candidate proof targets. */
   candidateScripts: string[];
+  source: 'requirement' | 'objective-target';
+  targetKind?: 'bench' | 'e2e';
 }
 
-/** The requirements a registration declared and no frozen binding covers. */
+/** Registered criteria a matching frozen check does not cover. */
 export interface UnboundReport {
-  /** Digests with no frozen binding and no frozen objective target. */
-  unbound: UnboundRequirement[];
-  /** True when every listed unbound requirement is individually subjective. */
+  /** Requirement and objective-target digests without a valid plan binding. */
+  unbound: UnboundCriterion[];
+  /** True only when every unbound criterion can be closed by human judgment. */
   subjective: boolean;
   /** Every script the sealed plan will run, so a suggestion is always actionable. */
   planScripts: string[];
@@ -2577,45 +2579,51 @@ export interface UnboundReport {
  * INSPECT A REGISTRATION BEFORE A WORKER IS HANDED ANYTHING (v1.2, Mission 2).
  *
  * WHY THIS EXISTS AS A SEPARATE, PRE-HANDOFF QUESTION: v1.1 could only discover an unbound
- * requirement at the END of a worker's session — at the Stop hook or at `finish` — after the model
+ * requirement or numeric target at the END of a worker's session — at the Stop hook or at `finish` — after the model
  * had already spent its budget trying to close a duty that was never its to close. Measured at
  * 1.5-1.85M tokens for a five-requirement task. The information needed to prevent that is
  * available the moment the task is registered, so it is answered here and consumed by the
  * handoff, rather than rediscovered a million tokens later.
  *
- * It reports facts only: which digests are uncovered, and which plan scripts they could be bound
- * to. It never decides a verdict and never mints a binding.
+ * It reports facts only: which requirement or target digests are uncovered, and which plan scripts
+ * are available. It never decides a verdict and never mints a binding.
  */
 export function unboundRequirements(
   root: string,
   cfg: { plan: PlanStep[]; planAuthority?: PlanAuthority } | null,
 ): UnboundReport {
   const task = readTaskRecord(root);
-  if (!task || task.requirementDigests.length === 0 || cfg === null) {
+  if (!task || cfg === null || (task.requirementDigests.length === 0 && task.objectiveTargets.length === 0)) {
     return { unbound: [], subjective: false, planScripts: cfg?.plan.map((s) => s.script) ?? [] };
   }
   const bindings = cfg.planAuthority?.proofBindings ?? {};
-  const inPlan = (script: string): boolean => cfg.plan.some((s) => s.script === script);
-  const digestSet = new Set(task.requirementDigests);
+  const targets = new Map(task.objectiveTargets.map((target) => [target.digest, target]));
+  const requirements = new Set(task.requirementDigests);
+  const digests = [...new Set([...task.requirementDigests, ...targets.keys()])];
+  const boundScript = (digest: string): string | null => {
+    const script = bindings[digest];
+    const target = targets.get(digest);
+    return script !== undefined && cfg.plan.some((step) => step.script === script && (!target || step.kind === target.kind))
+      ? script : null;
+  };
 
-  // Scripts already bound to one of THIS registration's requirements are not candidates for the
-  // others: a digest must map to the check that measures THAT requirement.
-  const usedByThisRegistration = new Set(
-    Object.entries(bindings).filter(([d]) => digestSet.has(d)).map(([, s]) => s),
-  );
+  // An inferred numeric target is only covered by a check of its matching kind.
+  const usedByThisRegistration = new Set(digests.map(boundScript).filter((script): script is string => script !== null));
   const candidateScripts = [...new Set(cfg.plan.map((s) => s.script))].filter((s) => !usedByThisRegistration.has(s));
-
-  const unbound: UnboundRequirement[] = task.requirementDigests
-    .filter((d) => !task.objectiveTargets.some((t) => t.digest === d))
-    .filter((d) => {
-      const script = bindings[d];
-      return script === undefined || !inPlan(script);
-    })
-    .map((digest) => ({ digest, candidateScripts }));
+  const unbound: UnboundCriterion[] = digests.flatMap((digest) => {
+    if (boundScript(digest) !== null) return [];
+    const target = targets.get(digest);
+    return [{
+      digest, candidateScripts,
+      source: requirements.has(digest) ? 'requirement' : 'objective-target',
+      ...(target ? { targetKind: target.kind } : {}),
+    }];
+  });
 
   return {
     unbound,
-    subjective: unbound.length > 0 && unbound.every(({ digest }) => task.subjectiveRequirementDigests.includes(digest)),
+    subjective: unbound.length > 0 && unbound.every(({ digest, targetKind }) =>
+      targetKind === undefined && task.subjectiveRequirementDigests.includes(digest)),
     planScripts: cfg.plan.map((s) => s.script),
   };
 }
@@ -2801,16 +2809,20 @@ export function cmdTask(rawArgs: string[]): number {
     return script !== undefined && cfg.plan.some(step => step.script === script && (kind === undefined || step.kind === kind))
       ? script : null;
   };
-  const bindHint = (digest: string, kind?: 'bench' | 'e2e'): void => {
-    const expected = kind ? `a sealed ${kind} script from your plan` : 'a script from your plan';
-    o.say(`  operator action only (agents must not run it): bind this digest to ${expected} in package.json "canary": { "proofs": { "${digest}": "<script name>" } }, then run: canary setup`);
+  const bindHint = (kind?: 'bench' | 'e2e'): void => {
+    const scripts = [...new Set(cfg.plan.filter((step) => !kind || step.kind === kind).map((step) => step.script))];
+    const command = scripts.length > 0
+      ? `canary bind <${kind ? `sealed ${kind}` : 'sealed plan'} script> --requirement "<exact registered text>" --reseal`
+      : kind ? `add a sealed ${kind} check and run canary setup` : 'add a sealed check to the plan and run canary setup';
+    o.say(`  trusted operator action (same-UID workers can invoke CLI in LOCAL): ${command}`);
+    if (scripts.length > 0) o.say(`  matching sealed scripts: ${scripts.map(safePath).join(', ')}`);
   };
   for (const target of task.objectiveTargets) {
     const script = proofScriptFor(target.digest, target.kind);
     o.say(`objective ${target.kind} target: ${target.digest} — ${script
       ? `bound to sealed "${script}" check; its successful result is still required`
       : 'needs a matching sealed proof binding'}`);
-    if (!script) bindHint(target.digest, target.kind);
+    if (!script) bindHint(target.kind);
   }
   /**
    * Print every requirement's digest so the operator can actually BIND it.
@@ -2830,7 +2842,7 @@ export function cmdTask(rawArgs: string[]): number {
         ? `[bound to sealed proof "${script}"; successful result still required]`
         : `[needs sealed proof${task.subjectiveRequirementDigests.includes(d) ? ' or human acceptance' : ''}]`;
     o.say(`requirement ${state}: ${d} — "${canonicalText(r).slice(0, 90)}"`);
-    if (!target && !script) bindHint(d);
+    if (!target && !script) bindHint();
   }
   o.say('this is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task\'s obligations; nothing here weakens either.');
   if (text !== '' && inferred.length === 0) {
@@ -3604,18 +3616,26 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
      * fresh and READY is right; with requirements that no sealed check measures, saying so HERE costs
      * one sentence and saves the whole loop. Exit stays 0 — this IS a successful setup, and the
      * requirement state is reported rather than turned into a failure.
-     */
+    */
     const unbound = unboundRequirements(root, cfg);
+    const unboundRequirementCount = unbound.unbound.filter((item) => item.source === 'requirement').length;
+    const unboundTargetCount = unbound.unbound.length - unboundRequirementCount;
     if (unbound.unbound.length > 0 && !unbound.subjective) {
       // v1.4 §E — the summary sentence is translated for the everyday path (same fact, same exit
       // code 0, same operator decision). The two lines BELOW it are left byte-exact on purpose:
       // `unbound: <digest>` and `available to bind:` are parsed by
       // tooling/probes/v12-requirement-unbound.mjs, and a message an operator workflow reads is a
       // contract, not prose.
-      o.say(`note: you registered ${unbound.unbound.length} requirement(s) that no check here measures yet, so finishing will be reported as NOT PROVEN until one does.`);
-      for (const req of unbound.unbound) o.say(`  unbound: ${req.digest}`);
+      const missing = [
+        ...(unboundRequirementCount ? [`you registered ${unboundRequirementCount} requirement(s) that no check here measures yet`] : []),
+        ...(unboundTargetCount ? [`${unboundTargetCount} objective target(s) lack a matching sealed proof`] : []),
+      ];
+      o.say(`note: ${missing.join('; ')}, so finishing will be reported as NOT PROVEN until each is covered.`);
+      for (const item of unbound.unbound) {
+        o.say(item.source === 'requirement' ? `  unbound: ${item.digest}` : `  unbound objective target (${item.targetKind}): ${item.digest}`);
+      }
       o.say(`  sealed plan script(s) available to bind: ${unbound.planScripts.length > 0 ? unbound.planScripts.join(', ') : '(none)'}`);
-      o.say('  the wiring here is ready, but the TASK is not: bind each digest (package.json "canary" proofs) and re-run setup. Until then `canary doctor` will say NOT PROVEN — that is the same fact, not a second problem.');
+      o.say('  the wiring here is ready, but the TASK is not: the operator can run canary bind <matching sealed script> --requirement "<exact task or requirement text>" --reseal. Until then `canary doctor` will say NOT PROVEN — that is the same fact, not a second problem.');
     } else if (unbound.unbound.length > 0) {
       // v1.5 §4D — MEASURED (clean-room first run, requirement on a subjective intent): the branch
       // above is suppressed when Canary reads the requirement as SUBJECTIVE, because its "reported
@@ -4232,8 +4252,8 @@ export function cmdDoctor(rawArgs: string[]): number {
     const next = objectiveOpen.some((ob) => ob.id === 'regression-evidence')
       ? `Add a regression assertion that fails on the reported starting commit and passes with the actual implementation. Canary compares with the starting commit automatically; stay on this branch.${sealedTestEntryHint(root, cfg)} Keep the planned test command and starting commit unchanged; then run: canary doctor`
       : objectiveOpen.length > 0
-        ? 'close it with a sealed check: bind the requirement to a matching script in package.json canary.proofs and re-run canary setup — or take the work through a candidate (canary work <name> … → canary finish <name>) and have a human accept it there'
-        : 'bind each requirement to a sealed check (package.json canary.proofs + canary setup), or take the work through a candidate and have a human accept it there: canary work <name> "<intent>" → canary finish <name> → canary accept <candidate> in a terminal';
+        ? 'the operator can bind the requirement with canary bind <matching sealed script> --requirement "<exact text>" --reseal — or take the work through a candidate and have a human accept it there'
+        : 'the operator can bind each requirement with canary bind <sealed script> --requirement "<exact text>" --reseal, or take the work through a candidate and have a human accept it there: canary work <name> "<intent>" → canary finish <name> → canary accept <candidate> in a terminal';
     writeCheckpoint(root, 'unproven', unproven.map((x) => x.id), 'doctor', {
       checks: ran, hookResponse: 'not-applicable', next, evidencePath: evidenceDir ?? undefined, proof,
     });
@@ -4512,7 +4532,7 @@ export async function cmdCheckpoint(): Promise<number> {
         writeCheckpoint(root, 'unproven', objectiveOpen.map((x) => x.id), 'checkpoint', {
           checks: ran, hookResponse: 'message-and-continue', next: obligationNext, evidencePath: evidenceDir ?? undefined, proof,
         });
-        return emit({ systemMessage: `Canary: the sealed checks passed, but the work is NOT PROVEN: ${byOperator.length} duty(ies) remain open and NONE of them is yours to close — each needs the OPERATOR (bind the requirement to a check the sealed plan runs, then re-run canary setup) or a HUMAN (canary accept). This is not a failure of your change: do NOT keep working on it, do NOT edit checks to make it disappear, and do NOT report it as done. Finish now and report exactly what is still open. Details: ${operatorWhy}`.slice(0, 2000) });
+        return emit({ systemMessage: `Canary: the sealed checks passed, but the work is NOT PROVEN: ${byOperator.length} duty(ies) remain open and NONE of them is yours to close — each needs the OPERATOR (canary bind <matching sealed script> --requirement "<exact text>" --reseal) or a HUMAN (canary accept). This is not a failure of your change: do NOT keep working on it, do NOT edit checks to make it disappear, and do NOT report it as done. Finish now and report exactly what is still open. Details: ${operatorWhy}`.slice(0, 2000) });
       }
       // Subjective / operator-only duties: an agent cannot accept a duty for a human, and — MEASURED
       // (`bench-r9`) — an agent TOLD to close one spends enormous effort trying: two trials with five
@@ -4678,6 +4698,18 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
     // Fail closed with the real recovery: the plan is what proves, so a script it does not run cannot
     // be a proof. (This is the same rule setup enforces when it validates canary.proofs.)
     o.verdict('NEEDS ATTENTION', `the sealed plan does not run a script named "${safePath(script)}" — a binding to it would prove nothing.`, `add that check to your package.json scripts and run: canary setup, then bind again. Plan scripts: ${cfg.plan.map((s) => s.script).map(safePath).join(', ')}`);
+    return 2;
+  }
+  const task = readTaskRecord(root);
+  const mismatchedTarget = requirements
+    .map((requirement) => task?.objectiveTargets.find((target) => target.digest === materialDigest(requirement)))
+    .find((target) => target && !cfg.plan.some((step) => step.script === script && step.kind === target.kind));
+  if (mismatchedTarget) {
+    const matchingScripts = [...new Set(cfg.plan.filter((step) => step.kind === mismatchedTarget.kind).map((step) => safePath(step.script)))];
+    o.verdict('NEEDS ATTENTION', `the sealed script "${safePath(script)}" cannot prove this objective ${mismatchedTarget.kind} target. No binding was written.`,
+      matchingScripts.length > 0
+        ? `use a sealed ${mismatchedTarget.kind} script: ${matchingScripts.join(', ')}`
+        : `add a sealed ${mismatchedTarget.kind} check and run canary setup before binding`);
     return 2;
   }
   const pkgPath = path.join(root, 'package.json');

@@ -292,8 +292,9 @@ describe('a real call relays Canary own words and exit code, unmodified', () => 
     assert.equal(registered.exitCode, 0, JSON.stringify(registered));
     assert.match(String(registered.stdout), /AGENT_REPORTED/);
     assert.match(String(registered.stdout), /needs sealed proof/);
-    assert.match(String(registered.stdout), /operator action only/i);
-    assert.match(String(registered.stdout), /agents must not run it/i);
+    assert.match(String(registered.stdout), /trusted operator action/i);
+    assert.match(String(registered.stdout), /same-UID workers can invoke CLI in LOCAL/i);
+    assert.doesNotMatch(String(registered.stdout), /agents must not run it/i);
     const task = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'task', 'current.json'), 'utf8')) as {
       taskDigest: string; trustClass: string; requirementCount: number; requirementDigests: string[];
     };

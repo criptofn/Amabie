@@ -148,7 +148,8 @@ function locked<T>(s: TrustStore, action: () => T): T {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   checked(s, root); // re-verify what the kernel actually created
   const lock = checked(s, path.join(root, '.authority-lock'));
-  const deadline = Date.now() + LOCK_WAIT_MS;
+  const deadline = process.hrtime.bigint() + BigInt(LOCK_WAIT_MS) * 1_000_000n;
+  const expired = (): boolean => process.hrtime.bigint() >= deadline;
   let acquired = false;
   for (;;) {
     try { fs.mkdirSync(lock, { mode: 0o700 }); acquired = true; break; }
@@ -163,11 +164,15 @@ function locked<T>(s: TrustStore, action: () => T): T {
           const stat = fs.lstatSync(lock);
           held = stat.isDirectory() && !stat.isSymbolicLink();
         } catch (probeError) {
-          if ((probeError as NodeJS.ErrnoException).code === 'ENOENT') continue;
+          if ((probeError as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (expired()) throw e;
+            sleepSync(LOCK_POLL_MS);
+            continue;
+          }
         }
       }
       if (!held) throw e;
-      if (Date.now() >= deadline) throw new Error(`the trust store is busy: another Canary process holds ${lock} — refusing to mint a record that could overwrite a concurrent seal; the lock is never stolen, so a killed writer needs the lock directory removed`);
+      if (expired()) throw new Error(`the trust store is busy: another Canary process holds ${lock} — refusing to mint a record that could overwrite a concurrent seal; the lock is never stolen, so a killed writer needs the lock directory removed`);
       sleepSync(LOCK_POLL_MS);
     }
   }

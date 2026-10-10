@@ -176,6 +176,11 @@ describe('audit M8 — CLI subprocess exit-code contract', () => {
       const help = cli(repoRoot, [flag]);
       assert.equal(help.status, 0, help.stdout + help.stderr);
       assert.match(help.stdout, /usage:/);
+      assert.match(help.stdout, /MCP defaults to four everyday tools; expert adds work\/finish/);
+      assert.match(help.stdout, /the ISOLATED expert path/);
+      assert.match(help.stdout, /Task registration only adds duties/);
+      assert.match(help.stdout, /LOCAL does not isolate same-UID workers from CLI bind\/setup/);
+      assert.doesNotMatch(help.stdout, /the ORDINARY path/);
       assert.doesNotMatch(help.stdout, /\r?\n(?:NOT CONNECTED|NEEDS ATTENTION|CONNECTED) —/);
     }
     const none = cli(repoRoot, []);
@@ -184,6 +189,29 @@ describe('audit M8 — CLI subprocess exit-code contract', () => {
     const unknown = cli(repoRoot, ['not-a-command']);
     assert.equal(unknown.status, 3);
     assert.match(unknown.stdout, /usage:/);
+    const mcpHelp = cli(repoRoot, ['mcp', '--help']);
+    assert.equal(mcpHelp.status, 0, mcpHelp.stdout + mcpHelp.stderr);
+    assert.match(mcpHelp.stderr, /usage: canary mcp/);
+  });
+
+  it('subcommand help never runs setup or writes project files', () => {
+    const root = fs.mkdtempSync(path.join(TMP, 'setup-help-'));
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node smoke.cjs' } }));
+    fs.writeFileSync(path.join(root, 'smoke.cjs'), "require('node:fs').writeFileSync('setup-ran.txt', 'ran');\n");
+    const init = spawnSync('git', ['init', '-b', 'main'], { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    const help = spawnSync(NODE, [CLI, 'setup', '--help'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+      windowsHide: true,
+      env: { ...process.env, CANARY_TRUST_STORE: path.join(root, 'trust-store') },
+    });
+    assert.equal(help.status, 0, help.stdout + help.stderr);
+    assert.match(help.stdout, /usage:/);
+    assert.equal(fs.existsSync(path.join(root, 'setup-ran.txt')), false);
+    assert.equal(fs.existsSync(path.join(root, '.canary')), false);
+    assert.equal(fs.existsSync(path.join(root, '.mcp.json')), false);
   });
 
   it('verbose version identifies the runtime and entry bytes without changing the plain contract or project', () => {

@@ -51,7 +51,7 @@ test('a registered requirement with NO sealed proof is UNPROVEN and names the wa
   // measured 1.5-1.85M-token loops. A declared requirement is a requirement.
   assert.equal(per.mode, 'objective', 'an unmeasured requirement is a MEASUREMENT duty, not a signature');
   assert.match(per.note, /NO sealed proof/);
-  assert.match(per.note, /canary\.proofs/, 'the note must name the binding mechanism');
+  assert.match(per.note, /canary bind <sealed script>/, 'the note must name the operator binding command');
 });
 
 test('a SUBJECTIVE registration keeps the human-acceptance path (it is not a measurement duty)', () => {
@@ -67,13 +67,23 @@ test('a SUBJECTIVE registration keeps the human-acceptance path (it is not a mea
   assert.deepEqual(task.subjectiveRequirementDigests, [materialDigest('the dialog looks nicer')]);
 });
 
-test('a calmer UI animation can be accepted subjectively without making a numeric target subjective', () => {
-  const subjective = 'the menu animation feels calmer';
+test('calmer UI wording can be accepted subjectively without making a numeric target subjective', () => {
+  const subjective = ['the menu animation feels calmer', 'the spacing on the dialog is calmer'];
   const objective = 'the animation completes within 200 ms';
-  const task = declaredTask('refine the menu animation', ['ui'] as TaskKind[], [subjective, objective]);
+  const task = declaredTask('refine the menu animation', ['ui'] as TaskKind[], [...subjective, objective]);
 
-  assert.deepEqual(task.subjectiveRequirementDigests, [materialDigest(subjective)]);
+  assert.deepEqual(task.subjectiveRequirementDigests, subjective.map(materialDigest));
   assert.deepEqual(task.objectiveTargets, [{ digest: materialDigest(objective), kind: 'bench' }]);
+});
+
+test('calm-mode persistence remains an objective duty that human acceptance cannot replace', () => {
+  const requirement = 'the calm mode persists after restart';
+  const task = declaredTask('add a calm mode', ['ui'] as TaskKind[], [requirement]);
+  const per = find(obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 1, 'setup', task, authorityWith()), 'per-requirement');
+
+  assert.deepEqual(task.subjectiveRequirementDigests, []);
+  assert.equal(per?.mode, 'objective');
+  assert.match(String(per?.note), /NO sealed proof/);
 });
 
 test('one subjective requirement cannot make a separate objective requirement acceptance-eligible', () => {
