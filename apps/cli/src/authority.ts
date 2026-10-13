@@ -14,10 +14,10 @@
  *     evidence dir is fingerprinted as a tree, so a plan step cannot plant
  *     a forged PASS bundle, edit an observed one, or delete history inside
  *     the window (the M8 residual "prevention is M9's job" closes here).
- *     Canary's own writes land OUTSIDE the window — pre-execution blocks
+ *     Amabie's own writes land OUTSIDE the window — pre-execution blocks
  *     write their bundle before the snapshot is taken, the verdict bundle
  *     lands after the re-read, pruning rides with it — so no self-trigger;
- *     a CONCURRENT canary invocation inside another's window can force a
+ *     a CONCURRENT amabie invocation inside another's window can force a
  *     false BLOCK, never a false PASS (fail-closed direction, same-user
  *     concurrency is the documented ceiling).
  * Review-hardened (this session's adversarial pass, fixes F1–F4): the
@@ -123,7 +123,7 @@ export function shortState(s: AuthorityState): string {
   return s.startsWith('sha256:') ? `sha ${s.slice(7, 19)}` : s;
 }
 
-/** §9.5 — the quarantine marker's filename (lives under <base>/.canary/). */
+/** §9.5 — the quarantine marker's filename (lives under <base>/.amabie/). */
 export const QUARANTINE_FILE = 'authority-quarantine.json';
 
 /** Stamp the marker after a during/after-execution mandate: a caught
@@ -136,7 +136,7 @@ export const QUARANTINE_FILE = 'authority-quarantine.json';
 export function stampQuarantine(p: string, when: string, changes: AuthorityChange[]): void {
   try {
     fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, JSON.stringify({ schema: 'canary-authority-quarantine/1', at: new Date().toISOString(), when, changes }, null, 2) + '\n');
+    fs.writeFileSync(p, JSON.stringify({ schema: 'amabie-authority-quarantine/1', at: new Date().toISOString(), when, changes }, null, 2) + '\n');
   } catch { /* presence is the state; bytes are display — see above */ }
 }
 

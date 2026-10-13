@@ -97,15 +97,15 @@ describe('post-GLM F5 — findRunnerPin: origin is an execution-authority gate',
   it('double bytes are UNSELECTABLE by default: pinned hash, zero execution authority', () => {
     assert.equal(findRunnerPin(located(double!)), null);
     assert.equal(findRunnerPin(located(double!), {}), null);
-    assert.equal(findRunnerPin(located(double!), { allowCanaryDoubleOrigin: false }), null);
+    assert.equal(findRunnerPin(located(double!), { allowAmabieDoubleOrigin: false }), null);
   });
 
   it('only the explicit in-process grant selects the double', () => {
-    assert.equal(findRunnerPin(located(double!), { allowCanaryDoubleOrigin: true })?.version, double!.version);
+    assert.equal(findRunnerPin(located(double!), { allowAmabieDoubleOrigin: true })?.version, double!.version);
   });
 
   it('npm pins stay selectable in BOTH postures — the gate is origin-scoped, not blanket', () => {
     assert.equal(findRunnerPin(located(npmPin!))?.version, npmPin!.version);
-    assert.equal(findRunnerPin(located(npmPin!), { allowCanaryDoubleOrigin: true })?.version, npmPin!.version);
+    assert.equal(findRunnerPin(located(npmPin!), { allowAmabieDoubleOrigin: true })?.version, npmPin!.version);
   });
 });

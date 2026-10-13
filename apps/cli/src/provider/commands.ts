@@ -1,15 +1,15 @@
 /**
- * `canary provider` — the explicit provider lifecycle (v1.1 Phase 3).
+ * `amabie provider` — the explicit provider lifecycle (v1.1 Phase 3).
  *
- *   canary provider status          measure the boundary; say whether HARDENED is real
- *   canary provider install-plan    the EXACT privileged commands, and the rollback
- *   canary provider uninstall-plan   what removal does, and what it must never delete
- *   canary provider serve           run the broker service (what the OS starts)
- *   canary provider call            worker-side request, for scripts and tests
+ *   amabie provider status          measure the boundary; say whether HARDENED is real
+ *   amabie provider install-plan    the EXACT privileged commands, and the rollback
+ *   amabie provider uninstall-plan   what removal does, and what it must never delete
+ *   amabie provider serve           run the broker service (what the OS starts)
+ *   amabie provider call            worker-side request, for scripts and tests
  *
  * The verbs are split so that the privileged step is never a side effect of a
  * routine command: nothing here elevates, and `install-plan` prints rather than
- * executes. Routine Canary use after activation needs no elevation, because the
+ * executes. Routine Amabie use after activation needs no elevation, because the
  * service holds the privileged identity.
  */
 import { measuredCapabilities } from '../platform-boundary.js';
@@ -67,35 +67,35 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
 
   switch (sub) {
     case 'model-transport': {
-      if (rest.length !== 6) throw new Error('usage: canary provider model-transport <store> <work> <prompt-file> <model> <absolute-claude-executable>');
+      if (rest.length !== 6) throw new Error('usage: amabie provider model-transport <store> <work> <prompt-file> <model> <absolute-claude-executable>');
       return modelTransport(rest[1]!, rest[2]!, fs.readFileSync(rest[3]!, 'utf8'), rest[4]!, rest[5]!);
     }
     case 'worker-tools': {
-      if (rest.length !== 3) throw new Error('usage: canary provider worker-tools <store> <work>');
+      if (rest.length !== 3) throw new Error('usage: amabie provider worker-tools <store> <work>');
       return workerTools(rest[1]!, rest[2]!);
     }
     case 'measurement-begin': {
-      if (rest.length !== 2) throw new Error('usage: canary provider measurement-begin <store>');
+      if (rest.length !== 2) throw new Error('usage: amabie provider measurement-begin <store>');
       console.log(JSON.stringify({ challenge: beginProductionMeasurement(rest[1]!) })); return 0;
     }
     case 'measure-production': {
-      if (rest.length !== 2) throw new Error('usage: canary provider measure-production <store>');
+      if (rest.length !== 2) throw new Error('usage: amabie provider measure-production <store>');
       await measureProductionAttacks(rest[1]!);
       console.log('production measurement recorded'); return 0;
     }
     case 'enroll': {
-      if (rest.length !== 3) throw new Error('usage: canary provider enroll <trusted-base> <new-deployment-store>');
+      if (rest.length !== 3) throw new Error('usage: amabie provider enroll <trusted-base> <new-deployment-store>');
       console.log(JSON.stringify(await enrollProduction(rest[1]!, rest[2]!)));
       return 0;
     }
     case 'serve-production': {
-      if (rest.length !== 2) throw new Error('usage: canary provider serve-production <deployment-store>');
+      if (rest.length !== 2) throw new Error('usage: amabie provider serve-production <deployment-store>');
       return serveProduction(rest[1]!);
     }
     case 'launch': {
       // Operator-only launch; the OS token, not this verb's spelling, is custody.
       const [, store, cwd, ...argv] = rawArgs;
-      if (!store || !cwd || !argv.length) throw new Error('usage: canary provider launch <store> <work> <program> [args...]');
+      if (!store || !cwd || !argv.length) throw new Error('usage: amabie provider launch <store> <work> <program> [args...]');
       return launchProductionCaller(store, cwd, argv);
     }
     case 'authority': {
@@ -129,12 +129,12 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
         ? 'production' : (boundary.confined.measured ? 'confined-caller' : null);
       const primitives = boundary.sandbox.kind ?? null;
       const next = hardened
-        ? 'the boundary is established; canary provider serve is what the OS starts'
+        ? 'the boundary is established; amabie provider serve is what the OS starts'
         : 'run: node tooling/probes/v12-confined-caller.mjs (measures the real boundary on this host; nothing is elevated)';
 
       if (json) {
         emitEnvelope({
-          schema: 'canary-provider-status/1',
+          schema: 'amabie-provider-status/1',
           command: 'provider status',
           // The status word is the MEASURED level, so the human and machine
           // answers cannot diverge, and HARDENED can only appear when it is real.
@@ -161,7 +161,7 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
       // answers the six required questions in a dozen lines; the raw per-control
       // reasoning and observations moved behind `--verbose`, where they belong,
       // and nothing was removed from them.
-      out(`canary provider — ${measured.level}${hardened ? '' : ' (HARDENED is NOT available here)'}`);
+      out(`amabie provider — ${measured.level}${hardened ? '' : ' (HARDENED is NOT available here)'}`);
       out('');
       out(`  security level    ${measured.level}`);
       out(`  provider          ${PROVIDER_SERVICE_NAME}   pipe ${status.pipe}`);
@@ -194,9 +194,9 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
       out('');
       out('  to enable HARDENED (nothing below elevates anything by itself)');
       out('    node tooling/probes/v12-confined-caller.mjs    measure the real boundary on this host');
-      out('    canary provider install-plan                   print the privileged identity-path steps');
+      out('    amabie provider install-plan                   print the privileged identity-path steps');
       out('');
-      out('  verbose: canary provider status --verbose        per-control reasons and raw observations');
+      out('  verbose: amabie provider status --verbose        per-control reasons and raw observations');
 
       if (verbose) {
         out('');
@@ -259,7 +259,7 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
     }
     case 'call': {
       const op = rest[1] as WorkerOperation | undefined;
-      if (op === undefined) { console.error('usage: canary provider call <operation> [--json]'); return 3; }
+      if (op === undefined) { console.error('usage: amabie provider call <operation> [--json]'); return 3; }
       try {
         const result = await callProvider({ op });
         console.log(json ? JSON.stringify(result) : `ok: ${JSON.stringify(result)}`);
@@ -270,7 +270,7 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
       }
     }
     default:
-      console.log('usage: canary provider <status|install-plan|uninstall-plan|serve|call>');
+      console.log('usage: amabie provider <status|install-plan|uninstall-plan|serve|call>');
       out(`unknown provider subcommand: ${sub}`);
       return 3;
   }

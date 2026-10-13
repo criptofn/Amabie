@@ -97,7 +97,7 @@ function runDeclaredCheck(argv) {
     ? `${text.slice(0, CHECK_SEGMENT_CHARS)}\n... [${text.length - CHECK_SEGMENT_CHARS * 2} bytes omitted] ...\n${text.slice(-CHECK_SEGMENT_CHARS)}`
     : text;
   return { ran: true, status: r.status, truncated, summary,
-    note: 'this project\'s own check output — not a Canary verdict, and not proof that the work is done' };
+    note: 'this project\'s own check output — not an Amabie verdict, and not proof that the work is done' };
 }
 
 let result, failure;

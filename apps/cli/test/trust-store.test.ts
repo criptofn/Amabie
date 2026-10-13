@@ -9,12 +9,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
 import * as store from '../src/trust-store.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 let n = 0;
@@ -94,7 +94,7 @@ describe('forging routes all fail closed', () => {
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
     fs.writeFileSync(file, JSON.stringify(store.sealRecord(freshStore(), { projectId: 'proj-x', kind: 'reg-x', payload: {}, canaryVersion: 'test' })));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'forged'); // foreign key, valid shape
-    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), schema: 'canary-authority/0' }));
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), schema: 'amabie-authority/0' }));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
     fs.rmSync(file);
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'missing');
@@ -130,10 +130,10 @@ describe('the level probe measures, it never inflates', () => {
   it('default store root is the platform convention under the OS home', () => {
     const root = store.defaultStoreRoot(path.join(TMP, 'home'));
     assert.ok(root.startsWith(path.join(TMP, 'home')), root);
-    assert.match(root, /canary/);
+    assert.match(root, /amabie/);
     assert.equal(root.includes('.git'), false);
-    if (process.platform === 'win32') assert.ok(root.endsWith(path.join('AppData', 'Local', 'canary', 'trust')), root);
-    else assert.ok(root.endsWith(path.join('.local', 'share', 'canary', 'trust')), root);
+    if (process.platform === 'win32') assert.ok(root.endsWith(path.join('AppData', 'Local', 'amabie', 'trust')), root);
+    else assert.ok(root.endsWith(path.join('.local', 'share', 'amabie', 'trust')), root);
   });
 });
 
@@ -145,6 +145,7 @@ describe('the level probe measures, it never inflates', () => {
 // ---------------------------------------------------------------------------
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const SEAL_FIXTURE = path.join(REPO, 'tooling', 'test-support', 'fixtures', 'trust-seal-once.mjs');
+const LOCK_DENIAL_FIXTURE = path.join(REPO, 'tooling', 'test-support', 'fixtures', 'trust-lock-denial.mjs');
 const unique = (what: string): string => path.join(TMP, `${what}-${process.pid}-${n++}`);
 
 describe('1.1 hardening — custody refusals', () => {
@@ -196,6 +197,44 @@ describe('1.1 hardening — custody refusals', () => {
 });
 
 describe('1.1 hardening — minting is serialized', () => {
+  it('a verified existing lock directory also counts as contention when mkdir reports EPERM', (t) => {
+    const s = freshStore();
+    const realMkdir = fs.mkdirSync.bind(fs);
+    let lockAttempts = 0;
+    const simulatedWindowsRace = ((...args: Parameters<typeof fs.mkdirSync>) => {
+      const dir = args[0];
+      if (typeof dir === 'string' && path.basename(dir) === '.authority-lock') {
+        lockAttempts++;
+        if (lockAttempts === 1) {
+          realMkdir(...args);
+          throw Object.assign(new Error('simulated Windows mkdir race'), { code: 'EPERM' });
+        }
+        if (lockAttempts === 2) fs.rmdirSync(dir);
+      }
+      return realMkdir(...args);
+    }) as typeof fs.mkdirSync;
+    t.mock.method(fs, 'mkdirSync', simulatedWindowsRace);
+
+    const env = sealTest(s);
+    assert.equal(lockAttempts, 2, 'the EPERM path waited for the existing lock and retried');
+    assert.equal(env.seq, 1);
+    assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'valid');
+  });
+
+  it('persistent EPERM with a missing lock is refused within the lock deadline', () => {
+    const s = freshStore();
+    const result = spawnSync(process.execPath, [LOCK_DENIAL_FIXTURE, s.root], {
+      encoding: 'utf8', windowsHide: true, timeout: 10_000,
+    });
+    assert.equal(result.error, undefined, `the lock retry exceeded its bound: ${result.error?.message}`);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    const observed = JSON.parse(result.stdout.trim()) as { lockAttempts: number; waits: number; elapsedMs: number };
+    assert.equal(observed.lockAttempts, observed.waits + 1);
+    assert.ok(observed.waits > 100, `the monotonic deadline did not allow the bounded wait: ${observed.waits}`);
+    assert.ok(observed.elapsedMs >= 5_000 && observed.elapsedMs < 9_000,
+      `the retry should track elapsed time despite a frozen wall clock: ${observed.elapsedMs} ms`);
+  });
+
   it('concurrent minters never share a generation (no lost ledger update)', async () => {
     const s = freshStore();
     const spawnOne = (): Promise<{ seq: number; pid: number }> => new Promise((resolve, reject) => {

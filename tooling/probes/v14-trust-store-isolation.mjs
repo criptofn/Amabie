@@ -5,7 +5,7 @@
  * MEASURED DEFECT (the one this closes): M2/M9 passed 33/33 alone and failed inside the
  * productization battery. The reason was NOT a product behaviour. Every suite set
  *
- *     process.env.CANARY_TRUST_STORE = path.join(os.tmpdir(), `canary-trust-${process.pid}`)
+ *     process.env.AMABIE_TRUST_STORE = path.join(os.tmpdir(), `amabie-trust-${process.pid}`)
  *
  * a path derived from a RECYCLABLE pid and therefore SHARED with an unrelated earlier run. The raw
  * error, obtained only after the suite was made to print setup's `--verbose` output, was:
@@ -42,7 +42,7 @@ const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
   catch (e) { failures += 1; console.log(`FAIL ${name}\n     ${String(e?.message ?? e)}`); }
 };
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-store-isolation-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-store-isolation-'));
 const cleanup = () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* OS temp */ } };
 process.on('exit', cleanup);
 
@@ -57,16 +57,16 @@ function fixture(name) {
   return root;
 }
 const setup = (root, store) => spawnSync(process.execPath, [CLI, 'setup', '--yes', '--verbose', root],
-  { cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, CANARY_TRUST_STORE: store } });
+  { cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, AMABIE_TRUST_STORE: store } });
 
 console.log('=== A. no test derives its trust store from a recyclable identifier ===');
-check('every CANARY_TRUST_STORE in apps/cli/test is a fresh mkdtemp (or an explicit per-test path)', () => {
+check('every AMABIE_TRUST_STORE in apps/cli/test is a fresh mkdtemp (or an explicit per-test path)', () => {
   const dir = path.join(REPO, 'apps', 'cli', 'test');
   const offenders = [];
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.test.ts'))) {
     const text = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const line of text.split(/\r?\n/)) {
-      if (!/CANARY_TRUST_STORE/.test(line)) continue;
+      if (!/AMABIE_TRUST_STORE/.test(line)) continue;
       if (/process\.pid|Date\.now\(\)|os\.hostname\(\)/.test(line)) offenders.push(`${f}: ${line.trim()}`);
     }
   }
@@ -77,10 +77,10 @@ console.log('\n=== B/C. a stale store corrupts nothing, and a damaged store stil
 // The exact contaminated shape MEASURED: an initialised store whose key material is gone.
 const STALE = path.join(TMP, 'stale-store');
 fs.mkdirSync(path.join(STALE, 'records'), { recursive: true });
-fs.writeFileSync(path.join(STALE, 'ledger.json'), JSON.stringify({ schema: 'canary-authority-ledger/1', lanes: {} }) + '\n');
+fs.writeFileSync(path.join(STALE, 'ledger.json'), JSON.stringify({ schema: 'amabie-authority-ledger/1', lanes: {} }) + '\n');
 
 check('an UNRELATED stale store does not affect a run with its own fresh store', () => {
-  const fresh = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-'));
+  const fresh = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-'));
   const r = setup(fixture('unrelated-stale'), fresh);
   assert.equal(r.status, 0, `setup must succeed with a fresh store (exit ${r.status})\n${r.stdout}${r.stderr}`);
 });

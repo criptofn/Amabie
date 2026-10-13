@@ -2,10 +2,10 @@
  * 1.1 §35/§36 — model-neutral metrics, so the later benchmark campaign can
  * MEASURE instead of guess.
  *
- * The later phase compares Canary OFF vs ON vs Canary-aware across agent
+ * The later phase compares Amabie OFF vs ON vs Amabie-aware across agent
  * families and wants: tokens, agent-visible output, commands, repair loops,
- * human interventions, wall time, Canary time, verification outcome, premature
- * DONE, false PASS/BLOCK. Canary can honestly supply the parts it owns
+ * human interventions, wall time, Amabie time, verification outcome, premature
+ * DONE, false PASS/BLOCK. Amabie can honestly supply the parts it owns
  * (commands, wall time, outcomes, output size) and must NOT pretend to supply
  * the parts it does not (token counts live in the harness, not here).
  *
@@ -20,14 +20,14 @@
  *      user's strings live. The campaign needs counts and outcomes, not a copy
  *      of the user's repository.
  *
- * Off unless `CANARY_METRICS` names a file. One JSON object per line (JSONL),
+ * Off unless `AMABIE_METRICS` names a file. One JSON object per line (JSONL),
  * append-only, outside the repository by the user's choice.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export const METRICS_SCHEMA = 'canary-metrics/1';
+export const METRICS_SCHEMA = 'amabie-metrics/1';
 
 export interface MetricRecord {
   schema: string;
@@ -40,7 +40,7 @@ export interface MetricRecord {
   /** Outcome as the process reported it, so a campaign can count false PASS/BLOCK. */
   ok: boolean;
   durationMs: number;
-  canaryVersion: string;
+  amabieVersion: string;
   node: string;
   platform: string;
   /** Bytes the command wrote to each stream — the agent-visible-output proxy.
@@ -51,7 +51,7 @@ export interface MetricRecord {
 
 /** Where records go, or null when instrumentation is off. */
 export function metricsTarget(env: NodeJS.ProcessEnv = process.env): string | null {
-  const v = env.CANARY_METRICS?.trim();
+  const v = env.AMABIE_METRICS?.trim() || env.CANARY_METRICS?.trim();
   return v ? path.resolve(v) : null;
 }
 
@@ -92,7 +92,7 @@ export function metricFor(
   exitCode: number,
   durationMs: number,
   startedBytes: { out: number | null; err: number | null },
-  canaryVersion: string,
+  amabieVersion: string,
 ): MetricRecord {
   const { command, flags } = describeInvocation(argv);
   const out = streamBytes(process.stdout);
@@ -105,7 +105,7 @@ export function metricFor(
     exitCode,
     ok: exitCode === 0,
     durationMs,
-    canaryVersion,
+    amabieVersion,
     node: process.version,
     platform: `${process.platform}/${process.arch} (${os.release()})`,
     stdoutBytes: out === null || startedBytes.out === null ? null : out - startedBytes.out,

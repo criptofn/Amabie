@@ -30,6 +30,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,36 +69,61 @@ function findFile(dir, name) {
  * Install a relocatable Go into `_toolchains/go`. Returns the env a caller must
  * pass to a child to use it (GOROOT + PATH prefixed with <goroot>/bin), or null.
  */
-async function ensureGo() {
+export function extractVerifiedGoArchive(archive, expectedSha256, goroot) {
+  const actual = createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
+  if (!/^[a-f0-9]{64}$/.test(expectedSha256) || actual !== expectedSha256) {
+    throw new Error(`Go archive SHA-256 mismatch: expected ${expectedSha256}, observed ${actual}; nothing extracted or replaced`);
+  }
+  const parent = path.dirname(goroot);
+  fs.mkdirSync(parent, { recursive: true });
+  const stage = fs.mkdtempSync(path.join(parent, '.go-stage-'));
+  try {
+    const un = spawnSync(process.platform === 'win32' ? 'tar.exe' : 'tar', ['-xf', archive, '-C', stage], { encoding: 'utf8', timeout: 900_000, windowsHide: true });
+    if (un.status !== 0) throw new Error(`Go archive extraction failed: ${un.stderr || un.status}`);
+    const extracted = path.join(stage, 'go');
+    if (!fs.existsSync(path.join(extracted, 'bin', process.platform === 'win32' ? 'go.exe' : 'go'))) throw new Error('Go archive contains no host executable');
+    // Only replace Go after a verified archive extracted; sibling toolchains are independent.
+    fs.rmSync(goroot, { recursive: true, force: true });
+    fs.renameSync(extracted, goroot);
+  } finally {
+    fs.rmSync(stage, { recursive: true, force: true });
+  }
+}
+
+async function ensureGo(requestedVersion) {
   const goroot = path.join(ROOT, 'go');
   const goExe = path.join(goroot, 'bin', process.platform === 'win32' ? 'go.exe' : 'go');
   if (fs.existsSync(goExe)) {
     const v = spawnSync(goExe, ['version'], { encoding: 'utf8', timeout: 120_000 });
-    if (v.status === 0) { log(`go already provisioned: ${(v.stdout ?? '').trim()}`); return { goroot, env: goEnv(goroot) }; }
+    if (v.status === 0 && (!requestedVersion || (v.stdout ?? '').startsWith(`go version go${requestedVersion} `))) {
+      log(`go already provisioned: ${(v.stdout ?? '').trim()}`);
+      return { goroot, version: (v.stdout ?? '').trim(), env: goEnv(goroot) };
+    }
   }
-  if (process.platform !== 'win32') { log('go: non-Windows host — this tool only provisions the host platform'); return null; }
+  if (!['win32', 'linux'].includes(process.platform)) { log('go: only native Windows and Linux archives are provisioned here'); return null; }
 
   log('provisioning Go (user-local, relocatable)...');
-  const idx = await (await fetch('https://go.dev/dl/?mode=json')).json();
-  const stable = (idx ?? []).find((r) => r.stable === true);
-  const file = (stable?.files ?? []).find((f) => f.os === 'windows' && f.arch === 'amd64' && f.kind === 'archive');
-  if (!file) fail('could not resolve a stable windows/amd64 Go archive from go.dev');
-  const zip = path.join(os.tmpdir(), `canary-${file.filename}`);
-  const bytes = await download(`https://go.dev/dl/${file.filename}`, zip);
-  log(`  ${file.filename} (${Math.round(bytes / 1024 / 1024)} MB), sha256 ${file.sha256.slice(0, 16)}…`);
-
-  fs.rmSync(ROOT, { recursive: true, force: true });
-  fs.mkdirSync(ROOT, { recursive: true });
-  // Windows' tar.exe (bsdtar, present since 10 1803) reads zip archives, so no
-  // PowerShell Expand-Archive dependency and no shell quoting hazards.
-  const un = spawnSync('tar.exe', ['-xf', zip, '-C', ROOT], { encoding: 'utf8', timeout: 900_000, windowsHide: true });
-  if (un.status !== 0) fail(`Go archive extraction failed: ${(un.stderr ?? '').trim() || un.status}`);
-  fs.rmSync(zip, { force: true });
+  const response = await fetch(`https://go.dev/dl/?mode=json${requestedVersion ? '&include=all' : ''}`);
+  if (!response.ok) throw new Error(`Go release metadata HTTP ${response.status}`);
+  const idx = await response.json();
+  const release = idx.find(r => requestedVersion ? r.version === `go${requestedVersion}` : r.stable === true);
+  const platform = process.platform === 'win32' ? 'windows' : 'linux';
+  const arch = process.arch === 'x64' ? 'amd64' : process.arch;
+  const file = release?.files.find(f => f.os === platform && f.arch === arch && f.kind === 'archive');
+  if (!file || !/^go[0-9.]+\.(windows|linux)-[a-z0-9]+\.(zip|tar\.gz)$/.test(file.filename)) throw new Error(`no Go ${requestedVersion ?? 'stable'} archive for ${platform}/${arch}`);
+  const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-go-download-'));
+  try {
+    const archive = path.join(stage, file.filename);
+    const bytes = await download(`https://go.dev/dl/${file.filename}`, archive);
+    extractVerifiedGoArchive(archive, file.sha256, goroot);
+    log(`  VERIFIED ${file.filename} (${Math.round(bytes / 1024 / 1024)} MB), sha256 ${file.sha256}`);
+    fs.writeFileSync(path.join(goroot, 'amabie-install-evidence.json'), JSON.stringify({ version: release.version, filename: file.filename, sha256: file.sha256, bytes }, null, 2) + '\n');
+  } finally { fs.rmSync(stage, { recursive: true, force: true }); }
   if (!fs.existsSync(goExe)) fail(`Go archive extracted but ${goExe} is missing`);
   const v = spawnSync(goExe, ['version'], { encoding: 'utf8', timeout: 120_000 });
   if (v.status !== 0) fail(`provisioned Go does not run: ${(v.stderr ?? '').trim()}`);
   log(`  ${(v.stdout ?? '').trim()}`);
-  return { goroot, env: goEnv(goroot) };
+  return { goroot, version: (v.stdout ?? '').trim(), env: goEnv(goroot) };
 }
 function goEnv(goroot) {
   const sep = process.platform === 'win32' ? ';' : ':';
@@ -128,7 +154,7 @@ async function ensureRust() {
 
   log('provisioning Rust (user-local rustup, minimal profile, --no-modify-path)...');
   // The basename MUST be exactly `rustup-init.exe`: rustup decides whether it is
-  // the installer or a proxy from argv[0], and `canary-rustup-init.exe` made it
+  // the installer or a proxy from argv[0], and `amabie-rustup-init.exe` made it
   // report "unknown proxy name" and exit 1. A dedicated temp dir keeps that name.
   const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'rustup-stage-'));
   const exe = path.join(stage, 'rustup-init.exe');
@@ -157,16 +183,22 @@ function rustEnv(cargoHome, rustupHome) {
   };
 }
 
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const which = process.argv[2] ?? 'all';
+if (!['all', 'go', 'rust'].includes(which)) fail('usage: node tooling/toolchains.mjs [all|go|rust] [--go-version=<major.minor.patch>]');
+const requestedVersion = process.argv.slice(3).find(arg => arg.startsWith('--go-version='))?.slice('--go-version='.length);
+if (requestedVersion !== undefined && !/^\d+\.\d+\.\d+$/.test(requestedVersion)) fail('Go version must be major.minor.patch');
 log(`workspace-local toolchains under ${ROOT}`);
-const result = { schema: 'canary-toolchains/1', root: ROOT, go: null, rust: null };
-if (which === 'all' || which === 'go') result.go = await ensureGo();
+const result = { schema: 'amabie-toolchains/1', root: ROOT, go: null, rust: null };
+if (which === 'all' || which === 'go') result.go = await ensureGo(requestedVersion);
 if (which === 'all' || which === 'rust') result.rust = await ensureRust();
+fs.mkdirSync(ROOT, { recursive: true });
 fs.writeFileSync(path.join(REPO, '_toolchains', 'toolchains.json'), JSON.stringify({
   ...result,
-  go: result.go ? { goroot: result.go.goroot, pathPrefix: path.join(result.go.goroot, 'bin') } : null,
+  go: result.go ? { goroot: result.go.goroot, version: result.go.version, pathPrefix: path.join(result.go.goroot, 'bin') } : null,
   rust: result.rust ? { cargoHome: result.rust.cargoHome, rustupHome: result.rust.rustupHome } : null,
 }, null, 2) + '\n');
 log(`\nwrote _toolchains/toolchains.json`);
 log(`go:   ${result.go ? 'READY' : 'not provisioned'}`);
 log(`rust: ${result.rust ? 'READY' : 'not provisioned'}`);
+}

@@ -39,10 +39,10 @@ const git = (dir, ...args) => {
   assert.equal(r.status, 0, `git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 };
-const canary = (args, cwd, input) =>
+const amabie = (args, cwd, input) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, input, encoding: 'utf8', timeout: 120_000 });
 const checkpointOut = (root, extra = {}) => {
-  const r = canary(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
+  const r = amabie(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
   assert.equal(r.status, 0, 'wire contract: checkpoint must exit 0');
   return r.stdout.trim() ? JSON.parse(r.stdout) : null; // null = silent pass
 };
@@ -53,8 +53,8 @@ if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing');
   if (v.status !== 0) { console.log('FAIL git is required for this probe but did not run'); process.exit(1); }
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m5-probe-'));
-const cfgOf = (root) => JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m5-probe-'));
+const cfgOf = (root) => JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
 const pkgOf = (root) => JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const setTest = (root, text) => {
   const pkg = pkgOf(root);
@@ -66,7 +66,7 @@ function makeRealGitRepo(name) {
   const root = path.join(TMP, name);
   fs.mkdirSync(root, { recursive: true });
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
   git(root, 'config', 'user.name', 'probe');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: `node "${FX('f-pass.js')}"` } }, null, 2));
@@ -80,26 +80,26 @@ try {
   // ---- 1. the seal on a real repo binds the real bytes sealed at setup
   const root = makeRealGitRepo('seal');
   check('setup seals plan + verbatim script text; clean repo verifies silently and doctor is READY', () => {
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     const seal = cfgOf(root).planAuthority;
     assert.equal(seal.scriptDigests.test, sha256(pkgOf(root).scripts.test));
     assert.equal(seal.planDigest, sha256(JSON.stringify(cfgOf(root).plan.map((s) => ({ kind: s.kind, script: s.script })))));
     assert.equal(checkpointOut(root), null);
-    assert.equal(canary(['doctor', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
   });
 
   // ---- 2. THE attack: honest command -> "echo all good" (which really exits 0)
   check('the echo-all-good swap is BLOCKED before execution, though the exit code would say pass', () => {
-    const cpBundlesBefore = fs.readdirSync(path.join(root, '.canary', 'evidence')).filter((d) => d.endsWith('-checkpoint')).length;
+    const cpBundlesBefore = fs.readdirSync(path.join(root, '.amabie', 'evidence')).filter((d) => d.endsWith('-checkpoint')).length;
     setTest(root, 'echo all good');
     const out = checkpointOut(root);
     assert.equal(out.decision, 'block');
     assert.match(out.reason, /verification authority changed by candidate/i);
     assert.match(out.reason, /"test" changed since setup sealed it/);
     // refused authority writes NO new bundle (a bundle documents runs, not refusals)
-    const cpBundlesAfter = fs.readdirSync(path.join(root, '.canary', 'evidence')).filter((d) => d.endsWith('-checkpoint')).length;
+    const cpBundlesAfter = fs.readdirSync(path.join(root, '.amabie', 'evidence')).filter((d) => d.endsWith('-checkpoint')).length;
     assert.equal(cpBundlesAfter, cpBundlesBefore, 'the block must not fabricate an executed-checkpoint bundle');
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, '.canary', 'last-checkpoint.json'), 'utf8')).failed, ['authority']);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'last-checkpoint.json'), 'utf8')).failed, ['authority']);
     // and the candidate\'s edit is plainly visible in the working tree — M7\'s surface
     assert.match(git(root, 'status', '--porcelain'), /package\.json/);
   });
@@ -108,31 +108,31 @@ try {
   check('git-restoring the sealed file returns silent pass (detection, not a grudge)', () => {
     git(root, 'checkout', '--', 'package.json');
     assert.equal(checkpointOut(root), null);
-    assert.equal(canary(['doctor', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
   });
 
   // ---- 4. re-seal is a setup act: the smoke test visibly runs the new command first
   check('setup re-run executes the swapped command in smoke, then leaves the changed behavior NOT PROVEN', () => {
     const r2 = makeRealGitRepo('reseal');
-    assert.equal(canary(['setup', '--yes', r2]).status, 0);
+    assert.equal(amabie(['setup', '--yes', r2]).status, 0);
     setTest(r2, 'echo all good');
     assert.equal(checkpointOut(r2).decision, 'block');
-    assert.equal(canary(['setup', '--yes', r2]).status, 0, 'smoke ran the new command and it exited 0');
+    assert.equal(amabie(['setup', '--yes', r2]).status, 0, 'smoke ran the new command and it exited 0');
     assert.equal(cfgOf(r2).planAuthority.scriptDigests.test, sha256('echo all good'));
     const out = checkpointOut(r2);
     assert.equal(out?.decision, 'block');
     assert.match(out?.reason ?? '', /NOT PROVEN|comparison could not be established/);
-    const dirs = fs.readdirSync(path.join(r2, '.canary', 'evidence')).filter((d) => d.endsWith('-checkpoint'));
+    const dirs = fs.readdirSync(path.join(r2, '.amabie', 'evidence')).filter((d) => d.endsWith('-checkpoint'));
     assert.ok(dirs.length > 0, 'the passed checkpoint must now write its executed bundle');
   });
 
   // ---- 5. the config file itself: hand-edit the plan, seal untouched -> blocked
-  check('hand-editing .canary/canary.local.json plan without re-sealing blocks on authority', () => {
+  check('hand-editing .amabie/amabie.local.json plan without re-sealing blocks on authority', () => {
     const r3 = makeRealGitRepo('cfg-edit');
-    assert.equal(canary(['setup', '--yes', r3]).status, 0);
+    assert.equal(amabie(['setup', '--yes', r3]).status, 0);
     const cfg = cfgOf(r3);
     cfg.plan = [{ kind: 'build', script: 'test' }];
-    fs.writeFileSync(path.join(r3, '.canary', 'canary.local.json'), JSON.stringify(cfg, null, 2));
+    fs.writeFileSync(path.join(r3, '.amabie', 'amabie.local.json'), JSON.stringify(cfg, null, 2));
     const out = checkpointOut(r3);
     assert.equal(out.decision, 'block');
     assert.match(out.reason, /plan no longer matches the sealed plan/);

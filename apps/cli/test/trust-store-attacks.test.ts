@@ -6,7 +6,7 @@ import path from 'node:path';
 import { after, test } from 'node:test';
 import { authorityJson, ensureStoreKey, openSealed, sealRecord, verifySeal } from '../src/trust-store.js';
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-store-attacks-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-store-attacks-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 let n = 0;
 const want = { projectId: 'project', kind: 'state' };

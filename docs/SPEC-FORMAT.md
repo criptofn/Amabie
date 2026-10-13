@@ -1,11 +1,11 @@
 # The `spec.json` contract
 
-`canary run`, `canary prove` and `canary check` take one declarative input: an
+`amabie run`, `amabie prove` and `amabie check` take one declarative input: an
 experiment spec. This document is the author-facing contract.
 
-- Machine-readable schema: [`schemas/spec.schema.json`](https://github.com/criptofn/Canary/blob/main/schemas/spec.schema.json)
+- Machine-readable schema: [`schemas/spec.schema.json`](https://github.com/criptofn/Amabie/blob/main/schemas/spec.schema.json)
 - Authoritative runtime validator: `packages/core/planner/src/index.ts` → `validateSpec()`
-- Shipped example: [`fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json`](https://github.com/criptofn/Canary/blob/main/fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json)
+- Shipped example: [`fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json`](https://github.com/criptofn/Amabie/blob/main/fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json)
 
 If the schema and the validator ever disagree, the validator wins and the schema
 is the bug — report it.
@@ -111,7 +111,7 @@ project. That is a deliberate proof-of-value domain, not the product boundary
 
 Verifying an arbitrary candidate commit or working-tree diff with the same
 attested strength — arms, repetitions, and the execution-observation channel —
-is not expressible yet; the candidate workflow (`canary work` / `canary finish`)
+is not expressible yet; the candidate workflow (`amabie work` / `amabie finish`)
 deliberately runs the sealed plan once and is therefore the weaker sibling
 promise, as [`docs/COMPATIBILITY.md`](COMPATIBILITY.md) states. Giving ordinary
 changes that strength is the next step that would let the everyday agent workflow

@@ -3,7 +3,7 @@
  *
  * What these tests pin (v1.1 item A, extended in Phase 2):
  *  1. The STRONG set is EXACTLY `{mocha, node-test, pytest, unittest}` — every one
- *     of them backed by a channel whose bytes are Canary's and an authority that
+ *     of them backed by a channel whose bytes are Amabie's and an authority that
  *     binds it. Adding a runner is a claim about IMPLEMENTATION, so it must fail
  *     here until the evidence exists — that is the point.
  *  2. Every STRONG row on a non-package authority names a `channelModule` that
@@ -48,7 +48,7 @@ describe('runner registry — internal consistency', () => {
   it('the STRONG set is exactly {mocha, node-test, pytest, unittest} — a claim that must be earned, not typed', () => {
     const strong = RUNNER_ADAPTERS.filter((a) => a.capability === 'STRONG').map((a) => a.id).sort();
     assert.deepEqual(strong, ['mocha', 'node-test', 'pytest', 'unittest'],
-      'adding or removing a STRONG runner requires a Canary-owned channel, an authority for it, and an executed probe; '
+      'adding or removing a STRONG runner requires a Amabie-owned channel, an authority for it, and an executed probe; '
       + 'update this assertion in the same change that brings them');
   });
 

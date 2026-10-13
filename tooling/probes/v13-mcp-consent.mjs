@@ -1,15 +1,15 @@
 // v1.3 §E2 — CAN THE HARNESS'S CONSENT GATE BE SATISFIED WITHOUT A HUMAN, AND WITHOUT BLESSING
-// SERVERS CANARY DID NOT WRITE?
+// SERVERS AMABIE DID NOT WRITE?
 //
-// The integration probe established the honest state: `canary setup` writes the MCP entry, Claude Code
+// The integration probe established the honest state: `amabie setup` writes the MCP entry, Claude Code
 // READS it, and then holds it at "Pending approval" until a human approves the project's MCP servers
 // once, interactively. For a product whose whole promise is "install it and forget it", a step that
-// requires the user to answer a prompt before their agent can use Canary is a real gap — so this probe
-// asks the only question that matters: can Canary close it from inside the settings file it already
+// requires the user to answer a prompt before their agent can use Amabie is a real gap — so this probe
+// asks the only question that matters: can Amabie close it from inside the settings file it already
 // writes?
 //
 // It can only be closed if the answer is NARROW. `enableAllProjectMcpServers` would approve every
-// server in `.mcp.json`, including one a teammate or an attacker added — Canary would be vouching for
+// server in `.mcp.json`, including one a teammate or an attacker added — Amabie would be vouching for
 // software it never inspected, which is the exact inversion of "the worker must not own the root of
 // trust". So this probe measures both halves:
 //
@@ -29,7 +29,7 @@ const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const claude = path.join(os.homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude');
 const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-mcp-consent-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mcp-consent-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -71,7 +71,7 @@ try {
   fs.writeFileSync(path.join(temp, 'greeting.test.cjs'),
     "const assert = require('node:assert');\nassert.strictEqual(require('./greeting.cjs')('a'), 'Hello, a!');\n");
   run(git, ['init', '-b', 'main'], temp);
-  run(git, ['config', 'user.email', 'consent@canary.local'], temp);
+  run(git, ['config', 'user.email', 'consent@amabie.local'], temp);
   run(git, ['config', 'user.name', 'Consent Probe'], temp);
   run(git, ['add', '-A'], temp);
   run(git, ['commit', '-m', 'base'], temp);
@@ -79,7 +79,7 @@ try {
   const setup = run(process.execPath, [cli, 'setup', '--yes'], temp);
   assert(setup.status === 0, `setup must succeed:\n${setup.stdout}${setup.stderr}`);
 
-  // A STRANGER in the same .mcp.json. Canary did not write this and must never vouch for it. It is
+  // A STRANGER in the same .mcp.json. Amabie did not write this and must never vouch for it. It is
   // added BEFORE any settings change so both entries face the identical consent state.
   const mcpPath = path.join(temp, '.mcp.json');
   const mcpDoc = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
@@ -87,21 +87,21 @@ try {
   fs.writeFileSync(mcpPath, JSON.stringify(mcpDoc, null, 2) + '\n');
 
   const before = `${run(claude, ['mcp', 'list'], temp).stdout}${run(claude, ['mcp', 'list'], temp).stderr}`;
-  const beforeCanary = stateOf(before, 'canary');
+  const beforeAmabie = stateOf(before, 'amabie');
   const beforeStranger = stateOf(before, 'stranger');
-  console.log(`INFO as setup left it:  canary=${beforeCanary}  stranger=${beforeStranger}`);
+  console.log(`INFO as setup left it:  amabie=${beforeAmabie}  stranger=${beforeStranger}`);
 
   check('A1-setup-alone-leaves-our-server-unapproved (the gap this probe is about)', () => {
-    assert(beforeCanary !== null, 'Claude Code did not list the canary server at all');
-    assert(beforeCanary === 'pending-approval',
-      `expected the reported gap to be "pending-approval", got "${beforeCanary}" — if this changed, `
+    assert(beforeAmabie !== null, 'Claude Code did not list the amabie server at all');
+    assert(beforeAmabie === 'pending-approval',
+      `expected the reported gap to be "pending-approval", got "${beforeAmabie}" — if this changed, `
       + 'the integration claim in the audit and the README must be re-derived');
   });
 
   // ── which settings form, if any, changes the reported state? ──
   // Guessing costs a cycle each time, so the probe tries every form the harness documents or that the
   // settings reference implies, and reports what each one actually did. The hook file is preserved
-  // exactly: a candidate that quietly dropped Canary's Stop hook would look like progress and be a
+  // exactly: a candidate that quietly dropped Amabie's Stop hook would look like progress and be a
   // regression.
   const settingsPath = path.join(temp, '.claude', 'settings.json');
   const localPath = path.join(temp, '.claude', 'settings.local.json');
@@ -109,9 +109,9 @@ try {
   console.log(`INFO project settings keys as setup left them: ${Object.keys(JSON.parse(hookOnly)).join(', ') || '(none)'}`);
 
   const VARIANTS = [
-    { name: 'project+enabledMcpjsonServers', file: settingsPath, body: { enabledMcpjsonServers: ['canary'] } },
+    { name: 'project+enabledMcpjsonServers', file: settingsPath, body: { enabledMcpjsonServers: ['amabie'] } },
     { name: 'project+enableAllProjectMcpServers', file: settingsPath, body: { enableAllProjectMcpServers: true } },
-    { name: 'local+enabledMcpjsonServers', file: localPath, body: { enabledMcpjsonServers: ['canary'] } },
+    { name: 'local+enabledMcpjsonServers', file: localPath, body: { enabledMcpjsonServers: ['amabie'] } },
     { name: 'local+enableAllProjectMcpServers', file: localPath, body: { enableAllProjectMcpServers: true } },
   ];
 
@@ -123,48 +123,48 @@ try {
     fs.writeFileSync(v.file, JSON.stringify({ ...base, ...v.body }, null, 2) + '\n');
 
     const text = `${run(claude, ['mcp', 'list'], temp).stdout}${run(claude, ['mcp', 'list'], temp).stderr}`;
-    const c = stateOf(text, 'canary');
+    const c = stateOf(text, 'amabie');
     const s = stateOf(text, 'stranger');
     // A second, independent view of the same question: `mcp get` reports one server in detail, and it
     // is a different code path from the summary line. If both views agree the setting did nothing, the
     // claim is about the harness rather than about one formatter.
-    const get = run(claude, ['mcp', 'get', 'canary'], temp);
+    const get = run(claude, ['mcp', 'get', 'amabie'], temp);
     const getText = `${get.stdout}${get.stderr}`.replace(/\s+/g, ' ').trim().slice(0, 300);
-    outcomes.push({ variant: v.name, canary: c, stranger: s, get: getText });
-    console.log(`INFO ${v.name.padEnd(34)} canary=${c}  stranger=${s}`);
-    console.log(`INFO   mcp get canary: ${getText || '(no output)'}`);
+    outcomes.push({ variant: v.name, amabie: c, stranger: s, get: getText });
+    console.log(`INFO ${v.name.padEnd(34)} amabie=${c}  stranger=${s}`);
+    console.log(`INFO   mcp get amabie: ${getText || '(no output)'}`);
   }
 
   // Leave the fixture in the state setup produced, so anything after this reads the real product state.
   fs.writeFileSync(settingsPath, hookOnly);
   fs.rmSync(localPath, { force: true });
 
-  check('A2-the-hooks-canary-wrote-survive-every-candidate-settings-form', () => {
+  check('A2-the-hooks-amabie-wrote-survive-every-candidate-settings-form', () => {
     const now = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     assert(JSON.stringify(now) === JSON.stringify(JSON.parse(hookOnly)),
       'the probe did not restore the project settings exactly');
     assert(JSON.stringify(now).includes('Stop'), 'the Stop hook is not in the restored settings');
   });
 
-  const flippers = outcomes.filter((o) => o.canary !== 'pending-approval' && o.canary !== null);
+  const flippers = outcomes.filter((o) => o.amabie !== 'pending-approval' && o.amabie !== null);
   const broadFlippers = flippers.filter((o) => o.variant.includes('enableAllProjectMcpServers'));
   const cleanNarrow = flippers.filter((o) => !o.variant.includes('enableAllProjectMcpServers') && o.stranger !== 'connected');
 
-  console.log(`\nINFO forms that changed the reported state: ${flippers.length === 0 ? 'NONE' : flippers.map((f) => `${f.variant} -> ${f.canary}`).join('; ')}`);
+  console.log(`\nINFO forms that changed the reported state: ${flippers.length === 0 ? 'NONE' : flippers.map((f) => `${f.variant} -> ${f.amabie}`).join('; ')}`);
   if (flippers.length === 0) {
     console.log('INFO CONCLUSION: on this harness version the consent gate is NOT reachable from the settings files');
-    console.log('INFO Canary writes. Setup must not pretend otherwise, and the approval stays a human act.');
+    console.log('INFO Amabie writes. Setup must not pretend otherwise, and the approval stays a human act.');
   } else if (cleanNarrow.length > 0) {
     console.log(`INFO CONCLUSION: ${cleanNarrow.map((f) => f.variant).join(', ')} closes the gate WITHOUT approving the stranger — setup may write it.`);
   } else if (broadFlippers.length > 0) {
     console.log('INFO CONCLUSION: only the BROAD form works, and it approves the stranger too. Setup must NOT write it:');
-    console.log('INFO Canary would be vouching for a server it never inspected, which inverts "the worker must not own the root of trust".');
+    console.log('INFO Amabie would be vouching for a server it never inspected, which inverts "the worker must not own the root of trust".');
   }
 
-  check('A3-no-candidate-settings-form-vouches-for-a-server-canary-did-not-write', () => {
+  check('A3-no-candidate-settings-form-vouches-for-a-server-amabie-did-not-write', () => {
     const bad = outcomes.filter((o) => o.stranger === 'connected');
     assert(bad.length === 0,
-      `${bad.map((b) => b.variant).join(', ')} approved the STRANGER as well; Canary would be vouching for `
+      `${bad.map((b) => b.variant).join(', ')} approved the STRANGER as well; Amabie would be vouching for `
       + 'software it never inspected — do not ship this');
   });
 

@@ -47,13 +47,13 @@ function assertEq(actual, expected, msg) { assert(actual === expected, `${msg}\n
 
 assert(fs.existsSync(CLI), `missing built CLI (run npm run build): ${CLI}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m10-2-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m10-2-'));
 function git(dir, ...args) {
   const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', timeout: 60_000 });
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.stdout?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd, env) {
+function amabie(args, cwd, env) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000, ...(env ? { env: { ...process.env, ...env } } : {}) });
 }
 // f4Repo shape: 'test' seals as plan kind 'tests'; green unless red.flag appears;
@@ -75,17 +75,17 @@ function makeRepo(name) {
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: `node check.cjs && node "${path.join(REPO, 'tooling', 'test-support', 'fixtures', 'f-regression.cjs')}"` } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'm102@canary.local');
-  git(root, 'config', 'user.name', 'Canary M10.2');
+  git(root, 'config', 'user.email', 'm102@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie M10.2');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'base');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   bases.set(root, git(root, 'rev-parse', 'HEAD'));
   return root;
 }
-const candPath = (root, name) => path.join(root, '.canary', 'candidates', name);
-const recP = (root, name) => path.join(root, '.canary', 'candidates', `${name}.json`);
+const candPath = (root, name) => path.join(root, '.amabie', 'candidates', name);
+const recP = (root, name) => path.join(root, '.amabie', 'candidates', `${name}.json`);
 const recOf = (root, name) => JSON.parse(fs.readFileSync(recP(root, name), 'utf8'));
 function recRewrite(root, name, mut) {
   const rec = recOf(root, name);
@@ -93,17 +93,17 @@ function recRewrite(root, name, mut) {
   fs.writeFileSync(recP(root, name), JSON.stringify(rec, null, 2) + '\n');
 }
 function bundles(root, suffix) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((x) => x.endsWith(suffix)).sort()
     .map((x) => JSON.parse(fs.readFileSync(path.join(d, x, 'verification.json'), 'utf8')));
 }
 function register(root, text, kind) {
-  const t = canary(['task', text, '--kind', kind], root);
+  const t = amabie(['task', text, '--kind', kind], root);
   assertEq(t.status, 0, `task registration failed: ${t.stdout}\n${t.stderr}`);
 }
 function isolate(root, name) {
-  const i = canary(['isolate', name, root], root);
+  const i = amabie(['isolate', name, root], root);
   assertEq(i.status, 0, `isolate failed: ${i.stdout}\n${i.stderr}`);
 }
 function work(root, name, files) {
@@ -116,8 +116,8 @@ function work(root, name, files) {
   git(c, 'add', '-A');
   git(c, 'commit', '-m', 'candidate work');
 }
-const verify = (root, name, env) => canary(['isolate', '--verify', name, root], root, env);
-const promote = (root, name) => canary(['isolate', '--promote', name, root], root);
+const verify = (root, name, env) => amabie(['isolate', '--verify', name, root], root, env);
+const promote = (root, name) => amabie(['isolate', '--promote', name, root], root);
 const notProvenRe = /CANDIDATE NOT PROVEN/;
 const authRe = /obligation \[task-authority\] UNPROVEN \(objective\)/;
 function assertNoPass(out, msg) { assert(!/CANDIDATE PASS|ELIGIBLE for promotion/.test(out), `${msg}\n     PASS wording appeared:\n     ${out.split('\n').slice(0, 25).join('\n     ')}`); }
@@ -279,7 +279,7 @@ check('H remove/re-add of the task record after isolation cannot change the froz
   const root = makeRepo('h-churn-taskless');
   isolate(root, 'c');
   work(root, 'c', { 'src/tweak.js': 'x\n' });
-  const tf = path.join(root, '.canary', 'task', 'current.json');
+  const tf = path.join(root, '.amabie', 'task', 'current.json');
   register(root, 'claim one', 'refactor');
   fs.rmSync(tf); // the agent "cancels" the claim
   register(root, 'claim two', 'bugfix'); // and re-files it as something else
@@ -294,7 +294,7 @@ check('H remove/re-add of the task record after isolation cannot change the froz
   addRegression(candPath(root2, 'c'));
   work(root2, 'c', { 'src/tweak.js': 'behavior-preserving\n' });
   assertEq(verify(root2, 'c').status, 0, 'H2: precondition — frozen authority PASSes while the task stands');
-  fs.rmSync(path.join(root2, '.canary', 'task', 'current.json'));
+  fs.rmSync(path.join(root2, '.amabie', 'task', 'current.json'));
   const r2 = verify(root2, 'c');
   assertEq(r2.status, 2, `H2: deleting a frozen authority is a §11 weakening, blocked before execution:\n${r2.stdout}`);
   assertMatch(r2.stdout, /weakened after isolation/, 'H2: the §11 guard owns the shrink vector');
@@ -304,18 +304,18 @@ check('H remove/re-add of the task record after isolation cannot change the froz
 });
 
 // ============ I: env vars and flags are inert ==============================
-check('I env vars (CANARY_NO_TASK_OK / CANARY_LEGACY / CANARY_FORCE_PASS / ...) and invented flags cannot open the gate', () => {
+check('I env vars (AMABIE_NO_TASK_OK / AMABIE_LEGACY / AMABIE_FORCE_PASS / ...) and invented flags cannot open the gate', () => {
   const root = makeRepo('i-knobs');
   isolate(root, 'c');
   work(root, 'c', { 'src/tweak.js': 'x\n' });
   const r = verify(root, 'c', {
-    CANARY_NO_TASK_OK: '1', CANARY_SKIP_TASK_AUTHORITY: '1', CANARY_LEGACY: '1',
-    CANARY_FORCE_PASS: '1', CANARY_TASK_AUTHORITY: 'frozen', CANARY_ALLOW_TASKLESS: '1',
+    AMABIE_NO_TASK_OK: '1', AMABIE_SKIP_TASK_AUTHORITY: '1', AMABIE_LEGACY: '1',
+    AMABIE_FORCE_PASS: '1', AMABIE_TASK_AUTHORITY: 'frozen', AMABIE_ALLOW_TASKLESS: '1',
   });
   assertEq(r.status, 2, 'I: env must be inert');
   assertMatch(r.stdout, authRe, 'I: verdict unchanged under every knob');
   for (const flag of ['--no-task-ok', '--task-authority-ok', '--legacy', '--force-pass']) {
-    const f = canary(['isolate', '--verify', 'c', root, flag], root);
+    const f = amabie(['isolate', '--verify', 'c', root, flag], root);
     assert(f.status !== 0, `I: flag ${flag} must not reach exit 0:\n${f.stdout}`);
     assertNoPass(f.stdout, `I: flag ${flag}`);
   }
@@ -330,12 +330,12 @@ check('J a hand-planted PASS bundle (byte-copied from a genuinely-PASSED repo) c
   addRegression(candPath(honest, 'c'));
   work(honest, 'c', { 'src/tweak.js': 'behavior-preserving\n' });
   assertEq(verify(honest, 'c').status, 0, 'J: precondition — honest repo PASSes (its bundle is the copy source)');
-  const srcDir = fs.readdirSync(path.join(honest, '.canary', 'evidence')).filter((x) => x.endsWith('-candidate')).at(-1);
+  const srcDir = fs.readdirSync(path.join(honest, '.amabie', 'evidence')).filter((x) => x.endsWith('-candidate')).at(-1);
   // attack repo: taskless
   const root = makeRepo('j-attack');
   isolate(root, 'c');
   work(root, 'c', { 'src/tweak.js': 'behavior-preserving\n' });
-  fs.cpSync(path.join(honest, '.canary', 'evidence', srcDir), path.join(root, '.canary', 'evidence', srcDir), { recursive: true });
+  fs.cpSync(path.join(honest, '.amabie', 'evidence', srcDir), path.join(root, '.amabie', 'evidence', srcDir), { recursive: true });
   const r = verify(root, 'c');
   assertEq(r.status, 2, 'J: a planted PASS bundle cannot make verify PASS — verdicts are live runs');
   assertMatch(r.stdout, authRe, 'J: the frozen-authority duty stands beside the planted bytes');
@@ -419,7 +419,7 @@ check('L POSITIVE CONTROL: bugfix registered BEFORE isolation + committed regres
 // ================= cross-case hygiene ======================================
 check('hygiene: no quarantine stamped by any modeled attack (all record edits are out-of-window, all windows stable)', () => {
   for (const root of bases.keys()) {
-    assert(!fs.existsSync(path.join(root, '.canary', 'authority-quarantine.json')), `hygiene: ${path.basename(root)} carries an unexplained quarantine`);
+    assert(!fs.existsSync(path.join(root, '.amabie', 'authority-quarantine.json')), `hygiene: ${path.basename(root)} carries an unexplained quarantine`);
   }
 });
 check('hygiene: every blocked case left its trusted base byte-unchanged', () => {

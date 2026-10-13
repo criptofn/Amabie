@@ -1,6 +1,6 @@
-# Canary Execution Security Contract
+# Amabie Execution Security Contract
 
-Every external repository Canary runs is **untrusted code**. This contract is
+Every external repository Amabie runs is **untrusted code**. This contract is
 implemented by `packages/runner`/`packages/support` for every arm of every
 experiment — not by operator discipline. **Not every line below is equally
 enforced**: "Boundaries — what is enforced, what is convention, what is
@@ -56,7 +56,7 @@ values.
 process-management spawns (F5 sweep `ps` fallback, tree-kill `taskkill`,
 Windows `powershell -NoProfile` probe) previously ran with the FULL caller
 environment; they now run under `containmentEnv()` (packages/support) —
-deny-by-omission like every other Canary child, identity vars neutralized per
+deny-by-omission like every other Amabie child, identity vars neutralized per
 the F6 loader law, `PSModulePath` structurally absent (PowerShell's module
 loader is an env-var code vector; absent means its compiled-in defaults).
 Their binaries resolve TRUSTED-FIRST: Windows tools at absolute System32
@@ -72,7 +72,7 @@ behavior stays pinned by `packages/support/test/lifecycle.test.ts`.
 
 ## Boundaries — what is enforced, what is convention, what is absent
 
-Audit F14 requires an honest tiering. Canary's isolation is **strongest at the
+Audit F14 requires an honest tiering. Amabie's isolation is **strongest at the
 process/environment boundary** and deliberately **weakest at the filesystem/
 network boundary**, because v0.1 runs fixtures with the operator's own OS user,
 not inside a kernel sandbox. Claiming an fs jail or a network allowlist would
@@ -89,7 +89,7 @@ be a lie; here is the real picture.
   matched case-INSENSITIVELY per audit F7, scanned recursively per red-team
   F10) in the pinned source abort the run BEFORE anything external executes.
 - **Package-manager isolation that cannot be dodged — semantically, not
-  textually** (audit F8→B5→B5.1, hardened round-4 RB-1). Canary OWNS the
+  textually** (audit F8→B5→B5.1, hardened round-4 RB-1). Amabie OWNS the
   package-manager surface via CLOSED ALLOWLISTS at three levels: executables
   (only `$npm`/`$yarn`/`$tsc`/`$bin:` tokens and literal `node`; raw
   `npm`/`npm-cli.js`/`$bin:npm`, wrappers like `cmd /c npm`, and pnpm/bun/
@@ -101,10 +101,10 @@ be a lie; here is the real picture.
   `--reg`, `--no-` negations and LAST-WINS ordering — probe-verified on npm
   11.16 AND 11.19 — so exact-string denylists are bypassable by construction;
   unknown and per-package config forms `--@scope:registry`/`//…:auth` are
-  refused everywhere). Canary's isolation flags
+  refused everywhere). Amabie's isolation flags
   (`--ignore-scripts`, `--userconfig`, `--cache`, `--registry`) are APPENDED
   AS THE ARGV SUFFIX, so npm's own last-wins semantics make the EFFECTIVE
-  protected configuration Canary's regardless of accepted spellings. A user
+  protected configuration Amabie's regardless of accepted spellings. A user
   `--` in an install is rejected (nothing may follow the suffix block); short
   options are rejected; in the script/info families any option whose resolved
   key (case-folded, negation-stripped, prefix-expanded) touches a protected
@@ -125,9 +125,9 @@ be a lie; here is the real picture.
   code holding workspace write access can replace the file's contents
   inside it. The argv-suffix flags keep every PINNED key immune (CLI
   beats userconfig — userconfig path, cache, registry, ignore-scripts),
-  yet npm settings Canary does not pin (proxy-family keys, e.g.) could
+  yet npm settings Amabie does not pin (proxy-family keys, e.g.) could
   ride a replaced file. Consistent with the tier honesty above: the
-  filesystem is Canary's weakest boundary — F6e narrows one concrete
+  filesystem is Amabie's weakest boundary — F6e narrows one concrete
   race there; it does not mathematically guarantee the file is unchanged
   when npm reads it.
 - **Content pinning.** Repo content arrives only as a tarball fetched by a
@@ -148,7 +148,7 @@ be a lie; here is the real picture.
   ≥2 dense rounds per arm), so a resealed bundle refutes itself. Post-audit
   adds rule 14, the **execution-authority** gate: every strong or
   execution-claim label (PASS / CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE /
-  FLAKY) additionally requires a Canary-observed, pinned-runner execution on
+  FLAKY) additionally requires a Amabie-observed, pinned-runner execution on
   every round, cross-checked against the text — a printed summary is a CLAIM;
   text alone can no longer produce strength in any direction (see
   docs/EXECUTION-AUTHORITY.md for the full rules 0..14 table and trust ladder).
@@ -175,7 +175,7 @@ be a lie; here is the real picture.
   mean the committed proof was consulted — only `prove`/`check` assert that,
   and the banner says so. Refused bundles are never rendered as trusted.
 - **Execution-observation channel (post-audit A).** A strong verdict can only
-  exist for an execution Canary *watched*: a Canary-authored in-process
+  exist for an execution Amabie *watched*: a Amabie-authored in-process
   observer is injected (via `--require`, appended last into protected argv)
   **only** into a runner whose on-disk tree hash matches a pinned release in
   `KNOWN_RUNNER_RELEASES`; per-test lifecycle events stream back on a private
@@ -197,8 +197,8 @@ be a lie; here is the real picture.
 
 ### Tier B — structural convention (strong in practice, NOT OS-enforced)
 
-- **Disposable workspace.** Everything Canary *itself* writes lives under
-  `.canary-runs/` (gitignored) or OS temp, and caches/HOME/TMP are redirected
+- **Disposable workspace.** Everything Amabie *itself* writes lives under
+  `.amabie-runs/` (gitignored) or OS temp, and caches/HOME/TMP are redirected
   inside it, so a *well-behaved* fixture stays within it. But nothing prevents
   fixture code from writing elsewhere it has POSIX/NTFS permission to — there
   is **no filesystem chroot/jail/bind-mount**. A hostile fixture with a
@@ -215,7 +215,7 @@ be a lie; here is the real picture.
 ### Tier C — absent (do not claim these)
 
 - **No network allowlist / egress control.** Once a fixture's own tests run
-  (the whole point of Canary), that code can open arbitrary sockets. Canary
+  (the whole point of Amabie), that code can open arbitrary sockets. Amabie
   controls what IT fetches (Tier A) and stops install-time scripts, but does
   NOT firewall the executed test process. Network isolation is not a v0.1
   property; it is a planned kernel-level follow-on (Job Object / cgroup-net /
@@ -223,7 +223,7 @@ be a lie; here is the real picture.
 - **No filesystem jail**, as stated in Tier B.
 - **No authenticated runner provenance.** `KNOWN_RUNNER_RELEASES` pins
   content BYTES (treeSha256): it proves the process hosted exactly the bytes
-  Canary reviewed, not that those bytes arrived from the npm registry under a
+  Amabie reviewed, not that those bytes arrived from the npm registry under a
   publisher key. Integrity + TOFU, not supply-chain attestation. In-process
   self-emulation (code inside the genuine pinned runner neutralizing the
   observer) remains unfixed *by construction* without an external root of
@@ -232,7 +232,7 @@ be a lie; here is the real picture.
 - **Total same-UID forgery is out of contract (the umbrella ceiling, stated
   once).** Every protection below protects agents operating *through the
   supported interface* and cross-UID/remote adversaries. A same-UID actor can
-  rewrite any byte under `.canary/` — task registrations, acceptance records,
+  rewrite any byte under `.amabie/` — task registrations, acceptance records,
   sealed config, evidence bundles — and can forge frozen kinds *together with*
   matching live registration, defeating the live-intent guard as a pair. No
   local design closes this; only an external root of trust can. Do not claim
@@ -264,13 +264,13 @@ be a lie; here is the real picture.
   these labels in prose past what the proxy measures.
 
 The failure posture below is about Tier A: when a *Tier-A-enforced* bound
-cannot hold, Canary stops. It does not promise to notice Tier-B/C violations.
+cannot hold, Amabie stops. It does not promise to notice Tier-B/C violations.
 
 ## Acceptance authority — what a terminal sign-off binds, and what "human" may mean here
 
 Some obligations are **non-objective** — whether a dialog got warmer, whether
-a dependency swap is acceptable. Canary cannot measure them; only a human
-judgment can close them, via `canary accept <candidate>` in an interactive
+a dependency swap is acceptable. Amabie cannot measure them; only a human
+judgment can close them, via `amabie accept <candidate>` in an interactive
 terminal. The governing invariant (audit F-3):
 
 > **A HUMAN ACCEPTANCE AUTHORIZES EXACTLY THE SUBJECTIVE / NON-OBJECTIVE DUTIES
@@ -279,14 +279,14 @@ terminal. The governing invariant (audit F-3):
 **Enforced in code** (verify and promotion's live re-verification both check
 it — promotion's first gate IS the verify, so neither can be replayed past):
 
-- `canary-acceptance/3` stores one canonical subject: candidate name,
+- `amabie-acceptance/3` stores one canonical subject: candidate name,
   commit and Git tree, frozen base commit/tree, sealed authority identity,
   canonical frozen and live task identities, and subjective duty IDs. The
   subject is reconstructed before the prompt, after confirmation, and during
   live verification. Unresolved identity, index flags, staged changes, or
   working-tree dirt refuse acceptance. Verification cannot issue promotable
   PASS for dirty or changing candidate bytes.
-- `canary-task/2` binds the complete whitespace-normalized request and each
+- `amabie-task/2` binds the complete whitespace-normalized request and each
   requirement by SHA-256. Requirements are a sorted multiset: order is inert,
   duplicates count. Registration refuses over 64 before writing anything;
   full text participates without prefix truncation. Legacy/incomplete task
@@ -316,15 +316,15 @@ binding format.
   candidates with no frozen task authority and any unreadable/corrupt sealed
   plan — it never becomes the dead-end recommendation.
 
-**NOT enforced — the exact claim.** Canary refuses normal non-interactive
+**NOT enforced — the exact claim.** Amabie refuses normal non-interactive
 acceptance paths and requires an interactive terminal for the supported
 acceptance flow. **TTY presence is not cryptographic human identity.** A
-same-UID process capable of PTY automation or forging Canary-owned local state
-remains inside Canary's documented local threat ceiling: `script -qec "canary
+same-UID process capable of PTY automation or forging Amabie-owned local state
+remains inside Amabie's documented local threat ceiling: `script -qec "amabie
 accept c1"` fed the candidate name satisfies `isTTY` (the f3 battery's own
 positive-path acceptances use exactly this real-PTY mechanism), and
-`.canary/acceptance/c1.json` is a plain file every same-UID process can write
-directly. Canary does NOT attempt cryptographic local-human identity — that
+`.amabie/acceptance/c1.json` is a plain file every same-UID process can write
+directly. Amabie does NOT attempt cryptographic local-human identity — that
 requires an external root of trust which 1.0 does not claim (Tier C, and
 docs/EXECUTION-AUTHORITY.md §8). What the gate honestly buys: acceptance is
 removed from every ordinary agent posture (piped tool calls, CI, scripted
@@ -342,21 +342,21 @@ canonicalization, semantic sensitivity, prose-never-stored, v1/v2 fail-closed
 reader), `tooling/probes/pre10-acceptance.mjs` (non-TTY refusal, env no-bypass,
 forged-record attacks, positive promotion control).
 
-## Network (what Canary itself touches)
+## Network (what Amabie itself touches)
 
 - fetch repo content by pinned commit SHA (codeload/GitHub) and
   declared dependency installs (registry.npmjs.org) only.
 - Every install command runs with `--ignore-scripts` — no transitive
   dependency lifecycle code executes.
 - No git authentication is ever configured; content arrives as tarballs.
-- Canary never publishes, pushes, purchases, or authenticates to external
+- Amabie never publishes, pushes, purchases, or authenticates to external
   services on a downstream repo's behalf.
 
 ## Failure posture
 
 If a step cannot complete within these bounds, the runner STOPS before
 executing external code and classifies the arm
-`INFRASTRUCTURE_FAILURE` with a machine-readable reason. Canary never
+`INFRASTRUCTURE_FAILURE` with a machine-readable reason. Amabie never
 downgrades a boundary violation into a pass, and the LLM layer is not
 consulted in this decision (it cannot be — see docs/PLAN.md §6/§8).
 
@@ -593,7 +593,7 @@ limits and the four items that are unfixable without a crypto root) is
 **docs/EXECUTION-AUTHORITY.md**:
 
 - **A — evidence AUTHORITY, not output heuristics.** No keyword lists, no
-  `passing > 0` thresholds, no `node -e` special cases. A Canary-authored
+  `passing > 0` thresholds, no `node -e` special cases. A Amabie-authored
   observer, injected only into a **byte-pinned** runner (TOFU allowlist),
   watches per-test lifecycle on a private fd and must AGREE with the text
   summary on every round for any strong label (rule 14: unattested or
@@ -660,9 +660,9 @@ Permanent batteries: `apps/cli/test/execution-authority.test.ts` (exact audit
 reproducer verbatim), `apps/cli/test/attested-channel.test.ts` (validator +
 end-to-end attack matrix), `packages/support/test/
 known-runners-manifest.test.ts` (pins recomputed from committed review
-manifests; canary-double explicitly manifest-free), `packages/runner/
+manifests; amabie-double explicitly manifest-free), `packages/runner/
 executor/test/infra-matching-hardening.test.ts`, extended classify/schema/
-prove/verify-tree suites. Post-audit F5 (canary-double origin gate: the
+prove/verify-tree suites. Post-audit F5 (amabie-double origin gate: the
 double's public in-repo bytes earn execution authority only behind an
 in-process test grant the production CLI never passes) is pinned in
 `packages/support/test/known-runners-manifest.test.ts` (F5 posture matrix),
@@ -695,9 +695,9 @@ of the permanent test contract.
   this machine with ZERO skipped assertions. The 4 skips are exactly the
   POSIX sh-harness arms of containment-hygiene (caller-PATH `ps` liar
   scripts, the forged-binary explicit-parser, the nonzero-exit liar, and
-  the spawn-site env leak canary); nothing else was skipped. The win32
+  the spawn-site env leak amabie); nothing else was skipped. The win32
   spawn sites are pinned there by the native env-shape + trusted-resolution
-  tests, not by a runtime leak canary — stated as an environment limit.
+  tests, not by a runtime leak amabie — stated as an environment limit.
 - **Linux (WSL Ubuntu-24.04, node v26.7.0):** no longer "written but
   unexecuted". The offline suite and the POSIX sweep/env branches have real
   execution evidence here — full run **667 tests / 666 pass / 0 fail / 1
@@ -725,7 +725,7 @@ promotion reports unavailable evidence if its write fails. Promotion always
 re-verifies live and never consumes a stored PASS. Automatic checkpoints may
 remain silent on a passing observation even if persistence fails.
 
-`canary status` and bare `canary` share read-only recognition checks. CONNECTED
+`amabie status` and bare `amabie` share read-only recognition checks. CONNECTED
 describes configuration and wiring, never current code health. Historical
 checkpoints are labeled historical. Candidate verification does not provide
 the dependency isolation/repetition guarantees of the stronger `prove` pipeline.

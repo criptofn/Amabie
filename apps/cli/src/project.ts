@@ -3,8 +3,8 @@
  * one ProjectAdapter interface, so the verification/promotion core never learns
  * a per-language pipeline. This file is pure: it spawns nothing, writes
  * nothing, and knows no agent provider. The Node code below was lifted out of
- * onboarding.ts unchanged — same functions, same strings, same digests — so
- * 1.0 behavior is preserved byte-for-byte; adding an ecosystem means adding an
+ * onboarding.ts; stored plans and their digests retain their original order.
+ * New Node plans build before tests; adding an ecosystem means adding an
  * adapter here, not a second plan/seal/drift path elsewhere.
  */
 import crypto from 'node:crypto';
@@ -52,6 +52,9 @@ const SCRIPT_KINDS: Array<[string, PlanKind]> = [
   ['bench', 'bench'], ['benchmark', 'bench'], ['e2e', 'e2e'], ['test:e2e', 'e2e'],
 ];
 const PLAN_ORDER: Record<PlanKind, number> = { typecheck: 0, tests: 1, build: 2, bench: 3, e2e: 4 };
+// New Node plans build before tests that may exercise compiled output. Execution
+// follows cfg.plan verbatim; existing seals and other adapters retain their order.
+const NODE_PLAN_ORDER: Record<PlanKind, number> = { ...PLAN_ORDER, build: 1, tests: 2 };
 
 /**
  * One normalized check in the sealed plan.
@@ -135,7 +138,7 @@ export function detectPlan(pkgScripts: Record<string, unknown>): PlanStep[] {
       if (!steps.some((s) => s.kind === kind)) steps.push({ kind, script: name });
     }
   }
-  return steps.sort((a, b) => PLAN_ORDER[a.kind] - PLAN_ORDER[b.kind]);
+  return steps.sort((a, b) => NODE_PLAN_ORDER[a.kind] - NODE_PLAN_ORDER[b.kind]);
 }
 
 /** Reconstruct argv for one step. Only validated fragments ever reach here. */
@@ -203,11 +206,11 @@ export function planDigest(plan: PlanStep[]): string {
  * and working-tree visibility is the detection path M7 builds on; overclaim
  * it not. Containment of an agent that re-runs setup itself is likewise not
  * claimed — re-sealing is a visible act that re-smokes the new command — and
- * honest containment of candidate edits to Canary's own protected files
- * (.canary state, hooks) is M7's protected-surface work. Per-test-name
+ * honest containment of candidate edits to Amabie's own protected files
+ * (.amabie state, hooks) is M7's protected-surface work. Per-test-name
  * inventory drift (427→426) is out of scope too: M4's observedCounts record
  * the raw material; no seal over test names exists yet. A config with no
- * seal (pre-M5) verifies exactly as before — additive, and `canary setup`
+ * seal (pre-M5) verifies exactly as before — additive, and `amabie setup`
  * is what creates the authority.
  */
 export interface PlanAuthority {
@@ -224,12 +227,36 @@ export interface PlanAuthority {
   stepPaths?: Record<string, string[]>;
 }
 
-/** The subset of the onboarding config a drift check reads (CanaryConfig
+/** The subset of the onboarding config a drift check reads (AmabieConfig
  *  satisfies it structurally; declared here so this module owns no import
  *  from onboarding — the seam is one-way). */
 export interface AuthorityCarrier {
   plan: PlanStep[];
   planAuthority?: PlanAuthority;
+}
+
+/** Nested script authority comes from that scope's manifest, never from the root or an outside link. */
+function scopedPackage(root: string, step: PlanStep): Record<string, unknown> | null {
+  if (!step.scope || scopePathProblem(step.scope) !== null) return null;
+  try {
+    const file = fs.realpathSync(path.join(scopeDir(root, step), 'package.json'));
+    const relative = path.relative(fs.realpathSync(root), file);
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
+    return parseJsonOrNull(file);
+  } catch { return null; }
+}
+
+/** Script texts addressed by the same qualified keys as the composite plan. Root keys stay unchanged. */
+export function planScriptTexts(root: string, plan: PlanStep[], rootScripts: Record<string, unknown>): Record<string, unknown> {
+  const scripts = { ...rootScripts };
+  for (const step of plan) {
+    if (!step.scope || step.argv !== undefined) continue;
+    const source = scopedPackage(root, step);
+    const text = (source?.scripts as Record<string, unknown> | undefined)?.[step.script];
+    if (typeof text !== 'string' || text.trim() === '') throw new Error('a scoped package.json script cannot be read inside this repository');
+    scripts[stepKey(step)] = text;
+  }
+  return scripts;
 }
 
 /** Capture the authority this setup run seals: the plan plus the verbatim
@@ -247,7 +274,7 @@ export function sealPlanAuthority(plan: PlanStep[], pkgScripts: Record<string, u
       scriptDigests[key] = sha256(JSON.stringify(assertStepArgv(s.argv)));
       continue;
     }
-    const t = pkgScripts[s.script];
+    const t = pkgScripts[key];
     if (typeof t === 'string') scriptDigests[key] = sha256(t);
   }
   // 1.1 §23 — the fast-path declaration is SEALED with the plan, and validated
@@ -257,7 +284,7 @@ export function sealPlanAuthority(plan: PlanStep[], pkgScripts: Record<string, u
   const stepPaths = validateStepPaths(declaredPaths, plan);
   if (bindings !== undefined && (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)
     || !Object.entries(bindings).every(([d,s]) => /^[0-9a-f]{64}$/.test(d) && typeof s === 'string' && plan.some(p => p.script === s)))) {
-    throw new Error('package.json canary.proofs must map full task/requirement digests to recognized plan scripts');
+    throw new Error('package.json amabie.proofs must map full task/requirement digests to recognized plan scripts');
   }
   return { at: new Date().toISOString(), planDigest: planDigest(plan), scriptDigests,
     ...(Object.keys(stepPaths).length > 0 ? { stepPaths } : {}),
@@ -274,7 +301,7 @@ export function planAuthorityDrift(root: string, cfg: AuthorityCarrier, pkg?: Re
     || typeof seal.at !== 'string' || !/^[0-9a-f]{64}$/.test(String(seal.planDigest))
     || typeof seal.scriptDigests !== 'object' || seal.scriptDigests === null || Array.isArray(seal.scriptDigests)
     || !Object.values(seal.scriptDigests).every((d) => typeof d === 'string' && /^[0-9a-f]{64}$/.test(d))) {
-    return 'the sealed verification authority in .canary/canary.local.json is malformed (hand-edited?)';
+    return 'the sealed verification authority in .amabie/amabie.local.json is malformed (hand-edited?)';
   }
   const drift: string[] = [];
   if (seal.proofBindings !== undefined && (!seal.proofBindings || typeof seal.proofBindings !== 'object' || Array.isArray(seal.proofBindings)
@@ -284,21 +311,21 @@ export function planAuthorityDrift(root: string, cfg: AuthorityCarrier, pkg?: Re
   // the same file one line later for the lifecycle-hook scan); absent = read.
   // A plan made only of explicit-argv steps (python/rust/go) declares no
   // package.json scripts, so unreadable package.json is not drift for it.
-  const needsPkg = cfg.plan.some((s) => s.argv === undefined);
+  const needsPkg = cfg.plan.some((s) => s.argv === undefined && !s.scope) || seal.stepPaths !== undefined;
   const pkgBytes = pkg === undefined ? (needsPkg ? parseJsonOrNull(path.join(root, 'package.json')) : null) : pkg;
   const scripts = pkgBytes ? (pkgBytes.scripts ?? {}) as Record<string, unknown> : null;
   if (scripts === null && needsPkg && cfg.plan.length > 0) drift.push('package.json cannot be read to compare the sealed scripts');
   // 1.1 §23 — a live edit to the fast-path declaration IS drift. The sealed copy
   // still governs (an undeclared check always runs, and only the seal can justify
-  // a skip), but a project that edited `canary.paths` and believes it changed
+  // a skip), but a project that edited `amabie.paths` and believes it changed
   // what may be left out must be told that it did not: the recovery is a
-  // deliberate `canary setup` re-seal, not a silent edit.
+  // deliberate `amabie setup` re-seal, not a silent edit.
   if (seal.stepPaths !== undefined) {
-    const livePaths = (pkgBytes?.canary as { paths?: unknown } | undefined)?.paths;
+    const livePaths = (pkgBytes?.amabie as { paths?: unknown } | undefined)?.paths;
     const canon = (v: unknown): string => JSON.stringify(Object.fromEntries(
       Object.entries((v ?? {}) as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))));
     if (canon(livePaths) !== canon(seal.stepPaths)) {
-      drift.push('the fast-path declaration (canary.paths) changed since setup sealed it');
+      drift.push('the fast-path declaration (amabie.paths) changed since setup sealed it');
     }
   }
   for (const s of cfg.plan) {
@@ -315,8 +342,12 @@ export function planAuthorityDrift(root: string, cfg: AuthorityCarrier, pkg?: Re
       }
       continue;
     }
-    if (scripts === null) continue; // unreadable pkg already reported
-    const cur = scripts[s.script];
+    const stepScripts = s.scope ? scopedPackage(root, s)?.scripts as Record<string, unknown> | undefined : scripts;
+    if (stepScripts == null) {
+      if (s.scope) drift.push(`package.json for script "${name}" cannot be read inside this repository`);
+      continue; // unreadable root pkg already reported
+    }
+    const cur = stepScripts[s.script];
     if (typeof cur !== 'string') drift.push(`script "${name}" no longer exists in package.json`);
     else if (sha256(cur) !== seal.scriptDigests[key]) drift.push(`script "${name}" changed since setup sealed it`);
   }
@@ -381,7 +412,7 @@ export interface ProjectAdapter {
   readonly trustedProgramDirs: readonly string[];
   /**
    * Environment THIS ecosystem's toolchain needs in order to run at all under
-   * Canary's sanitized environment, or undefined when it needs none.
+   * Amabie's sanitized environment, or undefined when it needs none.
    *
    * WHY IT IS THE ADAPTER'S JOB: a step child gets `sanitizedEnv` — PATH limited
    * to the Node install dir plus the OS dirs, HOME/USERPROFILE redirected into the
@@ -391,7 +422,7 @@ export interface ProjectAdapter {
    * from HOME. The fix that was VERIFIED before this existed: declare a
    * workspace-scoped GOCACHE/GOPATH.
    *
-   * `workspace` is Canary's own scratch root; every path-shaped value must resolve
+   * `workspace` is Amabie's own scratch root; every path-shaped value must resolve
    * inside it (enforced in `sanitizedEnv`), so an adapter cannot point a toolchain
    * at a subject-chosen directory. Declared by reviewed product code only: a
    * PROJECT cannot contribute anything here.
@@ -416,12 +447,12 @@ export const nodeAdapter: ProjectAdapter = {
   validateEnvironment(pm) {
     return /^(npm|pnpm|yarn|bun)$/.test(pm)
       ? null
-      : `package manager "${pm}" is not one Canary can run (npm, pnpm, yarn or bun)`;
+      : `package manager "${pm}" is not one Amabie can run (npm, pnpm, yarn or bun)`;
   },
   describe() { return 'Node-style project (checks declared as package.json scripts)'; },
   seal(plan, source, bindings) {
-    return sealPlanAuthority(plan, (source.scripts ?? {}) as Record<string, unknown>, bindings,
-      (source.canary as { paths?: unknown } | undefined)?.paths);
+    const declaration = (source.amabie ?? source.canary) as { paths?: unknown } | undefined;
+    return sealPlanAuthority(plan, (source.scripts ?? {}) as Record<string, unknown>, bindings, declaration?.paths);
   },
   drift(root, cfg, source) { return planAuthorityDrift(root, cfg, source); },
   planProblems(root, plan) {
@@ -439,7 +470,7 @@ export const nodeAdapter: ProjectAdapter = {
 };
 
 /** Registered project adapters. A config may only name an id present HERE —
- *  validConfigShape rejects anything else as corrupt, so a repo Canary cannot
+ *  validConfigShape rejects anything else as corrupt, so a repo Amabie cannot
  *  model fails closed to NEEDS ATTENTION instead of silently running the Node
  *  pipeline against a foreign project. Node stays FIRST and unchanged: 1.0
  *  configs name no adapter at all and must keep resolving to it. */
@@ -454,7 +485,7 @@ export const ADAPTERS: Record<string, ProjectAdapter> = {
 export function adapterFor(cfg: { project?: string }): ProjectAdapter {
   const id = cfg.project ?? 'node';
   const adapter = Object.hasOwn(ADAPTERS, id) ? ADAPTERS[id] : undefined;
-  if (!adapter) throw new Error(`project adapter "${id}" is not registered in this Canary build`);
+  if (!adapter) throw new Error(`project adapter "${id}" is not registered in this Amabie build`);
   return adapter;
 }
 
@@ -530,7 +561,8 @@ export function planForScope(root: string, s: ProjectScope): DiscoveredProject {
   const plan = disc.plan.map((step) => (s.adapter.id === 'node' && s.scope === ''
     ? step
     : { ...step, adapter: s.adapter.id, pm: disc.pm, ...(s.scope ? { scope: s.scope } : {}) }));
-  return { ...disc, plan: plan.sort((a, b) => PLAN_ORDER[a.kind] - PLAN_ORDER[b.kind]) };
+  const order = s.adapter.id === 'node' ? NODE_PLAN_ORDER : PLAN_ORDER;
+  return { ...disc, plan: plan.sort((a, b) => order[a.kind] - order[b.kind]) };
 }
 
 export interface CompositePlan {
@@ -544,7 +576,7 @@ export interface CompositePlan {
    *  Recorded so the two are never confused in a report. */
   scopeSource: 'root-only' | 'declared';
   /** Anything wrong with the scope declaration. Non-empty ⇒ setup must REFUSE;
-   *  a declaration Canary cannot honour is never quietly ignored. */
+   *  a declaration Amabie cannot honour is never quietly ignored. */
   problems: string[];
 }
 
@@ -556,7 +588,7 @@ export interface CompositePlan {
  * WHY A SEPARATE FILE AND NOT a key in a manifest: the layout this exists for
  * (web/ Node, backend/ Python, service/ Go) usually has NO manifest at the
  * repository root, so a declaration living inside "the root manifest" would have
- * nowhere to live. It is deliberately NOT under `.canary/` either — that is the
+ * nowhere to live. It is deliberately NOT under `.amabie/` either — that is the
  * authority store (sealed, quarantined, never hand-edited), while this is a
  * human-authored PROJECT INPUT that setup seals like any other declaration.
  *
@@ -566,8 +598,10 @@ export interface CompositePlan {
  * would silently contribute a pytest step). A plan is SEALED AUTHORITY, so the
  * scope set is stated by the human and nothing else is ever added.
  */
-export const SCOPES_FILE = 'canary.scopes.json';
-export const SCOPES_SCHEMA = 'canary-scopes/1';
+export const SCOPES_FILE = 'amabie.scopes.json';
+export const SCOPES_SCHEMA = 'amabie-scopes/1';
+const LEGACY_SCOPES_FILE = 'canary.scopes.json';
+const LEGACY_SCOPES_SCHEMA = 'canary-scopes/1';
 const MAX_SCOPE_PATH = 120;
 
 export interface DeclaredScope { path: string; ecosystem: string }
@@ -600,27 +634,34 @@ function scopePathProblem(p: unknown): string | null {
  * an unhonourable declaration must stop setup, not be ignored.
  */
 export function readScopeDeclaration(root: string): ScopeDeclarationRead {
-  const file = path.join(root, SCOPES_FILE);
+  const currentFile = path.join(root, SCOPES_FILE);
+  const legacyFile = path.join(root, LEGACY_SCOPES_FILE);
+  if (fs.existsSync(currentFile) && fs.existsSync(legacyFile)) {
+    return { scopes: [], problems: [`both ${SCOPES_FILE} and ${LEGACY_SCOPES_FILE} exist; merge them and remove the legacy file`] };
+  }
+  const file = fs.existsSync(currentFile) ? currentFile : legacyFile;
+  const fileName = file === currentFile ? SCOPES_FILE : LEGACY_SCOPES_FILE;
+  const schema = file === currentFile ? SCOPES_SCHEMA : LEGACY_SCOPES_SCHEMA;
   if (!fs.existsSync(file)) return { scopes: [], problems: [] };
   const raw = parseJsonOrNull(file) as { schema?: unknown; scopes?: unknown } | null;
-  if (raw === null) return { scopes: [], problems: [`${SCOPES_FILE} is not valid JSON`] };
-  if (raw.schema !== SCOPES_SCHEMA) {
-    return { scopes: [], problems: [`${SCOPES_FILE} must declare "schema": "${SCOPES_SCHEMA}" (found ${JSON.stringify(raw.schema)})`] };
+  if (raw === null) return { scopes: [], problems: [`${fileName} is not valid JSON`] };
+  if (raw.schema !== schema) {
+    return { scopes: [], problems: [`${fileName} must declare "schema": "${schema}" (found ${JSON.stringify(raw.schema)})`] };
   }
   if (!Array.isArray(raw.scopes) || raw.scopes.length === 0) {
-    return { scopes: [], problems: [`${SCOPES_FILE} must declare a non-empty "scopes" array — an empty declaration is ambiguous, so delete the file instead`] };
+    return { scopes: [], problems: [`${fileName} must declare a non-empty "scopes" array — an empty declaration is ambiguous, so delete the file instead`] };
   }
   const problems: string[] = [];
   const out: DeclaredScope[] = [];
   const seen = new Set<string>();
   for (const [i, entry] of raw.scopes.entries()) {
-    const at = `${SCOPES_FILE} scopes[${i}]`;
+    const at = `${fileName} scopes[${i}]`;
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
       problems.push(`${at} must be an object { path, ecosystem }`); continue;
     }
     const { path: p, ecosystem } = entry as { path?: unknown; ecosystem?: unknown };
-    if (typeof ecosystem !== 'string' || ADAPTERS[ecosystem] === undefined) {
-      problems.push(`${at}: ecosystem ${JSON.stringify(ecosystem)} is not one Canary can model (known: ${Object.keys(ADAPTERS).sort().join(', ')})`);
+    if (typeof ecosystem !== 'string' || !Object.hasOwn(ADAPTERS, ecosystem)) {
+      problems.push(`${at}: ecosystem ${JSON.stringify(ecosystem)} is not one Amabie can model (known: ${Object.keys(ADAPTERS).sort().join(', ')})`);
       continue;
     }
     const bad = scopePathProblem(p);
@@ -633,12 +674,14 @@ export function readScopeDeclaration(root: string): ScopeDeclarationRead {
     let isDir = false;
     try { isDir = fs.statSync(dir).isDirectory(); } catch { isDir = false; }
     if (!isDir) { problems.push(`${at}: "${relPath}" is not a directory in this repository`); continue; }
-    // A declaration that detects nothing is a declaration Canary cannot honour.
+    try { scopeDir(root, { kind: 'tests', script: '', scope: relPath }); }
+    catch (e) { problems.push(`${at}: ${e instanceof Error ? e.message : String(e)}`); continue; }
+    // A declaration that detects nothing is a declaration Amabie cannot honour.
     // It is refused rather than recorded as an empty scope: the human asked for
     // these checks, and silently shipping a plan without them is the failure
     // mode this whole feature exists to prevent.
     if (!ADAPTERS[ecosystem]!.detect(dir).detected) {
-      problems.push(`${at}: "${relPath}" is declared as ecosystem "${ecosystem}" but nothing there declares it — Canary will not invent a check`);
+      problems.push(`${at}: "${relPath}" is declared as ecosystem "${ecosystem}" but nothing there declares it — Amabie will not invent a check`);
       continue;
     }
     out.push({ path: relPath, ecosystem });
@@ -668,7 +711,7 @@ export function scopesForDeclaration(root: string, declared: readonly DeclaredSc
  *  ATTENTION), never a reason to invent a check.
  *
  *  TWO MODES, and only two:
- *   - NO declaration (`canary.scopes.json` absent): ROOT ONLY, depth 0. Walking
+ *   - NO declaration (`amabie.scopes.json` absent): ROOT ONLY, depth 0. Walking
  *     would let a directory the user does not consider part of the project add
  *     checks to it — `archive/python-golden-prototype/pyproject.toml` would
  *     silently contribute a pytest step to this very repository.
@@ -676,7 +719,7 @@ export function scopesForDeclaration(root: string, declared: readonly DeclaredSc
  *     declares something). Nothing is walked, so an undeclared `vendor/`,
  *     `archive/` or `examples/` tree can never add authority.
  *
- *  A declaration Canary cannot honour is returned as `problems` and the caller
+ *  A declaration Amabie cannot honour is returned as `problems` and the caller
  *  refuses; it is never partially applied. */
 export function composePlan(root: string, maxDepth = 0): CompositePlan {
   const decl = readScopeDeclaration(root);
@@ -712,7 +755,17 @@ export function adapterForStep(cfg: { project?: string }, step: PlanStep): Proje
 
 /** The directory a step runs in: its scope under the repo root, or the root. */
 export function scopeDir(root: string, step: PlanStep): string {
-  return step.scope ? path.join(root, ...step.scope.split('/')) : root;
+  if (!step.scope) return root;
+  const bad = scopePathProblem(step.scope);
+  if (bad !== null) throw new Error(`invalid check scope: ${bad}`);
+  const realRoot = fs.realpathSync.native(root);
+  const realScope = fs.realpathSync.native(path.join(root, ...step.scope.split('/')));
+  const relative = path.relative(realRoot, realScope);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`check scope "${step.scope}" resolves outside this repository — linked scopes cannot name external checks`);
+  }
+  // Resolve again at execution, then use the target rather than a re-aimable link.
+  return realScope;
 }
 
 /** Plan problems across ecosystems: each step is judged by its OWN adapter in

@@ -589,7 +589,7 @@ describe('round-3 blocker 2 — pending tests are NOT executed assertions', () =
   // real failures whose SUITE-QUALIFIED identity is genuinely identical
   // (two spec files with the same describe/it titles — legal in mocha)
   // dedupe to one identity, under-account the count, and cap the run at
-  // INCONCLUSIVE rule 11. Canary must never silently TRUST such a parse;
+  // INCONCLUSIVE rule 11. Amabie must never silently TRUST such a parse;
   // this test pins the conservatism so a future "helpful" collapse cannot
   // flip the direction.
   it('duplicate identical suite-qualified identities under-account -> rule 11, never trust (probe P4)', () => {
@@ -745,7 +745,7 @@ describe('post-sol RB-2 — coverage consistency gates strong verdicts', () => {
   it('a stable-coverage collapse on BOTH arms (128 -> 1 -> uniform) is comparable and can still PASS — and is reported honestly', () => {
     // The suite genuinely shrank before BOTH arms ran (e.g. the operator
     // changed it): coverage is stable and comparable, so the experiment
-    // itself carries no inconsistency signal. Canary cannot detect it from
+    // itself carries no inconsistency signal. Amabie cannot detect it from
     // run facts alone; the committed proof (pinned summary/counts) is the
     // external anchor. This test pins the boundary of rule 13 — no
     // hard-coded minimum is smuggled back in.
@@ -760,14 +760,14 @@ describe('post-sol RB-2 — coverage consistency gates strong verdicts', () => {
 // PARSED FROM SUBJECT STDOUT, so prose alone could produce PASS /
 // CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE / FLAKY. The gate makes strong
 // labels structurally unreachable unless every round carries a VALID
-// Canary-observation agreeing with the text. These unit tests pin the gate's
+// Amabie-observation agreeing with the text. These unit tests pin the gate's
 // mechanics; the end-to-end reproducer (a real CLI run of the exact GLM
 // forgery) lives in apps/cli/test/execution-authority.test.ts.
 // ---------------------------------------------------------------------------
 describe('post-GLM — execution-observation gate (rule 14)', () => {
   it('the GLM shape: unanimous "passing" prose with NO observation -> INCONCLUSIVE rule 14, never PASS', () => {
     // Classifier-level twin of `node -e console.log('128 passing (1s)')`:
-    // text-perfect healthy rounds, zero Canary-observed execution.
+    // text-perfect healthy rounds, zero Amabie-observed execution.
     const r = classify([arm('baseline', 1), arm('baseline', 2), arm('candidate', 1), arm('candidate', 2)]);
     assert.equal(r.classification, 'INCONCLUSIVE');
     assert.equal(r.rule, 14);
@@ -865,7 +865,7 @@ describe('post-GLM — execution-observation gate (rule 14)', () => {
   });
 
   it('post-GLM F4: infra TEXT signature alone cannot veto an attested execution (precedence)', () => {
-    // The masking shape: every round carries a VALID Canary observation that
+    // The masking shape: every round carries a VALID Amabie observation that
     // agrees with its text, AND stdout contains a recognized infra keyword
     // (a real possibility: tests routinely assert on strings like
     // "ECONNREFUSED"). Ungated rule 1 let the UNTRUSTED channel veto the
@@ -916,7 +916,7 @@ describe('post-GLM — execution-observation gate (rule 14)', () => {
 
   it('post-GLM F4 residual: a crash-signature TEXT cannot veto an attested execution either', () => {
     // The same masking shape as infraSignal, still live at 5097019: every
-    // round carries a VALID Canary observation agreeing with its text, AND
+    // round carries a VALID Amabie observation agreeing with its text, AND
     // the candidate's stdout matches CRASH_LINE (the subject can print a real
     // V8/shell crash banner inside honest test output; prove re-derives the
     // flag from bytes, so even an accurate crashSignal remains SUBJECT TEXT,
@@ -997,10 +997,10 @@ function fact(
 }
 
 describe('post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment', () => {
-  it('a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression)', () => {
+  it('a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression)', () => {
     // The GLM-round-5 scenario: B passes in baseline (watched), fails in
     // candidate — the old table labeled this PRE_EXISTING_FAILURE, a verdict
-    // contradicted by Canary's own retained bytes. Baseline {A} vs candidate
+    // contradicted by Amabie's own retained bytes. Baseline {A} vs candidate
     // {A,B} keeps executed totals equal (1+1 vs 0+2 — the compensated-
     // disappearance shape), so cardinality alone cannot see it; only
     // failing-set IDENTITY containment catches this.
@@ -1058,7 +1058,7 @@ describe('post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment'
     // it('A2')`, A2 trivially real) yields identical VALID counts with
     // DIFFERENT passing identities — and passing identities are not in the
     // bundle contract, by decision: binding identity strings across two
-    // package versions needs a semantic root Canary does not have, and
+    // package versions needs a semantic root Amabie does not have, and
     // enforcing pass-set equality would deny strong verdicts to legitimate
     // test renames. This test PINS that boundary (codified in
     // EXECUTION-AUTHORITY §8): containment was deliberately NOT extended

@@ -234,7 +234,7 @@ check('A5-the-pilot-record-says-whether-a-model-session-ACTUALLY-happened', () =
     .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
   assert(!/workerLaunches:\s*1\b/.test(pilotCode),
     'v12-token-pilot.mjs hardcodes workerLaunches: 1 again. A refused fixture (0 tokens, no model call) '
-    + 'would then be recorded as a worker launch, and an aggregator could score it as a Canary correctness '
+    + 'would then be recorded as a worker launch, and an aggregator could score it as a Amabie correctness '
     + 'failure rather than as a fixture outside confined mode\'s coverage');
   assert(/workerLaunches:\s*workerRan\s*\?\s*1\s*:\s*0/.test(pilotCode),
     'the pilot no longer derives workerLaunches from whether a model session really happened');

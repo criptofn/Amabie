@@ -62,6 +62,7 @@ export const MUTATES_DIST = new Set([
 ]);
 
 export function budgetFor(label = '') {
+  if (/^probe: master-pass mutation battery \(built dist\) \/ M(?:[1-9]|1[0-3])$/.test(label)) return STEP_TIMEOUT_MS['probe: master-pass mutation battery (built dist)'];
   const ms = STEP_TIMEOUT_MS[label] ?? DEFAULT_STEP_TIMEOUT_MS;
   return Number.isFinite(ms) && ms > 0 ? ms : DEFAULT_STEP_TIMEOUT_MS;
 }
@@ -87,7 +88,7 @@ export function verdictFor({ status, skipAware = false, timedOut = false }) {
  */
 export function shouldStopAfter(label, verdict) {
   if (verdict === 'PASS') return false;
-  return MUTATES_DIST.has(label);
+  return MUTATES_DIST.has(label) || /^probe: master-pass mutation battery \(built dist\) \/ M(?:[1-9]|1[0-3])$/.test(label);
 }
 
 /** Restore trusted compiled bytes after a destructive step did not finish. */

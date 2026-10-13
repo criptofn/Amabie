@@ -6,7 +6,7 @@ import fs from 'node:fs';
 // this file is an IDENTITY: an enrolled store compared against a freshly read one, or a base
 // persisted for later comparison. Two spellings of one directory made those comparisons refuse a
 // legitimate deployment as "foreign" (MEASURED under a short-named TEMP; see packages/support).
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -46,7 +46,7 @@ export function native(store: string, request: Record<string, unknown>) {
   write(file, request);
   try {
     // MEASURED (v1.4): the native launcher waits up to 240 s for the confined
-    // child (CanaryConfinedLauncher.cs / AppContainerRunner.cs). This budget was
+    // child (AmabieConfinedLauncher.cs / AppContainerRunner.cs). This budget was
     // 150 s, so a loaded machine produced exit 124 (WAIT_TIMEOUT) here first —
     // the release battery's full unit suite failed the native confinement
     // fixture that way while the same fixture passed alone. A budget is not an
@@ -57,7 +57,7 @@ export function native(store: string, request: Record<string, unknown>) {
   } finally { fs.rmSync(file, { force: true }); }
 }
 export interface Enrollment {
-  schema: 'canary-production/2'; id: string; store: string; base: string;
+  schema: 'amabie-production/2'; id: string; store: string; base: string;
   project: string; package: string; verifier: string; pipe: string; profile: string;
   configDigest: string; gitConfigDigest: string; createdAt: string;
   owner: string;
@@ -68,7 +68,7 @@ interface Review {
 }
 export function enrollment(store: string): Enrollment {
   const e = read<Enrollment>(path.join(store, 'enrollment.json'));
-  if (e.schema !== 'canary-production/2' || e.store !== canonicalPath(store)) throw new Error('foreign deployment');
+  if (e.schema !== 'amabie-production/2' || e.store !== canonicalPath(store)) throw new Error('foreign deployment');
   if (sha(plainFile(configPath(e.base))) !== e.configDigest ||
       sha(plainFile(path.join(e.base, '.git', 'config'))) !== e.gitConfigDigest) throw new Error('enrolled authority changed');
   noLinks(e.base);
@@ -83,7 +83,7 @@ function execution(e: Enrollment): ControllerExecution {
   return { hooksDirectory: path.join(e.store, 'empty-hooks'), run(argv, cwd, timeoutMs) {
     // A fresh verifier profile is distinct from the live builder's profile.
     // No caller can concurrently edit the private verification checkout.
-    const scratch = fs.mkdtempSync(path.join(cwd, '.canary-exec-'));
+    const scratch = fs.mkdtempSync(path.join(cwd, '.amabie-exec-'));
     const side = path.join(e.store, `${crypto.randomUUID()}.token.jsonl`);
     let checkout = cwd;
     while (!fs.existsSync(path.join(checkout, '.git'))) {
@@ -153,16 +153,16 @@ export async function enrollProduction(baseArg: string, storeArg: string): Promi
       throw new Error('unsupported executable or extended Git configuration');
   }
   fs.mkdirSync(store); fs.mkdirSync(path.join(store, 'empty-hooks')); fs.mkdirSync(path.join(store, 'reviews'));
-  const id = crypto.randomUUID(), profile = `Canary.Confined.${id}`;
+  const id = crypto.randomUUID(), profile = `Amabie.Confined.${id}`;
   const identity = (name: string): string => {
     const result = path.join(store, `${crypto.randomUUID()}.identity.json`);
     const r = native(store, { mode: 'identity', name, delete: false, result });
     if (r.status !== 0) throw new Error(`identity provisioning refused: ${r.stderr}`);
     return read<{ package: string }>(result).package;
   };
-  const e: Enrollment = { schema: 'canary-production/2', id, store: canonicalPath(store), base,
+  const e: Enrollment = { schema: 'amabie-production/2', id, store: canonicalPath(store), base,
     project: sha(base), package: identity(profile), verifier: identity(`${profile}.Verifier`),
-    pipe: `canary-production-${id}`, profile, configDigest: sha(plainFile(configPath(base))),
+    pipe: `amabie-production-${id}`, profile, configDigest: sha(plainFile(configPath(base))),
     gitConfigDigest: sha(config), createdAt: new Date().toISOString(), owner: productionHost().user };
   const runtime = path.join(store, 'runtime');
   fs.mkdirSync(runtime);
@@ -237,7 +237,7 @@ export function productionTool(store: string, cwd: string, request: unknown): un
   const lock = path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
   let call: string | undefined;
   try {
-    call = fs.mkdtempSync(path.join(cwd, 'canary-tool-'));
+    call = fs.mkdtempSync(path.join(cwd, 'amabie-tool-'));
     const script = path.join(call, 'tool.cjs'), side = path.join(store, `${crypto.randomUUID()}.tool-token.jsonl`);
     fs.copyFileSync(path.join(nativeRoot, 'production-tool.cjs'), script);
     fs.writeFileSync(path.join(call, 'request.json'), JSON.stringify({ request, runtime: path.join(e.store, 'runtime') }), { flag: 'wx' });
@@ -262,12 +262,12 @@ export function productionTool(store: string, cwd: string, request: unknown): un
 export function unchangedBindingSources(base: string, files: Record<string, string | null>): void {
   for (const [file, bytes] of Object.entries(files)) {
     const name = file.toLowerCase();
-    if (name !== 'package.json' && name !== 'canary.project.json') continue;
+    if (name !== 'package.json' && name !== 'amabie.project.json') continue;
     const source = path.join(base, name);
     const extract = (text: string | null): string => {
       if (text === null) return '{}';
       const value = JSON.parse(text);
-      const proofs = name === 'package.json' ? value?.canary?.proofs : value?.proofs;
+      const proofs = name === 'package.json' ? value?.amabie?.proofs : value?.proofs;
       if (proofs === undefined) return '{}';
       if (!proofs || typeof proofs !== 'object' || Array.isArray(proofs) ||
           !Object.values(proofs).every(v => typeof v === 'string')) throw new Error('invalid binding source');
@@ -283,7 +283,7 @@ export async function productionAuthority(store: string, envelope: unknown): Pro
   const { client, request: req } = envelope as { client: Record<string, unknown>; request: Record<string, unknown> };
   if (client?.identity === e.owner && client.appContainer === false && req?.verb === 'heartbeat' &&
       req.project === e.project && req.deployment === e.id && typeof req.nonce === 'string' && /^[0-9a-f]{64}$/.test(req.nonce)) {
-    const payload = { schema: 'canary-production-heartbeat/2', deployment: e.id, nonce: req.nonce, ...measurementGeneration(store) };
+    const payload = { schema: 'amabie-production-heartbeat/2', deployment: e.id, nonce: req.nonce, ...measurementGeneration(store) };
     return { status: 200, payload, signature: crypto.sign(null, Buffer.from(JSON.stringify(payload)), plainFile(path.join(store, 'producer.key'))).toString('base64') };
   }
   if (!client || client.identity !== e.owner || client.package !== e.package || client.appContainer !== true || client.restricted !== true ||
@@ -301,7 +301,7 @@ export async function productionAuthority(store: string, envelope: unknown): Pro
       unchangedBindingSources(e.base, files);
       const baseHead = candidateIdentity(e.base).head;
       if (!baseHead) throw new Error('base identity unavailable');
-      const work = path.join(os.tmpdir(), `canary-production-${e.id}-${name}`);
+      const work = path.join(os.tmpdir(), `amabie-production-${e.id}-${name}`);
       // The controller creates a private worktree; the builder receives NO grant.
       if (await cmdIsolate([name, '--path', work, e.base]) !== 0) throw new Error('candidate isolation refused');
       const modes = git(work, ['ls-tree', '-r', 'HEAD']).split('\n').filter(Boolean);
@@ -312,7 +312,7 @@ export async function productionAuthority(store: string, envelope: unknown): Pro
         else { fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, Buffer.from(bytes, 'base64')); }
       }
       git(work, ['add', '--all']);
-      git(work, ['-c', 'user.name=Canary broker', '-c', 'user.email=canary@localhost', 'commit', '-m', `Reviewed proposal ${name}`]);
+      git(work, ['-c', 'user.name=Amabie broker', '-c', 'user.email=amabie@localhost', 'commit', '-m', `Reviewed proposal ${name}`]);
       const head = candidateIdentity(work).head;
       if (!head || await controllerCandidate(e.base, name, head, baseHead, false) !== 0) {
         process.stderr.write(`private candidate status: ${git(work, ['status', '--porcelain'])}\n`);

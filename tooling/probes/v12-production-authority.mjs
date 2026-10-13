@@ -8,26 +8,33 @@ import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const cliIndex = process.argv.indexOf('--cli');
 const cli = cliIndex < 0 ? path.join(repo, 'apps/cli/dist/src/main.js') : path.resolve(process.argv[cliIndex + 1]);
+const reportIndex = process.argv.indexOf('--report');
+const reportFile = reportIndex < 0 ? path.join(os.tmpdir(), 'v12-production-authority.json') : path.resolve(process.argv[reportIndex + 1]);
 const installedStatus = store => {
   const r = spawnSync(process.execPath, [cli, 'provider', 'status', '--json'], {
-    encoding: 'utf8', windowsHide: true, timeout: 60000, env: { ...process.env, CANARY_TRUST_STORE: store },
+    encoding: 'utf8', windowsHide: true, timeout: 60000, env: { ...process.env, AMABIE_TRUST_STORE: store },
   });
   let envelope;
   try { envelope = JSON.parse(r.stdout); } catch { return { valid: false, reason: `invalid status envelope: ${r.stderr}` }; }
   return { valid: r.status === 0 && envelope.security?.level === 'HARDENED', reason: JSON.stringify(envelope.problems),
     payload: fs.existsSync(path.join(store, 'production-measurement.json')) ? JSON.parse(fs.readFileSync(path.join(store, 'production-measurement.json'))).payload : undefined };
 };
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-production-e2e-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-production-e2e-'));
 const base = path.join(root, 'base'), store = path.join(root, 'store'), work = path.join(root, 'caller');
 let broker, enrollment; let failed = 0;
-const report = { tests: [], observations: null };
+const report = { tests: [], observations: null,
+  cli: { path: cli, sha256: crypto.createHash('sha256').update(fs.readFileSync(cli)).digest('hex'), runtime: process.execPath },
+  instrumentSha256: crypto.createHash('sha256').update(fs.readFileSync(fileURLToPath(import.meta.url))).digest('hex') };
 const check = (name, ok, detail) => { report.tests.push({ name, ok, detail }); console.log(`${ok?'PASS':'FAIL'} ${name}: ${detail}`); if(!ok) failed++; };
 const command = (exe,args,cwd=root,timeout=300000) => {
-  const r = spawnSync(exe,args,{cwd,encoding:'utf8',windowsHide:true,timeout});
+  // Keep the inner stack if the measurement crashes; a green replay cannot explain it.
+  const env = args[1] === 'provider' && args[2] === 'measure-production'
+    ? { ...process.env, AMABIE_VERBOSE: '1' } : process.env;
+  const r = spawnSync(exe,args,{cwd,encoding:'utf8',windowsHide:true,timeout,env});
   if(r.status!==0) throw new Error(`${exe} ${args.join(' ')}: ${r.status}\n${r.stdout}\n${r.stderr}`);
   return r.stdout;
 };
-const canary = args => command(process.execPath,[cli,...args]);
+const amabie = args => command(process.execPath,[cli,...args]);
 const git = args => command('C:\\Program Files\\Git\\cmd\\git.exe',args,base);
 /** v1.4: the --capability verdict, carried out of the try block so the cleanup
  *  in `finally` cannot overwrite it with the battery's pass/fail code. */
@@ -43,20 +50,20 @@ try {
   fs.writeFileSync(path.join(base,'package.json'),JSON.stringify({name:'production-authority-test',version:'1.0.0',scripts:{test:'node sum.test.cjs'}}));
   fs.writeFileSync(path.join(base,'index.cjs'),'module.exports = (a,b) => a+b;\n');
   fs.writeFileSync(path.join(base,'sum.test.cjs'),"const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3);\n");
-  git(['init']); git(['config','user.name','Canary fixture']); git(['config','user.email','canary@localhost']);
+  git(['init']); git(['config','user.name','Amabie fixture']); git(['config','user.email','amabie@localhost']);
   git(['add','.']); git(['commit','-m','base']);
-  canary(['setup','--yes',base]);
+  amabie(['setup','--yes',base]);
   git(['add','.']); git(['commit','--allow-empty','-m','operator setup artifacts']);
   command(process.execPath,[cli,'bind','test','--requirement','Handle numeric string operands','--reseal'],base);
   command(process.execPath,[cli,'task','Handle numeric string operands','--kind','bugfix','--requirement','Handle numeric string operands'],base);
   const operatorPackage = JSON.parse(fs.readFileSync(path.join(base,'package.json'),'utf8'));
-  const operatorProofs = operatorPackage.canary.proofs;
-  const sealed = JSON.parse(fs.readFileSync(path.join(base,'.canary','canary.local.json'),'utf8'));
+  const operatorProofs = operatorPackage.amabie.proofs;
+  const sealed = JSON.parse(fs.readFileSync(path.join(base,'.amabie','amabie.local.json'),'utf8'));
   check('trusted-binding-seal-control',Object.keys(operatorProofs).length===1 &&
     JSON.stringify(sealed.planAuthority.proofBindings)===JSON.stringify(operatorProofs),
     'operator bind --reseal creates the legitimate frozen binding before enrollment');
-  enrollment = JSON.parse(canary(['provider','enroll',base,store]));
-  const { challenge } = JSON.parse(canary(['provider','measurement-begin',store]));
+  enrollment = JSON.parse(amabie(['provider','enroll',base,store]));
+  const { challenge } = JSON.parse(amabie(['provider','measurement-begin',store]));
   broker = spawn(process.execPath,[cli,'provider','serve-production',store],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});
   let brokerLog=''; broker.stdout.on('data', x => brokerLog+=x); broker.stderr.on('data', x=>brokerLog+=x);
   // Native compilation happens before listening; use a read-only pipe exchange for readiness.
@@ -137,17 +144,17 @@ try {
     // A separate challenge keeps these focused binding attacks separate from
     // the existing fixed measurement transcript; none is activation evidence.
     {id:'binding-create',request:{verb:'review',challenge:'binding-audit',files:{'package.json':Buffer.from(JSON.stringify({...operatorPackage,
-      canary:{proofs:{...operatorProofs,['b'.repeat(64)]:'test'}}})).toString('base64')}}},
+      amabie:{proofs:{...operatorProofs,['b'.repeat(64)]:'test'}}})).toString('base64')}}},
     {id:'binding-modify',request:{verb:'review',challenge:'binding-audit',files:{'package.json':Buffer.from(JSON.stringify({...operatorPackage,
-      canary:{proofs:Object.fromEntries(Object.keys(operatorProofs).map(d=>[d,'other']))}})).toString('base64')}}},
+      amabie:{proofs:Object.fromEntries(Object.keys(operatorProofs).map(d=>[d,'other']))}})).toString('base64')}}},
     {id:'binding-setup-seal',request:{verb:'setup',challenge:'binding-audit'}},
     {id:'binding-source-write',write:path.join(base,'package.json'),body:'worker-owned binding source'},
-    {id:'binding-source-substitution',request:{verb:'review',challenge:'binding-audit',files:{'canary.project.json':Buffer.from(JSON.stringify({proofs:operatorProofs})).toString('base64')}}},
+    {id:'binding-source-substitution',request:{verb:'review',challenge:'binding-audit',files:{'amabie.project.json':Buffer.from(JSON.stringify({proofs:operatorProofs})).toString('base64')}}},
     {id:'binding-alternate-api',request:{verb:'bind',challenge:'binding-audit',proofs:operatorProofs}},
     {id:'binding-repository-alias',request:{verb:'review',challenge:'binding-audit',files:{'PACKAGE.JSON':Buffer.from(JSON.stringify({scripts:operatorPackage.scripts})).toString('base64')}}},
     {id:'unreviewed',request:{verb:'promote',receipt:'forged',digest:'0'.repeat(64)}},
     {id:'review',request:{verb:'review',files}},
-    {id:'post-review-mutation',write:path.join(os.tmpdir(),`canary-production-${enrollment.id}-fix`,'index.cjs'),body:'not-reviewed'},
+    {id:'post-review-mutation',write:path.join(os.tmpdir(),`amabie-production-${enrollment.id}-fix`,'index.cjs'),body:'not-reviewed'},
     {id:'body-substitution',request:{verb:'promote',body:'other'},useReview:true},
     {id:'digest-substitution',request:{verb:'promote'},useReview:true,override:{digest:'0'.repeat(64)}},
     {id:'foreign-project',request:{verb:'promote'},useReview:true,override:{project:'foreign'}},
@@ -159,7 +166,7 @@ try {
   const config=path.join(work,'request.json'), caller=path.join(work,'caller.cjs');
   fs.writeFileSync(config,JSON.stringify({...enrollment,challenge,candidate:'fix',output,actions}));
   fs.copyFileSync(path.join(repo,'tooling/test-support/fixtures/production-caller.cjs'),caller);
-  try { canary(['provider','launch',store,work,process.execPath,'--preserve-symlinks-main',caller,config]); }
+  try { amabie(['provider','launch',store,work,process.execPath,'--preserve-symlinks-main',caller,config]); }
   catch(e) {
     report.observations=fs.existsSync(output)?JSON.parse(fs.readFileSync(output,'utf8')):{brokerLog};
     throw new Error(`${e.message}\n${JSON.stringify(report.observations)}`);
@@ -176,13 +183,18 @@ try {
   if(!reviewed) console.log(fs.readFileSync(path.join(store,'controller.log'),'utf8'));
   check('promoted-byte-readback',fs.readFileSync(path.join(base,'index.cjs'),'utf8')===Buffer.from(files['index.cjs'],'base64').toString(),git(['rev-parse','HEAD']).trim());
   // Paired unrestricted writes to these exact files, restored immediately.
-  for(const file of [path.join(base,'index.cjs'),path.join(base,'package.json'),path.join(os.tmpdir(),`canary-production-${enrollment.id}-fix`,'index.cjs')]) {
+  for(const file of [path.join(base,'index.cjs'),path.join(base,'package.json'),path.join(os.tmpdir(),`amabie-production-${enrollment.id}-fix`,'index.cjs')]) {
     const original=fs.readFileSync(file);
     try { fs.writeFileSync(file,'unrestricted-write-control'); check('write-control',fs.readFileSync(file,'utf8')==='unrestricted-write-control',file); }
     finally { fs.writeFileSync(file,original); }
   }
   if(failed===0) {
-    canary(['provider','measure-production',store]);
+    report.measurementInput = {
+      enrollment: JSON.parse(fs.readFileSync(path.join(store, 'enrollment.json'), 'utf8')),
+      session: JSON.parse(fs.readFileSync(path.join(store, 'measurement-session.json'), 'utf8')),
+      authorityJournal: fs.readFileSync(path.join(store, 'authority.jsonl'), 'utf8'),
+    };
+    amabie(['provider','measure-production',store]);
     const measurement=await import('../../apps/cli/dist/src/provider/production-measurement.js');
     const {anchorPath,PRODUCTION_MEASUREMENT}=measurement;
     const readProductionMeasurement=cliIndex < 0 ? measurement.readProductionMeasurement : installedStatus;
@@ -272,10 +284,10 @@ finally {
       fs.writeFileSync(file,JSON.stringify({mode:'identity',name,delete:true,result:path.join(root,'deleted.json')}));
       spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-File',path.join(repo,'tools/windows-boundary/production-native.ps1'),'-Request',file],{windowsHide:true});
     }
-    const candidate=path.join(os.tmpdir(),`canary-production-${enrollment.id}-fix`);
+    const candidate=path.join(os.tmpdir(),`amabie-production-${enrollment.id}-fix`);
     if(fs.existsSync(candidate)) fs.rmSync(candidate,{recursive:true,force:true});
   }
-  fs.writeFileSync(path.join(os.tmpdir(),'v12-production-authority.json'),JSON.stringify(report,null,2));
+  fs.writeFileSync(reportFile,JSON.stringify(report,null,2));
   fs.rmSync(root,{recursive:true,force:true});
   console.log(`production authority: ${report.tests.length-failed} pass, ${failed} fail`);
   process.exitCode=capabilityVerdict ? capabilityVerdict.code : (failed?1:0);

@@ -2,22 +2,22 @@
 /**
  * v1.4 — THE INSTALLED-ARTIFACT JOURNEY.
  *
- * WHY THIS EXISTS: every other probe in this repository measures Canary from the
+ * WHY THIS EXISTS: every other probe in this repository measures Amabie from the
  * SOURCE TREE, running `node apps/cli/dist/src/main.js`. That is not the thing a
  * user installs. This probe measures the artifact that actually ships — the
  * `.tgz` — by installing it with npm into a prefix whose path CONTAINS SPACES (a
  * real-world condition that has broken this project before), and then driving
- * the whole everyday journey through the INSTALLED `canary` binary:
+ * the whole everyday journey through the INSTALLED `amabie` binary:
  *
- *   1. `canary --version`            the artifact reports the version it claims
- *   2. `canary setup --yes`          wires the repository, using the project's own check
- *   3. `canary doctor`               the gate on demand
+ *   1. `amabie --version`            the artifact reports the version it claims
+ *   2. `amabie setup --yes`          wires the repository, using the project's own check
+ *   3. `amabie doctor`               the gate on demand
  *   4. green completion              the Stop hook ALLOWS (and says nothing)
  *   5. failing completion            the Stop hook BLOCKS, with a JSON decision
  *   6. repair guidance               the block NAMES the failing check
  *   7. retry guard                   `stop_hook_active` stops a second block
- *   8. Codex wiring                  `.codex/hooks.json` carries one Canary handler
- *   9. uninstall                     removes Canary's entries and NOTHING else
+ *   8. Codex wiring                  `.codex/hooks.json` carries one Amabie handler
+ *   9. uninstall                     removes Amabie's entries and NOTHING else
  *  10. upgrade from v1.3.0           no duplicated hooks or MCP entries (optional input)
  *
  * THE HOOK IS NOT SIMULATED. The exact command `setup` wrote into
@@ -27,7 +27,7 @@
  *
  * Usage:
  *   node tooling/probes/v14-rc-artifact-journey.mjs
- *   node tooling/probes/v14-rc-artifact-journey.mjs --tarball=pack/npm/canary-rn-cli-1.4.0.tgz
+ *   node tooling/probes/v14-rc-artifact-journey.mjs --tarball=pack/npm/amabie-rn-cli-1.4.0.tgz
  *   node tooling/probes/v14-rc-artifact-journey.mjs --from-tarball=<v1.3.0.tgz>
  *
  * Exit: 0 all checks passed; 3 one or more explicit SKIPs and no failures
@@ -45,7 +45,7 @@ const argv = process.argv.slice(2);
 const argOf = (name) => argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 
 const EXPECTED_VERSION = argOf('expect-version') ?? '1.4.0';
-const TARBALL = path.resolve(argOf('tarball') ?? path.join(REPO, 'pack', 'npm', `canary-rn-cli-${EXPECTED_VERSION}.tgz`));
+const TARBALL = path.resolve(argOf('tarball') ?? path.join(REPO, 'pack', 'npm', `amabie-rn-cli-${EXPECTED_VERSION}.tgz`));
 const FROM_TARBALL = argOf('from-tarball') === undefined ? null : path.resolve(argOf('from-tarball'));
 
 let passed = 0; let failed = 0; let skipped = 0;
@@ -63,13 +63,13 @@ if (!fs.existsSync(TARBALL)) {
   process.exit(1);
 }
 
-const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'canary rc spaces '));   // SPACES, deliberately
+const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie rc spaces '));   // SPACES, deliberately
 const PREFIX = path.join(ROOT, 'install prefix');                            // and again here
 const REPO_DIR = path.join(ROOT, 'project repo');
-const CANARY_BIN = path.join(PREFIX, process.platform === 'win32' ? 'canary.cmd' : 'bin/canary');
+const AMABIE_BIN = path.join(PREFIX, process.platform === 'win32' ? 'amabie.cmd' : 'bin/amabie');
 /** The installed bundle the shim launches. The journey runs THIS, so every
  *  command below is the shipped artifact and not the source tree. */
-const CANARY_MAIN = path.join(PREFIX, 'node_modules', '@canary-rn', 'cli', 'dist', 'main.js');
+const AMABIE_MAIN = path.join(PREFIX, 'node_modules', '@amabie', 'cli', 'dist', 'main.js');
 const cleanup = () => { try { fs.rmSync(ROOT, { recursive: true, force: true }); } catch { /* OS temp; inert */ } };
 
 console.log(`tarball:  ${TARBALL}`);
@@ -97,9 +97,9 @@ function install(tgz) {
  *  cannot be spawned without a shell, and the prefix path contains spaces, so the
  *  shim is verified separately (once, below) and the journey drives the very file
  *  that shim launches. */
-const canary = (args, opts = {}) => run(process.execPath, [CANARY_MAIN, ...args], opts);
+const amabie = (args, opts = {}) => run(process.execPath, [AMABIE_MAIN, ...args], opts);
 /** The npm-generated shim, quoted, through a shell — this is what a user types. */
-const shim = (line) => run(`"${CANARY_BIN}" ${line}`, [], { shell: true, timeout: 300_000 });
+const shim = (line) => run(`"${AMABIE_BIN}" ${line}`, [], { shell: true, timeout: 300_000 });
 
 /** Read the exact Stop-hook command `setup` wrote, so the hook is driven as written. */
 function stopHookCommands() {
@@ -111,12 +111,12 @@ function stopHookCommands() {
   return out;
 }
 
-/** Canary's OWN hooks, identified by what they run. The fixture deliberately
+/** Amabie's OWN hooks, identified by what they run. The fixture deliberately
  *  ships a user-owned Stop hook too, so counting every command hook would fail on
- *  a correct installation — the question is how many hooks CANARY installed, and
+ *  a correct installation — the question is how many hooks AMABIE installed, and
  *  whether the user's survived. */
-const isCanaryHook = (command) => /checkpoint/.test(command);
-const canaryStopHookCommands = () => stopHookCommands().filter(isCanaryHook);
+const isAmabieHook = (command) => /checkpoint/.test(command);
+const amabieStopHookCommands = () => stopHookCommands().filter(isAmabieHook);
 
 /** Drive a hook command with the Stop-event JSON on stdin — the real contract. */
 function driveHook(command, { active = false } = {}) {
@@ -133,25 +133,25 @@ try {
   const first = install(TARBALL);
   check('the exact tarball installs (path contains spaces)', first.status === 0, `npm exit ${first.status}`);
   if (first.status !== 0) { say((first.stderr ?? '').slice(0, 600)); throw new Error('install failed'); }
-  check('the installed bundle exists', fs.existsSync(CANARY_MAIN), CANARY_MAIN);
-  check('the npm-generated shim exists (prefix path contains spaces)', fs.existsSync(CANARY_BIN), CANARY_BIN);
+  check('the installed bundle exists', fs.existsSync(AMABIE_MAIN), AMABIE_MAIN);
+  check('the npm-generated shim exists (prefix path contains spaces)', fs.existsSync(AMABIE_BIN), AMABIE_BIN);
 
   // The shim is what a user actually types, so it is executed once, verbatim.
   const shimVersion = shim('--version');
-  check('the shim runs the installed artifact (`canary --version`)', (shimVersion.stdout ?? '').trim() === `canary ${EXPECTED_VERSION}`,
+  check('the shim runs the installed artifact (`amabie --version`)', (shimVersion.stdout ?? '').trim() === `amabie ${EXPECTED_VERSION}`,
     (shimVersion.stdout ?? '').trim() || (shimVersion.stderr ?? '').slice(0, 200));
 
-  const version = canary(['--version']);
-  check('installed artifact reports its version', /^canary \d+\.\d+\.\d+/.test((version.stdout ?? '').trim()), (version.stdout ?? '').trim());
-  check(`installed artifact reports ${EXPECTED_VERSION}`, (version.stdout ?? '').trim() === `canary ${EXPECTED_VERSION}`, (version.stdout ?? '').trim());
+  const version = amabie(['--version']);
+  check('installed artifact reports its version', /^amabie \d+\.\d+\.\d+/.test((version.stdout ?? '').trim()), (version.stdout ?? '').trim());
+  check(`installed artifact reports ${EXPECTED_VERSION}`, (version.stdout ?? '').trim() === `amabie ${EXPECTED_VERSION}`, (version.stdout ?? '').trim());
 
   // ── 2. a real repository with its OWN check, plus user-owned config ──────
   fs.mkdirSync(REPO_DIR, { recursive: true });
   fs.mkdirSync(path.join(REPO_DIR, '.claude'), { recursive: true });
   fs.mkdirSync(path.join(REPO_DIR, '.codex'), { recursive: true });
   run('git', ['-C', REPO_DIR, 'init', '-b', 'main']);
-  run('git', ['-C', REPO_DIR, 'config', 'user.name', 'Canary RC']);
-  run('git', ['-C', REPO_DIR, 'config', 'user.email', 'rc@canary.local']);
+  run('git', ['-C', REPO_DIR, 'config', 'user.name', 'Amabie RC']);
+  run('git', ['-C', REPO_DIR, 'config', 'user.email', 'rc@amabie.local']);
 
   // The check is controlled by a file, so the SAME sealed plan can pass and fail
   // without re-sealing: switching behaviour must never require re-running setup.
@@ -168,13 +168,13 @@ try {
   run('git', ['-C', REPO_DIR, 'commit', '-q', '-m', 'fixture']);
 
   // ── 3. setup ─────────────────────────────────────────────────────────────
-  const setup = canary(['setup', '--yes'], { cwd: REPO_DIR });
-  check('`canary setup --yes` succeeds in a real repo', setup.status === 0, `exit ${setup.status}`);
+  const setup = amabie(['setup', '--yes'], { cwd: REPO_DIR });
+  check('`amabie setup --yes` succeeds in a real repo', setup.status === 0, `exit ${setup.status}`);
   if (setup.status !== 0) say((setup.stdout ?? '').slice(-900));
   check('setup ends READY', /READY/.test(setup.stdout ?? ''));
 
-  const hooks = canaryStopHookCommands();
-  check('setup installed exactly ONE Canary Stop hook', hooks.length === 1, `${hooks.length} Canary hook command(s)`);
+  const hooks = amabieStopHookCommands();
+  check('setup installed exactly ONE Amabie Stop hook', hooks.length === 1, `${hooks.length} Amabie hook command(s)`);
   const userSurvivedSetup = JSON.parse(fs.readFileSync(path.join(REPO_DIR, '.claude', 'settings.json'), 'utf8'));
   check('a user-owned Stop hook SURVIVES setup', JSON.stringify(userSurvivedSetup.hooks?.Stop ?? []).includes('USER-OWNED-HOOK'));
   check('a user-owned Stop hook survives EXACTLY once',
@@ -182,8 +182,8 @@ try {
   check('unrelated user settings survive setup', JSON.stringify(userSurvivedSetup.permissions ?? {}) === JSON.stringify({ allow: ['Bash(ls:*)'] }));
 
   // ── 4. doctor ────────────────────────────────────────────────────────────
-  const doctor = canary(['doctor'], { cwd: REPO_DIR });
-  check('`canary doctor` reports READY', doctor.status === 0 && /READY/.test(doctor.stdout ?? ''), `exit ${doctor.status}`);
+  const doctor = amabie(['doctor'], { cwd: REPO_DIR });
+  check('`amabie doctor` reports READY', doctor.status === 0 && /READY/.test(doctor.stdout ?? ''), `exit ${doctor.status}`);
 
   // ── 5. everyday green completion: the hook must ALLOW, silently ──────────
   if (hooks.length !== 1) throw new Error('cannot drive the hook: expected one command');
@@ -200,7 +200,7 @@ try {
   check('failing completion: decision is BLOCK', isBlock, JSON.stringify(blocked.decision)?.slice(0, 200));
   const reason = isBlock ? String(blocked.decision.reason ?? '') : '';
   check('repair guidance: the reason names the failing check', /\btests\b|\btest\b/.test(reason), reason.slice(0, 200));
-  check('repair guidance: the reason points at the evidence, not a raw log dump', /full output|log|\.canary/i.test(reason) || reason.length <= 1200, `${reason.length} char(s)`);
+  check('repair guidance: the reason points at the evidence, not a raw log dump', /full output|log|\.amabie/i.test(reason) || reason.length <= 1200, `${reason.length} char(s)`);
   const again = driveHook(hooks[0], { active: true });
   const blocksAgain = again.decision !== null && again.decision !== 'UNPARSEABLE' && again.decision.decision === 'block';
   check('retry guard: stop_hook_active prevents a SECOND block', !blocksAgain, JSON.stringify(again.decision)?.slice(0, 160));
@@ -228,40 +228,40 @@ try {
   } else {
     const up = install(FROM_TARBALL);
     check('upgrade: the v1.3.0 artifact installs into the same prefix', up.status === 0, `npm exit ${up.status}`);
-    const oldVersion = canary(['--version']);
-    check('upgrade: the prefix now reports 1.3.0', (oldVersion.stdout ?? '').trim() === 'canary 1.3.0', (oldVersion.stdout ?? '').trim());
-    const oldSetup = canary(['setup', '--yes'], { cwd: REPO_DIR });
+    const oldVersion = amabie(['--version']);
+    check('upgrade: the prefix now reports 1.3.0', (oldVersion.stdout ?? '').trim() === 'amabie 1.3.0', (oldVersion.stdout ?? '').trim());
+    const oldSetup = amabie(['setup', '--yes'], { cwd: REPO_DIR });
     check('upgrade: v1.3.0 setup succeeds on the already-wired repo', oldSetup.status === 0, `exit ${oldSetup.status}`);
 
     const up2 = install(TARBALL);
     check('upgrade: the v1.4.0 candidate installs over it', up2.status === 0, `npm exit ${up2.status}`);
-    check('upgrade: the prefix reports 1.4.0', (canary(['--version']).stdout ?? '').trim() === `canary ${EXPECTED_VERSION}`);
+    check('upgrade: the prefix reports 1.4.0', (amabie(['--version']).stdout ?? '').trim() === `amabie ${EXPECTED_VERSION}`);
 
-    const reSetup = canary(['setup', '--yes'], { cwd: REPO_DIR });
+    const reSetup = amabie(['setup', '--yes'], { cwd: REPO_DIR });
     check('upgrade: setup after upgrade succeeds', reSetup.status === 0, `exit ${reSetup.status}`);
-    const hooksAfter = canaryStopHookCommands();
-    check('upgrade: NO duplicated Stop hook', hooksAfter.length === 1, `${hooksAfter.length} Canary hook command(s)`);
+    const hooksAfter = amabieStopHookCommands();
+    check('upgrade: NO duplicated Stop hook', hooksAfter.length === 1, `${hooksAfter.length} Amabie hook command(s)`);
     const settingsAfter = JSON.parse(fs.readFileSync(path.join(REPO_DIR, '.claude', 'settings.json'), 'utf8'));
     check('upgrade: the user-owned hook is still there exactly once',
       (JSON.stringify(settingsAfter.hooks?.Stop ?? []).match(/USER-OWNED-HOOK/g) ?? []).length === 1);
     const mcpAfter = JSON.parse(fs.readFileSync(path.join(REPO_DIR, '.mcp.json'), 'utf8'));
-    check('upgrade: NO duplicated MCP entries', Object.keys(mcpAfter.mcpServers ?? {}).filter((k) => k === 'canary').length <= 1,
-      `canary entries: ${Object.keys(mcpAfter.mcpServers ?? {}).filter((k) => k === 'canary').length}`);
+    check('upgrade: NO duplicated MCP entries', Object.keys(mcpAfter.mcpServers ?? {}).filter((k) => k === 'amabie').length <= 1,
+      `amabie entries: ${Object.keys(mcpAfter.mcpServers ?? {}).filter((k) => k === 'amabie').length}`);
     check('upgrade: the user MCP server survives', 'user-server' in (mcpAfter.mcpServers ?? {}));
-    check('upgrade: the config is still readable and reports the repo', /repo:/.test(canary(['status'], { cwd: REPO_DIR }).stdout ?? '') || canary(['status'], { cwd: REPO_DIR }).status !== 3);
+    check('upgrade: the config is still readable and reports the repo', /repo:/.test(amabie(['status'], { cwd: REPO_DIR }).stdout ?? '') || amabie(['status'], { cwd: REPO_DIR }).status !== 3);
   }
 
-  // ── 10. uninstall removes Canary's material and NOTHING else ─────────────
-  const un = canary(['uninstall'], { cwd: REPO_DIR });
-  check('`canary uninstall` succeeds', un.status === 0, `exit ${un.status}`);
+  // ── 10. uninstall removes Amabie's material and NOTHING else ─────────────
+  const un = amabie(['uninstall'], { cwd: REPO_DIR });
+  check('`amabie uninstall` succeeds', un.status === 0, `exit ${un.status}`);
   const hooksAfterUninstall = stopHookCommands();
-  check('uninstall: Canary\'s Stop hook is gone', !hooksAfterUninstall.some((h) => /checkpoint/.test(h)), JSON.stringify(hooksAfterUninstall).slice(0, 160));
+  check('uninstall: Amabie\'s Stop hook is gone', !hooksAfterUninstall.some((h) => /checkpoint/.test(h)), JSON.stringify(hooksAfterUninstall).slice(0, 160));
   const settingsFinal = fs.existsSync(path.join(REPO_DIR, '.claude', 'settings.json')) ? JSON.parse(fs.readFileSync(path.join(REPO_DIR, '.claude', 'settings.json'), 'utf8')) : null;
   check('uninstall: the user-owned Stop hook SURVIVES', JSON.stringify(settingsFinal?.hooks?.Stop ?? []).includes('USER-OWNED-HOOK'));
   check('uninstall: unrelated user permissions SURVIVE', JSON.stringify(settingsFinal?.permissions ?? {}) === JSON.stringify({ allow: ['Bash(ls:*)'] }));
   const mcpFinal = fs.existsSync(path.join(REPO_DIR, '.mcp.json')) ? JSON.parse(fs.readFileSync(path.join(REPO_DIR, '.mcp.json'), 'utf8')) : null;
   check('uninstall: the user MCP server SURVIVES', mcpFinal !== null && 'user-server' in (mcpFinal.mcpServers ?? {}));
-  check('uninstall: Canary\'s own state is removed', !fs.existsSync(path.join(REPO_DIR, '.canary')));
+  check('uninstall: Amabie\'s own state is removed', !fs.existsSync(path.join(REPO_DIR, '.amabie')));
 } catch (e) {
   failed += 1;
   console.log(`FAIL unexpected: ${String(e?.message ?? e)}`);

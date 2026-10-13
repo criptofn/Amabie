@@ -6,7 +6,7 @@ import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-native-bypasses-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-native-bypasses-'));
 const work = path.join(root, 'work'), store = path.join(root, 'trusted-store');
 fs.mkdirSync(work); fs.mkdirSync(store);
 fs.symlinkSync(store, path.join(work, 'escape'), 'junction');

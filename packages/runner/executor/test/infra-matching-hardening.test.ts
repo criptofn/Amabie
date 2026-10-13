@@ -21,7 +21,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { parseSummaryCounts } from '@canary-rn/comparator';
+import { parseSummaryCounts } from '@amabie/comparator';
 
 import { isInfraOutput, hasRunnerSummary, hasCrashSignature } from '../src/index.js';
 

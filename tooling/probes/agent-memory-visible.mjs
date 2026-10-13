@@ -6,11 +6,11 @@
  * carry guidance the other arm does not. `--setting-sources project,local` removes user SETTINGS
  * (hooks, plugins, the API env block, which the harness forwards explicitly), but the machine also
  * has a global `~/.claude/CLAUDE.md` — agent MEMORY, a different mechanism — and that file mentions
- * Canary and says to "avoid redundant self-verification when deterministic project tooling or
- * Canary can perform the same check independently". That is, almost word for word, the instruction
+ * Amabie and says to "avoid redundant self-verification when deterministic project tooling or
+ * Amabie can perform the same check independently". That is, almost word for word, the instruction
  * the `invisible` arm is supposed to be measured against.
  *
- * MEASURED evidence that this is not hypothetical: one plain-arm trial invoked `canary status`
+ * MEASURED evidence that this is not hypothetical: one plain-arm trial invoked `amabie status`
  * (bench-r6-cross-file-refactor-plain-1), a command nothing in that fixture mentions.
  *
  * This probe asks the model itself, in a throwaway project, whether it was given project-specific
@@ -27,10 +27,10 @@
  * cannot be used here.
  *
  * What that means for the token claim, stated where it belongs: BOTH arms see this memory, so the
- * arm-to-arm comparison stays internally valid — but the "plain" arm is not a Canary-naive user.
- * It already carries "avoid redundant self-verification when deterministic project tooling or Canary
+ * arm-to-arm comparison stays internally valid — but the "plain" arm is not a Amabie-naive user.
+ * It already carries "avoid redundant self-verification when deterministic project tooling or Amabie
  * can perform the same check independently", i.e. a rough paraphrase of the invisible arm's own
- * instruction, and one plain trial really did invoke `canary status`. If anything that makes the
+ * instruction, and one plain trial really did invoke `amabie status`. If anything that makes the
  * measured saving an UNDER-estimate of what a naive user would see, and it is reported as such.
  *
  * Usage: node tooling/probes/agent-memory-visible.mjs
@@ -66,7 +66,7 @@ const PROMPT = [
 ].join(' ');
 
 function project() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-memory-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-memory-'));
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'memory-probe', private: true }, null, 2)}\n`);
   return root;
 }
@@ -76,7 +76,7 @@ function session({ redirectHome }) {
   const { env, keys } = forwardedEnv();
   const childEnv = { ...env };
   if (redirectHome) {
-    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-fakehome-'));
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fakehome-'));
     childEnv.HOME = fakeHome;
     childEnv.USERPROFILE = fakeHome;
     childEnv.HOMEDRIVE = path.parse(fakeHome).root.replace(/\\$/, '');
@@ -98,7 +98,7 @@ function session({ redirectHome }) {
   return { status: r.status, stderr: (r.stderr ?? '').trim(), sawResult: result !== null, tokens, text, keys };
 }
 
-const REAL_MEMORY_MARKERS = [/canary-reliability-network/i, /stop gate/i, /worktree/i, /redundant self-verification/i, /Canary/i];
+const REAL_MEMORY_MARKERS = [/amabie-reliability-network/i, /stop gate/i, /worktree/i, /redundant self-verification/i, /Amabie/i];
 
 console.log('run A — the benchmark environment as it is today');
 const a = session({ redirectHome: false });
@@ -121,7 +121,7 @@ check('1. the run is usable at all (a baseline cannot be measured if the arm can
 
 check('2. the confound is REPORTED, whichever way it falls', () => {
   console.log(aHits.length > 0
-    ? `      → MEASURED: the plain arm can see machine-global agent memory (${aHits.join(', ')}); the baseline is therefore not neutral and the token delta is measured against a baseline that already knows about Canary`
+    ? `      → MEASURED: the plain arm can see machine-global agent memory (${aHits.join(', ')}); the baseline is therefore not neutral and the token delta is measured against a baseline that already knows about Amabie`
     : '      → no global memory surfaced in this run; the baseline looks clean here (one run, one model — not proof)');
 });
 

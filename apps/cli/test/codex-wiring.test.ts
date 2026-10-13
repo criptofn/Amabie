@@ -1,19 +1,19 @@
 /**
  * v1.4 §C — OpenAI Codex CLI is a SECOND gating adapter, wired by `setup`, pruned by `uninstall`.
  *
- * The risk this file pins is not whether the hook works — the hook IS the same `canary checkpoint`
+ * The risk this file pins is not whether the hook works — the hook IS the same `amabie checkpoint`
  * Claude Code already runs, and `tooling/probes/v14-codex-stop-hook.mjs` drives it exactly as Codex
- * documents it. The risk is that gating a second harness makes Canary write ONE MORE FILE into a
+ * documents it. The risk is that gating a second harness makes Amabie write ONE MORE FILE into a
  * user's repository, and that `.codex/hooks.json` is a file the USER may already own. So every
  * property the Claude Code writer already has must hold here, and the failure directions matter:
  *
  *   - a stranger's hook, matcher group, event or top-level key is never touched;
  *   - only commands THIS installation recorded for THIS file are ever pruned, so a user's own
- *     `canary checkpoint` line (or another installation's) is not mistaken for ours;
+ *     `amabie checkpoint` line (or another installation's) is not mistaken for ours;
  *   - a re-run is byte-identical and never stacks a second handler;
  *   - a link — the file, or the whole `.codex/` layer — is refused with nothing written;
- *   - `uninstall` removes exactly Canary's handler, and deletes the file only when Canary's entry was
- *     the only thing in a file Canary created.
+ *   - `uninstall` removes exactly Amabie's handler, and deletes the file only when Amabie's entry was
+ *     the only thing in a file Amabie created.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -21,11 +21,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 import {
-  buildHookCommand, codexHooksPath, hasCanaryEntry, installCodexStopHook, ownedCommandsFor,
-  uninstallHooks, type CanaryConfig,
+  buildHookCommand, codexHooksPath, hasAmabieEntry, installCodexStopHook, ownedCommandsFor,
+  uninstallHooks, type AmabieConfig,
 } from '../src/onboarding.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
@@ -33,7 +33,7 @@ const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-codex-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-codex-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 let seq = 0;
@@ -43,9 +43,9 @@ const repo = (): string => {
   return root;
 };
 /** The command under test: built by the SAME builder the Claude Code hook uses (no second shapes). */
-const COMMAND = buildHookCommand('C:\\fake\\canary\\main.js') as string;
+const COMMAND = buildHookCommand('C:\\fake\\amabie\\main.js') as string;
 const OTHER = 'node "C:\\fake\\other\\main.js" checkpoint';
-const backups = (root: string): string => path.join(root, '.canary', 'backups');
+const backups = (root: string): string => path.join(root, '.amabie', 'backups');
 const read = (root: string): Record<string, unknown> => JSON.parse(fs.readFileSync(codexHooksPath(root), 'utf8')) as Record<string, unknown>;
 const write = (root: string, doc: unknown): void => {
   fs.mkdirSync(path.dirname(codexHooksPath(root)), { recursive: true });
@@ -67,7 +67,7 @@ const strangerDoc = (): Record<string, unknown> => ({
 });
 
 describe('v1.4 Codex wiring: the Stop hook is written into the project layer, once', () => {
-  it('writes exactly one Stop handler running THIS Canary, with a bounded timeout and a status message', () => {
+  it('writes exactly one Stop handler running THIS Amabie, with a bounded timeout and a status message', () => {
     const root = repo();
     const res = installCodexStopHook(root, COMMAND, new Set(), backups(root));
     assert.equal(res.ok, true, res.problem);
@@ -80,7 +80,7 @@ describe('v1.4 Codex wiring: the Stop hook is written into the project layer, on
       type: 'command',
       command: COMMAND,
       timeout: 1800,
-      statusMessage: "Canary is running this project's sealed checks",
+      statusMessage: "Amabie is running this project's sealed checks",
     });
     assert.match(COMMAND, /checkpoint$/, 'the hook runs the ONE existing checkpoint entry point');
   });
@@ -102,7 +102,7 @@ describe('v1.4 Codex wiring: the Stop hook is written into the project layer, on
     assert.equal(handlers[1]!.command, COMMAND);
   });
 
-  it('a re-run is byte-identical and never stacks a second Canary handler', () => {
+  it('a re-run is byte-identical and never stacks a second Amabie handler', () => {
     const root = repo();
     write(root, strangerDoc());
     installCodexStopHook(root, COMMAND, new Set(), backups(root));
@@ -190,12 +190,12 @@ describe('v1.4 Codex wiring: nothing is written through a link, and never outsid
 });
 
 describe('v1.4 Codex wiring: uninstall undoes exactly what setup did', () => {
-  const config = (root: string, touched: CanaryConfig['touched']): CanaryConfig => ({
+  const config = (root: string, touched: AmabieConfig['touched']): AmabieConfig => ({
     version: 'product-0.1', installedAt: '2026-01-01T00:00:00.000Z', pm: 'npm', plan: [],
     cliPath: CLI, hookCommand: COMMAND, hookCommands: [COMMAND], codexHookCommands: [COMMAND], touched,
   });
 
-  it("removes Canary's handler and keeps the user's, leaving the file in place", () => {
+  it("removes Amabie's handler and keeps the user's, leaving the file in place", () => {
     const root = repo();
     write(root, strangerDoc());
     const res = installCodexStopHook(root, COMMAND, new Set(), backups(root));
@@ -212,7 +212,7 @@ describe('v1.4 Codex wiring: uninstall undoes exactly what setup did', () => {
     const res = installCodexStopHook(root, COMMAND, new Set(), backups(root));
     const out = uninstallHooks(root, config(root, [res.touched!]));
     assert.equal(out.removed, 1);
-    assert.equal(fs.existsSync(codexHooksPath(root)), false, 'a file Canary created and emptied is removed');
+    assert.equal(fs.existsSync(codexHooksPath(root)), false, 'a file Amabie created and emptied is removed');
   });
 
   it('keeps a file the USER already had, even when our handler was the only thing in it', () => {
@@ -228,12 +228,12 @@ describe('v1.4 Codex wiring: uninstall undoes exactly what setup did', () => {
 
   it('ownership is the recorded COMMAND, not the file: a stranger running the same tool is untouched', () => {
     const root = repo();
-    // A user's own handler that runs a DIFFERENT canary/checkpoint program must survive; only the
+    // A user's own handler that runs a DIFFERENT amabie/checkpoint program must survive; only the
     // exact recorded command is ours. (The `mcp-wiring` file pins the same rule for argv signatures.)
     write(root, { hooks: { Stop: [{ hooks: [{ type: 'command', command: OTHER }] }] } });
     const res = installCodexStopHook(root, COMMAND, new Set(), backups(root));
     assert.equal(res.ok, true, res.problem);
-    assert.equal(hasCanaryEntry(strangerDoc(), new Set([COMMAND])), false, 'the key name proves nothing');
+    assert.equal(hasAmabieEntry(strangerDoc(), new Set([COMMAND])), false, 'the key name proves nothing');
     const out = uninstallHooks(root, config(root, [res.touched!]));
     assert.equal(out.removed, 1);
     assert.deepEqual(stopHandlers(root).map((h) => h.command), [OTHER]);
@@ -242,7 +242,7 @@ describe('v1.4 Codex wiring: uninstall undoes exactly what setup did', () => {
   it('a config with no Codex ownership record prunes nothing here (separate list, separate file)', () => {
     const root = repo();
     const res = installCodexStopHook(root, COMMAND, new Set(), backups(root));
-    const legacy = { ...config(root, [res.touched!]) } as CanaryConfig;
+    const legacy = { ...config(root, [res.touched!]) } as AmabieConfig;
     delete legacy.codexHookCommands;
     const out = uninstallHooks(root, legacy);
     assert.equal(out.removed, 0, 'a record that never named this file leaves it alone');
@@ -267,7 +267,7 @@ describe('v1.4 Codex wiring: setup wires it, agents reports it honestly, uninsta
    */
   const HOME = path.join(TMP, 'empty-home');
   fs.mkdirSync(HOME, { recursive: true });
-  const canary = (args: string[], cwd: string) => spawnSync(process.execPath, [CLI, ...args], {
+  const amabie = (args: string[], cwd: string) => spawnSync(process.execPath, [CLI, ...args], {
     cwd, encoding: 'utf8', timeout: 120_000,
     env: { ...process.env, USERPROFILE: HOME, HOME },
   });
@@ -284,48 +284,48 @@ describe('v1.4 Codex wiring: setup wires it, agents reports it honestly, uninsta
 
   it('setup writes the Codex hook when Codex is the harness, and says the trust step out loud', () => {
     const root = project('codex-only');
-    const s = canary(['setup', '--yes'], root);
+    const s = amabie(['setup', '--yes'], root);
     assert.equal(s.status, 0, s.stdout + s.stderr);
     assert.equal(stopHandlers(root).filter((h) => h.command === (buildHookCommand(CLI) as string)).length, 1);
     // the trust requirement is REAL friction and is never left implicit
     assert.match(s.stdout, /will NOT run it until you review and trust it once/);
     assert.match(s.stdout, /\/hooks/);
     // and setup must not claim the harness that is not here
-    assert.doesNotMatch(s.stdout, /Claude Code will run Canary automatically/);
+    assert.doesNotMatch(s.stdout, /Claude Code will run Amabie automatically/);
   });
 
   it('agents reports GATED with the trust step on the row, and doctor/status stay green', () => {
     const root = project('codex-agents');
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
-    const a = canary(['agents'], root);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
+    const a = amabie(['agents'], root);
     assert.equal(a.status, 0, a.stdout);
     assert.match(a.stdout, /GATED\s+OpenAI Codex CLI/);
     assert.match(a.stdout, /hook installed here/);
     assert.match(a.stdout, /one-time review and trust/);
     assert.match(a.stdout, /CONNECTED/);
-    const env = JSON.parse(canary(['agents', '--json'], root).stdout) as {
+    const env = JSON.parse(amabie(['agents', '--json'], root).stdout) as {
       integrations: Array<{ id: string; gating: boolean; gatingMeasured?: boolean; gatingNeedsTrust?: string }>;
     };
     const codex = env.integrations.find((i) => i.id === 'codex');
     assert.equal(codex?.gating, true);
     assert.equal(codex?.gatingMeasured, true, 'measured, not merely documented');
     assert.match(String(codex?.gatingNeedsTrust), /trust/);
-    assert.equal(canary(['status'], root).status, 0);
-    assert.equal(canary(['doctor'], root).status, 0);
+    assert.equal(amabie(['status'], root).status, 0);
+    assert.equal(amabie(['doctor'], root).status, 0);
   });
 
   it('uninstall removes the handler and the file setup created, and nothing else', () => {
     const root = project('codex-uninstall');
     // a user hook that must survive the whole round trip
     write(root, { hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo user-hook' }] }] } });
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
     assert.equal(stopHandlers(root).length, 2);
-    const u = canary(['uninstall'], root);
+    const u = amabie(['uninstall'], root);
     assert.equal(u.status, 0, u.stdout + u.stderr);
     assert.deepEqual(stopHandlers(root).map((h) => h.command), ['echo user-hook']);
-    assert.equal(fs.existsSync(codexHooksPath(root)), true, 'the user had this file before Canary did');
-    assert.equal(fs.existsSync(path.join(root, '.canary')), false);
-    assert.equal(canary(['uninstall'], root).status, 0, 'a second uninstall is safe');
+    assert.equal(fs.existsSync(codexHooksPath(root)), true, 'the user had this file before Amabie did');
+    assert.equal(fs.existsSync(path.join(root, '.amabie')), false);
+    assert.equal(amabie(['uninstall'], root).status, 0, 'a second uninstall is safe');
   });
 
   /**
@@ -342,7 +342,7 @@ describe('v1.4 Codex wiring: setup wires it, agents reports it honestly, uninsta
       name: 'claude-only', scripts: { test: `node "${path.join(FIXTURES, 'f-pass.js')}"` },
     }, null, 2));
     spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
-    const s = canary(['setup', '--yes'], root);
+    const s = amabie(['setup', '--yes'], root);
     assert.equal(s.status, 0, s.stdout + s.stderr);
     assert.equal(fs.existsSync(path.join(root, '.codex')), false, 'no Codex layer may be created for a Codex-less repo');
     assert.doesNotMatch(s.stdout, /Codex/, 'a Claude-only setup must not talk about Codex');
@@ -351,7 +351,7 @@ describe('v1.4 Codex wiring: setup wires it, agents reports it honestly, uninsta
     };
     assert.deepEqual(doc.hooks.Stop, [{ hooks: [{ type: 'command', command: buildHookCommand(CLI), timeout: 1800 }] }],
       'the Claude entry keeps its exact 1.3 shape');
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8')) as CanaryConfig & { codexHookCommands?: string[] };
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8')) as AmabieConfig & { codexHookCommands?: string[] };
     assert.equal(cfg.codexHookCommands, undefined, 'no Codex ownership record is written');
     assert.deepEqual(cfg.touched.map((t) => t.kind ?? 'hooks'), ['hooks', 'mcp'], 'exactly the two files 1.3 wrote');
   });

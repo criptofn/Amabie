@@ -9,14 +9,14 @@
  * be MEASURED, because the answer decides whether a strong label is reachable:
  *
  *   Rust: does stable libtest expose an EVENT stream (a per-test machine-readable
- *         record Canary could re-count), or only a text summary? A text summary is
+ *         record Amabie could re-count), or only a text summary? A text summary is
  *         a CLAIM; if that is all there is, the adapter must stay
  *         INCONCLUSIVE_ONLY and say exactly why.
- *         Also: is CARGO_TARGET_<TRIPLE>_RUNNER honored, i.e. can Canary own the
+ *         Also: is CARGO_TARGET_<TRIPLE>_RUNNER honored, i.e. can Amabie own the
  *         launch of each test binary?
  *   Go:   `go test -json` is a documented event stream — test whether it is
  *         emitted and parseable per test, and whether `go test -exec=<shim>`
- *         lets Canary own the test-binary launch.
+ *         lets Amabie own the test-binary launch.
  *
  * The probe asserts only FACTS it then relies on, prints all of them, and exits
  * non-zero if a fact it needs is not true. It never installs anything and never
@@ -45,7 +45,7 @@ const CARGO = path.join(TC, 'rust', 'cargo', 'bin', process.platform === 'win32'
 const CARGO_HOME = path.join(TC, 'rust', 'cargo');
 const RUSTUP_HOME = path.join(TC, 'rust', 'rustup');
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-rustgo-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-rustgo-'));
 
 const goEnv = {
   GOROOT: path.join(TC, 'go'),
@@ -75,7 +75,7 @@ assert(hostTriple !== undefined, `could not read the host triple from rustc -vV:
 
 const crate = path.join(TMP, 'rustcrate');
 fs.mkdirSync(path.join(crate, 'src'), { recursive: true });
-fs.writeFileSync(path.join(crate, 'Cargo.toml'), '[package]\nname = "canary_probe"\nversion = "0.1.0"\nedition = "2021"\n');
+fs.writeFileSync(path.join(crate, 'Cargo.toml'), '[package]\nname = "amabie_probe"\nversion = "0.1.0"\nedition = "2021"\n');
 fs.writeFileSync(path.join(crate, 'src', 'lib.rs'), [
   'pub fn add(a: i32, b: i32) -> i32 { a + b }',
   '',
@@ -150,7 +150,7 @@ if (rustBuildable) {
     assert(/unstable|json/i.test(jsonOut), `the refusal should name the unstable format: ${jsonOut.slice(0, 400)}`);
   });
 
-  // Can Canary own the launch of each test binary? The runner key is per TARGET
+  // Can Amabie own the launch of each test binary? The runner key is per TARGET
   // triple, so it must be the triple the BUILD used — not rustc's default host
   // (this host has no MSVC linker, so the build ran on the GNU toolchain, and the
   // first run of this probe used the MSVC key and wrongly concluded "not honored").
@@ -168,8 +168,8 @@ if (rustBuildable) {
   console.log(`-- ${runnerKey}=<shim> (exit ${withRunner.status}) -- shim invoked: ${shimRan}`);
   if (shimRan) console.log(fs.readFileSync(shimLog, 'utf8').trim().split('\n').slice(0, 2).join('\n'));
 
-  check('MEASURED: cargo honors a Canary-owned runner shim (so Canary can own the test-binary launch)', () => {
-    assert(shimRan, `${runnerKey} was not honored — Canary cannot intercept the test-binary launch this way`);
+  check('MEASURED: cargo honors a Amabie-owned runner shim (so Amabie can own the test-binary launch)', () => {
+    assert(shimRan, `${runnerKey} was not honored — Amabie cannot intercept the test-binary launch this way`);
     assert(withRunner.status === 0, `the run through the shim must still pass: ${((withRunner.stdout ?? '') + (withRunner.stderr ?? '')).slice(-400)}`);
   });
 } else {
@@ -186,7 +186,7 @@ console.log((goV.stdout ?? '').trim());
 
 const mod = path.join(TMP, 'gomod');
 fs.mkdirSync(mod, { recursive: true });
-fs.writeFileSync(path.join(mod, 'go.mod'), 'module example.com/canaryprobe\n\ngo 1.22\n');
+fs.writeFileSync(path.join(mod, 'go.mod'), 'module example.com/amabieprobe\n\ngo 1.22\n');
 fs.writeFileSync(path.join(mod, 'lib.go'), 'package probe\n\nfunc Add(a, b int) int { return a + b }\n');
 fs.writeFileSync(path.join(mod, 'lib_test.go'), [
   'package probe',
@@ -215,14 +215,14 @@ const skipEvents = events.filter((e) => e.Action === 'skip' && typeof e.Test ===
 console.log(`\n-- go test -json (exit ${goJson.status}) -- events=${events.length} test-pass=${passEvents.length} test-skip=${skipEvents.length}`);
 console.log(`  pass ids: ${passEvents.map((e) => e.Test).join(', ')}`);
 
-check('MEASURED: go test -json emits a per-test event stream Canary can independently re-count', () => {
+check('MEASURED: go test -json emits a per-test event stream Amabie can independently re-count', () => {
   assert(goJson.status === 0, `go test -json failed: ${((goJson.stdout ?? '') + (goJson.stderr ?? '')).slice(-500)}`);
   assert(passEvents.length === 2, `expected 2 per-test pass events, got ${passEvents.length}`);
   assert(skipEvents.length === 1, `expected 1 per-test skip event, got ${skipEvents.length}`);
   assert(passEvents.every((e) => typeof e.Test === 'string' && e.Test !== ''), 'each pass event must name its test');
 });
 
-// Can Canary own the test-binary launch in Go?
+// Can Amabie own the test-binary launch in Go?
 const goShimLog = path.join(TMP, 'go-shim-ran.txt');
 const goShim = path.join(TMP, 'go-shim.cmd');
 fs.writeFileSync(goShim, `@echo off\r\necho %* >> "${goShimLog}"\r\n%*\r\n`);
@@ -231,20 +231,20 @@ const goShimRan = fs.existsSync(goShimLog);
 console.log(`\n-- go test -exec=<shim> (exit ${withExec.status}) -- shim invoked: ${goShimRan}`);
 if (goShimRan) console.log(fs.readFileSync(goShimLog, 'utf8').trim().split('\n').slice(0, 2).join('\n'));
 
-check('MEASURED: go test -exec honors a Canary-owned shim (Canary can own the test-binary launch)', () => {
-  assert(goShimRan, '-exec was not honored — Canary cannot intercept the test-binary launch this way');
+check('MEASURED: go test -exec honors a Amabie-owned shim (Amabie can own the test-binary launch)', () => {
+  assert(goShimRan, '-exec was not honored — Amabie cannot intercept the test-binary launch this way');
   assert(withExec.status === 0, `the run through the shim must still pass: ${((withExec.stdout ?? '') + (withExec.stderr ?? '')).slice(-400)}`);
 });
 
 const SKIPS = [];
-// ═══════════ can Canary's SANITIZED environment run these toolchains? ═══════════
-// A toolchain that only works with the caller's environment is useless to Canary:
+// ═══════════ can Amabie's SANITIZED environment run these toolchains? ═══════════
+// A toolchain that only works with the caller's environment is useless to Amabie:
 // verification children get `sanitizedEnv` — PATH = the Node install dir plus the
 // OS dirs, HOME/USERPROFILE redirected to an isolated workspace dir, and nothing
 // else. This is the decisive fact for whether a Rust or Go step can run at all,
 // and it is the same class of question that made bare `git` fail inside a sealed
 // step earlier in this project. Measured, not assumed.
-console.log('\n=== under a sanitized environment (what a Canary step actually gets) ===');
+console.log('\n=== under a sanitized environment (what a Amabie step actually gets) ===');
 const isolatedHome = path.join(TMP, 'isolated-home');
 fs.mkdirSync(isolatedHome, { recursive: true });
 const sanitized = (extra = {}) => ({
@@ -280,7 +280,7 @@ if (cargoDirect !== null) {
 console.log(`\nRESULT: go usable in a sanitized env: ${goSanitizedOk}; `
   + `cargo via rustup proxy: ${cargoProxy.status === 0}; `
   + `cargo direct: ${cargoDirect === null ? 'not present' : String(cargoDirect.status === 0)}`);
-console.log('This is what decides whether a Go/Rust step can run INSIDE Canary, as opposed to');
+console.log('This is what decides whether a Go/Rust step can run INSIDE Amabie, as opposed to');
 console.log('on a developer shell: a toolchain that needs the caller\'s HOME is not runnable by a step.');
 
 // ═════ the PROPOSED fixes, measured BEFORE any product code is written ═════
@@ -299,7 +299,7 @@ const fixedEvents = (goJsonFixed?.stdout ?? '').split('\n').filter((l) => l.trim
   .filter((e) => e !== null && e.Action === 'pass' && typeof e.Test === 'string');
 console.log(`-- go test -json with the declared cache (exit ${goJsonFixed?.status ?? 'not run'}) -- per-test pass events: ${fixedEvents.length}`);
 
-check('MEASURED: a workspace-scoped GOCACHE/GOPATH makes Go runnable inside a Canary step', () => {
+check('MEASURED: a workspace-scoped GOCACHE/GOPATH makes Go runnable inside a Amabie step', () => {
   assert(goFixed.status === 0, 'the proposed Go declaration does not make go runnable under the sanitized env — the adapter fix would not work');
   assert(goJsonFixed !== null && goJsonFixed.status === 0, 'the fixed env must also work with -json');
   assert(fixedEvents.length === 2, `expected 2 per-test pass events with the fixed env, got ${fixedEvents.length}`);
@@ -311,6 +311,6 @@ console.log(`  node tooling/toolchains.mjs rust && node tooling/probes/runner-ch
 console.log(`  (it measures whether stable libtest exposes a per-test event stream and whether`);
 console.log(`   CARGO_TARGET_<TRIPLE>_RUNNER is honored — the two facts the Rust adapter rests on)`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 || process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 || process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 if (failures > 0) process.exit(1);
 process.exit(rustSkipped > 0 ? 3 : 0);

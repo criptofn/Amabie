@@ -40,10 +40,10 @@ const LEVEL = String(flag('level', 'low'));
 const AS_JSON = argv.includes('--json');
 
 const primitive = observeIntegrityPrimitive();
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-attacks-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-attacks-'));
 const authorityDir = path.join(root, 'authority');
 const authorityFile = path.join(authorityDir, 'sealed-baseline.json');
-const authorityBin = path.join(authorityDir, 'canary-authority.js');
+const authorityBin = path.join(authorityDir, 'amabie-authority.js');
 const workerScratch = path.join(root, 'worker-scratch');
 const evidenceDir = path.join(root, 'evidence');
 
@@ -132,7 +132,7 @@ try {
   fs.mkdirSync(evidenceDir, { recursive: true });
   applyAuthorityLabel(workerScratch, 'low');
   applyAuthorityLabel(evidenceDir, 'low');
-  fs.writeFileSync(authorityFile, JSON.stringify({ schema: 'canary-plan-seal/1', plan: ['test'] }));
+  fs.writeFileSync(authorityFile, JSON.stringify({ schema: 'amabie-plan-seal/1', plan: ['test'] }));
   fs.writeFileSync(authorityBin, "process.stdout.write('authority')");
   fs.mkdirSync(path.join(authorityDir, 'evidence'), { recursive: true });
   fs.writeFileSync(path.join(authorityDir, 'evidence', 'checkpoint.log'), 'trusted evidence');
@@ -299,7 +299,7 @@ try {
     notAddressed: notAddressed.map((r) => r.id),
     results,
   };
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-boundary-attacks.json'), JSON.stringify(record, null, 2));
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-boundary-attacks.json'), JSON.stringify(record, null, 2));
   if (AS_JSON) console.log(JSON.stringify(record, null, 2));
 
   process.exitCode = addressed.length === 8 && failed.length === 0 && controlsOk ? 0 : 1;

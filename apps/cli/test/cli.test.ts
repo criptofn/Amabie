@@ -10,7 +10,7 @@
  * Post-GLM migration (same idiom as pipeline-e2e.test.ts): the stub fixture
  * STAGES its fake node_modules (AM-2 refuses a fixture that SHIPS one), the
  * prepare step materializes it after the audit AND lands the hash-pinned
- * Canary mocha double, and the test command runs through $bin:mocha — so the
+ * Amabie mocha double, and the test command runs through $bin:mocha — so the
  * CONFIRMED_REGRESSION bundle the CLI consumes carries REAL VALID
  * observations (rule 14 makes prose-only runs structurally unable to earn a
  * strong label). The exit-code/rendering assertions themselves are unchanged.
@@ -24,7 +24,7 @@ import { after, describe, it } from 'node:test';
 
 import { runExperiment } from '../src/pipeline.js';
 import { actualHostFingerprint } from '../src/prove.js';
-import { sha256hex } from '@canary-rn/hashing';
+import { sha256hex } from '@amabie/hashing';
 import {
   writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript,
   WIDGET_PKGS, assertDoubleObservation,
@@ -34,7 +34,7 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..'); // dist/
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-cli-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-cli-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FAKE_SHA = 'a'.repeat(40);
@@ -44,7 +44,7 @@ const cli = (repoRoot: string, args: string[]) =>
   spawnSync(NODE, [CLI, ...args], { cwd: repoRoot, encoding: 'utf8', timeout: 120_000 });
 
 /** Post-AM-2 stub: fake deps are STAGED (stub-payload/) and the generated
- *  prepare stager materializes them + the Canary mocha double after the
+ *  prepare stager materializes them + the Amabie mocha double after the
  *  audit; test.js is a real mocha spec (widget@1 green, widget@2 fails
  *  exactly 'candidate breaks widget'). */
 function writeStub(stub: string): void {
@@ -77,9 +77,9 @@ async function stage(): Promise<{ repoRoot: string; specPath: string; artifactsD
   };
   // Round-3 B4: the fetch seam must declare the REAL digest of its bytes —
   // the prove/check gate re-hashes the retained fixture.tgz (verifyRunIdentity).
-  const blob = Buffer.from('canary-cli-stub-tarball');
+  const blob = Buffer.from('amabie-cli-stub-tarball');
   const result = await runExperiment(spec, repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ bytes: blob, sha256: sha256hex(blob) }),
     extract: (_t, wsRoot) => fs.cpSync(stub, path.join(wsRoot, `downstream-${FAKE_SHA}`), { recursive: true }),
   });
@@ -118,7 +118,7 @@ describe('audit M8 — CLI subprocess exit-code contract', () => {
     const { repoRoot, specPath } = await stage();
     const r = cli(repoRoot, ['check', specPath]);
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /CANARY REGRESSION PROOF: PASS/);
+    assert.match(r.stdout, /AMABIE REGRESSION PROOF: PASS/);
   });
 
   it('check on a tampered artifact exits 3 and names the tampered file', async () => {
@@ -167,14 +167,71 @@ describe('audit M8 — CLI subprocess exit-code contract', () => {
     assert.match(html, /candidate breaks widget/);
   });
 
-  it('version exits 0; no command prints usage and exits 3 (misuse)', () => {
+  it('help exits 0; no command and unknown commands remain misuse', () => {
     const repoRoot = fs.mkdtempSync(path.join(TMP, 'bare-'));
     const v = cli(repoRoot, ['version']);
     assert.equal(v.status, 0);
-    assert.match(v.stdout, /canary \d+\.\d+\.\d+/);
+    assert.match(v.stdout, /amabie \d+\.\d+\.\d+/);
+    for (const flag of ['--help', '-h']) {
+      const help = cli(repoRoot, [flag]);
+      assert.equal(help.status, 0, help.stdout + help.stderr);
+      assert.match(help.stdout, /usage:/);
+      assert.match(help.stdout, /MCP defaults to four everyday tools; expert adds work\/finish/);
+      assert.match(help.stdout, /the ISOLATED expert path/);
+      assert.match(help.stdout, /Task registration only adds duties/);
+      assert.match(help.stdout, /LOCAL does not isolate same-UID workers from CLI bind\/setup/);
+      assert.doesNotMatch(help.stdout, /the ORDINARY path/);
+      assert.doesNotMatch(help.stdout, /\r?\n(?:NOT CONNECTED|NEEDS ATTENTION|CONNECTED) —/);
+    }
     const none = cli(repoRoot, []);
     assert.equal(none.status, 3);
     assert.match(none.stdout, /usage:/);
+    const unknown = cli(repoRoot, ['not-a-command']);
+    assert.equal(unknown.status, 3);
+    assert.match(unknown.stdout, /usage:/);
+    const mcpHelp = cli(repoRoot, ['mcp', '--help']);
+    assert.equal(mcpHelp.status, 0, mcpHelp.stdout + mcpHelp.stderr);
+    assert.match(mcpHelp.stderr, /usage: amabie mcp/);
+  });
+
+  it('subcommand help never runs setup or writes project files', () => {
+    const root = fs.mkdtempSync(path.join(TMP, 'setup-help-'));
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node smoke.cjs' } }));
+    fs.writeFileSync(path.join(root, 'smoke.cjs'), "require('node:fs').writeFileSync('setup-ran.txt', 'ran');\n");
+    const init = spawnSync('git', ['init', '-b', 'main'], { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.equal(init.status, 0, init.stdout + init.stderr);
+    const help = spawnSync(NODE, [CLI, 'setup', '--help'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+      windowsHide: true,
+      env: { ...process.env, AMABIE_TRUST_STORE: path.join(root, 'trust-store') },
+    });
+    assert.equal(help.status, 0, help.stdout + help.stderr);
+    assert.match(help.stdout, /usage:/);
+    assert.equal(fs.existsSync(path.join(root, 'setup-ran.txt')), false);
+    assert.equal(fs.existsSync(path.join(root, '.amabie')), false);
+    assert.equal(fs.existsSync(path.join(root, '.mcp.json')), false);
+  });
+
+  it('verbose version identifies the runtime and entry bytes without changing the plain contract or project', () => {
+    const root = fs.mkdtempSync(path.join(TMP, 'version-details-'));
+    fs.writeFileSync(path.join(root, 'package.json'), '{"scripts":{"test":"must never run"}}');
+    const original = fs.readFileSync(path.join(root, 'package.json'));
+    const plain = cli(root, ['--version']);
+    assert.equal(plain.status, 0);
+    assert.match(plain.stdout, /^amabie \d+\.\d+\.\d+\r?\n$/);
+    for (const args of [['version', '--verbose'], ['--version', '--verbose']]) {
+      const detailed = cli(root, args);
+      assert.equal(detailed.status, 0, detailed.stderr);
+      assert.equal(detailed.stdout.split(/\r?\n/)[0], plain.stdout.trim());
+      assert.ok(detailed.stdout.includes(`Node: ${process.version} (${process.platform}/${process.arch})`));
+      assert.ok(detailed.stdout.includes(`Runtime: ${JSON.stringify(process.execPath)}`));
+      assert.ok(detailed.stdout.includes(`CLI entry: ${JSON.stringify(CLI)}`));
+      assert.ok(detailed.stdout.includes(`CLI entry SHA-256: ${sha256hex(fs.readFileSync(CLI))}`));
+      assert.deepEqual(fs.readdirSync(root), ['package.json']);
+      assert.deepEqual(fs.readFileSync(path.join(root, 'package.json')), original);
+    }
   });
 
   it('round-3 secondary: an infrastructure abort exits 2 (environment fault), never 3 (misuse)', async () => {
@@ -187,7 +244,7 @@ describe('audit M8 — CLI subprocess exit-code contract', () => {
     const spec = {
       schema: 2, id: 'stub-infra',
       dependency: { package: 'widget', baseline: '1.0.0', candidate: '2.0.0' },
-      downstream: { repo: 'stub/downstream-does-not-exist-canary-fixture', commit: FAKE_SHA },
+      downstream: { repo: 'stub/downstream-does-not-exist-amabie-fixture', commit: FAKE_SHA },
       commands: {
         prepare: [['node', '-e', 'process.exit(4);']],
         swap: ['node', 'swap.js', '{candidate}'],

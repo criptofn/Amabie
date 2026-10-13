@@ -1,8 +1,9 @@
 /**
- * Productization surface: `canary setup | doctor | uninstall | checkpoint`.
+ * Productization surface: `amabie setup | doctor | uninstall | checkpoint`.
  *
  * Doctrine (the NO PROOF, NO DONE rule applied to onboarding itself):
- *  - Verdict vocabulary is exactly READY / NEEDS ATTENTION / UNSUPPORTED.
+ *  - Full-gate verdicts are READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED.
+ *    A selected-check diagnostic uses PARTIAL and can never certify completion.
  *    READY is printed ONLY when the protection wiring was verified to exist
  *    AND the detected checks were executed and passed in this setup run.
  *    Nothing was ever executed => not READY. A guessed command that was never
@@ -11,35 +12,35 @@
  *    project's own declared scripts at the harness completion boundary and
  *    records local evidence. It is a DIFFERENT promise from the attested
  *    proof pipeline (`prove`/`check` against a spec) and never claims it.
- *  - Safety invariants: Canary only ever removes hook entries whose command
+ *  - Safety invariants: Amabie only ever removes hook entries whose command
  *    string it recorded as its own (exact match) — never a user entry. Config
- *    edits are preceded by a backup under .canary/backups/. A settings file
+ *    edits are preceded by a backup under .amabie/backups/. A settings file
  *    that fails to parse is never overwritten. Plan steps are {pm, script}
  *    pairs reconstructed from a validated name charset, never stored as
  *    arbitrary command strings.
- *  - Local-state trust (post-review S1/S2/S3): a .canary config is honored by
+ *  - Local-state trust (post-review S1/S2/S3): a .amabie config is honored by
  *    checkpoint/uninstall only when it is corroborated as this installation's
  *    own (cliPath matches this binary exactly; the file is not tracked in git
- *    — committed Canary state arrives from someone else's clone). No config,
- *    trusted or not, may make Canary read or write through a path that
- *    resolves outside <repo>/.claude or <repo>/.canary (symlink/junction
+ *    — committed Amabie state arrives from someone else's clone). No config,
+ *    trusted or not, may make Amabie read or write through a path that
+ *    resolves outside <repo>/.claude or <repo>/.amabie (symlink/junction
  *    containment via realpath).
  *  - doctor's READY is always earned in the invocation that prints it: doctor
  *    runs the checks every time; a stored checkpoint can never produce READY
  *    on its own (post-review S4 — the exit-0 oracle must not reward a record).
  *  - CLAIMS ARE NOT EVIDENCE (M2): a worker agent's reports ("427 tests
  *    passed", results.txt, logs, screenshots) are UNTRUSTED hints. Every check
- *    that carries a verdict is one Canary EXECUTED ITSELF in this invocation,
- *    and each run writes a verification bundle (.canary/evidence/) recording
+ *    that carries a verdict is one Amabie EXECUTED ITSELF in this invocation,
+ *    and each run writes a verification bundle (.amabie/evidence/) recording
  *    the candidate identity, exact argv, cwd, runtime identity, relevant env
  *    overrides, raw stdout/stderr (capped files + full sha256), exit code and
  *    independently derived observation counts. The bundle — like
  *    last-checkpoint.json — is NEVER read back to produce a verdict; it is
  *    written evidence for humans, not an oracle for the hook. An agent claim
- *    recorded via `canary claim` can only ANNOTATE a block Canary already
+ *    recorded via `amabie claim` can only ANNOTATE a block Amabie already
  *    decided from its own execution, and can never turn a pass into a block
  *    or a block into a pass.
- *  - uninstall keeps .canary (its ownership record) until cleanup fully
+ *  - uninstall keeps .amabie (its ownership record) until cleanup fully
  *    succeeded, so the advertised "re-run uninstall" can actually work
  *    (post-review S6).
  *  - Exit codes (same doctrine as main.ts): 0 READY/success, 2 NEEDS
@@ -57,8 +58,9 @@ import { fileURLToPath } from 'node:url';
 // C). `node:sea` exists in every supported Node and `isSea()` is simply false
 // outside a SEA build, so this import costs nothing in the ordinary case.
 import sea from 'node:sea';
-import { buildFailurePayload } from './failure-payload.js';
-import { resolveNpmCli, sanitizedEnv, canonicalPath } from '@canary-rn/support';
+import { buildFailurePayload, doctorCheckCommand } from './failure-payload.js';
+import { resolveNpmCli, sanitizedEnv, canonicalPath, sweepDescendants } from '@amabie/support';
+import { parseSummaryCountsFor } from '@amabie/comparator';
 
 // M9 §9.5 — the quarantine marker filename. authority.ts imports only node
 // builtins, so this direction adds no cycle (candidate.ts already imports it).
@@ -69,11 +71,11 @@ export type { TaskKind, TaskIdentity, AuthorizationSubject };
 // 1.1 §1 — the project model lives in project.js. onboarding re-exports the
 // names it used to own so every existing importer (candidate.ts, the contract
 // tests) compiles and behaves unchanged while the seam gains a second owner.
-import { ADAPTERS, adapterFor, adapterForStep, assertStepArgv, composePlan, LOCKFILES, nodeAdapter, parseJsonOrNull, planAuthorityDrift, planDigest, planForScope, planProblemsForConfig, scopeDir, SCOPES_FILE, SCOPES_SCHEMA, sealPlanAuthority, sha256, stepArgv } from './project.js';
+import { ADAPTERS, adapterFor, adapterForStep, assertStepArgv, composePlan, LOCKFILES, nodeAdapter, parseJsonOrNull, planAuthorityDrift, planDigest, planForScope, planProblemsForConfig, planScriptTexts, scopeDir, SCOPES_FILE, SCOPES_SCHEMA, sealPlanAuthority, sha256, stepArgv, stepKey } from './project.js';
 // v1.5 BLOCKER 6: the sealed toolchain (operator-authorized executable directories) and the
-// MEASURED decision of whether a failing check is the project's fault or Canary's own environment.
-import { attributeFailures, inventoryOperatorToolchain, npmScriptDirs, pathEntries, validateToolchainDir, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
-import { emitEnvelope, PROTOCOL_RESULT, PROTOCOL_STATUS, type ProtocolEnvelope, type ProtocolIntegration } from './protocol.js';
+// MEASURED decision of whether a failing check is the project's fault or Amabie's own environment.
+import { attributeFailures, inventoryOperatorToolchain, npmScriptDirs, pathEntries, TOOLCHAIN_CANDIDATES, validateToolchainDir, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
+import { emitEnvelope, PROTOCOL_DOCTOR_PARTIAL, PROTOCOL_RESULT, PROTOCOL_SETUP_CHECK, PROTOCOL_STATUS, type ProtocolEnvelope, type ProtocolIntegration, type ProtocolProof } from './protocol.js';
 import { decideFastPath } from './fastpath.js';
 import { AGENT_INTEGRATIONS, hasAdvisory, installAdvisory, removeAdvisory } from './agents.js';
 import type { PlanAuthority, PlanStep } from './project.js';
@@ -87,8 +89,8 @@ import { openSealed, probeTrustLevel, probeTrustLevelReadOnly, sealRecord, store
 import { providerConfigured } from './provider/boundary.js';
 import { providerStatus } from './provider/service.js';
 import { measuredCapabilities } from './platform-boundary.js';
-import { canonicalJson } from '@canary-rn/hashing';
-import { CANARY_VERSION } from './pipeline.js';
+import { canonicalJson } from '@amabie/hashing';
+import { AMABIE_VERSION } from './pipeline.js';
 export { detectPm, detectPlan, isSafeScriptName, sealPlanAuthority, planAuthorityDrift, stepArgv, planDigest, parseJsonOrNull } from './project.js';
 export type { PlanKind, PlanStep, PlanAuthority } from './project.js';
 
@@ -96,7 +98,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** The absolute path of the built CLI entry — what harness hooks invoke. */
 export const CLI_ENTRY = sea.isSea() ? process.execPath : path.join(HERE, 'main.js');
 
-/** argv that runs THIS Canary with `args`.
+/** argv that runs THIS Amabie with `args`.
  *
  *  In a single-executable build there is no `main.js` on disk — the executable
  *  IS the CLI — so spawning `process.execPath` with the CLI path as its first
@@ -109,8 +111,10 @@ export function selfArgv(args: readonly string[]): string[] {
   return sea.isSea() ? [...args] : [CLI_ENTRY, ...args];
 }
 
-export const CONFIG_DIR = '.canary';
-const CONFIG_FILE = 'canary.local.json';
+export const CONFIG_DIR = '.amabie';
+const CONFIG_FILE = 'amabie.local.json';
+const LEGACY_CONFIG_DIR = '.canary';
+const LEGACY_CONFIG_FILE = 'canary.local.json';
 const CHECKPOINT_FILE = 'last-checkpoint.json';
 /**
  * v1.4 Gap C — the project-local Codex hook layer.
@@ -118,14 +122,14 @@ const CHECKPOINT_FILE = 'last-checkpoint.json';
  * The vendor reference (learn.chatgpt.com/docs/hooks, read 2026-09-20) documents hooks at
  * `<repo>/.codex/hooks.json` (or inline `[hooks]` in `<repo>/.codex/config.toml`), with the SAME
  * three-level shape Claude Code uses (event → matcher group → handlers) and the SAME `Stop`
- * contract Canary already implements: JSON on stdout, `{"decision":"block","reason"}` keeps the
+ * contract Amabie already implements: JSON on stdout, `{"decision":"block","reason"}` keeps the
  * agent going, exit 0 with no output is success, and `stop_hook_active` says whether this turn was
  * already continued. So the wiring — not the verification — is what this adds.
  */
 const CODEX_DIR = '.codex';
 const CODEX_HOOKS_FILE = 'hooks.json';
 /** Codex shows this while the hook runs; it must say what is happening in plain words. */
-const CODEX_STATUS_MESSAGE = "Canary is running this project's sealed checks";
+const CODEX_STATUS_MESSAGE = "Amabie is running this project's sealed checks";
 /** Same 30-minute ceiling as the Claude Code Stop hook: a slow project suite must not be cut off. */
 const CODEX_HOOK_TIMEOUT_SECONDS = 1800;
 /** M9: exported — evidence storage is protected authority bytes (§9). */
@@ -134,31 +138,37 @@ const CLAIMS_FILE = path.join('claims', 'latest.json');
 /** M9: exported for the authority fingerprint set — task intent is protected
  *  authority bytes (directive §9), even while it carries zero verdict weight. */
 export const TASK_FILE = path.join('task', 'current.json');
+const CLAUDE_TURN_STATE_DIR = path.join('task', 'sessions');
+const CLAUDE_TASK_TOOL = 'mcp__amabie__amabie_task';
 /** bundles kept before the oldest are pruned — evidence must not grow unbounded */
 const EVIDENCE_KEEP = 10;
 const RAW_CAP = 256 * 1024;
-/** A file Canary wrote into the repository, and WHICH KIND of entry it owns there. The kind decides
+/** A file Amabie wrote into the repository, and WHICH KIND of entry it owns there. The kind decides
  *  how uninstall prunes it: hook entries are matched by command string, MCP server entries by their
  *  argv signature, and a Codex hook by the command strings recorded for ITS file specifically.
  *  Legacy configs carry no kind and are Claude Code hooks by construction. */
 export interface TouchedFile { path: string; created: boolean; kind?: 'hooks' | 'mcp' | 'codex-hooks' }
-export interface CanaryConfig {
+export interface AmabieConfig {
   version: string; installedAt: string; pm: string; plan: PlanStep[];
   cliPath: string; hookCommand: string;
   /** every command string ever installed here — uninstall matches exactly these */
   hookCommands: string[];
+  /** Exact Claude SessionStart commands owned by this installation, separate from Stop. */
+  sessionStartCommands?: string[];
   /** v1.4 §C: every command string ever installed into THIS project's `.codex/hooks.json`.
    *  Deliberately a SEPARATE list from `hookCommands`: the two harnesses are wired into two
    *  different files, and a file may only be pruned by the record that names it. Absent on configs
    *  written before v1.4, which simply means "no Codex entry is owned here". */
   codexHookCommands?: string[];
   /** v1.3: every MCP server argv signature ever written here, serialized — uninstall and re-setup
-   *  match exactly these, so a key Canary did not write is never pruned or replaced. Absent on
+   *  match exactly these, so a key Amabie did not write is never pruned or replaced. Absent on
    *  configs written before v1.3, which simply means "no MCP entry is owned here". */
   mcpArgSignatures?: string[];
+  /** MCP tool profile written by setup. Older configs upgrade to everyday. */
+  mcpProfile?: 'everyday' | 'expert';
   touched: TouchedFile[];
-  /** M4 baseline: repo identity stamped by Canary at setup time — "state when
-   *  Canary was wired". Optional: configs written before M4 have no provable
+  /** M4 baseline: repo identity stamped by Amabie at setup time — "state when
+   *  Amabie was wired". Optional: configs written before M4 have no provable
    *  baseline, and bundles say `baseline: null` rather than invent one. */
   baseline?: BaselineStamp;
   /** M5 trusted verification plan: the plan AND the exact script TEXTS that a
@@ -200,7 +210,7 @@ export function detectHarnesses(root: string): { found: HarnessInfo[]; integrabl
    *
    * MEASURED (this host, 2026-09-20): `codex --version` → `codex-cli 0.154.0`; `codex features list`
    * → `hooks  stable  true`; the CLI exposes `--dangerously-bypass-hook-trust`; and the vendor's hook
-   * reference documents a `Stop` event whose contract is the SAME one Canary already implements for
+   * reference documents a `Stop` event whose contract is the SAME one Amabie already implements for
    * Claude Code — JSON on stdout, `exit 0` with no output means "continue", `{"decision":"block",
    * "reason":…}` makes the harness CONTINUE the turn with that reason as the next prompt, and
    * `stop_hook_active` says whether this turn was already continued by `Stop` (the loop guard).
@@ -224,11 +234,11 @@ export function detectHarnesses(root: string): { found: HarnessInfo[]; integrabl
   }
   // v1.3 §E: Cursor is DETECTED so the capability table can report it honestly. `supported: false`
   // because nothing about it is measured here — Cursor documents importing Claude Code hooks, which
-  // would make the hook Canary installs effective, and documents no way to remove its native tools.
+  // would make the hook Amabie installs effective, and documents no way to remove its native tools.
   // Detection is not a claim; the table entry carries what is and is not known.
   const cursor = fs.existsSync(path.join(root, '.cursor')) || hasExe('cursor');
   if (cursor) {
-    found.push({ name: 'cursor', label: 'Cursor', supported: false, action: 'detected, completion-gate mechanism documented by the vendor but UNMEASURED by Canary' });
+    found.push({ name: 'cursor', label: 'Cursor', supported: false, action: 'detected, completion-gate mechanism documented by the vendor but UNMEASURED by Amabie' });
   }
   const cc = found.find((h) => h.name === 'claude-code') ?? null;
   const cx = found.find((h) => h.name === 'codex') ?? null;
@@ -240,30 +250,94 @@ export function detectHarnesses(root: string): { found: HarnessInfo[]; integrabl
 
 function hasExe(name: string): boolean {
   // Trusted-dir scan, zero spawn (blocker 1): a which/where probe under the
-  // caller's PATH would let a shim decide which harnesses Canary reports.
+  // caller's PATH would let a shim decide which harnesses Amabie reports.
   const names = process.platform === 'win32' ? [`${name}.exe`, `${name}.cmd`] : [name];
   return trustedDirs().some((d) => names.some((n) => fs.existsSync(path.join(d, n))));
 }
 
-/** Build the hook command; null when the CLI path cannot be safely quoted. */
+/** Build the hook command; null when a supported shell could interpret the CLI path. */
 export function buildHookCommand(cliPath: string): string | null {
-  if (cliPath.includes('"') || cliPath.includes('\n')) return null; // cannot embed safely
-  // A single-executable Canary IS the command: prefixing `node` would demand a
+  // This command is embedded in Claude/Codex hook settings and evaluated by a host shell.
+  // Double quotes preserve spaces, but not shell expansion: `$()` / PowerShell backticks,
+  // `%VAR%` in cmd.exe, and `!VAR!` with delayed expansion can rewrite or execute the path.
+  if (/["\r\n$`%!]/.test(cliPath)) return null;
+  // A single-executable Amabie IS the command: prefixing `node` would demand a
   // Node installation, which is exactly what the standalone build removes.
   return sea.isSea() ? `"${cliPath}" checkpoint` : `node "${cliPath}" checkpoint`;
 }
 
+/** Reuse the installed CLI path from the hook for agent-visible repair commands. */
+function installedCliPrefix(): string | null {
+  const hook = buildHookCommand(CLI_ENTRY);
+  return hook === null ? null : hook.replace(/ checkpoint$/, '');
+}
+
+function installedDoctorCommand(checkId?: string): string {
+  const prefix = installedCliPrefix();
+  if (prefix === null) return checkId === undefined
+    ? 'the configured Amabie MCP full verification tool'
+    : 'Amabie MCP amabie_doctor(check)';
+  return checkId === undefined
+    ? `${prefix} doctor`
+    : doctorCheckCommand(checkId, process.platform, prefix);
+}
+
 // ---------- config + settings.json plumbing ----------
 
-export function configPath(root: string): string { return path.join(root, CONFIG_DIR, CONFIG_FILE); }
+export function configPath(root: string): string {
+  const current = path.join(root, CONFIG_DIR, CONFIG_FILE);
+  const legacy = path.join(root, LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILE);
+  return fs.existsSync(current) || !fs.existsSync(legacy) ? current : legacy;
+}
+
+function migrateLegacyConfig(root: string): { migrated: boolean; problem?: string } {
+  const legacyDir = path.join(root, LEGACY_CONFIG_DIR);
+  const currentDir = path.join(root, CONFIG_DIR);
+  let stat: fs.Stats;
+  try { stat = fs.lstatSync(legacyDir); }
+  catch (e) { return (e as NodeJS.ErrnoException).code === 'ENOENT' ? { migrated: false } : { migrated: false, problem: 'could not inspect the legacy .canary directory' }; }
+  if (!stat.isDirectory() || stat.isSymbolicLink() || containedRealPath(root, legacyDir) === null) {
+    return { migrated: false, problem: 'legacy .canary is not a plain directory inside the project; nothing was moved' };
+  }
+  try {
+    fs.lstatSync(currentDir);
+    return { migrated: false, problem: 'both .canary and .amabie exist; resolve the two state directories before setup so neither is overwritten' };
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') return { migrated: false, problem: 'could not inspect .amabie before migration; nothing was moved' };
+  }
+  const tracked = gitCommand(root, ['ls-files', '--', LEGACY_CONFIG_DIR]);
+  if (!tracked || tracked.status !== 0) return { migrated: false, problem: 'could not verify whether .canary contains tracked project files; nothing was moved' };
+  if (tracked.stdout.trim()) return { migrated: false, problem: '.canary contains git-tracked files; move or untrack them before setup so migration does not rewrite project history' };
+  const legacyConfig = path.join(legacyDir, LEGACY_CONFIG_FILE);
+  const misplacedCurrentConfig = path.join(legacyDir, CONFIG_FILE);
+  if (fs.existsSync(legacyConfig) && fs.existsSync(misplacedCurrentConfig)) {
+    return { migrated: false, problem: 'both legacy and Amabie config files exist inside .canary; resolve them before setup' };
+  }
+  try {
+    fs.renameSync(legacyDir, currentDir);
+    if (fs.existsSync(path.join(currentDir, LEGACY_CONFIG_FILE))) {
+      fs.renameSync(path.join(currentDir, LEGACY_CONFIG_FILE), path.join(currentDir, CONFIG_FILE));
+    }
+    configTrackedMemo.delete(root);
+    return { migrated: true };
+  } catch (e) {
+    try { if (fs.existsSync(currentDir) && !fs.existsSync(legacyDir)) fs.renameSync(currentDir, legacyDir); } catch { /* preserve whichever complete directory remains */ }
+    return { migrated: false, problem: `could not migrate .canary safely (${String(e).slice(0, 120)}); the existing directory was preserved` };
+  }
+}
+
+function legacyCanaryCliPath(cliPath: string): boolean {
+  return cliPath.replaceAll('\\', '/').toLowerCase().includes('/@canary-rn/cli/');
+}
 
 /** Shape validation: a parseable-but-wrong-shape file is 'corrupt' (S7 — the
  *  documented self-heal path must fire instead of exit-3 TypeErrors). */
-function validConfigShape(v: unknown): v is CanaryConfig {
+function validConfigShape(v: unknown): v is AmabieConfig {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
   const c = v as Record<string, unknown>;
   const isStr = (x: unknown): boolean => typeof x === 'string';
   return isStr(c.version) && isStr(c.installedAt) && isStr(c.pm) && isStr(c.cliPath) && isStr(c.hookCommand)
+    && (c.mcpProfile === undefined || c.mcpProfile === 'everyday' || c.mcpProfile === 'expert')
     // 1.1: a step's optional fields are shape-checked HERE, so a hand-edited
     // config with a malformed argv is 'corrupt' (documented self-heal) rather
     // than a runtime throw at execution time. An empty argv can never execute,
@@ -278,6 +352,7 @@ function validConfigShape(v: unknown): v is CanaryConfig {
       return true;
     })
     && Array.isArray(c.hookCommands) && c.hookCommands.every(isStr)
+    && (c.sessionStartCommands === undefined || (Array.isArray(c.sessionStartCommands) && c.sessionStartCommands.every(isStr)))
     // v1.4 §C: the Codex ownership record is shape-checked here too, so a hand-edited config with a
     // malformed list is 'corrupt' (the documented self-heal path) rather than a TypeError mid-uninstall.
     && (c.codexHookCommands === undefined || (Array.isArray(c.codexHookCommands) && c.codexHookCommands.every(isStr)))
@@ -295,7 +370,7 @@ function validConfigShape(v: unknown): v is CanaryConfig {
     // that would run the Node pipeline against a foreign project.
     && (c.project === undefined || (typeof c.project === 'string' && Object.hasOwn(ADAPTERS, c.project)));
 }
-export function readConfig(root: string): CanaryConfig | null | 'corrupt' {
+export function readConfig(root: string): AmabieConfig | null | 'corrupt' {
   const p = configPath(root);
   if (!fs.existsSync(p)) return null;
   try {
@@ -316,11 +391,11 @@ const configTrackedMemo = new Map<string, boolean | null>();
 export function configTracked(root: string): boolean | null {
   // Once per process per root: cmdSetup asks twice (the pre-write tracked-config
   // refusal and the prevUsable dedupe seed) and nothing in-process commits
-  // .canary between the two. Both non-false answers are refusals, so a
+  // .amabie between the two. Both non-false answers are refusals, so a
   // remembered answer can only ever refuse as much as a re-ask would.
   const seen = configTrackedMemo.get(root);
   if (seen !== undefined) return seen;
-  const gr = gitCommand(root, ['ls-files', '--', `${CONFIG_DIR}/${CONFIG_FILE}`]);
+  const gr = gitCommand(root, ['ls-files', '--', path.relative(root, configPath(root)).split(path.sep).join('/')]);
   const out = !gr || gr.status !== 0 ? null : gr.stdout.trim().length > 0;
   configTrackedMemo.set(root, out);
   return out;
@@ -332,16 +407,16 @@ export function configTracked(root: string): boolean | null {
  *  footprint; a same-path guess additionally needs the committed settings.json
  *  to pass Claude Code's own project-settings approval). The tracked check
  *  closes the same-install-path case: to reach a victim, the config must be
- *  committed, and committed Canary state is exactly what must never be trusted. */
-export function untrustedConfigReason(root: string, cfg: CanaryConfig): string | null {
-  if (!samePath(path.normalize(cfg.cliPath), CLI_ENTRY)) return `it was written by a different Canary installation ("${cfg.cliPath}")`;
-  if (configTracked(root) === true) return 'it is committed to this repo — Canary state must stay local (.canary self-ignores); a cloned config is not yours';
+ *  committed, and committed Amabie state is exactly what must never be trusted. */
+export function untrustedConfigReason(root: string, cfg: AmabieConfig): string | null {
+  if (!samePath(path.normalize(cfg.cliPath), CLI_ENTRY)) return `it was written by a different Amabie installation ("${cfg.cliPath}")`;
+  if (configTracked(root) === true) return 'it is committed to this repo — Amabie state must stay local (.amabie self-ignores); a cloned config is not yours';
   return null;
 }
 
 /** realpath containment: resolve p without ever escaping root. Symlinks AND
  *  Windows junctions are followed by realpath, so a committed
- *  `.canary -> /somewhere/else` (or `.gitignore -> ../../.gitignore`) resolves
+ *  `.amabie -> /somewhere/else` (or `.gitignore -> ../../.gitignore`) resolves
  *  outside root and returns null (S3). Non-existent final components are safe
  *  to re-join once their nearest existing ancestor is contained. */
 export function containedRealPath(root: string, p: string): string | null {
@@ -364,7 +439,7 @@ export function containedRealPath(root: string, p: string): string | null {
     //
     // `realpathSync.native` is Node's OS call (`GetFinalPathNameByHandle` on Windows) and DOES
     // expand the short form — measured: short `...\CAA02B~1\A-LONG~1` -> long
-    // `...\canary-shortname-iZPuS2\a-long-directory-name`. Symlink and junction following is
+    // `...\amabie-shortname-iZPuS2\a-long-directory-name`. Symlink and junction following is
     // unchanged, so the containment property this helper exists for is not weakened: it is
     // now enforced against canonical paths instead of two unequally-spelled ones.
     const canon = (q: string): string => fs.realpathSync.native(q);
@@ -400,7 +475,7 @@ export function containedRealPath(root: string, p: string): string | null {
  */
 export function writeFileAtomic(p: string, data: string): void {
   assertPlainTarget(p);
-  const tmp = `${p}.${process.pid}.canary-tmp`;
+  const tmp = `${p}.${process.pid}.amabie-tmp`;
   assertPlainTarget(tmp);
   try {
     // 'wx' exclusive create: a planted hardlink at the predictable temp name
@@ -420,19 +495,78 @@ export function writeFileAtomic(p: string, data: string): void {
   }
 }
 
-/** Make .canary self-ignoring BEFORE Canary's first repo write. installStopHook
- *  drops a settings backup under .canary/backups, and the baseline dirty-stamp
- *  runs after that — if the self-ignore only arrives with writeConfig, Canary's
+/** Make .amabie self-ignoring BEFORE Amabie's first repo write. installClaudeHooks
+ *  drops a settings backup under .amabie/backups, and the baseline dirty-stamp
+ *  runs after that — if the self-ignore only arrives with writeConfig, Amabie's
  *  own backup stamps the baseline dirty and permanently blinds worktree-deletion
  *  blame in the common "repo tracks .claude/settings.json" setup (review #2). */
-export function ensureCanarySelfIgnore(root: string): void {
+export function ensureAmabieSelfIgnore(root: string): void {
   const dir = path.join(root, CONFIG_DIR);
   fs.mkdirSync(dir, { recursive: true });
   const gi = path.join(dir, '.gitignore');
   if (!fs.existsSync(gi)) writeFileAtomic(gi, '*\n');
 }
 
-export function writeConfig(root: string, cfg: CanaryConfig): void {
+interface SetupFileSnapshot { file: string; before: Buffer | null; after?: Buffer; parent: string; parentExisted: boolean }
+
+function snapshotSetupFile(snapshots: Map<string, SetupFileSnapshot>, file: string): void {
+  if (snapshots.has(file)) return;
+  const parent = path.dirname(file);
+  snapshots.set(file, {
+    file,
+    before: fs.existsSync(file) ? fs.readFileSync(file) : null,
+    parent,
+    parentExisted: fs.existsSync(parent),
+  });
+}
+
+function rememberSetupWrite(snapshots: Map<string, SetupFileSnapshot>, file: string | undefined): void {
+  if (file === undefined) return;
+  const snapshot = snapshots.get(file);
+  if (!snapshot) throw new Error(`setup wrote an unexpected settings path: ${file}`);
+  const after = fs.readFileSync(file);
+  if (snapshot.before?.equals(after)) return;
+  snapshot.after = after;
+}
+
+/** Restore only settings files that still contain the exact bytes setup wrote. */
+function rollbackSetupWrites(snapshots: Map<string, SetupFileSnapshot>): string[] {
+  const problems: string[] = [];
+  for (const snapshot of [...snapshots.values()].reverse()) {
+    if (snapshot.after === undefined) continue;
+    try {
+      assertPlainTarget(snapshot.file);
+      if (!fs.existsSync(snapshot.file)) {
+        if (snapshot.before === null) continue;
+        problems.push(`${snapshot.file} disappeared during setup; left it untouched`);
+        continue;
+      }
+      if (!fs.readFileSync(snapshot.file).equals(snapshot.after)) {
+        problems.push(`${snapshot.file} changed after setup wrote it; left it untouched`);
+        continue;
+      }
+      if (snapshot.before === null) fs.rmSync(snapshot.file);
+      else writeFileAtomic(snapshot.file, snapshot.before.toString('utf8'));
+      if (!snapshot.parentExisted) {
+        try { fs.rmdirSync(snapshot.parent); } catch { /* preserve a non-empty directory */ }
+      }
+    } catch (e) {
+      problems.push(`${snapshot.file} could not be restored (${String(e).slice(0, 140)})`);
+    }
+  }
+  return problems;
+}
+
+function setupRollbackNote(snapshots: Map<string, SetupFileSnapshot>): string {
+  const changed = [...snapshots.values()].some((snapshot) => snapshot.after !== undefined);
+  if (!changed) return 'No hook or MCP files from this attempt needed rollback.';
+  const problems = rollbackSetupWrites(snapshots);
+  return problems.length
+    ? `Rollback needs attention: ${problems.join('; ')}.`
+    : 'Amabie restored the hook and MCP files changed by this setup attempt.';
+}
+
+export function writeConfig(root: string, cfg: AmabieConfig): void {
   const dir = path.join(root, CONFIG_DIR);
   fs.mkdirSync(dir, { recursive: true });
   writeFileAtomic(path.join(dir, '.gitignore'), '*\n'); // self-ignoring; never dirties the user repo
@@ -443,9 +577,9 @@ export function settingsPath(root: string): string { return path.join(root, '.cl
 
 /** Refuse to create-or-follow a symlink for the final component (S3, second
  *  half): containedRealPath only sees links whose target EXISTS — a dangling
- *  `.canary/last-checkpoint.json -> /somewhere/else` passes the ancestor walk,
+ *  `.amabie/last-checkpoint.json -> /somewhere/else` passes the ancestor walk,
  *  then writeFileSync would CREATE the external file through the link. Every
- *  path Canary writes to must be a plain file (or not exist at all). */
+ *  path Amabie writes to must be a plain file (or not exist at all). */
 function assertPlainTarget(p: string): void {
   try {
     if (fs.lstatSync(p).isSymbolicLink()) throw new Error(`refused to write through symlink: ${p}`);
@@ -455,13 +589,13 @@ function assertPlainTarget(p: string): void {
   }
 }
 
-/** Collect Canary-owned Stop entries (exact command match) and remove them. */
-function pruneOwned(doc: Record<string, unknown>, ownedCommands: Set<string>): number {
+/** Remove exact owned commands from one named hook event, preserving other events. */
+function pruneOwned(doc: Record<string, unknown>, ownedCommands: Set<string>, event = 'Stop'): number {
   const hooks = doc.hooks as Record<string, unknown[]> | undefined;
-  if (!hooks || !Array.isArray(hooks.Stop)) return 0;
+  if (!hooks || !Array.isArray(hooks[event])) return 0;
   let removed = 0;
   const kept: unknown[] = [];
-  for (const group of hooks.Stop as Array<{ hooks?: unknown[] }>) {
+  for (const group of hooks[event] as Array<{ hooks?: unknown[] }>) {
     if (!group || !Array.isArray(group.hooks)) { kept.push(group); continue; }
     const inner = group.hooks.filter((h) => {
       const mine = !!h && typeof h === 'object' && ownedCommands.has(String((h as { command?: unknown }).command ?? ''));
@@ -470,23 +604,27 @@ function pruneOwned(doc: Record<string, unknown>, ownedCommands: Set<string>): n
     });
     if (inner.length) kept.push({ ...group, hooks: inner });
   }
-  if (kept.length) hooks.Stop = kept; else delete hooks.Stop;
+  if (kept.length) hooks[event] = kept; else delete hooks[event];
   if (!Object.keys(hooks).length) delete doc.hooks;
   return removed;
 }
 
 /**
- * Install the Stop hook into <root>/.claude/settings.json.
+ * Install the Claude completion, per-turn task-intake and optional startup hooks.
  * Preflight parses (refuses on malformed); backs up before any write; prunes
  * previously-owned entries first (idempotent, no stacking); records backups in
- * .canary/backups/. Returns the touched-file record for uninstall.
+ * .amabie/backups/. Returns the touched-file record for uninstall.
  */
-export function installStopHook(
-  root: string, command: string, priorCommands: Set<string>, backupsDir: string,
+const PRE_TOOL_USE_MATCHER = 'Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit|Agent|Task|Workflow|mcp__.*';
+const POST_TOOL_USE_MATCHER = CLAUDE_TASK_TOOL;
+
+export function installClaudeHooks(
+  root: string, command: string, priorCommands: Set<string>, backupsDir: string, dryRun = false,
+  priorStartupCommands?: Set<string>,
 ): { ok: boolean; touched?: TouchedFile; problem?: string } {
   const file = settingsPath(root);
   try { assertPlainTarget(file); } catch {
-    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Canary will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
+    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Amabie will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
   }
   const existed = fs.existsSync(file);
   let doc: Record<string, unknown> = {};
@@ -495,7 +633,12 @@ export function installStopHook(
     if (!parsed) return { ok: false, problem: `${rel(root, file)} is not valid JSON — fix it and re-run setup. Nothing was changed.` };
     doc = parsed;
   }
-  pruneOwned(doc, new Set([command, ...priorCommands]));
+  const owned = new Set([command, ...priorCommands]);
+  pruneOwned(doc, owned);
+  pruneOwned(doc, owned, 'PreToolUse');
+  pruneOwned(doc, owned, 'UserPromptSubmit');
+  pruneOwned(doc, owned, 'PostToolUse');
+  pruneOwned(doc, owned, 'SessionEnd');
   // valid JSON, but an unexpected hooks/Stop shape (string/object instead of
   // list) is unmergeable — refuse in plain words like a parse failure (S5),
   // never crash with an internal TypeError.
@@ -505,9 +648,32 @@ export function installStopHook(
   if (doc.hooks !== undefined && (doc.hooks as Record<string, unknown>).Stop !== undefined && !Array.isArray((doc.hooks as Record<string, unknown>).Stop)) {
     return { ok: false, problem: `${rel(root, file)} has a "hooks.Stop" that is not a list of hook groups — fix it and re-run setup. Nothing was changed.` };
   }
+  if (doc.hooks !== undefined && (doc.hooks as Record<string, unknown>).PreToolUse !== undefined && !Array.isArray((doc.hooks as Record<string, unknown>).PreToolUse)) {
+    return { ok: false, problem: `${rel(root, file)} has a "hooks.PreToolUse" that is not a list of hook groups — fix it and re-run setup. Nothing was changed.` };
+  }
+  for (const event of ['UserPromptSubmit', 'PostToolUse', 'SessionEnd']) {
+    if (doc.hooks !== undefined && (doc.hooks as Record<string, unknown>)[event] !== undefined && !Array.isArray((doc.hooks as Record<string, unknown>)[event])) {
+      return { ok: false, problem: `${rel(root, file)} has a "hooks.${event}" that is not a list of hook groups — fix it and re-run setup. Nothing was changed.` };
+    }
+  }
+  if (priorStartupCommands && doc.hooks !== undefined && (doc.hooks as Record<string, unknown>).SessionStart !== undefined && !Array.isArray((doc.hooks as Record<string, unknown>).SessionStart)) {
+    return { ok: false, problem: `${rel(root, file)} has a "hooks.SessionStart" that is not a list — fix it and re-run setup. Nothing was changed.` };
+  }
+  if (priorStartupCommands) pruneOwned(doc, new Set([`${command} --session-start`, ...priorStartupCommands]), 'SessionStart');
   const hooks = (doc.hooks ??= {}) as Record<string, unknown[]>;
   const stop = (hooks.Stop ??= []) as Array<{ hooks: unknown[] }>;
   stop.push({ hooks: [{ type: 'command', command, timeout: 1800 }] });
+  const preToolUse = (hooks.PreToolUse ??= []) as Array<{ matcher?: string; hooks: unknown[] }>;
+  preToolUse.push({ matcher: PRE_TOOL_USE_MATCHER, hooks: [{ type: 'command', command, timeout: 10 }] });
+  (hooks.UserPromptSubmit ??= []).push({ hooks: [{ type: 'command', command, timeout: 10 }] });
+  (hooks.PostToolUse ??= []).push({ matcher: POST_TOOL_USE_MATCHER, hooks: [{ type: 'command', command, timeout: 10 }] });
+  (hooks.SessionEnd ??= []).push({ hooks: [{ type: 'command', command, timeout: 10 }] });
+  if (priorStartupCommands) {
+    const startup = (hooks.SessionStart ??= []) as Array<{ hooks: unknown[] }>;
+    startup.push({ hooks: [{ type: 'command', command: `${command} --session-start`, timeout: 10 }] });
+  }
+
+  if (dryRun) return { ok: true, touched: { path: file, created: !existed } };
 
   if (existed) {
     fs.mkdirSync(backupsDir, { recursive: true });
@@ -529,12 +695,82 @@ export function installStopHook(
   return { ok: true, touched: { path: file, created: !existed } };
 }
 
-/** True when doc's Stop hooks still contain one of our exact commands. */
-export function hasCanaryEntry(doc: Record<string, unknown>, owned: Set<string>): boolean {
-  const stop = (doc.hooks as Record<string, unknown> | undefined)?.Stop;
-  if (!Array.isArray(stop)) return false;
-  return stop.some((g) => Array.isArray((g as { hooks?: unknown })?.hooks)
+/** True when one named event still contains an exact command we installed. */
+export function hasAmabieEntry(doc: Record<string, unknown>, owned: Set<string>, event = 'Stop'): boolean {
+  const groups = (doc.hooks as Record<string, unknown> | undefined)?.[event];
+  if (!Array.isArray(groups)) return false;
+  return groups.some((g) => Array.isArray((g as { hooks?: unknown })?.hooks)
+    && (event !== 'PreToolUse' || (g as { matcher?: unknown }).matcher === PRE_TOOL_USE_MATCHER)
+    && (event !== 'PostToolUse' || (g as { matcher?: unknown }).matcher === POST_TOOL_USE_MATCHER)
     && (g as { hooks: Array<{ command?: string }> }).hooks.some((h) => owned.has(String(h?.command ?? ''))));
+}
+
+function isAmabieCheckpointCommand(command: string): boolean {
+  const normalized = command.replace(/\\/g, '/').toLowerCase();
+  // Match Amabie entry paths, not arbitrary user scripts whose command happens to say checkpoint.
+  return /\bcheckpoint(?:\s|$)/.test(normalized)
+    && (normalized.includes('/@amabie/cli/dist/main.js')
+      || normalized.includes('/apps/cli/dist/src/main.js')
+      || /(?:^|[\/\s"'])amabie(?:\.cmd|\.exe)?\s+checkpoint(?:\s|$)/.test(normalized));
+}
+
+function findUnownedAmabieHookEntries(
+  root: string,
+  file: string,
+  ownedByEvent: Readonly<Record<string, ReadonlySet<string>>>,
+): string[] {
+  if (!fs.existsSync(file) || containedRealPath(root, file) === null) return [];
+  try { assertPlainTarget(file); } catch { return []; }
+  const doc = parseJsonOrNull(file);
+  const hooks = doc?.hooks;
+  if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return [];
+
+  const found: string[] = [];
+  for (const [event, owned] of Object.entries(ownedByEvent)) {
+    const groups = (hooks as Record<string, unknown>)[event];
+    if (!Array.isArray(groups)) continue;
+    for (const group of groups) {
+      const handlers = group && typeof group === 'object'
+        ? (group as { hooks?: unknown }).hooks : undefined;
+      if (!Array.isArray(handlers)) continue;
+      for (const handler of handlers) {
+        const command = handler && typeof handler === 'object'
+          ? (handler as { command?: unknown }).command : undefined;
+        if (typeof command === 'string' && isAmabieCheckpointCommand(command) && !owned.has(command)) {
+          found.push(rel(root, file) + ' (' + event + '): ' + command);
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function findForeignAmabieHooks(
+  root: string,
+  command: string,
+  claude: boolean,
+  codex: boolean,
+  priorClaudeCommands: ReadonlySet<string>,
+  priorStartupCommands: ReadonlySet<string>,
+  priorCodexCommands: ReadonlySet<string>,
+): string[] {
+  const found: string[] = [];
+  if (claude) {
+    found.push(...findUnownedAmabieHookEntries(root, settingsPath(root), {
+      Stop: new Set([command, ...priorClaudeCommands]),
+      PreToolUse: new Set([command, ...priorClaudeCommands]),
+      UserPromptSubmit: new Set([command, ...priorClaudeCommands]),
+      PostToolUse: new Set([command, ...priorClaudeCommands]),
+      SessionEnd: new Set([command, ...priorClaudeCommands]),
+      SessionStart: new Set([command + ' --session-start', ...priorStartupCommands]),
+    }));
+  }
+  if (codex) {
+    found.push(...findUnownedAmabieHookEntries(root, codexHooksPath(root), {
+      Stop: new Set([command, ...priorCodexCommands]),
+    }));
+  }
+  return found;
 }
 
 // ---------- v1.4 §C: OpenAI Codex CLI, a SECOND measured completion gate ----------
@@ -542,20 +778,20 @@ export function hasCanaryEntry(doc: Record<string, unknown>, owned: Set<string>)
 // WHY THIS FILE IS WRITTEN AND NOT MERELY DESCRIBED. `apps/cli/src/agents.ts` said Codex was
 // advisory because "no completion hook exists to gate". MEASURED on this host (codex-cli 0.154.0,
 // `codex features list` → `hooks  stable  true`): that is false. Codex's `Stop` hook takes the SAME
-// contract Canary already implements for Claude Code — one JSON object on stdin (`cwd`,
+// contract Amabie already implements for Claude Code — one JSON object on stdin (`cwd`,
 // `stop_hook_active`, `hook_event_name: "Stop"`, …), JSON on stdout, `{"decision":"block","reason"}`
 // to keep the agent going, exit 0 with no output to let it stop. So this is WIRING, not a second
 // verification implementation: it runs the SAME `checkpoint` entry point, built by the SAME
 // `buildHookCommand`, and it grants no new authority — `cmdCheckpoint` can only report.
 //
-// The same discipline as `installStopHook`, plus two things that file does not need:
+// The same discipline as `installClaudeHooks`, plus two things that file does not need:
 //   - the PROJECT LAYER is containment-checked, not only the file: a linked `.codex/` directory
 //     would otherwise be a landing pad that writes `hooks.json` outside the repository;
 //   - the handler carries a `statusMessage`, because Codex shows one in its UI while a hook runs.
 //
-// TRUST IS THE HARNESS'S, AND CANARY DOES NOT PRETEND TO OWN IT. Codex runs a non-managed hook only
+// TRUST IS THE HARNESS'S, AND AMABIE DOES NOT PRETEND TO OWN IT. Codex runs a non-managed hook only
 // after that exact definition has been reviewed and trusted (`/hooks`), and it records trust against
-// the hook's current hash. Canary cannot mint that trust and does not try; `setup` and `canary
+// the hook's current hash. Amabie cannot mint that trust and does not try; `setup` and `amabie
 // agents` say so in plain words, because a written-but-untrusted hook gates nothing.
 
 export function codexHooksPath(root: string): string { return path.join(root, CODEX_DIR, CODEX_HOOKS_FILE); }
@@ -564,29 +800,29 @@ export function codexHooksPath(root: string): string { return path.join(root, CO
  * Install the Stop hook into <root>/.codex/hooks.json.
  *
  * Merge, never overwrite: every other event, matcher group, handler and top-level key a user already
- * has is preserved, and only Canary's OWN previously-recorded commands are pruned first (so a re-run
+ * has is preserved, and only Amabie's OWN previously-recorded commands are pruned first (so a re-run
  * is idempotent and never stacks). Backs up before any write; refuses on a symlinked file, a linked
  * project layer, a non-directory `.codex`, invalid JSON, or an unmergeable `hooks` shape — in every
  * case with the file byte-unchanged.
  */
 export function installCodexStopHook(
-  root: string, command: string, priorCommands: Set<string>, backupsDir: string,
+  root: string, command: string, priorCommands: Set<string>, backupsDir: string, dryRun = false,
 ): { ok: boolean; touched?: TouchedFile; problem?: string } {
   const dir = path.join(root, CODEX_DIR);
   // The file is not the whole story: `.codex` itself can be a junction/symlink to somewhere else.
   if (containedRealPath(root, dir) === null) {
-    return { ok: false, problem: `${rel(root, dir)} resolves outside this repository (a link?) — Canary will not write the Codex hook through it. Nothing was changed.` };
+    return { ok: false, problem: `${rel(root, dir)} resolves outside this repository (a link?) — Amabie will not write the Codex hook through it. Nothing was changed.` };
   }
   try {
     if (fs.existsSync(dir) && !fs.statSync(dir).isDirectory()) {
-      return { ok: false, problem: `${rel(root, dir)} exists but is not a directory — Canary will not replace it. Nothing was changed.` };
+      return { ok: false, problem: `${rel(root, dir)} exists but is not a directory — Amabie will not replace it. Nothing was changed.` };
     }
   } catch (e) {
     return { ok: false, problem: `could not examine ${rel(root, dir)} (${String(e).slice(0, 140)}) — nothing was changed.` };
   }
   const file = codexHooksPath(root);
   try { assertPlainTarget(file); } catch {
-    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Canary will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
+    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Amabie will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
   }
   const existed = fs.existsSync(file);
   let doc: Record<string, unknown> = {};
@@ -609,6 +845,8 @@ export function installCodexStopHook(
   // `timeout` is SECONDS in Codex's schema (default 600). No `matcher`: the vendor ignores one on
   // `Stop`, and writing a field that means nothing would be decoration.
   stop.push({ hooks: [{ type: 'command', command, timeout: CODEX_HOOK_TIMEOUT_SECONDS, statusMessage: CODEX_STATUS_MESSAGE }] });
+
+  if (dryRun) return { ok: true, touched: { path: file, created: !existed, kind: 'codex-hooks' } };
 
   if (existed) {
     fs.mkdirSync(backupsDir, { recursive: true });
@@ -637,7 +875,7 @@ export function installCodexStopHook(
 // a fuzz/mutation rig as whole-file writes, which is ~70% of that arm's token cost and is the single
 // largest reason a long task costs more than the unguarded arm.
 //
-// `canary mcp` already exists, already refuses `accept` deliberately, and already exposes only thin
+// `amabie mcp` already exists, already refuses `accept` deliberately, and already exposes only thin
 // argv templates over operations the CLI had before it (mcp.ts:67-164). The missing piece was that a
 // user had to discover and configure an MCP client by hand. This closes that gap with the same
 // discipline as the Stop hook: parse first, refuse to write through a link, back up, prune only our
@@ -645,21 +883,24 @@ export function installCodexStopHook(
 //
 // It grants NO new authority: the server can only REQUEST `result`/`status`/`agents`/`doctor`/`work`/
 // `finish`, each of which runs the same CLI and is judged by the same gates.
-const MCP_SERVER_KEY = 'canary';
+const MCP_SERVER_KEY = 'amabie';
 const MCP_CONFIG_BASENAME = '.mcp.json';
 
 export function mcpConfigPath(root: string): string { return path.join(root, MCP_CONFIG_BASENAME); }
 
-/** The exact program a client should run: this Canary, serving MCP.
+/** The exact program a client should run: this Amabie, serving MCP.
  *
  *  Deliberately PINNED to the Node that is running setup, unlike the hook command, which spells bare
  *  `node` and therefore depends on the harness's PATH. That difference is intentional: a completion
  *  hook is executed BY a shell, so PATH is its native mechanism and is already required; an MCP server
  *  is spawned DIRECTLY by the editor, and a GUI-launched editor routinely has a different PATH than
  *  the user's terminal. Pinning removes a whole class of "the server never started" reports that would
- *  otherwise be blamed on Canary. */
+ *  otherwise be blamed on Amabie. */
 export function mcpServerCommand(cliPath: string): string { return sea.isSea() ? cliPath : process.execPath; }
-export function mcpServerArgs(cliPath: string): string[] { return sea.isSea() ? ['mcp'] : [cliPath, 'mcp']; }
+export type McpProfile = 'everyday' | 'expert';
+export function mcpServerArgs(cliPath: string, profile: McpProfile = 'everyday'): string[] {
+  return [...(sea.isSea() ? ['mcp'] : [cliPath, 'mcp']), '--profile', profile];
+}
 export const mcpArgSignature = (args: readonly string[]): string => JSON.stringify([...args]);
 
 /** Is OUR entry present — matched by argv signature, never by the key alone? */
@@ -673,7 +914,7 @@ export function hasMcpEntry(doc: Record<string, unknown>, owned: Set<string>): b
 }
 
 /** Remove ONLY entries this installation wrote, matched by argv signature. Anything else under the
- *  key — a stranger's `canary` server, a hand-written one — is left exactly as it was. */
+ *  key — a stranger's `amabie` server, a hand-written one — is left exactly as it was. */
 export function pruneOwnedMcp(doc: Record<string, unknown>, owned: Set<string>): number {
   const servers = doc.mcpServers;
   if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return 0;
@@ -688,18 +929,19 @@ export function pruneOwnedMcp(doc: Record<string, unknown>, owned: Set<string>):
 }
 
 /**
- * Install the Canary MCP server into <root>/.mcp.json.
+ * Install the Amabie MCP server into <root>/.mcp.json.
  *
  * Refusals are plain and Nothing Is Changed: a symlinked file, invalid JSON, a `mcpServers` that is
- * not an object, or a `canary` key that exists but was NOT written by this installation. That last
- * one is the confused-deputy guard — Canary will not silently replace a server it did not create.
+ * not an object, or a `amabie` key that exists but was NOT written by this installation. That last
+ * one is the confused-deputy guard — Amabie will not silently replace a server it did not create.
  */
 export function installMcpServer(
   root: string, cliPath: string, priorSignatures: Set<string>, backupsDir: string,
+  profile: McpProfile = 'everyday', dryRun = false,
 ): { ok: boolean; touched?: TouchedFile; problem?: string } {
   const file = mcpConfigPath(root);
   try { assertPlainTarget(file); } catch {
-    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Canary will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
+    return { ok: false, problem: `${rel(root, file)} is a symbolic link — Amabie will not write through links. Replace it with a real file, then run setup again. Nothing was changed.` };
   }
   const existed = fs.existsSync(file);
   let doc: Record<string, unknown> = {};
@@ -711,14 +953,14 @@ export function installMcpServer(
   if (doc.mcpServers !== undefined && (typeof doc.mcpServers !== 'object' || doc.mcpServers === null || Array.isArray(doc.mcpServers))) {
     return { ok: false, problem: `${rel(root, file)} has an "mcpServers" section that is not an object — fix it and re-run setup. Nothing was changed.` };
   }
-  const args = mcpServerArgs(cliPath);
+  const args = mcpServerArgs(cliPath, profile);
   const signature = mcpArgSignature(args);
   const owned = new Set([signature, ...priorSignatures]);
   const existing = (doc.mcpServers as Record<string, unknown> | undefined)?.[MCP_SERVER_KEY];
   if (existing !== undefined && !hasMcpEntry(doc, owned)) {
     return {
       ok: false,
-      problem: `${rel(root, file)} already defines an MCP server named "${MCP_SERVER_KEY}" that Canary did not write. Canary will not replace a server it does not own — rename or remove that entry (or point it elsewhere), then run setup again. Nothing was changed.`,
+      problem: `${rel(root, file)} already defines an MCP server named "${MCP_SERVER_KEY}" that Amabie did not write. Amabie will not replace a server it does not own — rename or remove that entry (or point it elsewhere), then run setup again. Nothing was changed.`,
     };
   }
   pruneOwnedMcp(doc, owned);
@@ -727,6 +969,8 @@ export function installMcpServer(
   // servers at all. (A test caught exactly that: a re-run left the document empty.)
   const map = (doc.mcpServers ??= {}) as Record<string, unknown>;
   map[MCP_SERVER_KEY] = { command: mcpServerCommand(cliPath), args };
+
+  if (dryRun) return { ok: true, touched: { path: file, created: !existed, kind: 'mcp' } };
 
   if (existed) {
     fs.mkdirSync(backupsDir, { recursive: true });
@@ -744,19 +988,19 @@ export function installMcpServer(
   return { ok: true, touched: { path: file, created: !existed, kind: 'mcp' } };
 }
 
-/** The command strings Canary owns in ONE kind of hooks file.
+/** The command strings Amabie owns in ONE kind of hooks file.
  *
  *  Two harnesses, two files, two records: `.claude/settings.json` is pruned by the Claude ownership
  *  list and `.codex/hooks.json` by the Codex one, so a file is only ever stripped of commands this
  *  installation recorded for THAT file. `hookCommand` (singular) is the pre-`hookCommands` legacy
  *  field; an MCP entry is owned by its argv signature instead and never reaches here. */
-export function ownedCommandsFor(cfg: CanaryConfig, kind: TouchedFile['kind']): Set<string> {
+export function ownedCommandsFor(cfg: AmabieConfig, kind: TouchedFile['kind']): Set<string> {
   if (kind === 'codex-hooks') return new Set(cfg.codexHookCommands ?? []);
   return new Set(cfg.hookCommands.length ? cfg.hookCommands : [cfg.hookCommand]);
 }
 
-/** Remove Canary entries from every touched settings file. Returns problems[]. */
-export function uninstallHooks(root: string, cfg: CanaryConfig): { removed: number; problems: string[] } {
+/** Remove Amabie entries from every touched settings file. Returns problems[]. */
+export function uninstallHooks(root: string, cfg: AmabieConfig): { removed: number; problems: string[] } {
   const ownedMcp = new Set(cfg.mcpArgSignatures ?? []);
   const problems: string[] = [];
   let removed = 0;
@@ -766,7 +1010,7 @@ export function uninstallHooks(root: string, cfg: CanaryConfig): { removed: numb
     // S1 vector. No touched entry may resolve outside root; refuse it loudly
     // instead of rewriting or deleting a stranger's settings file.
     if (containedRealPath(root, t.path) === null) {
-      problems.push(`${t.path} resolves outside this repository — Canary never modifies files outside the repo it was set up in. Left untouched.`);
+      problems.push(`${t.path} resolves outside this repository — Amabie never modifies files outside the repo it was set up in. Left untouched.`);
       continue;
     }
     const doc = parseJsonOrNull(t.path);
@@ -777,8 +1021,15 @@ export function uninstallHooks(root: string, cfg: CanaryConfig): { removed: numb
       // kinds prune differently. v1.4 §C: a Codex hooks file has the Claude SHAPE but its own
       // ownership list. A legacy touched entry (no kind) is a Claude Code hooks file by construction.
       pruned = t.kind === 'mcp' ? pruneOwnedMcp(doc, ownedMcp) : pruneOwned(doc, ownedCommandsFor(cfg, t.kind));
+      if (t.kind !== 'mcp' && t.kind !== 'codex-hooks') {
+        pruned += pruneOwned(doc, ownedCommandsFor(cfg, t.kind), 'PreToolUse');
+        pruned += pruneOwned(doc, ownedCommandsFor(cfg, t.kind), 'UserPromptSubmit');
+        pruned += pruneOwned(doc, ownedCommandsFor(cfg, t.kind), 'PostToolUse');
+        pruned += pruneOwned(doc, ownedCommandsFor(cfg, t.kind), 'SessionEnd');
+        pruned += pruneOwned(doc, new Set(cfg.sessionStartCommands ?? []), 'SessionStart');
+      }
       if (fs.existsSync(t.path)) {
-        // Deleted only when Canary's entry was the LAST thing in a file Canary created. A file the
+        // Deleted only when Amabie's entry was the LAST thing in a file Amabie created. A file the
         // user already had — even one that held nothing but our handler — keeps its place on disk.
         if (Object.keys(doc).length === 0 && t.created) fs.rmSync(t.path);
         else writeFileAtomic(t.path, JSON.stringify(doc, null, 2) + '\n');
@@ -813,9 +1064,9 @@ export function uninstallHooks(root: string, cfg: CanaryConfig): { removed: numb
 // pre-planting files in these directories) remains the documented ceiling (M2).
 
 const NODE_DIR = path.dirname(process.execPath);
-export const ENV_POLICY = 'canary-sanitized/1';
+export const ENV_POLICY = 'amabie-sanitized/1';
 
-/** The literal absolute candidates Canary will execute git from. Never
+/** The literal absolute candidates Amabie will execute git from. Never
  *  PATH-derived: a PATH or %SystemRoot% shim must not be able to become git. */
 const gitCandidates = (): string[] => process.platform === 'win32'
   ? ['C:\\Program Files\\Git\\cmd\\git.exe', 'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
@@ -823,7 +1074,7 @@ const gitCandidates = (): string[] => process.platform === 'win32'
   : ['/usr/bin/git', '/usr/local/bin/git', '/bin/git'];
 
 /**
- * The directories Canary is willing to execute from.
+ * The directories Amabie is willing to execute from.
  *
  * EXPORTED because a probe asserts that every executed file lies inside this
  * set, and until this function was exported that probe kept a hardcoded MIRROR
@@ -832,10 +1083,10 @@ const gitCandidates = (): string[] => process.platform === 'win32'
  * win32: `gitExe()` executes git from a literal Git install directory that this
  * list did not contain, and the probe failed on the contradiction).
  *
- * The rule the list encodes: a directory Canary will EXECUTE from is trusted by
+ * The rule the list encodes: a directory Amabie will EXECUTE from is trusted by
  * construction, so the declared set must contain every candidate the product
  * resolves to — see `gitCandidates` below. Adding these directories cannot widen
- * what a PROJECT can make Canary run: they are fixed literals, not search paths.
+ * what a PROJECT can make Amabie run: they are fixed literals, not search paths.
  */
 export function trustedDirs(): string[] {
   const base = process.platform === 'win32'
@@ -879,10 +1130,10 @@ const hardenedEnvWithToolchain = (fixture: string, toolchain: Record<string, str
  * the local config; a directory the repository can write is refused outright by
  * `validateToolchainDir`, so a worker cannot authorize its own shim. A directory that has since
  * vanished is filtered out here (the spawn must not throw) and REPORTED to the attribution below,
- * which is where "Canary's environment is the cause" is decided.
+ * which is where "Amabie's environment is the cause" is decided.
  */
 export function sealedToolchainDirs(root: string): string[] {
-  let cfg: CanaryConfig | 'corrupt' | null = null;
+  let cfg: AmabieConfig | 'corrupt' | null = null;
   try { cfg = readConfig(root); } catch { return []; }
   if (cfg === null || cfg === 'corrupt') return [];
   const dirs = cfg.toolchain?.dirs;
@@ -892,7 +1143,7 @@ export function sealedToolchainDirs(root: string): string[] {
 
 /** Operator-authorized directories that are sealed in the config but NO LONGER EXIST here. */
 export function vanishedToolchainDirs(root: string): string[] {
-  let cfg: CanaryConfig | 'corrupt' | null = null;
+  let cfg: AmabieConfig | 'corrupt' | null = null;
   try { cfg = readConfig(root); } catch { return []; }
   if (cfg === null || cfg === 'corrupt') return [];
   const dirs = cfg.toolchain?.dirs;
@@ -910,7 +1161,7 @@ function isDir(p: string): boolean {
  * `node_modules/.bin` entries npm itself prepends), so "it is not in the sealed environment" is a
  * statement about the environment the check actually ran in, not about this process's PATH.
  */
-export function attributeRunFailures(root: string, cfg: CanaryConfig, failed: StepResult[], plan: PlanStep[]): FailureAttribution {
+export function attributeRunFailures(root: string, cfg: AmabieConfig, failed: StepResult[], plan: PlanStep[]): FailureAttribution {
   const seal: ToolchainSeal | null = cfg.toolchain ?? null;
   const sealedDirs = sealedToolchainDirs(root);
   const vanished = vanishedToolchainDirs(root);
@@ -922,6 +1173,7 @@ export function attributeRunFailures(root: string, cfg: CanaryConfig, failed: St
     return {
       kind: f.kind, script: step?.script ?? f.display, exitCode: f.exitCode,
       output: `${f.stdout}${f.stderr}`, childPathDirs, vanishedDirs: vanished, seal,
+      ...(stepProcessFailures.has(f) ? { executionFailure: stepProcessFailures.get(f)! } : {}),
     };
   });
   return attributeFailures(inputs);
@@ -966,7 +1218,7 @@ export function gitCommand(root: string, args: string[], timeoutMs = 15_000): Gi
 /** Resolve the package manager to TRUSTED bytes — PATH is never consulted.
  *  Order: (1) the CLI entry script bundled inside the running Node's install
  *  (npm/pnpm/yarn run under node itself — no .cmd shim, no lookup; npm uses
- *  the single canonical resolveNpmCli from @canary-rn/support for probe
+ *  the single canonical resolveNpmCli from @amabie/support for probe
  *  parity); (2) an absolute executable found in a trusted directory, win32
  *  .cmd/.bat only through the literal-system cmd.exe. null = unresolvable. */
 export interface ResolvedPm { spawnArgv: [string, ...string[]]; file: string; via: string }
@@ -1006,7 +1258,7 @@ const PM_NAMES = new Set(['npm', 'pnpm', 'yarn', 'bun']);
  * door). Any OTHER program — an interpreter or toolchain a non-script ecosystem
  * declares — is looked for in the baseline trusted dirs plus the declaring
  * adapter's conventional dirs. PATH is still never consulted, so a candidate
- * cannot plant a `python` ahead of the sealed one and have Canary spawn it as
+ * cannot plant a `python` ahead of the sealed one and have Amabie spawn it as
  * sealed authority. An ABSOLUTE program path is accepted as the authority the
  * seal already covers (setup sealed the argv that names it) and is still
  * digest-recorded for evidence. null = unresolvable: callers fail closed.
@@ -1059,10 +1311,10 @@ export function stepDisplay(pm: string, step: PlanStep): string {
  * Pin every program an explicit-argv step names to an ABSOLUTE path, and seal
  * that path.
  *
- * This is the ONLY place Canary consults PATH, and it is the one moment a human
+ * This is the ONLY place Amabie consults PATH, and it is the one moment a human
  * authorizes the plan: `setup`. What gets sealed is the absolute path; every
  * later verification resolves that path and nothing else (resolveProgram), so a
- * candidate cannot plant a program earlier on a search path and have Canary
+ * candidate cannot plant a program earlier on a search path and have Amabie
  * spawn it as sealed authority — the thing `resolvePm` has always refused for
  * package managers, now extended to interpreters and toolchains.
  *
@@ -1096,7 +1348,7 @@ export function pinPlanPrograms(plan: PlanStep[]): { plan: PlanStep[]; problems:
     if (path.isAbsolute(head)) return { ...step, argv };
     // ADAPTER-DECLARED DIRECTORIES COME FIRST (v1.1). For most ecosystems they are
     // empty and this is a no-op. For Rust they are the point: rustup installs a
-    // PATH PROXY at `~/.cargo/bin/cargo`, and the proxy cannot run under Canary's
+    // PATH PROXY at `~/.cargo/bin/cargo`, and the proxy cannot run under Amabie's
     // sanitized environment (RUSTUP_HOME/HOME are redirected), while the REAL
     // toolchain binary at `<rustup>/toolchains/<tc>/bin/cargo` runs fine — measured
     // in tooling/probes/runner-channels-rust-go.mjs. Sealing the proxy would seal a
@@ -1133,7 +1385,7 @@ function resolveFromAdapterDirs(step: PlanStep, program: string): string | null 
 function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string, timeoutMs: number, toolchain?: Record<string, string>, toolchainDirs?: readonly string[]) {
   const controller = controllerExecution.getStore();
   if (controller) return controller.run([...resolved.spawnArgv, ...args], cwd, timeoutMs);
-  // v1.5 blocker 6: the operator-authorized dirs are appended to the SAME sanitized env canary has
+  // v1.5 blocker 6: the operator-authorized dirs are appended to the SAME sanitized env amabie has
   // always built — never merged from the caller. With no authorized dirs the expression below is the
   // unchanged one (`hardenedEnv` / `hardenedEnvWithToolchain`), so a config without `toolchain`
   // produces byte-identical children.
@@ -1144,11 +1396,18 @@ function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string, timeou
       ws: { root: os.tmpdir(), fixture: cwd }, nodeDir: NODE_DIR, extraPathDirs: dirs,
       ...(toolchain !== undefined && Object.keys(toolchain).length > 0 ? { toolchain: { env: toolchain } } : {}),
     });
-  return spawnSync(resolved.spawnArgv[0], [...resolved.spawnArgv.slice(1), ...args], {
-    cwd, encoding: 'utf8', timeout: timeoutMs,
+  const spawnedAtMs = Date.now();
+  const spawnOptions = {
+    cwd, encoding: 'utf8' as const, timeout: timeoutMs,
     env, shell: false, windowsHide: true,
+    detached: process.platform !== 'win32',
     maxBuffer: 32 * 1024 * 1024,
-  });
+  };
+  const result = spawnSync(resolved.spawnArgv[0], [...resolved.spawnArgv.slice(1), ...args], spawnOptions);
+  if (result.pid > 0 && sweepDescendants(result.pid, spawnedAtMs).failed) {
+    result.error ??= new Error('post-run containment sweep could not confirm zero surviving descendants');
+  }
+  return result;
 }
 
 export interface StepResult {
@@ -1161,6 +1420,17 @@ export interface StepResult {
   exec: { file: string; digest: string | null; via: string; policy: string };
   /** M4 provenance: wall-clock stamps around the spawn, recorded, never judged */
   startedAt: string; endedAt: string;
+}
+
+// Supervisor facts stay in memory: project output cannot forge them, and existing JSON stays unchanged.
+const stepProcessFailures = new WeakMap<StepResult, string>();
+
+/** Preserve the sealed sequence, then verify earlier tests against the final build.
+ * Legacy seals remain byte-identical; every extra command is already authorized.
+ * Keep initial failures: a later pass never waives a failed sealed check. */
+export function planWithFreshTests(plan: PlanStep[]): PlanStep[] {
+  const lastBuild = plan.reduce((last, step, index) => step.kind === 'build' ? index : last, -1);
+  return [...plan, ...plan.filter((step, index) => index < lastBuild && step.kind === 'tests')];
 }
 
 /** Synthetic non-ran step for resolution failures at the one call site
@@ -1188,8 +1458,8 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   const resolved = resolveProgram(program, step.adapter);
   if (resolved === null) {
     throw new Error(PM_NAMES.has(program)
-      ? `package manager "${program}" is not resolvable in Canary's trusted execution environment (the running Node's install dir and OS-managed dirs only — the calling PATH is deliberately ignored). Install it with corepack or into the same Node prefix, then re-run.`
-      : `program "${program}" is not resolvable in Canary's trusted execution environment (the running Node's install dir, the OS-managed dirs, and the directories the declaring project adapter names — the calling PATH is deliberately ignored). Install it in one of those locations, or seal its absolute path in the plan, then re-run.`);
+      ? `package manager "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir and OS-managed dirs only — the calling PATH is deliberately ignored). Install it with corepack or into the same Node prefix, then re-run.`
+      : `program "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir, the OS-managed dirs, and the directories the declaring project adapter names — the calling PATH is deliberately ignored). Install it in one of those locations, or seal its absolute path in the plan, then re-run.`);
   }
   // A step runs in ITS OWN SCOPE's directory. In a nested polyglot repo the
   // scoped check is declared by `<scope>/package.json` (or `<scope>/pyproject
@@ -1213,18 +1483,20 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   // check spawns transitively.
   const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(root));
   const stdout = r.stdout ?? '';
-  const stderr = r.stderr ?? '';
+  const processFailure = r.error ? r.error.message : r.status === null ? 'process ended without an exit code' : undefined;
+  const stderr = (r.stderr ?? '') + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
   const out = `${stdout}${stderr}`;
-  const infra = r.error !== undefined && r.status === null;
-  return {
-    kind: step.kind, display, ok: !infra && r.status === 0,
-    exitCode: infra ? null : r.status, secs: 0,
+  const result: StepResult = {
+    kind: step.kind, display, ok: processFailure === undefined && r.status === 0,
+    exitCode: processFailure === undefined ? r.status : null, secs: 0,
     tail: out.split(/\r?\n/).filter(Boolean).slice(-12).join('\n'),
     argv, cwd, stdout, stderr,
     execArgv: [...resolved.spawnArgv, ...argv.slice(1)],
     exec: { file: resolved.file, digest: execDigest(resolved.file), via: resolved.via, policy: ENV_POLICY },
     startedAt, endedAt: new Date().toISOString(),
   };
+  if (processFailure !== undefined) stepProcessFailures.set(result, processFailure);
+  return result;
 }
 
 // ---------- M2 evidence: claims are not evidence ----------
@@ -1233,8 +1505,8 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
  *  (content) identity, distinct from the commit — two commits with the same
  *  tree verify the same bytes. */
 export interface Identity { resolved: boolean; head: string | null; tree: string | null; dirty: boolean | null }
-/** M4 baseline: who the repo was AT THE MOMENT CANARY WAS WIRED, stamped by
- *  Canary's own read-only probes. The honest anchor the onboarding path has:
+/** M4 baseline: who the repo was AT THE MOMENT AMABIE WAS WIRED, stamped by
+ *  Amabie's own read-only probes. The honest anchor the onboarding path has:
  *  setup sees the present, never the agent's past — `at` names when the
  *  stamp was taken, so no bundle claims to know pre-agent state it cannot. */
 export interface BaselineStamp extends Identity { at: string }
@@ -1249,7 +1521,7 @@ export interface BaselineStamp extends Identity { at: string }
  *  2026-09-07 environment: a stray zero-commit repo under %TEMP%'s home).
  *  The toplevel must resolve to root itself — linked worktrees and
  *  submodules do; a parent repo does not — or everything is UNIDENTIFIED. */
-/** One containment gate for EVERY read-only git probe Canary makes: fixed
+/** One containment gate for EVERY read-only git probe Amabie makes: fixed
  *  argv, run under `-C root`, and the answer must be ABOUT root — git
  *  discovery walks up, so a parent repo answering for a fake/absent .git
  *  is a misattribution, not information (see candidateIdentity's history:
@@ -1305,7 +1577,7 @@ export function candidateIdentity(root: string): Identity {
   };
 }
 
-/** Derive test counts FROM THE BYTES CANARY CAPTURED (or from claim text —
+/** Derive test counts FROM THE BYTES AMABIE CAPTURED (or from claim text —
  *  same parser, applied to untrusted input). Observation only: nothing here
  *  can make a command succeed or fail; the exit code remains the oracle and
  *  a printed summary is just another claim.
@@ -1345,7 +1617,7 @@ function relevantEnvNames(): string[] {
  * Every evidence item belongs to exactly ONE class, stamped by the code that
  * WRITES its bytes — the label describes the writer, it is never authority:
  *
- *   CANARY_OBSERVED      Canary executed it itself (verification bundles).
+ *   AMABIE_OBSERVED      Amabie executed it itself (verification bundles).
  *   EXTERNALLY_VERIFIED  a third party's executed proof, imported by a human
  *                        (CI attestation, GLM audit). NO PRODUCER EXISTS YET:
  *                        until a real import path is built, anything on disk
@@ -1356,14 +1628,14 @@ function relevantEnvNames(): string[] {
  *                        never creates a BLOCK.
  *
  * Enforcement is STRUCTURAL, not label-based: a verdict is produced only
- * from checks Canary executes in the same invocation, and evidence is never
+ * from checks Amabie executes in the same invocation, and evidence is never
  * read back for one (M2 doctrine). So copying a bundle, self-declaring a
  * class inside file content, or renaming AGENT_REPORTED bytes into a
- * Canary-owned path all change NOTHING — the classes are honest description
+ * Amabie-owned path all change NOTHING — the classes are honest description
  * for humans and downstream tooling, and the tests pin that they stay inert
  * as input.
  */
-export type TrustClass = 'CANARY_OBSERVED' | 'EXTERNALLY_VERIFIED' | 'AGENT_REPORTED';
+export type TrustClass = 'AMABIE_OBSERVED' | 'EXTERNALLY_VERIFIED' | 'AGENT_REPORTED';
 
 // ---------- M4 provenance ----------
 /**
@@ -1390,17 +1662,17 @@ export interface BundleProvenance {
 // ---------- M6 (spec M5): orchestrate the right proof for the task ----------
 /**
  * Beyond "run whatever npm test exists": each task kind carries PROOF
- * OBLIGATIONS evaluated against what Canary itself observed (sealed-plan
+ * OBLIGATIONS evaluated against what Amabie itself observed (sealed-plan
  * execution + contained git diffs), not against what the worker says.
  *
  * Direction of travel is one-way (this is what keeps the hint honest):
  * classification can only ADD obligations — the sealed plan (M5) is the floor
  * no declaration lifts, and no task kind can excuse a failing check. A worker
  * who declares "ui" still gets diff-implied coverage obligations; a worker who
- * declares nothing still gets the diff-implied ones. `canary task` is
- * AGENT_REPORTED — same zero-authority plumbing as `canary claim`.
+ * declares nothing still gets the diff-implied ones. `amabie task` is
+ * AGENT_REPORTED — same zero-authority plumbing as `amabie claim`.
  *
- * Statuses: `met` (Canary observed it this invocation), `unproven` (obligation
+ * Statuses: `met` (Amabie observed it this invocation), `unproven` (obligation
  * stands, no objective proof available — allowed through WITH an honest
  * systemMessage, never a silent fake-complete), `unmet` (objectively violated
  * — blocks). Per spec: do not pretend subjective requirements have
@@ -1408,11 +1680,11 @@ export interface BundleProvenance {
  * ask the human one concise question only when necessary (the multi-part
  * enumeration hint) — inference first, question last.
  *
- * Attribution honesty: only deletions Canary can ATTRIBUTE block — COMMITTED
+ * Attribution honesty: only deletions Amabie can ATTRIBUTE block — COMMITTED
  * ones (baseline..HEAD is post-baseline by construction) and STAGED/WORKTREE
  * ones when setup stamped the tree CLEAN. The index is never snapshotted at
  * setup, so pre-existing staged residue is the same epistemic class as worktree
- * dirt: a repo that was already dirty (or whose state Canary never proved)
+ * dirt: a repo that was already dirty (or whose state Amabie never proved)
  * cannot have its pre-existing state blamed on the agent (M4). Unattributable
  * signals inform notes, never verdicts.
  */
@@ -1426,7 +1698,7 @@ const KIND_PATTERNS: Array<[RegExp, TaskKind]> = [
    * currently failing."): the previous vocabulary — bug/fix/broken/crash/regress/defect — inferred
    * NOTHING from the most common way a failing task is described. `work` then froze an EMPTY kind set
    * and `finish` refused a correct, tested, discriminating fix with `task-authority UNPROVEN`, after
-   * the whole session had been spent. Canary knew at handoff; this is the cheap half of the repair.
+   * the whole session had been spent. Amabie knew at handoff; this is the cheap half of the repair.
    *
    * The words added here all ASSERT brokenness rather than mention a topic. That distinction is the
    * whole safety argument: a `bugfix` kind adds ONE duty — a measured base-vs-candidate discrimination
@@ -1471,7 +1743,7 @@ const isTestPath = (p: string): boolean =>
 // Lockfiles ONLY: package.json edits are authority moves (script text — M5's
 // sealed turf), not dependency-graph evidence, and blaming them here made
 // every setup-repair story trip the dep obligation. A deps bump without a
-// lockfile change is still caught one-way by `canary task --kind dependency`.
+// lockfile change is still caught one-way by `amabie task --kind dependency`.
 // 1.1: every REGISTERED adapter's declared manifests count as well, so a
 // python/rust/go lockfile change is dependency evidence through the same one
 // predicate — never guessed from a file extension.
@@ -1569,7 +1841,7 @@ export interface DiffSignals {
    *  (review #4). depTouched still keys off `touched`: a deleted lockfile is a
    *  dependency change. */
   changes: string[];
-  /** deletions of test-shaped paths Canary can attribute to this session — the BLOCK signal */
+  /** deletions of test-shaped paths Amabie can attribute to this session — the BLOCK signal */
   deletedTestsAttributable: string[];
   /** test deletions it cannot attribute (staged/worktree on a non-clean baseline) — note material only */
   deletedTestsUnattributable: string[];
@@ -1590,7 +1862,7 @@ function diffSignalsFrom(committed: string | null, staged: string | null, worktr
   const fromCommitted = committed !== null ? parseNameStatus(committed) : [];
   const fromStaged = staged !== null ? parseNameStatus(staged) : [];
   const fromWorktree = worktree !== null ? parsePorcelain(worktree) : [];
-  // Attribution: a baseline Canary stamped CLEAN proves the tree AND index
+  // Attribution: a baseline Amabie stamped CLEAN proves the tree AND index
   // matched HEAD at setup, so deletions seen now — staged or unstaged —
   // CANNOT be pre-existing dirt; they are the agent's. Without that proof
   // (dirty or unknown baseline) both classes stay note-material only: the
@@ -1623,14 +1895,15 @@ function diffSignalsFrom(committed: string | null, staged: string | null, worktr
 /** Read-only contained git probes (gitWithinRoot — the parent repo never answers
  *  for the candidate). A malformed baseline head from a hand-edited config is
  *  dropped rather than interpolated: defense-in-depth below the distrust gate. */
-export function collectDiffSignals(root: string, cfg: CanaryConfig): DiffSignals {
+export function collectDiffSignals(root: string, cfg: AmabieConfig): DiffSignals {
   const baselineHead = cfg.baseline?.head ?? null;
   // -z everywhere classification reads: line mode C-quotes non-ASCII/quote/
   // backslash paths and silently defeats isTestPath/isDepPath (review #1).
   const committed = cfg.baseline?.resolved && baselineHead !== null && /^[0-9a-f]{40,64}$/i.test(baselineHead)
     ? gitWithinRoot(root, ['diff', '--name-status', '-z', baselineHead, 'HEAD']) : null;
   const staged = gitWithinRoot(root, ['diff', '--name-status', '-z', '--cached']);
-  const worktree = gitWithinRoot(root, ['status', '--porcelain', '-z']);
+  // Enumerate new files: a collapsed "scripts/" entry cannot be overlaid as a check.
+  const worktree = gitWithinRoot(root, ['status', '--porcelain', '-z', '--untracked-files=all']);
   return diffSignalsFrom(committed, staged, worktree,
     cfg.baseline !== undefined && cfg.baseline.resolved && cfg.baseline.dirty === false,
     cfg.baseline?.dirty === true);
@@ -1650,7 +1923,7 @@ export function candidateDiffSignals(root: string, baseHead: string): DiffSignal
   const committed = /^[0-9a-f]{40,64}$/i.test(baseHead)
     ? gitWithinRoot(root, ['diff', '--name-status', '-z', baseHead, 'HEAD']) : null;
   const staged = gitWithinRoot(root, ['diff', '--name-status', '-z', '--cached']);
-  const worktree = gitWithinRoot(root, ['status', '--porcelain', '-z']);
+  const worktree = gitWithinRoot(root, ['status', '--porcelain', '-z', '--untracked-files=all']);
   return diffSignalsFrom(committed, staged, worktree, committed !== null, false);
 }
 
@@ -1658,16 +1931,28 @@ export interface Obligation { id: string; mode: 'objective' | 'non-objective'; s
   /** A MET obligation whose evidence is weaker than the word "met" suggests — said plainly, never hidden. */
   caveat?: string }
 
+function proofSummary(registeredRequirements: number, obligations: Obligation[]): ProtocolProof {
+  return { registeredRequirements, obligations: obligations.map(({ id, mode, status, caveat }) => ({
+    id, mode, status, ...(caveat !== undefined ? { caveat } : {}),
+  })) };
+}
+
+function proofScopeLine(proof: ProtocolProof): string {
+  const count = (status: 'met' | 'unproven' | 'unmet') => proof.obligations.filter((ob) => ob.status === status).length;
+  return `${proof.registeredRequirements} registered requirement(s); obligations: ${count('met')} met, ${count('unproven')} unproven, ${count('unmet')} unmet`
+    + (proof.registeredRequirements === 0 ? '; task acceptance criteria were not registered' : '');
+}
+
 /**
- * Canary's OWN wiring is not the product under test.
+ * Amabie's OWN wiring is not the product under test.
  *
- * MEASURED: `setup` installs the Stop hook into `.claude/settings.json` and writes `.canary/`
+ * MEASURED: `setup` installs the Stop hook into `.claude/settings.json` and writes `.amabie/`
  * AFTER the baseline commit, so a repository with no code change at all still showed those paths as
  * "the candidate's change" — and the regression-evidence question, correctly asked, then reported
  * NOT PROVEN for a project nobody had touched (the probe's case D). Counting the verifier's own
  * files as the change is a measurement error, not a strict rule.
  */
-const isCanaryOwnArtifact = (p: string): boolean =>
+const isAmabieOwnArtifact = (p: string): boolean =>
   p === '.claude' || p.startsWith('.claude/')
   || p === CONFIG_DIR || p.startsWith(`${CONFIG_DIR}/`)
   // v1.3 §C: setup now writes the MCP server entry itself. Without this the freshly written
@@ -1680,7 +1965,7 @@ const isCanaryOwnArtifact = (p: string): boolean =>
    * file is the only untracked thing in the layer, `git status --porcelain` collapses the entry to
    * `?? .codex/` — the same shape `.claude` has. So the Codex layer is excluded the same way and for
    * the same measured reason (a freshly wired repository must not read as "the agent changed
-   * something" just because Canary wrote its hook). The ceiling is the one `.claude` already carries:
+   * something" just because Amabie wrote its hook). The ceiling is the one `.claude` already carries:
    * an edit a worker makes INSIDE the harness layer is harness configuration, not product behaviour,
    * and it is not counted here.
    */
@@ -1713,6 +1998,84 @@ const isGeneratedArtifact = (p: string): boolean =>
   || /(^|[\\/])\.coverage$/i.test(p)
   || /\.egg-info([\\/]|$)/.test(p);
 
+/** Display only a test entry whose current command still matches the selected plan's digest. */
+function sealedTestEntryHint(root: string, cfg: AmabieConfig): string {
+  try {
+    const authority = cfg.planAuthority;
+    if (authority?.planDigest !== planDigest(cfg.plan)) return '';
+    for (const step of cfg.plan) {
+      if (step.kind !== 'tests' || typeof step.script !== 'string') continue;
+      const digest = authority.scriptDigests?.[stepKey(step)];
+      if (typeof digest !== 'string') continue;
+      if (step.argv !== undefined) {
+        const argv = assertStepArgv(step.argv);
+        if (digest !== sha256(JSON.stringify(argv))) continue;
+        return ` The plan's test command is ${JSON.stringify(argv)} (entry ${JSON.stringify(step.script)}); a new test file counts only if this command runs it.`;
+      }
+      const pkgPath = path.join(scopeDir(root, step), 'package.json');
+      const scripts = (JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { scripts?: Record<string, unknown> }).scripts ?? {};
+      const text = scripts[step.script];
+      if (typeof text !== 'string' || digest !== sha256(text)) continue;
+      const displayPath = path.relative(root, pkgPath).replaceAll('\\', '/') || 'package.json';
+      return ` The plan's test command is ${displayPath} scripts.${step.script} = ${JSON.stringify(text.slice(0, 160))}; a new test file counts only if this command runs it.`;
+    }
+  } catch { /* malformed or unavailable sealed details retain the generic guidance */ }
+  return '';
+}
+
+/** Read-only startup context. This names an existing entry, never a verification result. */
+export function projectTestEntryHint(startDir: string): string {
+  try {
+    const root = findRepoRoot(startDir);
+    if (!root) return '';
+    const cfg = readConfig(root);
+    if (!cfg || cfg === 'corrupt' || untrustedConfigReason(root, cfg)) return '';
+    const record = openSealed(storeFromEnv(), { projectId: projectIdForRoot(root), kind: 'plan-seal' });
+    if (record.status !== 'valid' || !cfg.planAuthority || canonicalJson(record.envelope!.payload) !== canonicalJson(cfg.planAuthority)) return '';
+    const hint = sealedTestEntryHint(root, cfg);
+    return hint ? `\n\nRegression proof:${hint}\nPrefer observable behavior through the existing public API; do not export internals solely for tests. Keep the test command and starting commit unchanged.` : '';
+  } catch { return ''; } // no readable trusted entry: keep the generic instructions, never guess
+}
+
+/** Startup orientation only: no checks, evidence writes, or completion decision. */
+export function cmdSessionStart(): number {
+  try {
+    const input = JSON.parse(fs.readFileSync(0, 'utf8')) as { hook_event_name?: unknown };
+    if (input.hook_event_name !== 'SessionStart') return 0;
+    const root = findRepoRoot(process.cwd());
+    if (!root) return 0;
+    const hint = projectTestEntryHint(root);
+    const cfg = readConfig(root);
+    if (!hint || !cfg || cfg === 'corrupt' || planAuthorityDrift(root, cfg)) return 0;
+    const doc = parseJsonOrNull(settingsPath(root));
+    const owned = new Set(cfg.hookCommands);
+    if (!doc || !hasAmabieEntry(doc, owned) || !hasAmabieEntry(doc, owned, 'PreToolUse')
+      || !hasAmabieEntry(doc, owned, 'UserPromptSubmit') || !hasAmabieEntry(doc, owned, 'PostToolUse')
+      || !hasAmabieEntry(doc, owned, 'SessionEnd')) return 0;
+    const cliPrefix = installedCliPrefix();
+    const context = [
+      'Amabie completion workflow (not a verification result).',
+      `Work in ${JSON.stringify(root)}.`,
+      'Implement the requested change and regression assertions, then finish normally with a factual summary.',
+      'At the start of each new project request, call Amabie MCP mcp__amabie__amabie_task before project changes, with the current intent and every stated criterion copied verbatim; use requirements: [] when none were stated. This is AGENT_REPORTED input only and cannot bind or prove criteria.',
+      'After amabie_task, continue authorized implementation and tests even when an objective criterion lacks a sealed proof; keep it NOT PROVEN and let the completion hook report the operator binding hint. Subjective-only duties may continue to human acceptance.',
+      'Amabie starts a fresh task scope on every user request. It blocks Claude Code shell, write, agent-delegation and MCP calls until that request is registered; after registration, proof gaps do not block project work. Read tools remain available.',
+      'Never edit the plan or hooks, or run setup/bind/accept. Keep every unbound criterion NOT PROVEN.',
+      'Amabie runs the sealed base comparison itself; do not switch, reset, or restore this branch to reproduce the baseline.',
+      'If the Amabie MCP task tool is missing or unavailable, stop and ask the operator to restore Amabie MCP before changing files; shell commands are blocked until registration succeeds.',
+      'Use the project test runner\'s file or case filter for early feedback. The Stop hook runs the full sealed checks at completion; do not rerun the full suite just for a Amabie verdict.',
+      'If the hook reports a failure, repair that problem and recheck its exact id with amabie_doctor(check). A focused result is PARTIAL.',
+      cliPrefix === null
+        ? 'This CLI path cannot be safely embedded in a shell command. Use the configured Amabie MCP amabie_doctor(check) tool or ask a human to inspect the installation.'
+        : `If MCP is unavailable, run this installed CLI instead of guessing a global amabie command: ${cliPrefix} doctor --check "<reported-id>".`,
+      'Preserve the sealed plan, baseline and hooks; do not setup, bind or accept to clear a failure.',
+      hint.trim(),
+    ].join('\n');
+    console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context } }));
+  } catch { /* unavailable or malformed startup input cannot manufacture verification */ }
+  return 0;
+}
+
 /**
  * THE REGRESSION-EVIDENCE OBLIGATION.
  *
@@ -1727,8 +2090,8 @@ const isGeneratedArtifact = (p: string): boolean =>
  * `null` means no comparison duty applies (for example, no behavior changed).
  * A required comparison that could not run remains objectively UNPROVEN.
  */
-export function discriminationObligation(root: string, cfg: CanaryConfig, timeoutMs = 600_000, isolationBase?: string): Obligation | null {
-  const disc = planDiscrimination(root, cfg, timeoutMs, isolationBase);
+export function discriminationObligation(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[]): Obligation | null {
+  const disc = planDiscrimination(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns);
   if (!disc.applicable) return null;
   if (disc.basePassed === null) return {
     id: 'regression-evidence', mode: 'objective', status: 'unproven',
@@ -1755,18 +2118,33 @@ export function discriminationObligation(root: string, cfg: CanaryConfig, timeou
     ...disc.addedChecks.map((p) => `${safePath(p)} (created by this session)`),
     ...disc.modifiedChecks.map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`),
   ];
+  const workerCaveat = workerAuthored.length > 0
+    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. This is a provenance caveat, not a failed obligation; retain it in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance`
+    : undefined;
+  const pendingCaveat = disc.pendingCountIncreases?.length
+    ? `the test runner reported more skipped/pending cases on the candidate than on the comparison baseline (${disc.pendingCountIncreases.map((x) => `test check ${x.testRun}: ${x.baseline}→${x.candidate} (${x.runner})`).join(', ')}); review those cases because a green exit code alone does not show that they ran${disc.baselineEvidence ? `; baseline comparison evidence: ${disc.baselineEvidence}` : ''}`
+    : undefined;
+  const caveat = [workerCaveat, pendingCaveat].filter((x): x is string => x !== undefined).join('; ');
   if (disc.basePassed === true) {
+    const sealedTestHint = sealedTestEntryHint(root, cfg);
+    const target = sealedTestHint ? 'that suite or command' : 'a suite Amabie already runs';
     return {
       id: 'regression-evidence', mode: 'objective', status: 'unproven',
-      note: `the sealed checks pass on the base commit too, so they carry no evidence about this change (${files}${more}): existing behaviour that must be preserved needs a check that FAILS without the change and passes with it. Add or bind one (a sealed proof obligation), or a human accepts the risk from an interactive terminal — a green plan alone does not close this`,
+      note: `the sealed checks pass on the base commit too, so they carry no evidence about this change (${files}${more})${disc.comparisonBase ? ` — additional comparison against the latest change's preceding commit ${disc.comparisonBase}` : ''}: existing behaviour that must be preserved needs a check that FAILS without the change and passes with it. Amabie compares with the starting commit automatically; stay on this branch.${sealedTestHint} Add a regression assertion to ${target}, or have the operator bind another check and re-run setup; a green plan alone does not close this${pendingCaveat ? `; ${pendingCaveat}` : ''}${disc.baselineEvidence ? `; baseline output: ${disc.baselineEvidence}` : ''}`,
+      ...(pendingCaveat ? { caveat: pendingCaveat } : {}),
+    };
+  }
+  if (disc.pendingCountIncreases?.length) {
+    return {
+      id: 'regression-evidence', mode: 'objective', status: 'unproven',
+      note: `the sealed checks fail on the base, but the candidate reported more skipped/pending cases (${disc.pendingCountIncreases.map((x) => `test check ${x.testRun}: ${x.baseline}→${x.candidate} (${x.runner})`).join(', ')}), so the two runs did not execute a comparable set of checks. Run those cases on the candidate or bind an equivalent operator-controlled check, then verify again${disc.baselineEvidence ? `; baseline output: ${disc.baselineEvidence}` : ''}`,
+      ...(caveat ? { caveat } : {}),
     };
   }
   return {
     id: 'regression-evidence', mode: 'objective', status: 'met',
     note: `the sealed checks fail without this change (${disc.baseFailures.join(', ') || 'a sealed step'}), so their pass is evidence about it${disc.overlaidChecks.length > 0 ? ` (candidate check files overlaid on the base: ${disc.overlaidChecks.slice(0, 3).map(safePath).join(', ')})` : ''}`,
-    ...(workerAuthored.length > 0
-      ? { caveat: `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. Independent coverage needs an operator-bound check (package.json canary.proofs, or canary.project.json proofs) or a human's acceptance` }
-      : {}),
+    ...(caveat ? { caveat } : {}),
   };
 }
 
@@ -1795,7 +2173,52 @@ function looksLikeInfraFailure(r: StepResult): boolean {
   return /ENOENT|Cannot find module|MODULE_NOT_FOUND|no such file or directory|package\.json not found|could not determine executable|command not found|is not recognized as an internal or external command/i.test(text);
 }
 
+function reportedPendingCounts(result: StepResult): Array<{ runner: string; pending: number }> {
+  if (result.kind !== 'tests') return [];
+  const log = `${result.stdout}\n${result.stderr}`;
+  const runners = ['node-test', 'pytest', 'python-unittest', 'jest', 'vitest', undefined] as const;
+  return runners.flatMap((runner) => {
+    const counts = parseSummaryCountsFor(runner, log);
+    if (counts.passing === undefined && counts.failing === undefined && counts.pending === undefined) return [];
+    // A project can combine runners in one command. Keep their summaries
+    // separate so a conflicting total cannot erase a skip increase.
+    return [{ runner: runner ?? 'mocha/ava', pending: counts.pending ?? 0 }];
+  });
+}
+
+function pendingCountIncreases(
+  candidateRuns: readonly StepResult[] | undefined,
+  baselineRuns: readonly StepResult[],
+  candidateRoot: string,
+  baselineRoot: string,
+): Array<{ testRun: number; runner: string; baseline: number; candidate: number }> {
+  // A fast or otherwise different plan has no safe positional pairing, so make no claim.
+  if (!candidateRuns || candidateRuns.length !== baselineRuns.length) return [];
+  const increases: Array<{ testRun: number; runner: string; baseline: number; candidate: number }> = [];
+  let testRun = 0;
+  for (let i = 0; i < candidateRuns.length; i += 1) {
+    const candidate = candidateRuns[i]!;
+    const baseline = baselineRuns[i]!;
+    if (candidate.kind !== baseline.kind || candidate.display !== baseline.display
+      || path.relative(candidateRoot, candidate.cwd) !== path.relative(baselineRoot, baseline.cwd)) return [];
+    if (candidate.kind !== 'tests' || baseline.kind !== 'tests') continue;
+    testRun += 1;
+    const before = new Map(reportedPendingCounts(baseline).map((summary) => [summary.runner, summary.pending]));
+    for (const summary of reportedPendingCounts(candidate)) {
+      const previous = before.get(summary.runner) ?? 0;
+      if (summary.pending > previous) {
+        increases.push({ testRun, runner: summary.runner, baseline: previous, candidate: summary.pending });
+      }
+    }
+  }
+  return increases;
+}
+
 export interface DiscriminationResult {
+  /** Additional reference only; the original sealed comparison still must pass. */
+  comparisonBase?: string;
+  /** Actual comparison output for diagnosis only; never read back for verdicts. */
+  baselineEvidence?: string;
   /** false only when no comparison duty applies; true with basePassed:null means UNPROVEN. */
   applicable: boolean;
   reason: string;
@@ -1806,7 +2229,7 @@ export interface DiscriminationResult {
    *
    * MEASURED reason this is recorded (`bench-final-constraint-hold-guarded-3`): an agent added
    * `tests/csv-quoted.test.js` (assertions 6 → 18), the sealed plan passed, the hidden oracle found
-   * the stated rule still broken, and Canary said READY. The regression evidence was REAL (the new
+   * the stated rule still broken, and Amabie said READY. The regression evidence was REAL (the new
    * check fails without the change) and simultaneously the worker's own reading of the requirement —
    * SENSITIVITY, not independence. A verdict that rests on it must say so.
    */
@@ -1821,6 +2244,8 @@ export interface DiscriminationResult {
   modifiedChecks: string[];
   basePassed: boolean | null;
   baseFailures: string[];
+  /** Reported pending/skipped test counts rose relative to the same sealed plan at baseline. */
+  pendingCountIncreases?: Array<{ testRun: number; runner: string; baseline: number; candidate: number }>;
 }
 
 /**
@@ -1832,7 +2257,7 @@ export interface DiscriminationResult {
  *
  * MEASURED reason it matters (`bench-r5-refactor-preserve-invisible-2`): an agent rewrote
  * `formatMoney`'s string handling, ran nothing, and finished while `formatMoney("0.5")` returned
- * `$0.05`. The project's checks passed before AND after the change, so Canary reported READY — a
+ * `$0.05`. The project's checks passed before AND after the change, so Amabie reported READY — a
  * false green that no amount of care in the runner can catch, because the checks simply do not
  * discriminate that change.
  *
@@ -1846,7 +2271,53 @@ export interface DiscriminationResult {
  * unproven change means. It also never mutates the working tree — the comparison happens in a
  * throwaway `git worktree` at the sealed baseline, removed in a `finally`.
  */
-export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 600_000, isolationBase?: string): DiscriminationResult {
+export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[]): DiscriminationResult {
+  const sealed = comparePlanAtBase(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns);
+  if (sealed.basePassed !== false) return sealed;
+  // Keep the sealed comparison mandatory. A prior fix can make it fail forever,
+  // however, so it cannot by itself distinguish the next change in the same repo.
+  const base = isolationBase ?? cfg.baseline?.head;
+  const head = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
+  const unknown = (reason: string): DiscriminationResult => ({ ...sealed, basePassed: null, reason });
+  if (!base || !head || !/^[0-9a-f]{40,64}$/i.test(head)) return unknown('the latest change comparison has no resolvable HEAD');
+  if (head === base) return sealed;
+  const behaviour = (p: string): boolean => !isAmabieOwnArtifact(p) && !isGeneratedArtifact(p)
+    && !isDepPath(p) && !isTestPath(p) && !isNonBehaviourPath(p);
+  // Porcelain can report a normalized-equal LF/CRLF rewrite as modified.
+  // Select the comparison base from the final tracked delta, plus new files.
+  const pending = gitWithinRoot(root, ['diff', '--no-ext-diff', '--no-textconv', '--name-status', '-z', head]);
+  const untracked = gitWithinRoot(root, ['ls-files', '--others', '--exclude-standard', '-z']);
+  if (pending === null || untracked === null) return unknown('the latest working-tree change could not be resolved');
+  const pendingPaths = [...parseNameStatus(pending).flatMap((entry) => entry.paths), ...untracked.split('\0').filter(Boolean)];
+  let previous = head;
+  if (!pendingPaths.some(behaviour)) {
+    // A test/doc-only commit must not hide the most recent product edit. Follow
+    // first parents, including merge deltas, rather than trusting commit messages.
+    const commits = gitWithinRoot(root, ['rev-list', '--first-parent', '--parents', `${base}..HEAD`]);
+    if (commits === null) return unknown('the latest committed change could not be resolved');
+    previous = base;
+    for (const row of commits.trim().split('\n').filter(Boolean)) {
+      const [commit, parent] = row.trim().split(/\s+/);
+      if (!commit || !parent || ![commit, parent].every((v) => /^[0-9a-f]{40,64}$/i.test(v))) {
+        return unknown('the latest committed change has no resolvable parent');
+      }
+      const diff = gitWithinRoot(root, ['diff', '--name-status', '-z', parent, commit]);
+      if (diff === null) return unknown('the latest committed change paths could not be resolved');
+      if (parseNameStatus(diff).some((entry) => entry.paths.some(behaviour))) { previous = parent; break; }
+    }
+  }
+  if (previous === base) return sealed;
+  const latest = comparePlanAtBase(root, cfg, timeoutMs, previous, writeComparison, candidateRuns);
+  if (!latest.applicable) return unknown('the latest change comparison could not establish a product delta');
+  if (latest.basePassed !== false) return {
+    ...latest, comparisonBase: previous, reason: `latest change comparison against ${previous}: ${latest.reason}`,
+  };
+  // Preserve the original worker-origin caveat: a committed check has not become
+  // independent authority merely because the additional base contains it.
+  return sealed;
+}
+
+function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, isolationBase?: string, writeComparison = writeVerificationBundle, candidateRuns?: readonly StepResult[]): DiscriminationResult {
   const none = (reason: string, changedPaths: string[] = []): DiscriminationResult =>
     ({ applicable: false, reason, changedPaths, overlaidChecks: [], addedChecks: [], modifiedChecks: [], basePassed: null, baseFailures: [] });
   const unknown = (reason: string, changedPaths: string[] = []): DiscriminationResult =>
@@ -1855,7 +2326,7 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
   const signals = isolationBase === undefined ? collectDiffSignals(root, cfg) : candidateDiffSignals(root, isolationBase);
   /**
    * A baseline stamped DIRTY cannot attribute worktree changes to this session — the very same
-   * doctrine the obligation engine uses for deletions. MEASURED case that forced this: `canary
+   * doctrine the obligation engine uses for deletions. MEASURED case that forced this: `amabie
    * setup` re-run after a script swap (the operator deliberately re-sealing) stamps a dirty baseline,
    * and the uncommitted `package.json` that caused the re-seal was then asked for regression
    * evidence about itself. The operator's own re-seal is not the worker's change.
@@ -1869,7 +2340,7 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
    * check should discriminate.
    */
   const changed = signals.changes.filter((p) =>
-    !isCanaryOwnArtifact(p) && !isGeneratedArtifact(p) && !isDepPath(p));
+    !isAmabieOwnArtifact(p) && !isGeneratedArtifact(p) && !isDepPath(p));
   if (changed.length === 0) return none('the working tree has no change to discriminate');
   /**
    * A change that touches ONLY check/definition files has no product behaviour to discriminate:
@@ -1888,8 +2359,9 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
 
   let tmp: string | undefined;
   let tree: string | undefined;
+  let controlTree: string | undefined;
   try {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-discriminate-'));
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-discriminate-'));
     tree = path.join(tmp, 'tree');
     if (gitWithinRoot(root, ['worktree', 'add', '--detach', '--force', tree, head]) === null) {
       return unknown('git could not materialize the sealed baseline for a comparison run', changed);
@@ -1944,7 +2416,11 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
     };
     for (const p of changed) {
       if (!signals.changes.includes(p)) continue;
-      if (!isTestPath(p) && !namedBySealedScript(p)) continue;
+      // Imported checks use foo-test.js or test-foo.js as well as foo.test.js. Admit
+      // that check surface here without exempting it from behaviour obligations.
+      // An unused file still cannot make the sealed plan discriminate a change.
+      if (!isTestPath(p) && !/[-_](?:test|spec)\.[cm]?[jt]sx?$/i.test(p)
+        && !/(?:^|\/)(?:test|spec)[-_][^/]+\.[cm]?[jt]sx?$/i.test(p) && !namedBySealedScript(p)) continue;
       // "Did this check file exist at the sealed baseline?" — asked of git, not guessed. Every
       // path in `changed` IS a change, so presence at the baseline is exactly the provenance split.
       const atBaseline = gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) !== null;
@@ -1954,7 +2430,8 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
       overlaid.push(p);
     }
     const ran: StepResult[] = [];
-    for (const s of cfg.plan) {
+    const executionPlan = planWithFreshTests(cfg.plan);
+    for (const s of executionPlan) {
       let r: StepResult;
       try { r = runPlanStep(tree, cfg.pm, s, timeoutMs); } catch (e) {
         return unknown(`the sealed checks could not run against the baseline (${String(e).slice(0, 120)})`, changed);
@@ -1964,9 +2441,48 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
     }
     if (ran.length === 0) return unknown('no sealed check ran against the baseline', changed);
     const failures = ran.filter((r) => !r.ok);
-    if (failures.length > 0 && failures.some(looksLikeInfraFailure)) {
-      return unknown('the baseline run failed in an environment-shaped way (a missing module or file), so it proves nothing either way', changed);
+    const recoveredBeforeBuild = new Set<StepResult>();
+    for (let index = cfg.plan.length; index < ran.length; index++) {
+      const initial = ran[cfg.plan.indexOf(executionPlan[index]!)];
+      if (initial && !initial.ok && ran[index]!.ok) recoveredBeforeBuild.add(initial);
     }
+    if (failures.length > 0 && failures.every((failure) => recoveredBeforeBuild.has(failure))) {
+      const evidence = writeComparison(root, 'baseline', ran, 'fail',
+        { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null }, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });
+      return unknown(`the baseline failed only in pre-build tests that passed after its build, so stale artifacts do not demonstrate a source regression. Use an operator-reviewed build-before-test plan${evidence ? `; baseline output: ${evidence}` : ''}`, changed);
+    }
+    if (failures.length > 0 && failures.some(looksLikeInfraFailure)) {
+      const evidence = writeComparison(root, 'baseline', ran, 'fail',
+        { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null }, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });
+      return unknown(`the baseline run failed in an environment-shaped way (a missing module or file), so it proves nothing either way${evidence ? `; baseline output: ${evidence}` : ''}`, changed);
+    }
+    if (overlaid.length > 0 && failures.some((r) => /\b(?:TypeError|ReferenceError|SyntaxError)(?:\s*\[[^\]]+\])?:/.test(`${r.stdout}\n${r.stderr}`))) {
+      // Measured H2: the new check passed only because the worker left input
+      // files in its workspace. The baseline lacked those inputs and crashed.
+      // Test the current implementation against that SAME baseline input set in
+      // a fresh tree. A failure there cannot discriminate old from new behavior,
+      // even if the worker wrapped that runtime error in an AssertionError.
+      controlTree = path.join(tmp, 'input-control');
+      if (gitWithinRoot(root, ['worktree', 'add', '--detach', '--force', controlTree, head]) === null) {
+        return unknown('git could not materialize the comparison input control', changed);
+      }
+      for (const p of changed) {
+        if (!overlaid.includes(p) && gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) === null) continue;
+        if (!copyInto(root, controlTree, p)) return unknown(`comparison input control could not copy ${safePath(p)}`, changed);
+      }
+      const control = planWithFreshTests(cfg.plan).map((s) => runPlanStep(controlTree!, cfg.pm, s, timeoutMs));
+      if (control.some((r) => !r.ok)) {
+        const provenance = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
+        const baseEvidence = writeComparison(root, 'baseline', ran, 'fail', provenance, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });
+        const controlEvidence = writeComparison(root, 'baseline-control', control, 'fail', provenance, { subjectRoot: controlTree, subjectIdentity: candidateIdentity(controlTree) });
+        return unknown(`the worker-authored check does not pass with the current implementation and the same inputs used for the baseline comparison. Make its input fixtures available inside the check, then rerun verification${baseEvidence ? `; baseline output: ${baseEvidence}` : ''}${controlEvidence ? `; input-control output: ${controlEvidence}` : ''}`, changed);
+      }
+    }
+    const baselineEvidence = writeComparison(root, 'baseline', ran, failures.length === 0 ? 'pass' : 'fail',
+      { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null },
+      { subjectRoot: tree, subjectIdentity: candidateIdentity(tree), extra: { comparison: { commit: head, overlaidChecks: overlaid,
+        note: 'Counterfactual comparison only; this is not verification of the current implementation or a session completion.' } } });
+    const pendingIncreases = pendingCountIncreases(candidateRuns, ran, root, tree);
     return {
       applicable: true,
       reason: failures.length === 0
@@ -1978,10 +2494,13 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
       modifiedChecks,
       basePassed: failures.length === 0,
       baseFailures: failures.map((f) => f.kind),
+      ...(pendingIncreases.length > 0 ? { pendingCountIncreases: pendingIncreases } : {}),
+      ...(baselineEvidence ? { baselineEvidence } : {}),
     };
   } catch (e) {
     return unknown(`the baseline comparison failed (${String(e).slice(0, 120)})`, changed);
   } finally {
+    try { if (controlTree) gitWithinRoot(root, ['worktree', 'remove', '--force', controlTree]); } catch { /* fall through to the rm */ }
     try { if (tree) gitWithinRoot(root, ['worktree', 'remove', '--force', tree]); } catch { /* fall through to the rm */ }
     try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* best effort: never fail a verdict on cleanup */ }
   }
@@ -1989,7 +2508,7 @@ export function planDiscrimination(root: string, cfg: CanaryConfig, timeoutMs = 
 
 /** The obligation engine: pure over (kinds, signals, sealed-plan kinds, requirement count).
  *  `planKinds` comes from the SEALED plan — an obligation is only satisfiable
- *  by a command actually sealed at setup; Canary never executes an unsealed
+ *  by a command actually sealed at setup; Amabie never executes an unsealed
  *  "benchmark" just because the task mentioned one. */
 /** `baseline` names the premise the signals were collected against: 'setup'
  *  for the checkpoint/doctor path, 'isolation' at the candidate boundary —
@@ -2021,7 +2540,7 @@ export function obligationsFor(
   if (sig.deletedTestsAttributable.length > 0) {
     add({ id: 'coverage-loss', mode: 'objective', status: 'unmet', note: `verification coverage removed by candidate — deleted test files: ${formatPaths(sig.deletedTestsAttributable)}` });
   } else if (sig.deletedTestsUnattributable.length > 0) {
-    // the premise must match what Canary actually PROVED (review #6): the stamp
+    // the premise must match what Amabie actually PROVED (review #6): the stamp
     // saying "dirty" is a different fact from "never established the state".
     // At the candidate boundary the baseline WAS proven clean (isolate
     // post-check), so unattributable means the committed-diff probe went
@@ -2030,7 +2549,7 @@ export function obligationsFor(
       ? 'the candidate-vs-isolation-base committed diff cannot be resolved'
       : sig.setupDirtProven
       ? 'the repo was already dirty at setup'
-      : "Canary cannot establish the repo's state at setup";
+      : "Amabie cannot establish the repo's state at setup";
     add({ id: 'coverage-loss-unattributable', mode: 'objective', status: 'unproven', note: `test files are missing from the working tree but ${premise}, so the deletion cannot be attributed to this session: ${formatPaths(sig.deletedTestsUnattributable)} — whether coverage was lost is UNPROVEN` });
   } else if (kinds.includes('refactor')) {
     add(sig.resolved
@@ -2046,10 +2565,10 @@ export function obligationsFor(
     // never auto-met, never a dead end.
     const depFiles = sig.touched.filter(isDepPath);
     add(!sig.depTouched
-      ? { id: 'dependency-change', mode: 'non-objective', status: 'unproven', note: 'the task declares dependency work but the candidate diff touches no dependency file — nothing observed to compare, nothing observed to accept; UNPROVEN. Land the change, or accept the candidate as-is from an interactive terminal: canary accept <candidate>' }
+      ? { id: 'dependency-change', mode: 'non-objective', status: 'unproven', note: 'the task declares dependency work but the candidate diff touches no dependency file — nothing observed to compare, nothing observed to accept; UNPROVEN. Land the change, or accept the candidate as-is from an interactive terminal: amabie accept <candidate>' }
       : { id: 'dependency-change', mode: 'non-objective', status: 'unproven', note: sig.resolved
-        ? `dependency change observed (${formatPaths(depFiles)}): the sealed plan re-ran against the new graph, but downstream behavior needs a trusted baseline/candidate comparison — UNPROVEN. Closes after review from an interactive terminal: canary accept <candidate>`
-        : 'dependency change observed against an unresolvable baseline — comparison UNPROVEN. It can still be closed after review from an interactive terminal: canary accept <candidate>' });
+        ? `dependency change observed (${formatPaths(depFiles)}): the sealed plan re-ran against the new graph, but downstream behavior needs a trusted baseline/candidate comparison — UNPROVEN. Closes after review from an interactive terminal: amabie accept <candidate>`
+        : 'dependency change observed against an unresolvable baseline — comparison UNPROVEN. It can still be closed after review from an interactive terminal: amabie accept <candidate>' });
   }
   const numericPerformance = task?.objectiveTargets.some(t => t.kind === 'bench') ?? false;
   const numericUi = task?.objectiveTargets.some(t => t.kind === 'e2e') ?? false;
@@ -2057,13 +2576,13 @@ export function obligationsFor(
     add(has('bench') && !task?.subjectivePerformance
       ? { id: 'performance-proof', mode: 'objective', status: 'met', note: 'the sealed benchmark ran and passed (its exit code is the threshold sealed at setup)' }
       : { id: 'performance-proof', mode: 'non-objective', status: 'unproven', note: task?.subjectivePerformance
-        ? 'subjective performance feel requires human judgment even when a benchmark passes — UNPROVEN. Review the exact committed candidate and accept from an interactive terminal: canary accept <candidate>'
-        : 'a performance obligation needs a repeatable benchmark with a defined threshold; the sealed plan has none — UNPROVEN. Paths to close it: add a bench script and re-run canary setup (seals + smokes it), or accept the measured judgment from an interactive terminal: canary accept <candidate>' });
+        ? 'subjective performance feel requires human judgment even when a benchmark passes — UNPROVEN. Review the exact committed candidate and accept from an interactive terminal: amabie accept <candidate>'
+        : 'a performance obligation needs a repeatable benchmark with a defined threshold; the sealed plan has none — UNPROVEN. Paths to close it: add a bench script and re-run amabie setup (seals + smokes it), or accept the measured judgment from an interactive terminal: amabie accept <candidate>' });
   }
   if (kinds.includes('ui') && !numericUi && !numericPerformance) {
     add(has('e2e')
       ? { id: 'ui-proof', mode: 'objective', status: 'met', note: 'the sealed e2e/browser proof ran and passed' }
-      : { id: 'ui-proof', mode: 'non-objective', status: 'unproven', note: 'no browser/e2e/accessibility proof is available in the sealed plan — UI behavior UNPROVEN (visual truth is not pretend-deterministic). Closes only by judgment from an interactive terminal: canary accept <candidate>' });
+      : { id: 'ui-proof', mode: 'non-objective', status: 'unproven', note: 'no browser/e2e/accessibility proof is available in the sealed plan — UI behavior UNPROVEN (visual truth is not pretend-deterministic). Closes only by judgment from an interactive terminal: amabie accept <candidate>' });
   }
   if (task?.subjectiveVisual) add({ id: 'subjective-visual-acceptance', mode: 'non-objective', status: 'unproven',
     note: 'aesthetic satisfaction requires judgment from an interactive terminal; a generic e2e check cannot establish it' });
@@ -2072,14 +2591,14 @@ export function obligationsFor(
     const bound = script !== undefined && authority!.plan.some(s => s.script === script && s.kind === target.kind);
     add({ id: `target-${target.kind}-${target.digest}`, mode: 'objective', status: bound ? 'met' : 'unproven',
       note: bound ? `sealed ${script} checks target ${target.digest}; its successful exit is required independently`
-        : `objective target ${target.digest} has no sealed ${target.kind} proof binding. Bind this digest to the matching script in package.json canary.proofs and run setup; acceptance cannot replace measurement.` });
+        : `objective target ${target.digest} has no sealed ${target.kind} proof binding. The operator can run amabie bind <sealed ${target.kind} script> --requirement "<exact task or requirement text>" --reseal; acceptance cannot replace measurement.` });
   }
   /**
    * PER-REQUIREMENT COVERAGE, and the binding path that makes it attainable.
    *
    * The invariant: every objective requirement must have a FROZEN proof obligation or remain NOT
    * PROVEN. A requirement is covered when it is either a frozen objective target (a numeric
-   * bench/e2e target, bound above) or directly bound in `package.json` `canary.proofs` to a script
+   * bench/e2e target, bound above) or directly bound in `package.json` `amabie.proofs` to a script
    * the sealed plan actually runs — that script's exit code is then the measurement.
    *
    * MEASURED gap this closes: the binding map accepted any requirement digest, but only plans whose
@@ -2092,7 +2611,11 @@ export function obligationsFor(
     return script !== undefined && authority!.plan.some(s => s.script === script) ? script : null;
   };
   const digests = task?.requirementDigests ?? [];
+  const taskIdentityMatchesCount = task !== null && task !== undefined && task.requirementCount === requirementCount;
+  const subjectiveDigests = new Set(task?.subjectiveRequirementDigests ?? []);
   const uncovered = digests.filter(d => !task!.objectiveTargets.some(t => t.digest === d) && boundScriptFor(d) === null);
+  const uncoveredObjective = uncovered.filter(d => !subjectiveDigests.has(d));
+  const uncoveredSubjective = uncovered.filter(d => subjectiveDigests.has(d));
   if (digests.length > 0 && uncovered.length === 0) {
     const bound = digests.map(d => boundScriptFor(d)).filter((s): s is string => s !== null);
     add({ id: 'per-requirement', mode: 'objective', status: 'met',
@@ -2102,38 +2625,42 @@ export function obligationsFor(
      * THE CLASSIFICATION MUST NOT CONTRADICT ITS OWN NOTE (v1.2 fix).
      *
      * MEASURED BUG this replaces: the duty was ALWAYS `mode: 'non-objective'`, i.e. closable by a
-     * human `canary accept`, while its own note said "acceptance cannot replace measurement for an
+     * human `amabie accept`, while its own note said "acceptance cannot replace measurement for an
      * objective requirement". The consequence was the opposite of the intent: an operator could
      * close an unbound OBJECTIVE requirement with a TTY signature, and — because the Stop hook
      * routes non-objective duties down its operator-only branch — a worker facing it was told
      * "none of them is yours to close" and left to loop. Benchmarked at 1.5-1.85M tokens.
      *
-     * The rule now: an uncovered requirement is a MEASUREMENT duty (objective, unproven) unless
-     * the registration itself carries a subjective marker. A declared requirement is a
-     * requirement; "the dashboard should feel cleaner" is subjective only because it says so, and
-     * that case keeps its own acceptance path via `subjective-visual-acceptance` /
-     * `subjectivePerformance`.
+     * Subjective eligibility is attached to each requirement digest, never inferred from another
+     * part of the task. A mixed task stays objective while any uncovered objective requirement is
+     * open; subjective parts retain their separate human-judgment path.
      */
-    const subjectiveRegistration = task?.subjectiveVisual === true || task?.subjectivePerformance === true;
-    add({ id: 'per-requirement', mode: subjectiveRegistration ? 'non-objective' : 'objective', status: 'unproven', note: requirementCount > 0
-      ? `multi-part task: ${requirementCount} registered requirement(s), ${uncovered.length} with NO sealed proof — a green plan proves the plan, NOT each part. Bind each uncovered digest in package.json canary.proofs to a script your plan runs and re-run canary setup (acceptance cannot replace measurement for an objective requirement)${subjectiveRegistration ? ', or accept the candidate from an interactive terminal (canary accept <candidate>)' : ''} — until then UNPROVEN, never permanently dead`
-      : 'multi-part task detected but requirements were never enumerated — ask the human ONCE which parts must be proven separately, or register them: canary task "..." --requirement "..." per part (BEFORE isolation), or accept the candidate as-is from an interactive terminal: canary accept <candidate>' });
+    const completionPath = !taskIdentityMatchesCount
+      ? 'register each exact requirement with amabie task before isolation'
+      : uncoveredObjective.length > 0
+        ? 'the operator can bind each uncovered requirement with amabie bind <sealed script> --requirement "<exact text>" --reseal'
+        : 'review and accept the subjective result from an interactive terminal (amabie accept <candidate>)';
+    add({ id: 'per-requirement', mode: !taskIdentityMatchesCount || uncoveredObjective.length > 0 || requirementCount === 0 ? 'objective' : 'non-objective', status: 'unproven', note: requirementCount > 0
+      ? `multi-part task: ${requirementCount} registered requirement(s), ${uncoveredObjective.length} objective part(s) with NO sealed proof${uncoveredSubjective.length ? `, ${uncoveredSubjective.length} subjective part(s) waiting for human judgment` : ''} — a green plan proves the plan, NOT each objective part. ${completionPath} — until then UNPROVEN, never permanently dead`
+      : 'multi-part task detected but requirements were never enumerated — ask the human ONCE which parts must be proven separately, or register them: amabie task "..." --requirement "..." per part (BEFORE isolation), or accept the candidate as-is from an interactive terminal: amabie accept <candidate>' });
   }
   return out;
 }
 
-/** One requirement that no sealed check measures, with the plan scripts it could be bound to. */
-export interface UnboundRequirement {
+/** One requirement or objective target that lacks a matching sealed proof. */
+export interface UnboundCriterion {
   digest: string;
   /** Distinct plan scripts that do NOT already carry a binding — the candidate proof targets. */
   candidateScripts: string[];
+  source: 'requirement' | 'objective-target';
+  targetKind?: 'bench' | 'e2e';
 }
 
-/** The requirements a registration declared and no frozen binding covers. */
+/** Registered criteria a matching frozen check does not cover. */
 export interface UnboundReport {
-  /** Digests with no frozen binding and no frozen objective target. */
-  unbound: UnboundRequirement[];
-  /** True when the registration itself carries a subjective marker, so acceptance is a real path. */
+  /** Requirement and objective-target digests without a valid plan binding. */
+  unbound: UnboundCriterion[];
+  /** True only when every unbound criterion can be closed by human judgment. */
   subjective: boolean;
   /** Every script the sealed plan will run, so a suggestion is always actionable. */
   planScripts: string[];
@@ -2143,45 +2670,51 @@ export interface UnboundReport {
  * INSPECT A REGISTRATION BEFORE A WORKER IS HANDED ANYTHING (v1.2, Mission 2).
  *
  * WHY THIS EXISTS AS A SEPARATE, PRE-HANDOFF QUESTION: v1.1 could only discover an unbound
- * requirement at the END of a worker's session — at the Stop hook or at `finish` — after the model
+ * requirement or numeric target at the END of a worker's session — at the Stop hook or at `finish` — after the model
  * had already spent its budget trying to close a duty that was never its to close. Measured at
  * 1.5-1.85M tokens for a five-requirement task. The information needed to prevent that is
  * available the moment the task is registered, so it is answered here and consumed by the
  * handoff, rather than rediscovered a million tokens later.
  *
- * It reports facts only: which digests are uncovered, and which plan scripts they could be bound
- * to. It never decides a verdict and never mints a binding.
+ * It reports facts only: which requirement or target digests are uncovered, and which plan scripts
+ * are available. It never decides a verdict and never mints a binding.
  */
 export function unboundRequirements(
   root: string,
   cfg: { plan: PlanStep[]; planAuthority?: PlanAuthority } | null,
 ): UnboundReport {
   const task = readTaskRecord(root);
-  if (!task || task.requirementDigests.length === 0 || cfg === null) {
+  if (!task || cfg === null || (task.requirementDigests.length === 0 && task.objectiveTargets.length === 0)) {
     return { unbound: [], subjective: false, planScripts: cfg?.plan.map((s) => s.script) ?? [] };
   }
   const bindings = cfg.planAuthority?.proofBindings ?? {};
-  const inPlan = (script: string): boolean => cfg.plan.some((s) => s.script === script);
-  const digestSet = new Set(task.requirementDigests);
+  const targets = new Map(task.objectiveTargets.map((target) => [target.digest, target]));
+  const requirements = new Set(task.requirementDigests);
+  const digests = [...new Set([...task.requirementDigests, ...targets.keys()])];
+  const boundScript = (digest: string): string | null => {
+    const script = bindings[digest];
+    const target = targets.get(digest);
+    return script !== undefined && cfg.plan.some((step) => step.script === script && (!target || step.kind === target.kind))
+      ? script : null;
+  };
 
-  // Scripts already bound to one of THIS registration's requirements are not candidates for the
-  // others: a digest must map to the check that measures THAT requirement.
-  const usedByThisRegistration = new Set(
-    Object.entries(bindings).filter(([d]) => digestSet.has(d)).map(([, s]) => s),
-  );
+  // An inferred numeric target is only covered by a check of its matching kind.
+  const usedByThisRegistration = new Set(digests.map(boundScript).filter((script): script is string => script !== null));
   const candidateScripts = [...new Set(cfg.plan.map((s) => s.script))].filter((s) => !usedByThisRegistration.has(s));
-
-  const unbound: UnboundRequirement[] = task.requirementDigests
-    .filter((d) => !task.objectiveTargets.some((t) => t.digest === d))
-    .filter((d) => {
-      const script = bindings[d];
-      return script === undefined || !inPlan(script);
-    })
-    .map((digest) => ({ digest, candidateScripts }));
+  const unbound: UnboundCriterion[] = digests.flatMap((digest) => {
+    if (boundScript(digest) !== null) return [];
+    const target = targets.get(digest);
+    return [{
+      digest, candidateScripts,
+      source: requirements.has(digest) ? 'requirement' : 'objective-target',
+      ...(target ? { targetKind: target.kind } : {}),
+    }];
+  });
 
   return {
     unbound,
-    subjective: task.subjectiveVisual === true || task.subjectivePerformance === true,
+    subjective: unbound.length > 0 && unbound.every(({ digest, targetKind }) =>
+      targetKind === undefined && task.subjectiveRequirementDigests.includes(digest)),
     planScripts: cfg.plan.map((s) => s.script),
   };
 }
@@ -2194,8 +2727,74 @@ export function readTaskRecord(root: string): TaskIdentity | null {
     const p = path.join(root, CONFIG_DIR, TASK_FILE);
     if (containedRealPath(root, p) === null) return null;
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
-    return v?.schema === 'canary-task/2' ? canonicalTask(v) : null;
+    return (v?.schema === 'amabie-task/2' || v?.schema === 'canary-task/2') ? canonicalTask(v) : null;
   } catch { return null; }
+}
+
+interface ClaudeTurnState {
+  schema: 'amabie-turn/1' | 'canary-turn/1';
+  sessionDigest: string;
+  promptId: string;
+  registeredPromptId: string | null;
+  task: TaskIdentity | null;
+}
+
+function claudeTurnStatePath(root: string, sessionId: string): string {
+  return path.join(root, CONFIG_DIR, CLAUDE_TURN_STATE_DIR, `${sha256(sessionId)}.json`);
+}
+
+function readClaudeTurnState(root: string, sessionId: string): ClaudeTurnState | null {
+  try {
+    const p = claudeTurnStatePath(root, sessionId);
+    if (containedRealPath(root, p) === null) return null;
+    const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
+    const task = v?.task === null ? null : canonicalTask(v?.task);
+    if ((v?.schema !== 'amabie-turn/1' && v?.schema !== 'canary-turn/1') || v.sessionDigest !== sha256(sessionId)
+      || typeof v.promptId !== 'string' || !/^[0-9a-f-]{36}$/i.test(v.promptId)
+      || (v.registeredPromptId !== null && v.registeredPromptId !== v.promptId)
+      || (v.registeredPromptId === v.promptId && task === null)
+      || (v.registeredPromptId === null && v.task !== null)) return null;
+    return { schema: 'amabie-turn/1', sessionDigest: v.sessionDigest, promptId: v.promptId,
+      registeredPromptId: v.registeredPromptId as string | null, task };
+  } catch { return null; }
+}
+
+function writeClaudeTurnState(root: string, sessionId: string, state: ClaudeTurnState): boolean {
+  const p = claudeTurnStatePath(root, sessionId);
+  try {
+    if (containedRealPath(root, path.dirname(p)) === null || containedRealPath(root, p) === null) return false;
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    assertPlainTarget(p);
+    writeFileAtomic(p, JSON.stringify(state, null, 2) + '\n');
+    return true;
+  } catch { return false; }
+}
+
+function removeClaudeTurnState(root: string, sessionId: string): void {
+  const p = claudeTurnStatePath(root, sessionId);
+  try {
+    if (containedRealPath(root, p) === null) return;
+    assertPlainTarget(p);
+    fs.rmSync(p, { force: true });
+  } catch { /* session shutdown must not fail because local state could not be cleaned */ }
+}
+
+const sameTask = (left: TaskIdentity | null, right: TaskIdentity | null): boolean =>
+  left !== null && right !== null && JSON.stringify(left) === JSON.stringify(right);
+
+function mcpInputMatchesTask(task: TaskIdentity, input: unknown): boolean {
+  if (!input || typeof input !== 'object') return false;
+  const { intent, requirements } = input as { intent?: unknown; requirements?: unknown };
+  if (typeof intent !== 'string' || !Array.isArray(requirements)
+    || !requirements.every((requirement) => typeof requirement === 'string')) return false;
+  const expectedRequirements = requirements.map((requirement) => materialDigest(requirement as string)).sort();
+  return task.taskDigest === materialDigest(intent)
+    && JSON.stringify(task.requirementDigests) === JSON.stringify(expectedRequirements);
+}
+
+function taskFromMcpInput(root: string, input: unknown): TaskIdentity | null {
+  const task = readTaskRecord(root);
+  return task && mcpInputMatchesTask(task, input) ? task : null;
 }
 
 // ---------- blocker 3: ACCEPTANCE FROM AN INTERACTIVE TERMINAL (the subjective completion path) ----------
@@ -2205,19 +2804,19 @@ export function readTaskRecord(root: string): TaskIdentity | null {
  *  against, the exact committed bytes reviewed, the frozen task state, AND
  *  the acceptance-eligible DUTY SET as it stood when the judgment was made
  *  (GLM F-3) — any of those moving makes it STALE (the duties reopen).
- *  Claim stated exactly (no more, no less): Canary refuses the normal
+ *  Claim stated exactly (no more, no less): Amabie refuses the normal
  *  NON-INTERACTIVE acceptance path and requires an interactive terminal for
  *  the supported acceptance flow. A TTY is not cryptographic human identity:
  *  a same-UID process able to drive a PTY (e.g. `script -qec`) or to write
- *  this file directly remains inside Canary's documented local forgery
+ *  this file directly remains inside Amabie's documented local forgery
  *  ceiling (M2). The gate takes the USUAL agent path away; it is policy /
  *  friction, not an OS security boundary.
- *  It lives OUTSIDE .canary/evidence by design: the evidence tree is inside
+ *  It lives OUTSIDE .amabie/evidence by design: the evidence tree is inside
  *  M9's fingerprint window, and an acceptance written between windows must
  *  not look like authority-drift. */
 export const ACCEPTANCE_SUBDIR = 'acceptance';
 export interface AcceptanceRecord {
-  schema: 'canary-acceptance/3'; at: string; candidate: string;
+  schema: 'amabie-acceptance/3' | 'canary-acceptance/3'; at: string; candidate: string;
   subject: AuthorizationSubject;
   subjectDigest: string;
   acceptedBy: 'tty-human';
@@ -2229,7 +2828,7 @@ export function readAcceptance(root: string, name: string): AcceptanceRecord | n
     if (!fs.existsSync(p)) return null;
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<AcceptanceRecord> | null;
     if (typeof v !== 'object' || v === null) return null;
-    if (v.schema !== 'canary-acceptance/3' || typeof v.at !== 'string' || v.candidate !== name || v.acceptedBy !== 'tty-human') return null;
+    if ((v.schema !== 'amabie-acceptance/3' && v.schema !== 'canary-acceptance/3') || typeof v.at !== 'string' || v.candidate !== name || v.acceptedBy !== 'tty-human') return null;
     const sub = v.subject;
     if (!sub || sub.candidate !== name || !canonicalTask(sub.frozenTask) || !canonicalTask(sub.liveTask)
       || ![sub.candidateCommit, sub.candidateTree, sub.baseHead, sub.baseTree].every(x => typeof x === 'string' && /^[0-9a-f]{40,64}$/.test(x))
@@ -2252,9 +2851,9 @@ export function writeAcceptance(root: string, rec: AcceptanceRecord): boolean {
 }
 
 /**
- * M6 task-intake: the worker registers what it was ASKED for so Canary can
+ * M6 task-intake: the worker registers what it was ASKED for so Amabie can
  * derive that kind's proof obligations. The registration itself carries ZERO
- * authority (AGENT_REPORTED, like `canary claim`): it can only ever ADD
+ * authority (AGENT_REPORTED, like `amabie claim`): it can only ever ADD
  * obligations — the sealed plan stays the floor no declaration lifts.
  */
 export function cmdTask(rawArgs: string[]): number {
@@ -2263,10 +2862,10 @@ export function cmdTask(rawArgs: string[]): number {
   const root = findRepoRoot(process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is no project here to attach a task to.', 'cd into your project and try again'); return 2; }
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Canary's local config is unreadable — it will not attach a task to state it cannot read.", 'run: canary setup'); return 2; }
-  if (!cfg) { o.verdict('NEEDS ATTENTION', 'Canary is not set up in this repo, so there is no verification record to attach a task to.', 'run: canary setup --yes'); return 2; }
+  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Amabie's local config is unreadable — it will not attach a task to state it cannot read.", 'run: amabie setup'); return 2; }
+  if (!cfg) { o.verdict('NEEDS ATTENTION', 'Amabie is not set up in this repo, so there is no verification record to attach a task to.', 'run: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NEEDS ATTENTION', `Canary will not record a task against a config it does not trust (${distrust}).`, "run: canary setup --yes (rewrites it as this machine's own)"); return 2; }
+  if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not record a task against a config it does not trust (${distrust}).`, "run: amabie setup --yes (rewrites it as this machine's own)"); return 2; }
   let kindFlag: string | null = null;
   const prose: string[] = [];
   const requirements: string[] = [];
@@ -2274,7 +2873,7 @@ export function cmdTask(rawArgs: string[]): number {
    * A STATED REQUIREMENT MUST NEVER BE SILENTLY DROPPED (v1.2, found by a probe rather than by a hunch).
    *
    * MEASURED, tooling/probes/v12-fixture-configurations.mjs: fixture `cli-exit-codes` states EIGHT
-   * requirements and `canary task` recorded SEVEN digests. The missing one begins with `--`:
+   * requirements and `amabie task` recorded SEVEN digests. The missing one begins with `--`:
    *
    *   "--strict moves warnings into errors rather than dropping them"
    *
@@ -2283,12 +2882,12 @@ export function cmdTask(rawArgs: string[]): number {
    * token was neither consumed nor reported: the operator saw "8 requirements" in their head and
    * "7 requirement(s)" on screen, and the eighth became prose nobody checks. That is the exact
    * failure this repository exists to prevent, and it is the same defect class as the MEASURED `work`
-   * bug recorded in orchestrate.ts ("Canary silently registered FEWER, i.e. weaker verification than
+   * bug recorded in orchestrate.ts ("Amabie silently registered FEWER, i.e. weaker verification than
    * the human authorized") — fixed there in v1.1, still present here.
    *
    * The rule now: `--requirement` takes the NEXT ARGUMENT VERBATIM as the requirement text. The only
    * values rejected are the ones that cannot be text at all — no value, or another option token,
-   * which is a misuse Canary refuses instead of guessing. An unrecognised option is REFUSED rather
+   * which is a misuse Amabie refuses instead of guessing. An unrecognised option is REFUSED rather
    * than ignored, because ignoring `--requirment "x"` (a typo) registers zero duties while the
    * operator believes otherwise, and a silent coverage hole is the one outcome this command may
    * never produce.
@@ -2321,18 +2920,18 @@ export function cmdTask(rawArgs: string[]): number {
       requirements.push(rest[++i]!); continue;
     }
     if (a.startsWith('--')) {
-      o.say(`REFUSED — unknown option "${a.slice(0, 40)}". canary task takes --kind and --requirement only; an ignored option here would silently register FEWER duties than you listed. Nothing was registered.`);
+      o.say(`REFUSED — unknown option "${a.slice(0, 40)}". amabie task takes --kind and --requirement only; an ignored option here would silently register FEWER duties than you listed. Nothing was registered.`);
       return 3;
     }
     prose.push(a);
   }
   const requirementCount = requirements.length;
   const text = prose.join(' ').trim();
-  if (!text && kindFlag === null && requirementCount === 0) { o.say('usage: canary task "<intent>" [--kind bugfix|refactor|dependency|performance|ui|multi] [--requirement "<part>"]…'); return 3; }
+  if (!text && kindFlag === null && requirementCount === 0) { o.say('usage: amabie task "<intent>" [--kind bugfix|refactor|dependency|performance|ui|multi] [--requirement "<part>"]…'); return 3; }
   const inferred = inferTaskKinds([text, ...requirements].join(' '));
   let kinds: TaskKind[];
   if (kindFlag !== null) {
-    if (!(TASK_KINDS as readonly string[]).includes(kindFlag)) { o.verdict('NEEDS ATTENTION', `unknown task kind "${kindFlag.slice(0, 40)}" — one of: ${TASK_KINDS.join(', ')}.`, 're-run with --kind <one of those>, or omit --kind and let Canary infer'); return 3; }
+    if (!(TASK_KINDS as readonly string[]).includes(kindFlag)) { o.verdict('NEEDS ATTENTION', `unknown task kind "${kindFlag.slice(0, 40)}" — one of: ${TASK_KINDS.join(', ')}.`, 're-run with --kind <one of those>, or omit --kind and let Amabie infer'); return 3; }
     // blocker 3 LAW: an agent-selected --kind may ADD useful classification;
     // it may NEVER REMOVE trusted/inferred material intent. The recorded
     // kinds are the UNION — "--kind bugfix" on "fix the crash and make the
@@ -2346,15 +2945,15 @@ export function cmdTask(rawArgs: string[]): number {
 
   try {
     if (containedRealPath(root, path.join(root, CONFIG_DIR)) === null) {
-      o.verdict('NEEDS ATTENTION', '.canary resolves outside the repository (a link?) — Canary will not write through it.', 'replace it with a real folder, then re-run'); return 2;
+      o.verdict('NEEDS ATTENTION', '.amabie resolves outside the repository (a link?) — Amabie will not write through it.', 'replace it with a real folder, then re-run'); return 2;
     }
     const taskPath = path.join(root, CONFIG_DIR, TASK_FILE);
     if (containedRealPath(root, taskPath) === null) {
-      o.verdict('NEEDS ATTENTION', `${rel(root, taskPath)} resolves outside the repository (a link?) — Canary will not write through it.`, 'replace it with a real folder inside .canary, then re-run'); return 2;
+      o.verdict('NEEDS ATTENTION', `${rel(root, taskPath)} resolves outside the repository (a link?) — Amabie will not write through it.`, 'replace it with a real folder inside .amabie, then re-run'); return 2;
     }
     fs.mkdirSync(path.dirname(taskPath), { recursive: true });
     writeFileAtomic(taskPath, JSON.stringify({
-      schema: 'canary-task/2', at: new Date().toISOString(), ...task,
+      schema: 'amabie-task/2', at: new Date().toISOString(), ...task,
       trustClass: 'AGENT_REPORTED',
       authority: 'ZERO — registering a task can only ADD proof obligations; the sealed plan is the floor no declaration lifts',
     }, null, 2) + '\n');
@@ -2362,20 +2961,45 @@ export function cmdTask(rawArgs: string[]): number {
     o.verdict('NEEDS ATTENTION', `could not record the task (${String(e).slice(0, 140)}).`, 'fix the file/permission, then re-run'); return 2;
   }
   o.say(`task registered: ${kinds.length ? kinds.join(' + ') : 'no kind inferred'}${requirementCount ? ` (${requirementCount} requirement(s))` : ''}.`);
-  for (const target of task.objectiveTargets) o.say(`objective ${target.kind} target: ${target.digest} — matching proof must be sealed via package.json canary.proofs`);
+  const proofScriptFor = (digest: string, kind?: 'bench' | 'e2e'): string | null => {
+    const script = cfg.planAuthority?.proofBindings?.[digest];
+    return script !== undefined && cfg.plan.some(step => step.script === script && (kind === undefined || step.kind === kind))
+      ? script : null;
+  };
+  const bindHint = (kind?: 'bench' | 'e2e'): void => {
+    const scripts = [...new Set(cfg.plan.filter((step) => !kind || step.kind === kind).map((step) => step.script))];
+    const command = scripts.length > 0
+      ? `amabie bind <${kind ? `sealed ${kind}` : 'sealed plan'} script> --requirement "<exact registered text>" --reseal`
+      : kind ? `add a sealed ${kind} check and run amabie setup` : 'add a sealed check to the plan and run amabie setup';
+    o.say(`  trusted operator action (same-UID workers can invoke CLI in LOCAL): ${command}`);
+    if (scripts.length > 0) o.say(`  matching sealed scripts: ${scripts.map(safePath).join(', ')}`);
+  };
+  for (const target of task.objectiveTargets) {
+    const script = proofScriptFor(target.digest, target.kind);
+    o.say(`objective ${target.kind} target: ${target.digest} — ${script
+      ? `bound to sealed "${script}" check; its successful result is still required`
+      : 'needs a matching sealed proof binding'}`);
+    if (!script) bindHint(target.kind);
+  }
   /**
    * Print every requirement's digest so the operator can actually BIND it.
    *
-   * MEASURED gap this closes: `canary.proofs` accepts any requirement digest, but nothing ever told
-   * the operator what the digest was — so "bind this requirement to a sealed check" was advice with
-   * no way to follow it, and the only reachable end state was human acceptance. Coverage has to be
-   * attainable, or "every objective requirement has a frozen proof obligation" is not a promise.
+   * MEASURED gap this closes: `amabie.proofs` accepts any requirement digest, but nothing ever told
+   * the operator what the digest was, so the proof-binding path had no actionable input. Coverage
+   * has to be attainable, or "every objective requirement has a frozen proof obligation" is not a
+   * promise.
    */
   for (const r of requirements) {
     const d = materialDigest(r);
-    const covered = task.objectiveTargets.some((t) => t.digest === d);
-    o.say(`requirement ${covered ? '[frozen target]' : '[needs proof or acceptance]'}: ${d} — "${canonicalText(r).slice(0, 90)}"`);
-    if (!covered) o.say(`  bind it: package.json "canary": { "proofs": { "${d}": "<script name from your plan>" } }, then: canary setup`);
+    const target = task.objectiveTargets.find((t) => t.digest === d);
+    const script = proofScriptFor(d, target?.kind);
+    const state = target
+      ? `[objective ${target.kind} target${script ? ` bound to "${script}"` : '; needs matching proof'}]`
+      : script
+        ? `[bound to sealed proof "${script}"; successful result still required]`
+        : `[needs sealed proof${task.subjectiveRequirementDigests.includes(d) ? ' or human acceptance' : ''}]`;
+    o.say(`requirement ${state}: ${d} — "${canonicalText(r).slice(0, 90)}"`);
+    if (!target && !script) bindHint();
   }
   o.say('this is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task\'s obligations; nothing here weakens either.');
   if (text !== '' && inferred.length === 0) {
@@ -2389,7 +3013,7 @@ export function cmdTask(rawArgs: string[]): number {
 }
 
 /**
- * Write what Canary just executed, as bytes — argv, cwd, runtime, candidate,
+ * Write what Amabie just executed, as bytes — argv, cwd, runtime, candidate,
  * raw streams (capped files + full-byte digests), exit codes, derived
  * observation counts. BEST-EFFORT: evidence plumbing must never crash or
  * alter the harness hook, and nothing reads this back for a verdict (S4
@@ -2399,21 +3023,23 @@ export function cmdTask(rawArgs: string[]): number {
  */
 /** Keys the bundle writer itself owns — `extra` may add, never overwrite. */
 const BUNDLE_RESERVED = new Set(['schema', 'at', 'source', 'status', 'trustClass', 'note',
-  'canaryEntry', 'runtime', 'cwd', 'candidate', 'envOverrides', 'execPolicy', 'steps', 'provenance']);
+  'amabieEntry', 'runtime', 'cwd', 'candidate', 'envOverrides', 'execPolicy', 'steps', 'provenance']);
 
 export function writeVerificationBundle(root: string, source: string, results: StepResult[], status: string, prov?: BundleProvenance, o?: {
   /** where evidence DIRS live (M7: a candidate's bundles land under the BASE's
-   *  .canary/evidence — the candidate never holds Canary's authoritative bytes) */
+   *  .amabie/evidence — the candidate never holds Amabie's authoritative bytes) */
   evidenceRoot?: string;
   /** which tree cwd/candidate identity describe (defaults to the steps' root) */
   subjectRoot?: string;
+  /** Trusted execution-time identity when persistence follows temporary-tree cleanup. */
+  subjectIdentity?: ReturnType<typeof candidateIdentity>;
   /** additive, plainly-labeled observation fields (never read back for verdicts) */
   extra?: Record<string, unknown>;
 }): string | null {
   try {
     const evidenceRoot = o?.evidenceRoot ?? root;
     const subjectRoot = o?.subjectRoot ?? root;
-    if (containedRealPath(evidenceRoot, path.join(evidenceRoot, CONFIG_DIR)) === null) return null; // linked .canary: no writes through it (S3)
+    if (containedRealPath(evidenceRoot, path.join(evidenceRoot, CONFIG_DIR)) === null) return null; // linked .amabie: no writes through it (S3)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const dir = path.join(evidenceRoot, CONFIG_DIR, EVIDENCE_DIR, `${stamp}-${source}`);
     if (containedRealPath(evidenceRoot, dir) === null) return null;
@@ -2445,14 +3071,14 @@ export function writeVerificationBundle(root: string, source: string, results: S
       };
     });
     const bundle = {
-      schema: 'canary-verification/1', at: new Date().toISOString(), source, status,
-      // M3: every bundle exists because Canary ran the plan — CANARY_OBSERVED
+      schema: 'amabie-verification/1', at: new Date().toISOString(), source, status,
+      // M3: every bundle exists because Amabie ran the plan — AMABIE_OBSERVED
       // is not a claim this file makes, it is a fact about who wrote these bytes.
-      trustClass: 'CANARY_OBSERVED',
-      note: 'Written from Canary\'s OWN execution. Agent reports and printed summaries are claims, not evidence; this bundle is never read back to produce a verdict.',
-      canaryEntry: CLI_ENTRY,
+      trustClass: 'AMABIE_OBSERVED',
+      note: 'Written from Amabie\'s OWN execution. Agent reports and printed summaries are claims, not evidence; this bundle is never read back to produce a verdict.',
+      amabieEntry: CLI_ENTRY,
       runtime: { node: process.version, execPath: process.execPath, platform: process.platform, arch: process.arch },
-      cwd: subjectRoot, candidate: candidateIdentity(subjectRoot), envOverrides: relevantEnvNames(),
+      cwd: subjectRoot, candidate: o?.subjectIdentity ?? candidateIdentity(subjectRoot), envOverrides: relevantEnvNames(),
       execPolicy: ENV_POLICY, steps,
       // M4 provenance: WHICH plan/code/task this evidence belongs to, stamped
       // from trusted in-memory state at write time — never re-derived from
@@ -2472,11 +3098,11 @@ export function writeVerificationBundle(root: string, source: string, results: S
     // the bundle against corruption and accidental edits, and says so.
     writeFileAtomic(path.join(dir, 'verification.sha256'),
       JSON.stringify({ file: 'verification.json', sha256: sha256(fs.readFileSync(jsonPath, 'utf8')), label: 'tamper-evidence only — NOT a signature; no key exists' }, null, 2) + '\n');
-    // bounded retention: newest EVIDENCE_KEEP bundles; only Canary's own
+    // bounded retention: newest EVIDENCE_KEEP bundles; only Amabie's own
     // <stamp>-<source> dirs are eligible; anything else in evidence/ is left alone
     const parent = path.join(evidenceRoot, CONFIG_DIR, EVIDENCE_DIR);
     const mine = fs.readdirSync(parent)
-      .filter((d) => /^\d{4}-\d{2}-\d{2}T[\d-]{11,}(Z)?-(setup|doctor|checkpoint|candidate|promotion)$/.test(d))
+      .filter((d) => /^\d{4}-\d{2}-\d{2}T[\d-]{11,}(Z)?-(setup|doctor|doctor-selected|checkpoint|baseline(?:-control)?|candidate|promotion)$/.test(d))
       .sort();
     for (const d of mine.slice(0, Math.max(0, mine.length - EVIDENCE_KEEP))) {
       try { fs.rmSync(path.join(parent, d), { recursive: true, force: true }); } catch { /* churn-tolerant */ }
@@ -2485,7 +3111,7 @@ export function writeVerificationBundle(root: string, source: string, results: S
   } catch { /* evidence is best-effort; never crash the harness hook over it */ return null; }
 }
 
-/** The agent's latest UNTRUSTED hint — read ONLY to annotate a block Canary
+/** The agent's latest UNTRUSTED hint — read ONLY to annotate a block Amabie
  *  already decided from its own execution. Shape-checked, capped, silent null
  *  on anything odd; it can never carry authority. */
 function readAgentClaim(root: string): { at: string; text: string } | null {
@@ -2516,7 +3142,7 @@ export class Out {
   /** In JSON mode the human prose goes to STDERR: stdout carries exactly one
    *  JSON object, so an agent's parser never skips past sentences. Exit codes
    *  and verdicts are identical in both modes — --json changes where the words
-   *  go, never what Canary decided. */
+   *  go, never what Amabie decided. */
   private line(s: string): void { if (this.json) console.error(s); else console.log(s); }
   say(s = '') { this.line(s); }
   detail(s: string) { if (this.verbose) this.line(`   ${s}`); }
@@ -2526,19 +3152,19 @@ export class Out {
   }
   /** Facts the envelope must carry. Attach them BEFORE the verdict. */
   context(partial: Partial<ProtocolEnvelope>): void { this.ctx = { ...this.ctx, ...partial }; }
-  // CONNECTED / NOT CONNECTED are the canary status (read-only) family: state
+  // CONNECTED / NOT CONNECTED are the amabie status (read-only) family: state
   // facts, deliberately NOT READY (only a completed plan run earns READY).
-  verdict(v: 'READY' | 'NOT PROVEN' | 'CONNECTED' | 'NOT CONNECTED' | 'NEEDS ATTENTION' | 'UNSUPPORTED', why: string, next?: string) {
+  verdict(v: 'READY' | 'PARTIAL' | 'NOT PROVEN' | 'CONNECTED' | 'NOT CONNECTED' | 'NEEDS ATTENTION' | 'UNSUPPORTED' | 'SETUP ELIGIBLE' | 'SETUP NEEDS ATTENTION', why: string, next?: string) {
     this.line('');
     this.line(v === 'READY' ? `READY — ${why}` : `${v} — ${why}`);
     if (next) this.line(`next: ${next}`);
     if (!this.json) return;
     // READY and CONNECTED are the only non-blocking verdicts; every other one
-    // is a refusal, which is exit 2 across Canary's command surface.
-    const exitCode = this.ctx.exitCode ?? ((v === 'READY' || v === 'CONNECTED') ? 0 : 2);
+    // is a refusal, which is exit 2 across Amabie's command surface.
+    const exitCode = this.ctx.exitCode ?? ((v === 'READY' || v === 'CONNECTED' || v === 'SETUP ELIGIBLE') ? 0 : 2);
     const env: ProtocolEnvelope = {
       schema: this.ctx.schema ?? PROTOCOL_STATUS, ...this.ctx,
-      command: this.ctx.command ?? 'canary', status: v, exitCode,
+      command: this.ctx.command ?? 'amabie', status: v, exitCode,
     };
     if (next !== undefined) env.next = next;
     emitEnvelope(env);
@@ -2548,12 +3174,105 @@ export class Out {
 export interface GlobalOpts { verbose: boolean; yes: boolean; json: boolean; fast: boolean }
 export function parseGlobals(args: string[]): { opts: GlobalOpts; rest: string[] } {
   const opts: GlobalOpts = {
-    verbose: args.includes('--verbose') || !!process.env.CANARY_VERBOSE,
+    verbose: args.includes('--verbose') || !!process.env.AMABIE_VERBOSE || !!process.env.CANARY_VERBOSE,
     yes: args.includes('--yes'),
     json: args.includes('--json'),
     fast: args.includes('--fast'),
   };
   return { opts, rest: args.filter((a) => a !== '--verbose' && a !== '--yes' && a !== '--json' && a !== '--fast') };
+}
+
+function takeDoctorOptions(args: string[]): { rest: string[]; check?: string; problems: string[] } {
+  const rest: string[] = [];
+  const problems: string[] = [];
+  let check: string | undefined;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]!;
+    if (arg === '--check') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) problems.push('--check needs a sealed check id');
+      else if (check !== undefined) problems.push('--check may be provided once');
+      else { check = value; i += 1; }
+      continue;
+    }
+    if (arg.startsWith('--check=')) {
+      const value = arg.slice('--check='.length);
+      if (!value) problems.push('--check needs a sealed check id');
+      else if (check !== undefined) problems.push('--check may be provided once');
+      else check = value;
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { rest, ...(check === undefined ? {} : { check }), problems };
+}
+
+function takeSetupOptions(args: string[]): { rest: string[]; check: boolean; profile?: McpProfile; problems: string[] } {
+  const rest: string[] = [];
+  const problems: string[] = [];
+  let check = false;
+  let profile: McpProfile | undefined;
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]!;
+    if (arg === '--check') { check = true; continue; }
+    if (arg === '--mcp-profile') {
+      const value = args[++i];
+      if (value !== 'everyday' && value !== 'expert') problems.push('--mcp-profile must be everyday or expert');
+      else if (profile !== undefined && profile !== value) problems.push('conflicting --mcp-profile values were provided');
+      else profile = value;
+      continue;
+    }
+    if (arg.startsWith('--mcp-profile=')) {
+      const value = arg.slice('--mcp-profile='.length);
+      if (value !== 'everyday' && value !== 'expert') problems.push('--mcp-profile must be everyday or expert');
+      else if (profile !== undefined && profile !== value) problems.push('conflicting --mcp-profile values were provided');
+      else profile = value;
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { rest, check, ...(profile ? { profile } : {}), problems };
+}
+
+function setupCheckResult(
+  o: Out,
+  root: string,
+  plan: Array<{ kind: string; display: string; executable: string }>,
+  harnesses: Array<{ name: string; supported: boolean }>,
+  problems: string[],
+  next: string,
+): number {
+  const inventory = inventoryOperatorToolchain(process.env.PATH ?? '');
+  const relevant = new Set(['python', 'python3', 'pytest', 'java', 'javac', 'gradle', 'mvn', 'go', 'cargo', 'rustc', 'dotnet', 'git']);
+  const availableToolchains = TOOLCHAIN_CANDIDATES
+    .filter((name) => relevant.has(name) && inventory[name] !== null)
+    .map((name) => ({ name, path: inventory[name]!, authorized: false as const }));
+  const setupCheck = {
+    plan,
+    availableToolchains,
+    harnesses,
+    limitations: [
+      'No project command was run; the setup smoke test is still required.',
+      'Tools launched inside project scripts cannot all be discovered before those scripts run.',
+      'Tool paths found in the shell remain unauthorized until explicitly added with --toolchain <name> or --toolchain-dir.',
+      'Harness approval and trust-store write access are confirmed only during setup.',
+    ],
+  };
+  const exitCode = problems.length === 0 ? 0 : 2;
+  o.context({ command: 'setup', schema: PROTOCOL_SETUP_CHECK, root, setupCheck, ...(problems.length ? { problems } : {}), next, exitCode });
+  o.say(`repo: ${root}`);
+  o.say('setup plan (read-only; project commands were not run):');
+  for (const step of plan) o.say(`  ✓ ${step.kind}: ${step.display} [${step.executable}]`);
+  if (availableToolchains.length) {
+    o.say('toolchains found on the shell PATH (not authorized):');
+    for (const tool of availableToolchains) o.say(`  · ${tool.name}: ${tool.path}`);
+  }
+  for (const harness of harnesses) o.say(`harness: ${harness.name} — ${harness.supported ? 'supported' : 'not supported'}`);
+  for (const limitation of setupCheck.limitations) o.say(`note: ${limitation}`);
+  for (const problem of problems) o.say(`  - ${problem}`);
+  o.verdict(exitCode === 0 ? 'SETUP ELIGIBLE' : 'SETUP NEEDS ATTENTION',
+    exitCode === 0 ? 'the declared checks and managed files can be prepared on this host' : 'setup has the listed blockers', next);
+  return exitCode;
 }
 /** The directory argument = first non-flag token, anywhere in the args. Never mistake --run for a path. */
 export function dirArg(rest: string[]): string | undefined { return rest.find((a) => !a.startsWith('--')); }
@@ -2564,7 +3283,7 @@ export function dirArg(rest: string[]): string | undefined { return rest.find((a
  * v1.5 BLOCKER 6 — INTAKE FOR THE OPERATOR-AUTHORIZED TOOLCHAIN DIRECTORIES.
  *
  * Taken out of the args BEFORE `dirArg`, which reads the first non-flag token as the project
- * directory: `canary setup --toolchain-dir "C:\Program Files\Git\cmd"` would otherwise treat the
+ * directory: `amabie setup --toolchain-dir "C:\Program Files\Git\cmd"` would otherwise treat the
  * toolchain directory as the project and answer UNSUPPORTED. The pairs are removed, so the rest of
  * setup's parsing sees exactly what it saw before this flag existed.
  *
@@ -2572,14 +3291,23 @@ export function dirArg(rest: string[]): string | undefined { return rest.find((a
  * directories already sealed here (silently dropping authority a human granted is exactly the
  * failure this repository treats as worse than a refusal).
  */
-export function takeToolchainDirs(args: string[]): { dirs: string[]; rest: string[]; problems: string[]; clear: boolean } {
+export function takeToolchainDirs(args: string[]): { dirs: string[]; tools: string[]; rest: string[]; problems: string[]; clear: boolean } {
   const dirs: string[] = [];
+  const tools: string[] = [];
   const rest: string[] = [];
   const problems: string[] = [];
   let clear = false;
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i] as string;
     if (a === '--clear-toolchain-dirs') { clear = true; continue; }
+    if (a === '--toolchain' || a.startsWith('--toolchain=')) {
+      const value = a === '--toolchain' ? args[i + 1] : a.slice('--toolchain='.length);
+      if (value === undefined || value.startsWith('--')) { problems.push('--toolchain needs a tool name (nothing was authorized)'); continue; }
+      if (a === '--toolchain') i += 1;
+      if (!(TOOLCHAIN_CANDIDATES as readonly string[]).includes(value)) problems.push(`unknown toolchain "${value}"; supported tools: ${TOOLCHAIN_CANDIDATES.join(', ')}`);
+      else tools.push(value);
+      continue;
+    }
     if (a === '--toolchain-dir') {
       const value = args[i + 1];
       if (value === undefined || value.startsWith('--')) { problems.push('--toolchain-dir needs a directory after it (nothing was authorized)'); continue; }
@@ -2588,24 +3316,32 @@ export function takeToolchainDirs(args: string[]): { dirs: string[]; rest: strin
     if (a.startsWith('--toolchain-dir=')) { dirs.push(a.slice('--toolchain-dir='.length)); continue; }
     rest.push(a);
   }
-  return { dirs, rest, problems, clear };
+  return { dirs, tools, rest, problems, clear };
 }
 
 export async function cmdSetup(rawArgs: string[]): Promise<number> {
-  const { opts, rest } = parseGlobals(rawArgs);
+  const setupArgs = takeSetupOptions(rawArgs);
+  const { opts, rest } = parseGlobals(setupArgs.rest);
   const o = new Out(opts.verbose, opts.json);
+  if (setupArgs.problems.length > 0 || (setupArgs.check && opts.yes)) {
+    o.say(`REFUSED — ${setupArgs.problems.join('; ') || '--check cannot be combined with --yes'}. Nothing was changed.`);
+    return 3;
+  }
   const toolchainArgs = takeToolchainDirs(rest);
   const root = findRepoRoot(dirArg(toolchainArgs.rest) ?? process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'this folder is not inside a git repository.', 'cd into your project and try again'); return 2; }
   // The authorization is validated BEFORE anything is written: a directory inside the repository is
   // refused, because the tree the worker under verification can write is not a source of authority.
-  const checkedDirs = toolchainArgs.dirs.map((d) => validateToolchainDir(root, d));
-  const refusedDirs = [...toolchainArgs.problems, ...checkedDirs.flatMap((c) => (c.ok ? [] : [c.problem]))];
+  const inventory = toolchainArgs.tools.length > 0 ? inventoryOperatorToolchain(process.env.PATH ?? '') : {};
+  const missingTools = toolchainArgs.tools.filter((name) => !inventory[name]);
+  const namedDirs = toolchainArgs.tools.flatMap((name) => inventory[name] ? [path.dirname(inventory[name]!)] : []);
+  const checkedDirs = [...toolchainArgs.dirs, ...namedDirs].map((d) => validateToolchainDir(root, d));
+  const refusedDirs = [...toolchainArgs.problems, ...missingTools.map((name) => `${name} was not found on your shell PATH; install it or use --toolchain-dir with its executable directory`), ...checkedDirs.flatMap((c) => (c.ok ? [] : [c.problem]))];
   if (refusedDirs.length > 0) {
-    o.verdict('NEEDS ATTENTION', `Canary will not authorize that toolchain directory: ${refusedDirs.join('; ')}.`, 'name an absolute directory OUTSIDE this repository that contains the executable (for example the JDK\'s bin), then run setup again — nothing was changed');
+    o.verdict('NEEDS ATTENTION', `Amabie will not authorize that toolchain directory: ${refusedDirs.join('; ')}.`, 'name an absolute directory OUTSIDE this repository that contains the executable (for example the JDK\'s bin), then run setup again — nothing was changed');
     return 2;
   }
-  const toolchainDirs = checkedDirs.flatMap((c) => (c.ok ? [c.dir] : []));
+  const toolchainDirs = [...new Set(checkedDirs.flatMap((c) => (c.ok ? [c.dir] : [])))];
   // 1.1 §12–17: the project is whatever the registered adapters declare, not
   // "a repo with a package.json". A present package.json is still validated
   // exactly as before (1.0 message, 1.0 fail-closed), but its ABSENCE is no
@@ -2614,48 +3350,60 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const pkgFile = path.join(root, 'package.json');
   const pkg = fs.existsSync(pkgFile) ? parseJsonOrNull(pkgFile) : null;
   if (fs.existsSync(pkgFile) && !pkg) {
-    o.verdict('UNSUPPORTED', 'package.json is not valid JSON — Canary cannot read your project.', 'fix package.json, then run setup again'); return 2;
+    o.verdict('UNSUPPORTED', 'package.json is not valid JSON — Amabie cannot read your project.', 'fix package.json, then run setup again'); return 2;
   }
 
-  // local-state integrity BEFORE any write: a tracked .canary config arrived
-  // from someone else's clone (S1/S2), and a linked .canary/.claude would send
-  // Canary's writes outside the repo (S3) — refuse both without touching bytes.
-  if (fs.existsSync(configPath(root)) && configTracked(root) === true) {
-    o.verdict('NEEDS ATTENTION', "Canary's local config (.canary/canary.local.json) is tracked in git — committed Canary state comes from a clone and cannot be trusted as this machine's own.", 'run: git rm -r --cached .canary, then run setup again'); return 2;
+  let migratedLegacyState = false;
+  if (!setupArgs.check) {
+    const migration = migrateLegacyConfig(root);
+    if (migration.problem) {
+      o.verdict('NEEDS ATTENTION', migration.problem, 'resolve the named state conflict, then run amabie setup again'); return 2;
+    }
+    migratedLegacyState = migration.migrated;
+    if (migratedLegacyState) o.say('migrated existing .canary state to .amabie; setup will refresh its owned hooks and CLI path');
   }
-  // one rule for every path Canary owns: never write through a link (live,
+
+  // local-state integrity BEFORE any write: a tracked .amabie config arrived
+  // from someone else's clone (S1/S2), and a linked .amabie/.claude would send
+  // Amabie's writes outside the repo (S3) — refuse both without touching bytes.
+  if (fs.existsSync(configPath(root)) && configTracked(root) === true) {
+    o.verdict('NEEDS ATTENTION', "Amabie's local config (.amabie/amabie.local.json) is tracked in git — committed Amabie state comes from a clone and cannot be trusted as this machine's own.", 'run: git rm -r --cached .amabie, then run setup again'); return 2;
+  }
+  // one rule for every path Amabie owns: never write through a link (live,
   // dangling, or inside-pointing) — lstat sees what existsSync cannot.
   for (const d of [path.join(root, CONFIG_DIR), path.join(root, '.claude')]) {
     let isLink = false;
     try { isLink = fs.lstatSync(d).isSymbolicLink(); } catch { /* absent: fine */ }
     if (isLink || (fs.existsSync(d) && containedRealPath(root, d) === null)) {
-      o.verdict('NEEDS ATTENTION', `${rel(root, d)} is a link — Canary will not write through links (a committed link can send Canary's files outside the repo).`, 'replace it with a real folder inside the repo, then run setup again'); return 2;
+      o.verdict('NEEDS ATTENTION', `${rel(root, d)} is a link — Amabie will not write through links (a committed link can send Amabie's files outside the repo).`, 'replace it with a real folder inside the repo, then run setup again'); return 2;
     }
   }
   for (const f of [configPath(root), path.join(root, CONFIG_DIR, '.gitignore'), path.join(root, CONFIG_DIR, CHECKPOINT_FILE), settingsPath(root)]) {
     try {
       if (fs.lstatSync(f).isSymbolicLink()) {
-        o.verdict('NEEDS ATTENTION', `${rel(root, f)} is a link — Canary will not write through links.`, 'replace it with a real file inside the repo, then run setup again'); return 2;
+        o.verdict('NEEDS ATTENTION', `${rel(root, f)} is a link — Amabie will not write through links.`, 'replace it with a real file inside the repo, then run setup again'); return 2;
       }
     } catch { /* absent: fine */ }
   }
 
   // 1.1 §12–17 — discovery and sealing run through the project adapters: EVERY
   // ecosystem that declares checks at the repo root contributes to ONE plan.
-  // A Node-only repo produces byte-identical plan/pm/seal to before (the Node
-  // adapter is unchanged and its steps keep their exact 1.0 shape); the empty
+  // Node steps retain their 1.0 shape; new discovery builds before tests.
+  // Existing stored plans keep their sealed order. The empty
   // plan stays a complete answer that becomes NEEDS ATTENTION, never READY.
   const composed = composePlan(root);
-  // §B: a scope declaration Canary cannot honour stops setup. It is never
+  // §B: a scope declaration Amabie cannot honour stops setup. It is never
   // partially applied, and never quietly reduced to the scopes that happened to
   // be fine — the human asked for these checks, so shipping a plan without them
   // silently would be exactly the failure this feature exists to prevent.
   if (composed.problems.length) {
+    if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })), composed.problems, 'fix the scope declaration, then rerun: amabie setup --check');
     o.verdict('NEEDS ATTENTION', `the nested-scope declaration (${SCOPES_FILE}) is not usable: ${composed.problems.join('; ')}.`, `fix ${SCOPES_FILE} (or delete it to go back to root-only discovery), then run setup again`);
     return 2;
   }
   if (composed.scopes.length === 0) {
-    o.verdict('UNSUPPORTED', `${root} is a git repo, but Canary found no project it can model at its root (looked for package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).`, `if your checks live in subdirectories, declare them in ${SCOPES_FILE} (e.g. { "schema": "${SCOPES_SCHEMA}", "scopes": [{ "path": "web", "ecosystem": "node" }] }), then run setup again`);
+    if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })), ['no supported project declaration was found'], 'declare a supported project check, then rerun: amabie setup --check');
+    o.verdict('UNSUPPORTED', `${root} is a git repo, but Amabie found no project it can model at its root (looked for package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).`, `if your checks live in subdirectories, declare them in ${SCOPES_FILE} (e.g. { "schema": "${SCOPES_SCHEMA}", "scopes": [{ "path": "web", "ecosystem": "node" }] }), then run setup again`);
     return 2;
   }
   const rootScope = composed.scopes.find((s) => s.scope === '');
@@ -2664,11 +3412,63 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // is the absolute path — never a name that a later PATH could re-point
   const pin = pinPlanPrograms(composed.plan);
   if (pin.problems.length) {
-    o.verdict('NEEDS ATTENTION', `Canary could not pin a program these checks need: ${pin.problems.join('; ')}.`, 'install it (or declare its absolute path in the project), then run setup again'); return 2;
+    if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })), pin.problems, 'install or explicitly locate the required program, then rerun: amabie setup --check');
+    o.verdict('NEEDS ATTENTION', `Amabie could not pin a program these checks need: ${pin.problems.join('; ')}.`, 'install it (or declare its absolute path in the project), then run setup again'); return 2;
   }
   const plan = pin.plan;
   const pm = rootDisc?.pm ?? composed.scopes[0]!.adapter.id;
   const note = rootDisc?.note ?? composed.notes.join('; ');
+  const prev = readConfig(root);
+  const prevUsable = !!prev && prev !== 'corrupt' && (
+    !untrustedConfigReason(root, prev)
+    || (legacyCanaryCliPath(prev.cliPath) && configTracked(root) !== true)
+  );
+  const setupPrevCfg = prevUsable ? prev as AmabieConfig : null;
+  const mcpProfile: McpProfile = setupArgs.profile ?? setupPrevCfg?.mcpProfile ?? 'everyday';
+  const hookPreflightHarnesses = detectHarnesses(root);
+  const hookPreflightCommand = buildHookCommand(CLI_ENTRY);
+  const priorClaudeHooks = new Set<string>(setupPrevCfg ? [...setupPrevCfg.hookCommands, setupPrevCfg.hookCommand] : []);
+  const priorStartupHooks = new Set<string>(setupPrevCfg?.sessionStartCommands ?? []);
+  const priorCodexHooks = new Set<string>(setupPrevCfg?.codexHookCommands ?? []);
+  const foreignHooks = hookPreflightCommand
+    ? findForeignAmabieHooks(
+      root,
+      hookPreflightCommand,
+      hookPreflightHarnesses.integrables.some((h) => h.name === 'claude-code'),
+      hookPreflightHarnesses.integrables.some((h) => h.name === 'codex'),
+      priorClaudeHooks,
+      priorStartupHooks,
+      priorCodexHooks,
+    )
+    : [];
+  if (setupArgs.check) {
+    const harnesses = detectHarnesses(root);
+    const issues: string[] = [];
+    if (plan.length === 0) issues.push('no executable verification checks were discovered');
+    if (!harnesses.integrable) issues.push('no supported agent harness was detected');
+    const hookCommand = buildHookCommand(CLI_ENTRY);
+    if (hookCommand === null && harnesses.integrables.some((h) => h.name === 'claude-code' || h.name === 'codex')) {
+      issues.push('Amabie cannot safely embed this CLI path in a hook command; move the installation to a path without shell expansion characters');
+    }
+    if (foreignHooks.length) issues.push('Amabie hooks from another installation are already present: ' + foreignHooks.join('; '));
+    if (hookCommand && harnesses.integrables.some((h) => h.name === 'claude-code')) {
+      const checkHook = installClaudeHooks(root, hookCommand, new Set(setupPrevCfg?.hookCommands ?? []), path.join(root, CONFIG_DIR, 'backups'), true, new Set(setupPrevCfg?.sessionStartCommands ?? []));
+      if (!checkHook.ok) issues.push(`Claude Code hook: ${checkHook.problem}`);
+    }
+    if (hookCommand && harnesses.integrables.some((h) => h.name === 'codex')) {
+      const checkHook = installCodexStopHook(root, hookCommand, new Set(setupPrevCfg?.codexHookCommands ?? []), path.join(root, CONFIG_DIR, 'backups'), true);
+      if (!checkHook.ok) issues.push(`Codex hook: ${checkHook.problem}`);
+    }
+    const checkMcp = installMcpServer(root, CLI_ENTRY, new Set(setupPrevCfg?.mcpArgSignatures ?? []), path.join(root, CONFIG_DIR, 'backups'), mcpProfile, true);
+    if (!checkMcp.ok) issues.push(`MCP tools: ${checkMcp.problem}`);
+    const planRows = plan.map((step, index) => ({
+      kind: step.kind,
+      display: stepDisplay(pm, step),
+      executable: pin.plan[index]!.argv?.[0] ?? pm,
+    }));
+    return setupCheckResult(o, root, planRows, harnesses.found.map((h) => ({ name: h.name, supported: h.supported })), issues,
+      issues.length ? 'resolve the listed setup issue, then rerun: amabie setup --check' : `to install and run these checks: amabie setup --mcp-profile ${mcpProfile}`);
+  }
   let seal: PlanAuthority;
   try {
     // ONE seal over the whole composite plan. Each step is digested by what its
@@ -2676,15 +3476,15 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     // step by the package.json script text (unchanged M5 semantics). The
     // project's fast-path declaration is sealed HERE too, so a check may only be
     // left out on authority the project gave at setup.
-    const canaryBlock = rootDisc?.source.canary as { proofs?: unknown; paths?: unknown } | undefined;
-    seal = sealPlanAuthority(plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>,
-      canaryBlock?.proofs, canaryBlock?.paths);
+    const amabieBlock = (rootDisc?.source.amabie ?? rootDisc?.source.canary) as { proofs?: unknown; paths?: unknown } | undefined;
+    seal = sealPlanAuthority(plan, planScriptTexts(root, plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>),
+      amabieBlock?.proofs, amabieBlock?.paths);
   } catch (e) {
     // v1.4 §E — this used to be `REFUSED — <raw internal throw>`, which is not a sentence a
     // person can act on. The refusal, its reason and its exit code are unchanged; the internal
     // text moves behind --verbose, where the detail belongs.
     o.detail(`the declaration was refused: ${(e as Error).message}`);
-    o.verdict('NEEDS ATTENTION', 'Canary could not record which checks to run here, so it will not wire this repository. Nothing was changed.', 'run: canary setup --verbose to see the exact declaration that was refused'); return 2;
+    o.verdict('NEEDS ATTENTION', 'Amabie could not record which checks to run here, so it will not wire this repository. Nothing was changed.', 'run: amabie setup --verbose to see the exact declaration that was refused'); return 2;
   }
 
   o.say(`repo: ${root}`);
@@ -2692,7 +3492,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   if (!plan.length) {
     // v1.4 §D — TWO fixes here, both disclosure, neither discovery.
     //
-    // (1) The old message listed only Node/Python/Rust/Go and so UNDERSTATED what Canary reads:
+    // (1) The old message listed only Node/Python/Rust/Go and so UNDERSTATED what Amabie reads:
     //     the universal contract (Makefile / Taskfile / Justfile target, a shipped gradlew or
     //     mvnw wrapper, a configured CMake / Meson / Zig / Swift / Elixir / Crystal / Rake /
     //     Composer / PHPUnit project, or a check the project's CI already runs) is real
@@ -2704,14 +3504,14 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     //     (universal.ts:554). That line arrives here as `composed.empty`, and this early return
     //     used to discard it, leaving the user with a generic refusal and no way to act. It is
     //     printed first now. Nothing about discovery or authority changes: this only says out
-    //     loud what Canary already knew.
+    //     loud what Amabie already knew.
     for (const e of composed.empty) o.say(`  · declared no checks — ${e}`);
     o.verdict('NEEDS ATTENTION',
-      'this project declares no check Canary recognizes — a statement about what is DECLARED here, not about your stack. Canary reads: Node package.json scripts (test / typecheck / type-check / build / bench / benchmark / e2e / test:e2e); Python (pytest, tox, unittest, or mypy / pyright / ruff); Rust (Cargo.toml); Go (go.mod / go.work); and the universal contract — a Makefile, Taskfile or Justfile target, a shipped gradlew or mvnw wrapper, a configured CMake, Meson, Zig, Swift, Elixir, Crystal, Rake, Composer or PHPUnit project, or a check your CI configuration already runs.',
-      'point Canary at a check you already have (or declare one for your stack), then run setup again'); return 2;
+      'this project declares no check Amabie recognizes — a statement about what is DECLARED here, not about your stack. Amabie reads: Node package.json scripts (test / typecheck / type-check / build / bench / benchmark / e2e / test:e2e); Python (pytest, tox, unittest, or mypy / pyright / ruff); Rust (Cargo.toml); Go (go.mod / go.work); and the universal contract — a Makefile, Taskfile or Justfile target, a shipped gradlew or mvnw wrapper, a configured CMake, Meson, Zig, Swift, Elixir, Crystal, Rake, Composer or PHPUnit project, or a check your CI configuration already runs.',
+      'point Amabie at a check you already have (or declare one for your stack), then run setup again'); return 2;
   }
-  o.say('verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):');
-  for (const s of plan) o.say(`  ✓ ${s.kind}: ${stepDisplay(pm, s)}`);
+  o.say('verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):');
+  for (const s of plan) o.say(`  ✓ [${stepKey(s)}] ${s.kind}: ${stepDisplay(pm, s)}`);
   for (const e of composed.empty) o.say(`  · declared no checks — ${e}`);
 
   const { found, integrable, integrables } = detectHarnesses(root);
@@ -2726,35 +3526,63 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
 
   const hookCommand = buildHookCommand(CLI_ENTRY);
   if (!hookCommand) {
-    o.verdict('NEEDS ATTENTION', 'the Canary installation path contains characters that cannot be safely embedded in a hook command.', 'reinstall Canary to a plain path (no double quotes) and run setup again'); return 2;
+    o.verdict('NEEDS ATTENTION', 'the Amabie installation path contains characters a hook shell could expand or execute.', 'reinstall Amabie to a path without quotes, line breaks or shell expansion characters, then run setup again'); return 2;
+  }
+  if (foreignHooks.length) {
+    o.verdict('NEEDS ATTENTION',
+      'a hook from another Amabie installation is already present. Setup will not stack another completion hook or rewrite an entry this installation does not own.',
+      'remove the listed hook with the installation that wrote it, or remove that exact entry manually, then run amabie setup again');
+    for (const entry of foreignHooks) o.say('  - ' + entry);
+    return 2;
   }
 
   // read prior config (self-heal: reuse recorded hook commands for dedupe)
-  const prev = readConfig(root);
-  if (prev === 'corrupt') o.detail('previous .canary config was unreadable — it will be rewritten');
+  // `prev` was read before the no-write setup check above; use that same snapshot.
+  if (prev === 'corrupt') o.detail('previous .amabie config was unreadable — it will be rewritten');
   // only THIS installation's own record may seed hook-command dedupe — a cloned
   // config must never teach setup which user entries to strip (S1)
-  const prevUsable = !!prev && prev !== 'corrupt' && !untrustedConfigReason(root, prev);
-  const priorCommands = new Set<string>(prevUsable ? [...(prev as CanaryConfig).hookCommands, (prev as CanaryConfig).hookCommand] : []);
+  const priorCommands = new Set<string>(prevUsable ? [...(prev as AmabieConfig).hookCommands, (prev as AmabieConfig).hookCommand] : []);
+  const priorStartupCommands = new Set<string>(prevUsable ? ((prev as AmabieConfig).sessionStartCommands ?? []) : []);
   // The Codex ownership record is separate on purpose: `.codex/hooks.json` may only be pruned by
   // the commands this installation recorded for THAT file.
-  const priorCodexCommands = new Set<string>(prevUsable ? ((prev as CanaryConfig).codexHookCommands ?? []) : []);
+  const priorCodexCommands = new Set<string>(prevUsable ? ((prev as AmabieConfig).codexHookCommands ?? []) : []);
+  // Preflight every target before the first hook is written. A malformed later
+  // config must not leave an earlier harness wired without a usable Amabie config.
   const backupsDir = path.join(root, CONFIG_DIR, 'backups');
-  try { ensureCanarySelfIgnore(root); } catch { /* writeConfig below reports a real failure; the stamp just measures what it can */ }
+  const priorMcp = new Set<string>(prevUsable ? ((prev as AmabieConfig).mcpArgSignatures ?? []) : []);
+  const preflight = [
+    ...(wantsClaude ? [installClaudeHooks(root, hookCommand, priorCommands, backupsDir, true, priorStartupCommands)] : []),
+    ...(wantsCodex ? [installCodexStopHook(root, hookCommand, priorCodexCommands, backupsDir, true)] : []),
+    installMcpServer(root, CLI_ENTRY, priorMcp, backupsDir, mcpProfile, true),
+  ].find((result) => !result.ok);
+  if (preflight) {
+    o.verdict('NEEDS ATTENTION', `setup could not prepare every hook and MCP file: ${preflight.problem}`, 'resolve the listed file issue, then run setup again; no harness settings were changed');
+    return 2;
+  }
+  try { ensureAmabieSelfIgnore(root); } catch (e) {
+    o.verdict('NEEDS ATTENTION', `could not prepare Amabie's local state (${String(e).slice(0, 140)}). This run verified NOTHING: no project checks were run.`, 'make .amabie writable, then run setup again; no harness settings were changed');
+    return 2;
+  }
+  const setupSnapshots = new Map<string, SetupFileSnapshot>();
 
-  const res = wantsClaude ? installStopHook(root, hookCommand, priorCommands, backupsDir) : null;
-  if (res && !res.ok) { o.verdict('NEEDS ATTENTION', `could not configure Claude Code safely: ${res.problem}`, 'fix that file, then run setup again'); return 2; }
+  if (wantsClaude) snapshotSetupFile(setupSnapshots, settingsPath(root));
+  const res = wantsClaude ? installClaudeHooks(root, hookCommand, priorCommands, backupsDir, false, priorStartupCommands) : null;
+  if (res && !res.ok) { o.verdict('NEEDS ATTENTION', `could not configure Claude Code safely: ${res.problem} ${setupRollbackNote(setupSnapshots)}`, 'fix that file, then run setup again'); return 2; }
+  rememberSetupWrite(setupSnapshots, res?.touched?.path);
+  if (wantsCodex) snapshotSetupFile(setupSnapshots, codexHooksPath(root));
   const codex = wantsCodex ? installCodexStopHook(root, hookCommand, priorCodexCommands, backupsDir) : null;
-  if (codex && !codex.ok) { o.verdict('NEEDS ATTENTION', `could not configure OpenAI Codex CLI safely: ${codex.problem}`, 'fix that file, then run setup again'); return 2; }
-  // v1.3 §C: the same agent should be able to ASK Canary instead of guessing. This is what turns
+  if (codex && !codex.ok) { o.verdict('NEEDS ATTENTION', `could not configure OpenAI Codex CLI safely: ${codex.problem} ${setupRollbackNote(setupSnapshots)}`, 'fix that file, then run setup again'); return 2; }
+  rememberSetupWrite(setupSnapshots, codex?.touched?.path);
+  // v1.3 §C: the same agent should be able to ASK Amabie instead of guessing. This is what turns
   // "the gate speaks at the end" into "the agent can check while it works", with the same write
   // discipline as the hook above and no new authority (mcp.ts exposes only request tools).
-  const priorMcp = new Set<string>(prevUsable ? ((prev as CanaryConfig).mcpArgSignatures ?? []) : []);
-  const mcp = installMcpServer(root, CLI_ENTRY, priorMcp, backupsDir);
-  if (!mcp.ok) { o.verdict('NEEDS ATTENTION', `could not register Canary's tools for your agent safely: ${mcp.problem}`, 'fix that file, then run setup again'); return 2; }
-  // M4 baseline: stamped NOW by Canary's own probes. Honest label — "state when
-  // Canary was wired", not a claim about the agent's past. `dirty` measures
-  // WORKER residue, so the one file Canary itself just wrote (its managed
+  snapshotSetupFile(setupSnapshots, mcpConfigPath(root));
+  const mcp = installMcpServer(root, CLI_ENTRY, priorMcp, backupsDir, mcpProfile);
+  if (!mcp.ok) { o.verdict('NEEDS ATTENTION', `could not register Amabie's tools for your agent safely: ${mcp.problem} ${setupRollbackNote(setupSnapshots)}`, 'fix that file, then run setup again'); return 2; }
+  rememberSetupWrite(setupSnapshots, mcp.touched?.path);
+  // M4 baseline: stamped NOW by Amabie's own probes. Honest label — "state when
+  // Amabie was wired", not a claim about the agent's past. `dirty` measures
+  // WORKER residue, so the one file Amabie itself just wrote (its managed
   // settings entry) is excluded from THIS stamp: setup's own wiring must not
   // permanently blind the repo to blame for later uncommitted deletions — M6
   // attribution relies on a clean baseline actually being reachable. candidate-
@@ -2762,7 +3590,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const baselineId = candidateIdentity(root);
   const ownSettings = rel(root, settingsPath(root)).split(path.sep).join('/');
   const ownMcp = rel(root, mcpConfigPath(root)).split(path.sep).join('/');
-  // v1.4 §C: a Codex hook file Canary just wrote is Canary's own wiring too, so it is excluded from
+  // v1.4 §C: a Codex hook file Amabie just wrote is Amabie's own wiring too, so it is excluded from
   // the stamp for exactly the same reason — otherwise wiring a second harness would mark every repo
   // dirty at setup and permanently blind the later deletion blame. Excluded only when it was written
   // in THIS run: a `.codex/hooks.json` the user authored is theirs, and the stamp must see it.
@@ -2783,14 +3611,14 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // is what a genuine re-seal means. prevUsable already proved this config is
   // this installation's own trust, so reusing its fields is self-reference,
   // never a clone's word.
-  const prevCfg = prevUsable && prev ? prev as CanaryConfig : null;
+  const prevCfg = prevUsable && prev ? prev as AmabieConfig : null;
   const prevAuth = prevCfg?.planAuthority;
   const reuse = prevCfg && prevAuth && prevCfg.pm === pm
     && prevAuth.planDigest === seal.planDigest
     && JSON.stringify(prevAuth.scriptDigests) === JSON.stringify(seal.scriptDigests)
     && JSON.stringify(prevAuth.proofBindings ?? {}) === JSON.stringify(seal.proofBindings ?? {})
     && prevCfg.baseline?.head === baselineId.head ? prevCfg : null;
-  const cfg: CanaryConfig = {
+  const cfg: AmabieConfig = {
     version: 'product-0.1', installedAt: reuse?.installedAt ?? new Date().toISOString(), pm, plan,
     baseline: {
       at: reuse?.baseline?.at ?? new Date().toISOString(), ...baselineId,
@@ -2801,7 +3629,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
      * v1.5 BLOCKER 6. `dirs` is AUTHORITY (only what the operator named, sealed so a later ambient
      * PATH edit changes nothing); `found` is EVIDENCE — where THIS machine's PATH resolved each common
      * toolchain program at this moment, which is what lets a later failure say "your environment had
-     * git at C:\...\cmd when Canary was set up — authorize that directory" instead of a bare command
+     * git at C:\...\cmd when Amabie was set up — authorize that directory" instead of a bare command
      * the operator has to finish themselves. Nothing is ever executed from `found`.
      *
      * The record is REUSED byte-for-byte when the authorized set did not change, the same idempotence
@@ -2819,9 +3647,11 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     })(),
     cliPath: CLI_ENTRY, hookCommand,
     hookCommands: [...new Set([hookCommand, ...priorCommands])],
+    ...(res?.touched ? { sessionStartCommands: [...new Set([`${hookCommand} --session-start`, ...priorStartupCommands])] } : {}),
     // Absent when Codex is not wired here, so a Claude-only setup keeps writing byte-identical config.
     ...(codex?.touched ? { codexHookCommands: [...new Set([hookCommand, ...priorCodexCommands])] } : {}),
-    mcpArgSignatures: [...new Set([mcpArgSignature(mcpServerArgs(CLI_ENTRY)), ...priorMcp])],
+    mcpProfile,
+    mcpArgSignatures: [...new Set([mcpArgSignature(mcpServerArgs(CLI_ENTRY, mcpProfile)), ...priorMcp])],
     touched: [...(res?.touched ? [res.touched] : []), ...(codex?.touched ? [codex.touched] : []), mcp.touched!],
   };
   // 1.1 P0 — the authority gets a SEALED COPY outside the repo before any repo
@@ -2833,22 +3663,22 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const store = storeFromEnv();
   const projectId = projectIdForRoot(root);
   try {
-    sealRecord(store, { projectId, kind: 'registration', canaryVersion: CANARY_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
-    sealRecord(store, { projectId, kind: 'plan-seal', canaryVersion: CANARY_VERSION, payload: cfg.planAuthority });
+    sealRecord(store, { projectId, kind: 'registration', canaryVersion: AMABIE_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
+    sealRecord(store, { projectId, kind: 'plan-seal', canaryVersion: AMABIE_VERSION, payload: cfg.planAuthority });
   } catch (e) {
     // v1.4 §E — translated for the everyday path. Same refusal, same exit code, same actionable
     // next step; the ordinary user is no longer asked to know what "sealing authority" means.
     // The raw reason moves behind --verbose, where the detail belongs.
     o.detail(`the trust store refused the record: ${String((e as Error).message ?? e).slice(0, 140)}`);
-    o.verdict('NEEDS ATTENTION', 'Canary could not store its verification record on this machine, so it will not finish setting this repository up. Nothing was written to the repository.', `make ${store.root} writable by you (or point CANARY_TRUST_STORE at an empty directory), then run setup again`);
+    o.verdict('NEEDS ATTENTION', `Amabie could not store its verification record on this machine, so it will not finish setting this repository up. This run verified NOTHING: no project checks were run. ${setupRollbackNote(setupSnapshots)}`, `make ${store.root} writable by you (or point AMABIE_TRUST_STORE at an empty directory), then run setup again`);
     return 2;
   }
   try {
     writeConfig(root, cfg);
   } catch (e) {
-    // the hook entry is installed but WITHOUT config the checkpoint stays
-    // silent — this project would be wired yet unprotected. Say it plainly.
-    o.verdict('NEEDS ATTENTION', `could not write the .canary config (${String(e).slice(0, 140)}) — the hook entry is installed, but Canary cannot verify anything here without its config. Nothing was half-written.`, 'close whatever holds the file, then run setup again');
+    // An installed hook without its config would leave this repo wired but
+    // unprotected. Restore the exact prior settings bytes before reporting it.
+    o.verdict('NEEDS ATTENTION', `could not write the .amabie config (${String(e).slice(0, 140)}). This run verified NOTHING: no project checks were run. ${setupRollbackNote(setupSnapshots)}`, 'close whatever holds the file, then run setup again');
     return 2;
   }
   // M9 §9.5 — a deliberate setup re-run IS the clearing act. A caught
@@ -2857,40 +3687,41 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // deliberately re-sealed, so the marker's debt is paid. Cleared only on success: if the
   // config write threw above, quarantine stands (fail-closed).
   try { fs.rmSync(path.join(root, CONFIG_DIR, QUARANTINE_FILE), { force: true }); } catch { /* absent is the common case */ }
-  if (wantsClaude) o.say(`Claude Code will run Canary automatically when the agent finishes a turn here.${prev && prev !== 'corrupt' ? ' (re-run: existing Canary hook refreshed, no duplicates)' : ''}`);
+  if (wantsClaude) o.say(`Claude Code will run Amabie automatically when the agent finishes a turn here.${prev && prev !== 'corrupt' ? ' (re-run: existing Amabie hook refreshed, no duplicates)' : ''}`);
+  o.say(`MCP tools: ${mcpProfile} profile (${mcpProfile === 'everyday' ? '4 everyday tools' : '4 everyday tools plus 3 expert tools: agents, work, finish'}).`);
   if (codex?.touched) {
     /**
      * v1.4 §C — THE TRUST REQUIREMENT IS SAID OUT LOUD, because it is the difference between a file
      * that gates and a file that sits there. Codex runs a non-managed hook only after the exact hook
      * definition has been reviewed and trusted (`/hooks`), and it records that trust against the
-     * hook's current hash — so a freshly written hook does NOT gate anything yet, and Canary cannot
+     * hook's current hash — so a freshly written hook does NOT gate anything yet, and Amabie cannot
      * take that step for the user. Saying nothing here would let "setup succeeded" read as
      * "completions are gated in Codex", which is exactly the overclaim this project exists to prevent.
      */
-    o.say(`OpenAI Codex CLI will run Canary when a turn ends here — the Stop hook is in ${rel(root, codexHooksPath(root))}.`);
-    o.say('  Codex will NOT run it until you review and trust it once: run `codex` in this project, then `/hooks`, and trust the Canary Stop hook. Until you do, a Codex completion is NOT gated.');
+    o.say(`OpenAI Codex CLI will run Amabie when a turn ends here — the Stop hook is in ${rel(root, codexHooksPath(root))}.`);
+    o.say('  Codex will NOT run it until you review and trust it once: run `codex` in this project, then `/hooks`, and trust the Amabie Stop hook. Until you do, a Codex completion is NOT gated.');
     // v1.5 §4B: the old line said WHAT to type and nothing else. A user approving a hook that can
     // interrupt their agent is owed the three remaining answers — what exactly is being approved,
-    // what Canary does and does not touch, and how to undo it — in the same breath as the ask.
-    o.say('  What you are trusting is one command: `canary checkpoint` — it runs the project checks listed above, and on a failure it can only send the agent back once to repair it; it never edits your files, never widens a permission, and touches no other Codex setting.');
-    o.say('  Undo it any time with `canary uninstall` (it removes exactly Canary\'s own entries and keeps your own hooks).');
+    // what Amabie does and does not touch, and how to undo it — in the same breath as the ask.
+    o.say('  What you are trusting is one command: `amabie checkpoint` — it runs the project checks listed above, and on a failure it can only send the agent back once to repair it; it never edits your files, never widens a permission, and touches no other Codex setting.');
+    o.say('  Undo it any time with `amabie uninstall` (it removes exactly Amabie\'s own entries and keeps your own hooks).');
   }
   if (wantsClaude && codex?.touched) o.say('both harnesses are wired here: Claude Code gates completions as soon as this setup ends; Codex gates them once you trust the hook above.');
   // v1.3 §C: say plainly that a SECOND file was written, and what the agent gets from it. Silence
-  // about a file Canary just added to someone's repository would be the wrong kind of invisible.
-  o.say(`agent tools: registered in ${rel(root, mcpConfigPath(root))} — your agent can now ask Canary whether it is done, instead of guessing. Your other MCP servers are untouched; \`canary uninstall\` removes exactly this entry.`);
+  // about a file Amabie just added to someone's repository would be the wrong kind of invisible.
+  o.say(`agent tools: registered in ${rel(root, mcpConfigPath(root))} — your agent can now ask Amabie whether it is done, instead of guessing. Your other MCP servers are untouched; \`amabie uninstall\` removes exactly this entry.`);
   // v1.5 §4C — IS THIS SHARED, OR MINE? MEASURED in the clean-room first run: setup writes three
   // files that `git status` reports as TRACKED PROJECT files (a clone carries them), and one
   // directory that self-ignores. Nothing user-facing said which was which, and the recorded hook
   // command names an ABSOLUTE path on THIS machine — so a teammate receiving the entry verbatim
   // gets a command their machine cannot run. One sentence, no mechanism change.
-  o.say(`  scope: ${rel(root, mcpConfigPath(root))} and the harness hook files are PROJECT files — commit them and a checkout/teammate gets them, and each person then runs \`canary setup --yes\` once so the recorded path matches where Canary is installed on their machine. Canary's own state is local to you: .canary/ (self-ignored) and this machine's trust store.`);
+  o.say(`  scope: ${rel(root, mcpConfigPath(root))} and the harness hook files are PROJECT files — commit them and a checkout/teammate gets them, and each person then runs \`amabie setup --yes\` once so the recorded path matches where Amabie is installed on their machine. Amabie's own state is local to you: .amabie/ (self-ignored) and this machine's trust store.`);
   // v1.3 §E, MEASURED with the real agent CLI (`claude mcp list` reports our entry as
   // "Pending approval"): the harness holds a project-scoped MCP server until a human approves it once.
-  // That is one interactive step Canary cannot take for you, so it is named here rather than left to
+  // That is one interactive step Amabie cannot take for you, so it is named here rather than left to
   // look like a broken integration.
   o.say(`  Claude Code asks you to approve a project's MCP server once — run \`claude\` there and approve it; until then the server is listed but its tools are not available.`);
-  o.detail('authority sealed: the plan and the exact text of every script it runs — candidate edits to the verification surface block completion until setup is re-run. WHO may re-seal is deliberately NOT enforced: `canary setup` runs unattended and never checks the caller, so a worker with this user\'s authority can re-seal its own commit and plan. That is what HARDENED (a broker with a different OS identity) exists to close, and it is not installed here.');
+  o.detail('authority sealed: the plan and the exact text of every script it runs — candidate edits to the verification surface block completion until setup is re-run. WHO may re-seal is deliberately NOT enforced: `amabie setup` runs unattended and never checks the caller, so a worker with this user\'s authority can re-seal its own commit and plan. That is what HARDENED (a broker with a different OS identity) exists to close, and it is not installed here.');
   const level = probeTrustLevel(store);
   o.detail(`sealed authority copy: ${store.root} (project ${projectId}) — level ${level.level}: ${level.reasons.join(' ')}`);
 
@@ -2901,33 +3732,33 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     const answer = (await rl.question(`\nRun these ${plan.length} project command(s) now as a smoke test? [Y/n] `)).trim().toLowerCase();
     rl.close();
     if (answer && answer !== 'y' && answer !== 'yes') {
-      o.verdict('NEEDS ATTENTION', 'Canary is installed here but was never executed — protection is wired, NOT yet verified.', 'run: canary setup --yes (or: canary doctor — it runs the checks)'); return 2;
+      o.verdict('NEEDS ATTENTION', 'Amabie is installed here but was never executed — protection is wired, NOT yet verified.', 'run: amabie setup --yes (or: amabie doctor — it runs the checks)'); return 2;
     }
   }
   if (!opts.yes && !interactive) {
     // This branch used to write all of setup's state, then exit 2 demanding a
     // memorized "--yes" — installed-yet-unproven, every agent re-typed the flag.
-    // It guards no real authority: whoever can invoke `canary setup` can invoke
-    // `canary doctor`, which runs the SAME plan unasked and unconditionally
+    // It guards no real authority: whoever can invoke `amabie setup` can invoke
+    // `amabie doctor`, which runs the SAME plan unasked and unconditionally
     // (READY is earned there, not from a handshake). Running the project's own
     // sealed checks now proves the wiring instead of demanding consent that the
     // command invocation already gave. A TTY is still asked first, above.
     o.detail('unattended (no TTY, no --yes): running the smoke test directly — wiring without execution would prove nothing.');
   }
   // v1.5 blocker 6: authority a human granted is authority the human is SHOWN, in the default output
-  // and before the smoke test runs under it. (Deliberately not Canary's internals vocabulary here —
+  // and before the smoke test runs under it. (Deliberately not Amabie's internals vocabulary here —
   // the everyday path's word budget is a ratchet, see tooling/probes/v13-everyday-vocabulary.mjs.)
   const effectiveToolchainDirs = cfg.toolchain?.dirs ?? [];
   if (effectiveToolchainDirs.length > 0) {
-    o.say(`toolchain: ${effectiveToolchainDirs.length} executable director${effectiveToolchainDirs.length === 1 ? 'y' : 'ies'} you authorized${toolchainDirs.length > 0 ? '' : ' (kept from the previous setup)'} — appended AFTER Canary's own trusted directories, never your shell's PATH:`);
+    o.say(`toolchain: ${effectiveToolchainDirs.length} executable director${effectiveToolchainDirs.length === 1 ? 'y' : 'ies'} you authorized${toolchainDirs.length > 0 ? '' : ' (kept from the previous setup)'} — appended AFTER Amabie's own trusted directories, never your shell's PATH:`);
     for (const d of effectiveToolchainDirs) o.say(`  + ${d}`);
-    o.say('  the plan\'s own program is still pinned to an absolute path; these directories exist for what your check spawns itself. Revoke with: canary setup --clear-toolchain-dirs');
+    o.say('  the plan\'s own program is still pinned to an absolute path; these directories exist for what your check spawns itself. Revoke with: amabie setup --clear-toolchain-dirs');
   }
   o.say('\nsmoke test (running your own project scripts):');
   let allOk = true;
   const failed: StepResult[] = [];
   const ran: StepResult[] = [];
-  for (const s of plan) {
+  for (const s of planWithFreshTests(plan)) {
     // A pm that cannot be resolved in the TRUSTED environment is an
     // environment truth, not a project failure — report it as a step that
     // could not run (exitCode null) instead of crashing the whole setup.
@@ -2937,8 +3768,10 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.step(r);
     if (!r.ok) { allOk = false; failed.push(r); }
   }
-  writeVerificationBundle(root, 'setup', ran, allOk ? 'pass' : 'fail', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
-  writeCheckpoint(root, allOk ? 'pass' : 'fail', failed.map((f) => f.kind), 'setup');
+  const setupEvidence = writeVerificationBundle(root, 'setup', ran, allOk ? 'pass' : 'fail', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
+  writeCheckpoint(root, allOk ? 'pass' : 'fail', failed.map((f) => f.kind), 'setup', {
+    checks: ran, hookResponse: 'not-applicable', evidencePath: setupEvidence ?? undefined,
+  });
   if (allOk) {
     /**
      * A GREEN PLAN IS NOT A PROVEN TASK — DO NOT SAY READY WHILE A REGISTERED REQUIREMENT IS UNBOUND.
@@ -2953,36 +3786,50 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
      * fresh and READY is right; with requirements that no sealed check measures, saying so HERE costs
      * one sentence and saves the whole loop. Exit stays 0 — this IS a successful setup, and the
      * requirement state is reported rather than turned into a failure.
-     */
+    */
     const unbound = unboundRequirements(root, cfg);
+    const unboundRequirementCount = unbound.unbound.filter((item) => item.source === 'requirement').length;
+    const unboundTargetCount = unbound.unbound.length - unboundRequirementCount;
     if (unbound.unbound.length > 0 && !unbound.subjective) {
       // v1.4 §E — the summary sentence is translated for the everyday path (same fact, same exit
       // code 0, same operator decision). The two lines BELOW it are left byte-exact on purpose:
       // `unbound: <digest>` and `available to bind:` are parsed by
       // tooling/probes/v12-requirement-unbound.mjs, and a message an operator workflow reads is a
       // contract, not prose.
-      o.say(`note: you registered ${unbound.unbound.length} requirement(s) that no check here measures yet, so finishing will be reported as NOT PROVEN until one does.`);
-      for (const req of unbound.unbound) o.say(`  unbound: ${req.digest}`);
+      const missing = [
+        ...(unboundRequirementCount ? [`you registered ${unboundRequirementCount} requirement(s) that no check here measures yet`] : []),
+        ...(unboundTargetCount ? [`${unboundTargetCount} objective target(s) lack a matching sealed proof`] : []),
+      ];
+      o.say(`note: ${missing.join('; ')}, so finishing will be reported as NOT PROVEN until each is covered.`);
+      for (const item of unbound.unbound) {
+        o.say(item.source === 'requirement' ? `  unbound: ${item.digest}` : `  unbound objective target (${item.targetKind}): ${item.digest}`);
+      }
       o.say(`  sealed plan script(s) available to bind: ${unbound.planScripts.length > 0 ? unbound.planScripts.join(', ') : '(none)'}`);
-      o.say('  the wiring here is ready, but the TASK is not: bind each digest (package.json "canary" proofs) and re-run setup. Until then `canary doctor` will say NOT PROVEN — that is the same fact, not a second problem.');
+      o.say('  the wiring here is ready, but the TASK is not: the operator can run amabie bind <matching sealed script> --requirement "<exact task or requirement text>" --reseal. Until then `amabie doctor` will say NOT PROVEN — that is the same fact, not a second problem.');
     } else if (unbound.unbound.length > 0) {
       // v1.5 §4D — MEASURED (clean-room first run, requirement on a subjective intent): the branch
-      // above is suppressed when Canary reads the requirement as SUBJECTIVE, because its "reported
+      // above is suppressed when Amabie reads the requirement as SUBJECTIVE, because its "reported
       // as NOT PROVEN until one does" clause would be false there. The side effect was that setup
       // ended in READY with an open registered duty and NO mention of it, while the very next
-      // `canary doctor` answered NOT PROVEN — the user met the block with no warning. This says the
+      // `amabie doctor` answered NOT PROVEN — the user met the block with no warning. This says the
       // fact that is true in that case and names where the exact next step is printed. No exit code,
       // no verdict and no gate changes; READY still means what it meant.
-      o.say(`note: you registered ${unbound.unbound.length} requirement(s) that no machine check here measures — a completion cannot be reported as PROVEN on those; the exact next step for each is printed by: canary doctor`);
+      o.say(`note: you registered ${unbound.unbound.length} requirement(s) that no machine check here measures — a completion cannot be reported as PROVEN on those; the exact next step for each is printed by: amabie doctor`);
+    } else if ((readTaskRecord(root)?.requirementCount ?? 0) === 0) {
+      // READY means the harness and its sealed checks work. Without this note, the
+      // first-run summary can sound like Amabie also assessed acceptance criteria
+      // that were never supplied.
+      o.say('note: no task acceptance criteria are registered. READY means these checks and hooks are set up; Amabie cannot assess requirements it was never given.');
+      o.say('  for task checks, add measurable requirements with `amabie task --requirement "<behavior>"`, then bind them to an existing check with `amabie bind <script> --requirement "<same>" --reseal` (commits and reruns setup).');
     }
-    o.verdict('READY', 'Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.', `try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor`);
+    o.verdict('READY', 'Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.', `try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor`);
     return 0;
   }
   // v1.5 BLOCKER 6 — WHO IS ACTUALLY AT FAULT, MEASURED RATHER THAN ASSUMED.
   //
-  // This line used to say "That is your project talking, not Canary." whenever no step had exited
+  // This line used to say "That is your project talking, not Amabie." whenever no step had exited
   // `null`, and the auditor reproduced exactly what that costs: on the audited commit a clean project
-  // whose check is `npm test` → `java -version` passes OUTSIDE Canary and fails INSIDE it, because a
+  // whose check is `npm test` → `java -version` passes OUTSIDE Amabie and fails INSIDE it, because a
   // step child gets PATH = the Node install dir + the OS dirs (12 entries against the shell's 41,
   // `java`/`python`/`git` invisible, JAVA_HOME absent). The attribution was FALSE, and a false
   // attribution is worse than a vague one: it sent the operator to fix a project that was fine.
@@ -2991,11 +3838,20 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // environment was MEASURED to be missing the program the child named (see attributeStepFailure).
   // The verdict, the exit code and the checkpoint are unchanged: a failing check still fails.
   const attribution = attributeRunFailures(root, cfg, failed, plan);
-  o.verdict('NEEDS ATTENTION', attribution.reason, attribution.next);
+  o.verdict('NEEDS ATTENTION', attribution.reason,
+    `${attribution.next}${setupEvidence ? `; full output: ${setupEvidence}` : ''}`);
   return 2;
 }
 
-function writeCheckpoint(root: string, status: string, failed: string[], source: string): void {
+type CheckpointHookResponse = 'blocked' | 'continued' | 'message-and-continue' | 'not-applicable' | 'unknown';
+
+function writeCheckpoint(
+  root: string,
+  status: string,
+  failed: string[],
+  source: string,
+  details: { checks?: StepResult[]; hookResponse?: CheckpointHookResponse; next?: string; evidencePath?: string | undefined; proof?: ProtocolProof } = {},
+): void {
   try {
     // never write evidence through a committed link pointing outside the repo (S3)
     const p = path.join(root, CONFIG_DIR, CHECKPOINT_FILE);
@@ -3003,12 +3859,65 @@ function writeCheckpoint(root: string, status: string, failed: string[], source:
     fs.mkdirSync(path.join(root, CONFIG_DIR), { recursive: true });
     // assertPlainTarget lives inside writeFileAtomic — a dangling link that passed
     // the ancestor walk is refused there rather than CREATED outside via the write.
-    writeFileAtomic(p, JSON.stringify({ at: new Date().toISOString(), status, failed, source }, null, 2) + '\n');
+    const checks = (details.checks ?? []).slice(0, 32).map((step) => ({
+      kind: String(step.kind).slice(0, 40),
+      display: String(step.display).slice(0, 240),
+      exitCode: step.exitCode,
+      ok: step.ok === true,
+    }));
+    writeFileAtomic(p, JSON.stringify({
+      at: new Date().toISOString(), status, failed: failed.slice(0, 32).map((x) => String(x).slice(0, 80)), source,
+      checks,
+      hookResponse: details.hookResponse ?? 'not-applicable',
+      sessionEnd: 'unknown',
+      ...(details.next ? { next: details.next.slice(0, 500) } : {}),
+      ...(details.evidencePath ? { evidencePath: details.evidencePath.slice(0, 1000) } : {}),
+      ...(details.proof ? { proof: details.proof } : {}),
+    }, null, 2) + '\n');
   } catch { /* evidence is best-effort; never crash the harness hook over it */ }
 }
 
+/** Decode a bounded, historical-only checkpoint for display. It never feeds a verdict. */
+function lastVerificationFromCheckpoint(value: unknown): ProtocolEnvelope['lastVerification'] | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const cp = value as Record<string, unknown>;
+  if (typeof cp.at !== 'string' || typeof cp.source !== 'string' || typeof cp.status !== 'string') return undefined;
+  const failed = Array.isArray(cp.failed)
+    ? cp.failed.filter((x): x is string => typeof x === 'string').slice(0, 32).map((x) => x.slice(0, 80))
+    : [];
+  const checks = Array.isArray(cp.checks) ? cp.checks.slice(0, 32).flatMap((item) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.kind !== 'string' || typeof row.display !== 'string' || typeof row.ok !== 'boolean') return [];
+    return [{ kind: row.kind.slice(0, 40), display: row.display.slice(0, 240),
+      exitCode: typeof row.exitCode === 'number' && Number.isInteger(row.exitCode) ? row.exitCode : null, ok: row.ok }];
+  }) : [];
+  const hookResponse: CheckpointHookResponse = cp.hookResponse === 'blocked' || cp.hookResponse === 'continued'
+    || cp.hookResponse === 'message-and-continue' || cp.hookResponse === 'not-applicable'
+    ? cp.hookResponse : 'unknown';
+  const rawProof = isRecord(cp.proof) ? cp.proof : null;
+  const proof = rawProof && typeof rawProof.registeredRequirements === 'number'
+    && Number.isSafeInteger(rawProof.registeredRequirements) && rawProof.registeredRequirements >= 0
+    && rawProof.registeredRequirements <= MAX_REQUIREMENTS
+    // Requirements may each carry bench and e2e targets, in addition to fixed plan/diff duties.
+    && Array.isArray(rawProof.obligations) && rawProof.obligations.length <= MAX_REQUIREMENTS * 2 + 16
+    && rawProof.obligations.every((ob: unknown) => isRecord(ob) && typeof ob.id === 'string'
+      && (ob.mode === 'objective' || ob.mode === 'non-objective')
+      && (ob.status === 'met' || ob.status === 'unproven' || ob.status === 'unmet')
+      && (ob.caveat === undefined || typeof ob.caveat === 'string'))
+    ? rawProof as unknown as ProtocolProof : undefined;
+  return {
+    at: cp.at.slice(0, 80), source: cp.source.slice(0, 40), status: cp.status.slice(0, 40), failed, checks,
+    hookResponse, sessionEnd: 'unknown',
+    ...(typeof cp.next === 'string' ? { next: cp.next.slice(0, 500) } : {}),
+    ...(typeof cp.evidencePath === 'string' ? { evidencePath: cp.evidencePath.slice(0, 1000) } : {}),
+    historical: true,
+    ...(proof ? { proof } : {}),
+  };
+}
+
 // The config-trust checks doctor performs BEFORE it spends anything on a plan
-// run. Extracted verbatim (single owner) so `canary status` can answer "is
+// run. Extracted verbatim (single owner) so `amabie status` can answer "is
 // this repo's wiring sound?" with zero PROJECT commands executed and zero
 // writes (a couple of read-only git metadata probes are still made — that is
 // the honest measured shape; see the usage text).
@@ -3017,14 +3926,14 @@ function writeCheckpoint(root: string, status: string, failed: string[], source:
 // about to EXECUTE (doctor). The probe that doctor does make is the SAME
 // hardened resolution+environment the plan itself will run under — never a
 // PATH lookup the old inherited-env `--version` allowed to be a liar shim.
-function readOnlyProblems(root: string, cfg: CanaryConfig, livePmProbe: boolean): string[] {
+function readOnlyProblems(root: string, cfg: AmabieConfig, livePmProbe: boolean): string[] {
   const problems: string[] = [];
-  if (!Array.isArray(cfg.plan) || cfg.plan.length === 0) problems.push('the verification plan is empty — Canary would have nothing to check (a pass here would be fake)');
+  if (!Array.isArray(cfg.plan) || cfg.plan.length === 0) problems.push('the verification plan is empty — Amabie would have nothing to check (a pass here would be fake)');
   // v1.5 blocker 6: an operator-authorized toolchain directory that has since vanished is an
-  // ENVIRONMENT fact Canary must report before it executes anything — and it is named as Canary's
+  // ENVIRONMENT fact Amabie must report before it executes anything — and it is named as Amabie's
   // own restriction, never as a project problem.
   for (const gone of vanishedToolchainDirs(root)) {
-    problems.push(`the toolchain directory sealed at setup is gone: ${gone} — your checks run with the directories Canary sealed (never your shell's PATH), so anything that lived there cannot resolve. Re-authorize it: canary setup --toolchain-dir "<where it is now>"`);
+    problems.push(`the toolchain directory sealed at setup is gone: ${gone} — your checks run with the directories Amabie sealed (never your shell's PATH), so anything that lived there cannot resolve. Re-authorize it: amabie setup --toolchain-dir "<where it is now>"`);
   }
   // 1.1 §12–17 — each step is answered for by its OWN adapter in its OWN scope,
   // so a Python step is never judged against package.json. For a 1.0 config
@@ -3047,15 +3956,15 @@ function readOnlyProblems(root: string, cfg: CanaryConfig, livePmProbe: boolean)
     for (const runner of legacyRunners) {
       const resolved = resolvePm(runner);
       const probe = resolved ? spawnHardened(resolved, ['--version'], root, 30_000) : null;
-      if (probe === null || probe.status !== 0) {
-        problems.push(`package manager "${runner}" is not runnable in Canary's trusted environment (running Node's install dir, corepack, or OS-managed dirs only — the calling PATH is deliberately ignored)`);
+      if (probe === null || probe.status !== 0 || probe.error) {
+        problems.push(`package manager "${runner}" is not runnable in Amabie's trusted environment (running Node's install dir, corepack, or OS-managed dirs only — the calling PATH is deliberately ignored)`);
       }
     }
     for (const step of cfg.plan) {
       if (step.argv === undefined) continue;
       const program = step.argv[0] as string;
       if (!path.isAbsolute(program)) {
-        problems.push(`the sealed check "${step.script}" names "${program}" instead of an absolute path — re-run setup so the toolchain is pinned (Canary never resolves a verification program through PATH)`);
+        problems.push(`the sealed check "${step.script}" names "${program}" instead of an absolute path — re-run setup so the toolchain is pinned (Amabie never resolves a verification program through PATH)`);
       } else if (!fs.existsSync(program)) {
         problems.push(`the sealed program for "${step.script}" is missing here: ${program} — install it, or re-run setup`);
       }
@@ -3069,7 +3978,7 @@ function readOnlyProblems(root: string, cfg: CanaryConfig, livePmProbe: boolean)
   // current commands pass — doctor must not certify READY on proof it never sealed.
   const drift = planAuthorityDrift(root, cfg);
   if (drift) problems.push(`verification authority changed since setup — ${drift}; restore the sealed checks, or re-run setup to re-seal deliberately`);
-  if (!fs.existsSync(cfg.cliPath)) problems.push('the Canary command files moved or were removed — reinstall, then re-run setup');
+  if (!fs.existsSync(cfg.cliPath)) problems.push('the Amabie command files moved or were removed — reinstall, then re-run setup');
   for (const t of cfg.touched) {
     if (!fs.existsSync(t.path)) { problems.push(`${rel(root, t.path)} is missing — the harness hook is NOT registered, so nothing runs automatically`); continue; }
     const doc = parseJsonOrNull(t.path);
@@ -3077,15 +3986,29 @@ function readOnlyProblems(root: string, cfg: CanaryConfig, livePmProbe: boolean)
     // v1.3 §C: an MCP entry is ours by argv signature, not by a command string; a file that is fine
     // for the hook check is not evidence about the server entry, so each kind asks its own question.
     // v1.4 §C: the Codex hooks file has the same SHAPE as the Claude one but its own ownership list.
+    const owned = ownedCommandsFor(cfg, t.kind);
+    const stopPresent = t.kind !== 'mcp' && hasAmabieEntry(doc, owned);
+    const preToolPresent = t.kind !== 'mcp' && t.kind !== 'codex-hooks' && hasAmabieEntry(doc, owned, 'PreToolUse');
+    const promptPresent = t.kind !== 'mcp' && t.kind !== 'codex-hooks' && hasAmabieEntry(doc, owned, 'UserPromptSubmit');
+    const postToolPresent = t.kind !== 'mcp' && t.kind !== 'codex-hooks' && hasAmabieEntry(doc, owned, 'PostToolUse');
+    const sessionEndPresent = t.kind !== 'mcp' && t.kind !== 'codex-hooks' && hasAmabieEntry(doc, owned, 'SessionEnd');
     const present = t.kind === 'mcp'
       ? hasMcpEntry(doc, new Set(cfg.mcpArgSignatures ?? []))
-      : hasCanaryEntry(doc, ownedCommandsFor(cfg, t.kind));
+      : t.kind === 'codex-hooks' ? stopPresent : stopPresent && preToolPresent && promptPresent && postToolPresent && sessionEndPresent;
     if (!present) {
       problems.push(t.kind === 'mcp'
-        ? `Canary's agent tools are no longer registered in ${rel(root, t.path)} — the agent cannot ask Canary whether it is done; re-run: canary setup`
+        ? `Amabie's agent tools are no longer registered in ${rel(root, t.path)} — the agent cannot ask Amabie whether it is done; re-run: amabie setup`
         : t.kind === 'codex-hooks'
-          ? `Canary's Codex Stop hook is no longer registered in ${rel(root, t.path)} — Codex completions are not gated; re-run: canary setup`
-          : `Canary's hook is no longer registered in ${rel(root, t.path)} — nothing will run automatically; re-run: canary setup`);
+          ? `Amabie's Codex Stop hook is no longer registered in ${rel(root, t.path)} — Codex completions are not gated; re-run: amabie setup`
+          : !stopPresent
+            ? `Amabie's Stop hook is no longer registered in ${rel(root, t.path)} — completions are not gated; re-run: amabie setup`
+            : !preToolPresent
+              ? `Amabie's PreToolUse task-intake guard is no longer registered in ${rel(root, t.path)} — project changes can proceed without a registered task; re-run: amabie setup`
+              : !promptPresent
+                ? `Amabie's UserPromptSubmit turn reset is no longer registered in ${rel(root, t.path)} — a previous task can satisfy the next request; re-run: amabie setup`
+                : !postToolPresent
+                  ? `Amabie's PostToolUse task registration is no longer registered in ${rel(root, t.path)} — current-request task registration cannot be confirmed; re-run: amabie setup`
+                  : `Amabie's SessionEnd cleanup is no longer registered in ${rel(root, t.path)} — task-session state may remain on disk; re-run: amabie setup`);
     }
   }
   return problems;
@@ -3154,8 +4077,8 @@ export function agentCapability(root: string): { harnesses: Array<{ id: string; 
  * v1.3, slice 1 — IS THE COMPLETION HOOK ACTUALLY INSTALLED IN THIS REPOSITORY?
  *
  * MEASURED (tooling/probes/v13-journey-baseline.mjs): on a repository whose `.claude/` directory held
- * nothing but a skill file — no `settings.json`, no hook — `canary agents` printed
- * "CONNECTED — Claude Code can gate completions here." and exited 0, while `canary status` on the
+ * nothing but a skill file — no `settings.json`, no hook — `amabie agents` printed
+ * "CONNECTED — Claude Code can gate completions here." and exited 0, while `amabie status` on the
  * SAME bytes said "NOT CONNECTED … no config, no hooks, no proof" and exited 2. Two commands
  * contradicted each other, and the optimistic one was the successful one.
  *
@@ -3166,8 +4089,8 @@ export function agentCapability(root: string): { harnesses: Array<{ id: string; 
  * `status`/`readOnlyProblems` already compute from the config and the settings files.
  *
  * This is that same evidence, exposed for the callers that phrase a verdict. It is READ-ONLY: no
- * spawn, no write, no verdict of its own — it reports whether Canary's own hook entry is present in a
- * settings file Canary manages, under a config Canary still trusts.
+ * spawn, no write, no verdict of its own — it reports whether Amabie's own hook entry is present in a
+ * settings file Amabie manages, under a config Amabie still trusts.
  */
 export function gatingHookInstalled(root: string): boolean {
   const cfg = readConfig(root);
@@ -3179,14 +4102,20 @@ export function gatingHookInstalled(root: string): boolean {
     if (t.kind === 'mcp') return false;
     if (!fs.existsSync(t.path)) return false;
     const doc = parseJsonOrNull(t.path);
-    return doc !== null && hasCanaryEntry(doc, ownedCommandsFor(cfg, t.kind));
+    if (doc === null) return false;
+    const owned = ownedCommandsFor(cfg, t.kind);
+    return t.kind === 'codex-hooks'
+      ? hasAmabieEntry(doc, owned)
+      : hasAmabieEntry(doc, owned) && hasAmabieEntry(doc, owned, 'PreToolUse')
+        && hasAmabieEntry(doc, owned, 'UserPromptSubmit') && hasAmabieEntry(doc, owned, 'PostToolUse')
+        && hasAmabieEntry(doc, owned, 'SessionEnd');
   });
 }
 
 /** The checks as an agent needs them: what, which ecosystem, where, and the
  *  exact command. Never throws — a legacy step reports the command shape that
  *  will actually be built for it. */
-export function protocolChecks(cfg: CanaryConfig): Array<{ kind: string; script: string; adapter: string; scope: string; argv: string[] }> {
+export function protocolChecks(cfg: AmabieConfig): Array<{ kind: string; script: string; adapter: string; scope: string; argv: string[] }> {
   return cfg.plan.map((s) => ({
     kind: s.kind,
     script: s.script,
@@ -3201,7 +4130,7 @@ export function protocolChecks(cfg: CanaryConfig): Array<{ kind: string; script:
  * user and an agent actually read.
  *
  * `LOCAL` says the records are written outside the repo. It does NOT say the writer was
- * somebody other than the worker: `canary setup --yes` runs unattended and has never checked
+ * somebody other than the worker: `amabie setup --yes` runs unattended and has never checked
  * the caller's identity, so any caller with this user's authority — the worker's own shell
  * included — can make a DIFFERENT plan and a different starting commit the ones that are
  * checked and then complete against them. That is expected onboarding behaviour at LOCAL, and
@@ -3217,10 +4146,10 @@ export function proofLevelLine(level: string): string {
   if (level === 'HARDENED') {
     return 'proof level: HARDENED — a measured boundary with a separate OS identity checks this work, so the worker cannot replace what judges it.';
   }
-  return `proof level: ${level} — the same user account that runs the agent can also re-run \`canary setup --yes\` and make a different plan and starting commit the ones that are checked, so this proof is same-user and operator-selected, NOT worker-independent. HARDENED is the level that adds a separate OS identity, and it is NOT available here.`;
+  return `proof level: ${level} — the same user account that runs the agent can also re-run \`amabie setup --yes\` and make a different plan and starting commit the ones that are checked, so this proof is same-user and operator-selected, NOT worker-independent. HARDENED is the level that adds a separate OS identity, and it is NOT available here.`;
 }
 
-function sealedCopyReport(root: string, cfg: CanaryConfig): string {
+function sealedCopyReport(root: string, cfg: AmabieConfig): string {
   const store = storeFromEnv();
   let projectId: string, tail: string, level: string;
   try {
@@ -3236,36 +4165,36 @@ function sealedCopyReport(root: string, cfg: CanaryConfig): string {
   const same = !!cfg.planAuthority && canonicalJson(open.envelope!.payload) === canonicalJson(cfg.planAuthority);
   return same
     ? `sealed copy: store seq ${open.envelope!.seq} matches this config's sealed authority${tail}`
-    : `sealed copy: MISMATCH — the .canary config and the sealed record disagree; run setup to re-seal deliberately${tail}`;
+    : `sealed copy: MISMATCH — the .amabie config and the sealed record disagree; run setup to re-seal deliberately${tail}`;
 }
 
 /**
- * canary status — the Lazy-Connect read surface: "Canary already recognizes
+ * amabie status — the Lazy-Connect read surface: "Amabie already recognizes
  * this environment; what is its state?" Answers from config and wiring bytes
  * on disk only — ZERO project commands executed, ZERO writes: the only
  * subprocesses are a few read-only git metadata probes (tracked-file and
- * toplevel checks under Canary's hardened git), so a full status run leaves
+ * toplevel checks under Amabie's hardened git), so a full status run leaves
  * the repo byte-identical. Every line is a fact about state, never a claim
  * that the project passes; the checkpoint is reported as history, not health.
  */
-export function cmdStatus(rawArgs: string[]): number {
+export function cmdStatus(rawArgs: string[], compact = false): number {
   const { opts, rest } = parseGlobals(rawArgs);
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'status' });
   const root = findRepoRoot(dirArg(rest) ?? process.cwd());
-  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — Canary has nothing to attach to here.', 'cd into your project, then: canary setup --yes'); return 2; }
+  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — Amabie has nothing to attach to here.', 'cd into your project, then: amabie setup --yes'); return 2; }
   o.context({ root });
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NOT CONNECTED', "Canary's local config (.canary/canary.local.json) is unreadable.", 'run: canary setup --yes (rewrites it; your other settings are untouched)'); return 2; }
-  if (!cfg) { o.verdict('NOT CONNECTED', `${root} is a git repository but Canary was never set up here — no config, no hooks, no proof.`, 'when you want protection here: canary setup --yes'); return 2; }
+  if (cfg === 'corrupt') { o.verdict('NOT CONNECTED', "Amabie's local config (.amabie/amabie.local.json) is unreadable.", 'run: amabie setup --yes (rewrites it; your other settings are untouched)'); return 2; }
+  if (!cfg) { o.verdict('NOT CONNECTED', `${root} is a git repository but Amabie was never set up here — no config, no hooks, no proof.`, 'when you want protection here: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NOT CONNECTED', `Canary found a local config it does not trust (${distrust}) — it will not run plans from it.`, "run: canary setup --yes (rewrites it as this machine's own)"); return 2; }
+  if (distrust) { o.verdict('NOT CONNECTED', `Amabie found a local config it does not trust (${distrust}) — it will not run plans from it.`, "run: amabie setup --yes (rewrites it as this machine's own)"); return 2; }
   const problems = readOnlyProblems(root, cfg, false); // state only — no liveness spawn
   if (problems.length) {
     o.context({ problems });
-    o.verdict('NEEDS ATTENTION', `Canary is set up in ${root}, but its wiring is not sound:`, '');
+    o.verdict('NEEDS ATTENTION', `Amabie is set up in ${root}, but its wiring is not sound:`, '');
     for (const p of problems) o.say(`  - ${p}`);
-    o.say('next: canary setup --yes repairs the above; canary doctor proves the checks actually run');
+    o.say('next: amabie setup --yes repairs the above; amabie doctor proves the checks actually run');
     return 2;
   }
   const security = securityCapability();
@@ -3274,6 +4203,15 @@ export function cmdStatus(rawArgs: string[]): number {
     security,
     agent: agentCapability(root),
   });
+  if (compact && !opts.json) {
+    o.verdict('CONNECTED', `${root}: wiring and sealed plan are intact. No project check was run.`, 'amabie doctor runs the checks');
+    o.say(proofLevelLine(security.level));
+    const last = lastVerificationFromCheckpoint(parseJsonOrNull(path.join(root, CONFIG_DIR, CHECKPOINT_FILE)));
+    o.say(last
+      ? `last verification (historical only): ${JSON.stringify(last.status)} (${JSON.stringify(last.source)}) at ${JSON.stringify(last.at)}; session end: unknown`
+      : 'last verification: none recorded');
+    return 0;
+  }
   o.say(`repo: ${root}`);
   o.say(`plan: ${cfg.plan.length} step(s): ${cfg.plan.map((s) => `${s.kind}:${s.script}`).join(', ')} — sealed authority intact`);
   o.say(proofLevelLine(security.level));
@@ -3285,48 +4223,55 @@ export function cmdStatus(rawArgs: string[]): number {
   o.say(`candidates: ${candidates.length ? candidates.join(', ') : 'none'}`);
   const cp = parseJsonOrNull(path.join(root, CONFIG_DIR, CHECKPOINT_FILE));
   o.say(`last checkpoint: ${cp ? `${cp.status} (${cp.source}) at ${cp.at} — a past run, NOT a claim about now` : 'none'}`);
-  o.verdict('CONNECTED', 'Canary recognizes this repo: trusted config, wiring intact, sealed authority un-drifted. No project command was executed to answer this — only a few read-only git metadata reads — this is a statement about state, not about your code passing.', 'to run the checks: canary doctor');
+  o.verdict('CONNECTED', 'Amabie recognizes this repo: trusted config, wiring intact, sealed authority un-drifted. No project command was executed to answer this — only a few read-only git metadata reads — this is a statement about state, not about your code passing.', 'to run the checks: amabie doctor');
   return 0;
 }
 
 export function cmdDoctor(rawArgs: string[]): number {
-  const { opts, rest } = parseGlobals(rawArgs);
+  const doctorArgs = takeDoctorOptions(rawArgs);
+  const { opts, rest } = parseGlobals(doctorArgs.rest);
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'doctor' });
+  if (doctorArgs.problems.length > 0 || (doctorArgs.check !== undefined && opts.fast)) {
+    const reason = doctorArgs.problems.join('; ') || '--check cannot be combined with --fast';
+    o.context({ exitCode: 3, problems: [reason] });
+    o.verdict('NEEDS ATTENTION', `invalid doctor options: ${reason}.`, `use \`${installedDoctorCommand('<sealed-check-id>')}\` for one diagnostic check, or \`${installedDoctorCommand()}\` for the full gate`);
+    return 3;
+  }
   const root = findRepoRoot(dirArg(rest) ?? process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository.', 'cd into your project'); return 2; }
   o.context({ root });
   // 1.1: the "no package.json → UNSUPPORTED" gate is gone. Doctor's question is
-  // "is Canary actually protecting this repo?", and the config answers it for
+  // "is Amabie actually protecting this repo?", and the config answers it for
   // every ecosystem; a repo that was never set up says so below.
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Canary's local config (.canary/canary.local.json) is unreadable.", 'run: canary setup (rewrites it; your other settings are untouched)'); return 2; }
+  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Amabie's local config (.amabie/amabie.local.json) is unreadable.", 'run: amabie setup (rewrites it; your other settings are untouched)'); return 2; }
   if (!cfg) {
     // "Never set up" and "nothing here to set up" are different facts, and only
     // the first one is about wiring. A directory with no recognizable project
-    // has nothing Canary could protect, so it is UNSUPPORTED — which also keeps
+    // has nothing Amabie could protect, so it is UNSUPPORTED — which also keeps
     // the answer honest when findRepoRoot lands on an unrelated ancestor repo
     // (a stray .git above a temp dir is a real thing to hit).
     const composed = composePlan(root);
     if (composed.problems.length) {
-      o.verdict('NEEDS ATTENTION', `the nested-scope declaration (${SCOPES_FILE}) is not usable: ${composed.problems.join('; ')}.`, `fix ${SCOPES_FILE} (or delete it to go back to root-only discovery), then run: canary setup --yes`);
+      o.verdict('NEEDS ATTENTION', `the nested-scope declaration (${SCOPES_FILE}) is not usable: ${composed.problems.join('; ')}.`, `fix ${SCOPES_FILE} (or delete it to go back to root-only discovery), then run: amabie setup --yes`);
       return 2;
     }
     if (composed.scopes.length === 0) {
-      o.verdict('UNSUPPORTED', `${root} has no project Canary can model at its root (no package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).`, `if your checks live in subdirectories, declare them in ${SCOPES_FILE}, then: canary setup --yes`);
+      o.verdict('UNSUPPORTED', `${root} has no project Amabie can model at its root (no package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).`, `if your checks live in subdirectories, declare them in ${SCOPES_FILE}, then: amabie setup --yes`);
       return 2;
     }
-    o.verdict('NEEDS ATTENTION', 'Canary is NOT fully active yet — this repo was never set up.', 'run: canary setup --yes'); return 2;
+    o.verdict('NEEDS ATTENTION', 'Amabie is NOT fully active yet — this repo was never set up.', 'run: amabie setup --yes'); return 2;
   }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NEEDS ATTENTION', `Canary found a local config it does not trust (${distrust}) — it will not run plans from it.`, 'run: canary setup --yes (rewrites it as this machine\'s own)'); return 2; }
+  if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie found a local config it does not trust (${distrust}) — it will not run plans from it.`, 'run: amabie setup --yes (rewrites it as this machine\'s own)'); return 2; }
 
   const problems = readOnlyProblems(root, cfg, true); // doctor is about to execute — liveness is its question
   if (problems.length) {
     o.context({ problems });
-    o.verdict('NEEDS ATTENTION', 'Canary is NOT fully active here:', '');
+    o.verdict('NEEDS ATTENTION', 'Amabie is NOT fully active here:', '');
     for (const p of problems) o.say(`  - ${p}`);
-    o.say('next: canary setup --yes repairs the above without touching your other settings');
+    o.say('next: amabie setup --yes repairs the above without touching your other settings');
     return 2;
   }
   // Facts every later verdict in this command needs: the sealed checks, the
@@ -3334,6 +4279,48 @@ export function cmdDoctor(rawArgs: string[]): number {
   const doctorSecurity = securityCapability();
   o.context({ checks: protocolChecks(cfg), security: doctorSecurity, agent: agentCapability(root) });
   o.say(proofLevelLine(doctorSecurity.level));
+  if (doctorArgs.check !== undefined) {
+    const step = cfg.plan.find((candidate) => stepKey(candidate) === doctorArgs.check);
+    if (!step) {
+      const available = cfg.plan.map((candidate) => stepKey(candidate));
+      const reason = `no sealed check has id "${doctorArgs.check}"`;
+      const ids = `available ids: ${available.join(', ') || '(none)'}`;
+      o.context({ exitCode: 3, problems: [`${reason}; ${ids}`] });
+      o.verdict('NEEDS ATTENTION', `${reason}; ${ids}.`, `copy one id exactly, then run \`${installedDoctorCommand('<sealed-check-id>')}\``);
+      return 3;
+    }
+    const id = stepKey(step);
+    o.context({ schema: PROTOCOL_DOCTOR_PARTIAL });
+    o.say(`running one sealed diagnostic check [${id}]: ${stepDisplay(cfg.pm, step)}`);
+    let result: StepResult;
+    let blocked = false;
+    try { result = runPlanStep(root, cfg.pm, step); }
+    catch (e) { result = unresolvedStep(root, cfg.pm, step, e); blocked = true; }
+    o.step(result);
+    const partialStatus = blocked ? 'partial-blocked' : result.ok ? 'partial-pass' : 'partial-fail';
+    const evidenceDir = writeVerificationBundle(root, 'doctor-selected', [result], partialStatus,
+      { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null },
+      { extra: { partial: true, checkId: id, fullPlanRun: false } });
+    if (evidenceDir === null) o.say('diagnostic evidence: could not be written');
+    else o.say(`diagnostic evidence: ${evidenceDir} — this is not a full-plan result`);
+    o.say('completion checkpoint unchanged; remaining checks and task obligations were not evaluated.');
+    const problems = blocked
+      ? [`${id} could not run: ${result.tail}`]
+      : result.ok ? [] : [`${id} failed: ${result.display}`];
+    o.context({
+      exitCode: !blocked && result.ok ? 0 : 2,
+      partialCheck: { id, passed: !blocked && result.ok, ran: !blocked || result.exitCode !== null, exitCode: result.exitCode },
+      problems,
+      ...(evidenceDir === null ? {} : { evidencePath: evidenceDir }),
+    });
+    o.verdict('PARTIAL', blocked
+      ? `the selected check "${id}" could not run; this diagnostic did not evaluate completion.`
+      : result.ok
+        ? `the selected check "${id}" passed; this diagnostic did not evaluate completion.`
+        : `the selected check "${id}" failed; this diagnostic did not evaluate completion.`,
+    `repair or inspect this check, rerun: ${installedDoctorCommand(id)}; then run the full gate: ${installedDoctorCommand()}`);
+    return !blocked && result.ok ? 0 : 2;
+  }
   // READY is earned HERE, now — the plan runs in every doctor invocation, so a
   // hand-written or stale checkpoint can never produce READY on its own (S4).
   // --run is accepted but no longer changes behavior.
@@ -3351,32 +4338,35 @@ export function cmdDoctor(rawArgs: string[]): number {
     for (const s of decision.skipped) o.say(`  ~ skipped ${s.step.kind}: ${s.step.script} — ${s.reason}`);
   }
   const stepsToRun = decision === null ? cfg.plan : decision.run;
+  const executionPlan = planWithFreshTests(stepsToRun);
   o.say('running the verification plan:');
   const failed: StepResult[] = [];
   const ran: StepResult[] = [];
   const refused: string[] = [];
-  for (const s of stepsToRun) {
+  for (const s of executionPlan) {
     let r: StepResult;
     try { r = runPlanStep(root, cfg.pm, s); }
     catch (e) { refused.push(`plan step "${s.script}" refused: ${(e as Error).message}`); continue; }
     ran.push(r); o.step(r); if (!r.ok) failed.push(r);
   }
   if (refused.length) {
-    // a script name Canary will not execute is a config problem, not a test
+    // a script name Amabie will not execute is a config problem, not a test
     // result — honest NEEDS ATTENTION, no checkpoint, no fake run.
     writeVerificationBundle(root, 'doctor', ran, 'blocked', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
     o.context({ problems: refused });
-    o.verdict('NEEDS ATTENTION', 'the config names a script Canary will not execute — doctor cannot certify this plan:', '');
+    o.verdict('NEEDS ATTENTION', 'the config names a script Amabie will not execute — doctor cannot certify this plan:', '');
     for (const p of refused) o.say(`  - ${p}`);
-    o.say('next: canary setup --yes reseals from the package.json scripts');
+    o.say('next: amabie setup --yes reseals from the package.json scripts');
     return 2;
   }
   const evidenceDir = writeVerificationBundle(root, 'doctor', ran, failed.length ? 'fail' : 'pass', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
-  writeCheckpoint(root, failed.length ? 'fail' : 'pass', failed.map((f) => f.kind), 'doctor');
+  writeCheckpoint(root, failed.length ? 'fail' : 'pass', failed.map((f) => f.kind), 'doctor', {
+    checks: ran, hookResponse: 'not-applicable', evidencePath: evidenceDir ?? undefined,
+  });
   if (failed.length) {
     o.context({ problems: failed.map((f) => `${f.kind} failed: ${f.display}`) });
     // v1.5 blocker 6: the same MEASURED attribution setup prints. Doctor is the gate a worker meets
-    // most often, so it must not blame the project for a restriction Canary itself imposed. The
+    // most often, so it must not blame the project for a restriction Amabie itself imposed. The
     // wiring fact stays in the line (it is what doctor checked first); only the blame moves.
     const attribution = attributeRunFailures(root, cfg, failed, cfg.plan);
     o.verdict('NEEDS ATTENTION',
@@ -3389,8 +4379,12 @@ export function cmdDoctor(rawArgs: string[]): number {
     // tells the reader "the full runner output is written to disk and its path is printed — read
     // that file, not the summary". The path was never printed. The bundle already returns it.
     o.say(evidenceDir === null
-      ? 'full runner output: could not be written (evidence storage failed) — the excerpt above is all Canary kept'
+      ? 'full runner output: could not be written (evidence storage failed) — the excerpt above is all Amabie kept'
       : `full runner output: ${evidenceDir} — per-step logs and verification.json; read those, not the excerpt above`);
+    for (const failure of failed) {
+      const failedStep = executionPlan[ran.indexOf(failure)];
+      if (failedStep) o.say(`focused recheck after repair: ${installedDoctorCommand(stepKey(failedStep))}`);
+    }
     return 2;
   }
   // M6: the same obligation read a checkpoint makes, for humans (no hook stdin
@@ -3400,24 +4394,31 @@ export function cmdDoctor(rawArgs: string[]): number {
   const obligations = obligationsFor(task?.kinds ?? [], collectDiffSignals(root, cfg), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, 'setup', task, cfg);
   // Measured, not inferred: is the sealed plan SENSITIVE to this change at all? When the
   // measurement exists it supersedes the declared-kind heuristic (see cmdCheckpoint).
-  const regression = discriminationObligation(root, cfg);
+  const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran);
   if (regression !== null) {
     for (let i = obligations.length - 1; i >= 0; i -= 1) {
       if (obligations[i]!.id === regression.id) obligations.splice(i, 1);
     }
     obligations.push(regression);
   }
+  const proof = proofSummary(task?.requirementCount ?? 0, obligations);
+  o.context({ proof });
+  o.say(`proof scope: ${proofScopeLine(proof)}`);
   const unmet = obligations.filter((x) => x.status === 'unmet');
   const unproven = obligations.filter((x) => x.status === 'unproven');
   const objectiveOpen = unproven.filter((x) => x.mode === 'objective');
   const subjectiveOpen = unproven.filter((x) => x.mode !== 'objective');
   if (unmet.length > 0) {
+    writeCheckpoint(root, 'fail', ['obligation'], 'doctor', {
+      checks: ran, hookResponse: 'not-applicable', next: unmet.map((x) => x.note).join('; '), evidencePath: evidenceDir ?? undefined, proof,
+    });
     o.context({ problems: unmet.map((x) => x.note) });
-    o.verdict('NEEDS ATTENTION', `the sealed checks pass, but a proof obligation is objectively violated — ${unmet.map((x) => x.note).join('; ')}`, 'restore the deleted verification files (git checkout -- <path>) — or a human reviews this deletion; then: canary doctor');
+    const restoreSource = cfg.baseline?.head ?? 'HEAD';
+    o.verdict('NEEDS ATTENTION', `the sealed checks pass, but a proof obligation is objectively violated — ${unmet.map((x) => x.note).join('; ')}`, `restore the deleted verification files with \`git restore --source=${restoreSource} --staged --worktree <path>\`; if the deletion was already committed, commit the restoration before rerunning doctor — or have a human review this deletion`);
     return 2;
   }
   /**
-   * FAIL CLOSED, scoped to what was AUTHORIZED. The product invariant: Canary must never issue
+   * FAIL CLOSED, scoped to what was AUTHORIZED. The product invariant: Amabie must never issue
    * PASS/READY merely because the configured tests are green while authorized requirements are not
    * independently covered, and missing or ambiguous proof must never degrade to PASS.
    *
@@ -3426,7 +4427,7 @@ export function cmdDoctor(rawArgs: string[]): number {
    *     refuse READY;
    *   - NON-OBJECTIVE ones refuse READY only when a TASK was registered, because then a human
    *     authorized a requirement that needs their acceptance. Without a task record they are
-   *     Canary's own inference from the diff (e.g. "a lockfile changed"), and refusing READY for
+   *     Amabie's own inference from the diff (e.g. "a lockfile changed"), and refusing READY for
    *     that would fail the documented journeys: a green Rust crate whose first `cargo check`
    *     created `Cargo.lock` would be reported NOT PROVEN (measured — that is exactly what the
    *     rust/go end-to-end probes caught).
@@ -3438,25 +4439,41 @@ export function cmdDoctor(rawArgs: string[]): number {
     const because = objectiveOpen.length > 0
       ? `${objectiveOpen.length} objective obligation(s) have no adequate proof`
       : `${subjectiveOpen.length} authorized requirement(s) need a human's explicit acceptance`;
+    const next = objectiveOpen.some((ob) => ob.id === 'regression-evidence')
+      ? `Add a regression assertion that fails on the reported starting commit and passes with the actual implementation. Amabie compares with the starting commit automatically; stay on this branch.${sealedTestEntryHint(root, cfg)} Keep the planned test command and starting commit unchanged; then run: amabie doctor`
+      : objectiveOpen.length > 0
+        ? 'the operator can bind the requirement with amabie bind <matching sealed script> --requirement "<exact text>" --reseal — or take the work through a candidate and have a human accept it there'
+        : 'the operator can bind each requirement with amabie bind <sealed script> --requirement "<exact text>" --reseal, or take the work through a candidate and have a human accept it there: amabie work <name> "<intent>" → amabie finish <name> → amabie accept <candidate> in a terminal';
+    writeCheckpoint(root, 'unproven', unproven.map((x) => x.id), 'doctor', {
+      checks: ran, hookResponse: 'not-applicable', next, evidencePath: evidenceDir ?? undefined, proof,
+    });
     o.verdict('NOT PROVEN',
       `the checks passed, but the task is not proven: ${because} — a green plan is not a proven deliverable (NO PROOF, NO DONE).`,
-      objectiveOpen.length > 0
-        ? 'close it with a sealed check: bind the requirement to a matching script in package.json canary.proofs and re-run canary setup — or take the work through a candidate (canary work <name> … → canary finish <name>) and have a human accept it there'
-        // MEASURED dead end this replaces: the base-repo path has NO candidate, so "canary accept
-        // <candidate>" alone was a command that could only fail. Both real paths are named instead.
-        : 'bind each requirement to a sealed check (package.json canary.proofs + canary setup), or take the work through a candidate and have a human accept it there: canary work <name> "<intent>" → canary finish <name> → canary accept <candidate> in a terminal');
+      next);
     for (const ob of unproven) o.say(`  - UNPROVEN [${ob.id}] (${ob.mode}): ${ob.note}`);
+    o.say(evidenceDir === null
+      ? 'full evidence could not be written; no saved run logs are available'
+      : `full evidence: ${evidenceDir} — per-step logs and verification.json`);
     return 2;
   }
-  o.verdict('READY', 'wiring verified; the checks just ran and passed, and no proof obligation is open.', 'nothing to do — the agent finishes, Canary checks');
+  writeCheckpoint(root, 'pass', [], 'doctor', { checks: ran, hookResponse: 'not-applicable', evidencePath: evidenceDir ?? undefined, proof });
+  o.verdict('READY', 'wiring verified; the checks just ran and passed, and nothing more needs proof.', 'nothing to do — the agent finishes, Amabie checks');
   if (unproven.length > 0) {
-    // Nothing was authorized, so these are Canary's own observations about the diff. They are said
+    // Nothing was authorized, so these are Amabie's own observations about the diff. They are said
     // plainly — READY here means "your checks passed", never "your change is proven".
     o.say(`note: ${unproven.length} observation(s) about this diff are UNPROVEN and are not covered by any authorized requirement — the plan passing does not prove them (NO PROOF, NO DONE).`);
   }
-  for (const ob of obligations) o.detail(`obligation [${ob.id}] ${ob.status.toUpperCase()} (${ob.mode}): ${ob.note}`);
+  for (const ob of obligations) {
+    if (ob.caveat) o.say(`evidence caveat [${ob.id}]: ${ob.caveat}`);
+    o.detail(`obligation [${ob.id}] ${ob.status.toUpperCase()} (${ob.mode}): ${ob.note}`);
+  }
+  if (obligations.some((ob) => ob.caveat)) {
+    o.say(evidenceDir === null
+      ? 'full evidence could not be written; no saved run logs are available'
+      : `full evidence: ${evidenceDir} — per-step logs and verification.json`);
+  }
   // M3 (verbose-only — trust classes are evidence internals, not default UX):
-  o.detail('trust: this READY is CANARY_OBSERVED — Canary executed the checks in this very invocation. Agent words are AGENT_REPORTED and never sufficient for a PASS; no class is promoted by copying bytes into a Canary-owned file (evidence is never read back for verdicts).');
+  o.detail('trust: this READY is AMABIE_OBSERVED — Amabie executed the checks in this very invocation. Agent words are AGENT_REPORTED and never sufficient for a PASS; no class is promoted by copying bytes into a Amabie-owned file (evidence is never read back for verdicts).');
   if (cfg.planAuthority) o.detail('authority: every command that just ran is one setup sealed — script-text drift is blocked before execution, not excused after it passes.');
   o.detail(sealedCopyReport(root, cfg));
   return 0;
@@ -3468,10 +4485,10 @@ export function cmdUninstall(rawArgs: string[]): number {
   const root = findRepoRoot(dirArg(rest) ?? process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository.', 'cd into the project you set up'); return 2; }
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Canary's local config is unreadable, so Canary cannot tell which settings entries it owns.", 'run: canary setup (recreates the config), then canary uninstall'); return 2; }
-  if (!cfg) { o.say('Canary is not installed in this repo — nothing to remove.'); return 0; }
+  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Amabie's local config is unreadable, so Amabie cannot tell which settings entries it owns.", 'run: amabie setup (recreates the config), then amabie uninstall'); return 2; }
+  if (!cfg) { o.say('Amabie is not installed in this repo — nothing to remove.'); return 0; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NEEDS ATTENTION', `Canary will not remove settings based on a config it does not trust (${distrust}) — it cannot prove which entries are its own.`, 'run: canary setup --yes (recreates the record as this machine\'s own), then canary uninstall'); return 2; }
+  if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not remove settings based on a config it does not trust (${distrust}) — it cannot prove which entries are its own.`, 'run: amabie setup --yes (recreates the record as this machine\'s own), then amabie uninstall'); return 2; }
   // M9 additive: BOTH refusal checks run BEFORE any hook is touched. An
   // uninstall that ends up refusing must not leave a repo with its hooks
   // stripped while the config stays live — that is a modified verification
@@ -3479,32 +4496,49 @@ export function cmdUninstall(rawArgs: string[]): number {
   // exactly that state), and a refusal should never manufacture it. These are
   // preconditions of the teardown, not after-the-fact exceptions.
   if (containedRealPath(root, path.join(root, CONFIG_DIR)) === null) {
-    o.verdict('NEEDS ATTENTION', '.canary resolves outside the repository (a link?) — Canary will not delete through it.', 'replace it with a real folder, then re-run: canary uninstall'); return 2;
+    o.verdict('NEEDS ATTENTION', '.amabie resolves outside the repository (a link?) — Amabie will not delete through it.', 'replace it with a real folder, then re-run: amabie uninstall'); return 2;
   }
-  // M7: .canary/candidates holds the registry and (by default) the candidate
-  // worktrees themselves. Removing .canary wholesale would orphan a worker's
+  // M7: .amabie/candidates holds the registry and (by default) the candidate
+  // worktrees themselves. Removing .amabie wholesale would orphan a worker's
   // tree and erase the records proving it belongs to this repo (guarantee 11).
   try {
     if (fs.readdirSync(path.join(root, CONFIG_DIR, 'candidates')).length > 0) { // must match CANDIDATES_SUBDIR in candidate.ts
-      o.verdict('NEEDS ATTENTION', "candidates are still registered under .canary/candidates — uninstall would remove Canary's registry while the worktrees (and the worker's edits in them) remain.", 'canary isolate --list, then --remove each (or --discard), then re-run: canary uninstall'); return 2;
+      o.verdict('NEEDS ATTENTION', "candidates are still registered under .amabie/candidates — uninstall would remove Amabie's registry while the worktrees (and the worker's edits in them) remain.", 'amabie isolate --list, then --remove each (or --discard), then re-run: amabie uninstall'); return 2;
     }
   } catch { /* absent or empty: nothing to protect */ }
   const { removed, problems } = uninstallHooks(root, cfg);
   if (problems.length) {
-    // keep .canary: it is the ownership record the advertised retry needs (S6)
-    o.verdict('NEEDS ATTENTION', `Canary removed ${removed} of its hook entries but ${problems.length} file(s) could not be cleaned completely; its ownership record (.canary) is kept so a retry can finish the job:`, 'fix the listed files, then re-run: canary uninstall is safe to repeat');
+    // keep .amabie: it is the ownership record the advertised retry needs (S6)
+    o.verdict('NEEDS ATTENTION', `Amabie removed ${removed} of its hook entries but ${problems.length} file(s) could not be cleaned completely; its ownership record (.amabie) is kept so a retry can finish the job:`, 'fix the listed files, then re-run: amabie uninstall is safe to repeat');
     for (const p of problems) console.log(`  - ${p}`);
     return 2;
   }
+  const remainingAmabieHooks = [
+    ...findUnownedAmabieHookEntries(root, settingsPath(root), {
+      Stop: new Set(), PreToolUse: new Set(), UserPromptSubmit: new Set(), PostToolUse: new Set(), SessionEnd: new Set(), SessionStart: new Set(),
+    }),
+    ...findUnownedAmabieHookEntries(root, codexHooksPath(root), { Stop: new Set() }),
+  ];
+  if (remainingAmabieHooks.length) {
+    fs.rmSync(path.join(root, CONFIG_DIR), { recursive: true, force: true });
+    o.say('removed ' + removed + ' hook entries owned by this installation; other Amabie hooks remain:');
+    for (const entry of remainingAmabieHooks) o.say('  - ' + entry);
+    o.verdict('NEEDS ATTENTION',
+      'this installation was removed, but unowned Amabie hook commands were left untouched.',
+      'remove the listed entries with their owning installation or edit those exact hook entries manually');
+    return 2;
+  }
   fs.rmSync(path.join(root, CONFIG_DIR), { recursive: true, force: true });
-  o.say(`removed ${removed} Canary hook entr${removed === 1 ? 'y' : 'ies'}; every other settings entry was kept (content preserved — re-serialization may reformat whitespace).`);
-  o.verdict('READY', 'Canary is fully removed from this repo.', 'to bring it back: canary setup');
+  o.say(`removed ${removed} Amabie hook entr${removed === 1 ? 'y' : 'ies'}; every other settings entry was kept (content preserved — re-serialization may reformat whitespace).`);
+  o.verdict('READY', 'Amabie is fully removed from this repo.', 'to bring it back: amabie setup');
   return 0;
 }
 
 /**
- * Harness entry point (Claude Code Stop hook). Contract:
- *  - stdin: hook JSON {cwd?, stop_hook_active?, task?}; stdout JSON decisions; exit 0.
+ * Claude Code hook entry point (Stop and PreToolUse). Contract:
+ *  - PreToolUse requires task registration before matched project actions; proof gaps stay at completion.
+ *  - Stop runs the sealed plan and reports whether task proof is complete.
+ *  - stdin: Claude lifecycle JSON or the legacy completion payload; stdout JSON; exit 0.
  *    (`task` is M4-additive: an optional AGENT_REPORTED provenance label,
  *    stored as a digest only; old senders and unknown keys behave as before.)
  *  - all checks pass => silence (human is NOT interrupted when nothing is needed)
@@ -3514,49 +4548,116 @@ export function cmdUninstall(rawArgs: string[]): number {
  *    damaged authority is NOT
  */
 export async function cmdCheckpoint(): Promise<number> {
-  let input: { cwd?: string; stop_hook_active?: boolean; task?: string } = {};
+  let input: { cwd?: string; stop_hook_active?: boolean; task?: string; hook_event_name?: string; tool_name?: string; tool_input?: unknown; session_id?: string } = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')) as typeof input; } catch { /* interactive invocation or empty stdin */ }
-  // M4: optional task/intent label from the hook — DIGEST only, raw prose is
-  // never stored or echoed, so provenance cannot become a smuggling channel
-  // for agent-authored text. AGENT_REPORTED by nature: a label on evidence,
-  // zero verdict authority either way.
-  const taskDigest = typeof input.task === 'string' && input.task.trim()
-    ? sha256(input.task.trim().slice(0, 4000)) : undefined;
   const root = findRepoRoot(input.cwd ?? process.cwd());
-  const cfg = root ? readConfig(root) : null;
   const emit = (obj: Record<string, unknown>) => { console.log(JSON.stringify(obj)); return 0; };
+  const sessionId = typeof input.session_id === 'string' && input.session_id.trim() !== '' ? input.session_id : null;
+  if (input.hook_event_name === 'UserPromptSubmit') {
+    if (!root || !sessionId) return emit({ decision: 'block', reason: 'Amabie could not start request tracking for this project. The prompt was stopped before project work; restore the project hook or run amabie setup.' });
+    const state: ClaudeTurnState = {
+      schema: 'amabie-turn/1', sessionDigest: sha256(sessionId), promptId: crypto.randomUUID(),
+      registeredPromptId: null, task: null,
+    };
+    if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
+    return emit({ hookSpecificOutput: {
+      hookEventName: 'UserPromptSubmit',
+      additionalContext: 'Amabie started a fresh task scope for this request. Before project writes, shell commands, delegation, or MCP calls, register the current intent and exact stated criteria with mcp__amabie__amabie_task; use requirements: [] when none were stated.',
+    } });
+  }
+  if (input.hook_event_name === 'SessionEnd') {
+    if (root && sessionId) removeClaudeTurnState(root, sessionId);
+    return 0;
+  }
+  if (input.hook_event_name === 'PostToolUse') {
+    if (input.tool_name !== CLAUDE_TASK_TOOL) return 0;
+    const turn = root && sessionId ? readClaudeTurnState(root, sessionId) : null;
+    const task = root ? taskFromMcpInput(root, input.tool_input) : null;
+    if (!root || !sessionId || !turn || !task
+      || (turn.registeredPromptId === turn.promptId && !sameTask(turn.task, task))) {
+      return emit({ hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext: 'Amabie could not bind this task registration to the current request. Project actions remain blocked; register the current task again with mcp__amabie__amabie_task.',
+      } });
+    }
+    if (turn.registeredPromptId !== turn.promptId
+      && !writeClaudeTurnState(root, sessionId, { ...turn, registeredPromptId: turn.promptId, task })) {
+      return emit({ hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext: 'Amabie could not save the task registration for this request. Project actions remain blocked; repair .amabie/task state, then register the task again.',
+      } });
+    }
+    return 0;
+  }
+  const turn = root && sessionId ? readClaudeTurnState(root, sessionId) : null;
+  // M4: optional task/intent label from non-Claude hooks — DIGEST only, raw
+  // prose is never stored or echoed, so provenance cannot become a smuggling
+  // channel. Claude uses the snapshot captured after its current MCP intake.
+  const reportedTaskDigest = typeof input.task === 'string' && input.task.trim()
+    ? sha256(input.task.trim().slice(0, 4000)) : undefined;
+  const cfg = root ? readConfig(root) : null;
+  const taskDigest = sessionId
+    ? (turn && turn.registeredPromptId === turn.promptId ? turn.task?.taskDigest : undefined)
+    : reportedTaskDigest;
+  if (input.hook_event_name === 'PreToolUse') {
+    const toolName = typeof input.tool_name === 'string' ? input.tool_name : '';
+    const deny = (reason: string) => emit({ hookSpecificOutput: {
+      hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason,
+    } });
+    if (!toolName) return deny('Amabie could not identify this tool call, so it cannot check whether the task criteria are bound. No tool call was allowed.');
+    if (!/^(?:Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit|Agent|Task|Workflow|mcp__.+)$/.test(toolName)) return 0;
+    if (!root) return deny('Amabie could not locate this project, so it cannot verify the task proof bindings. No tool call was allowed. Run amabie setup in the project, then retry.');
+    if (cfg === null) return deny('Amabie local configuration is missing, so it cannot verify the task proof bindings. No tool call was allowed. Run amabie setup, then retry.');
+    if (cfg === 'corrupt') return deny('Amabie local configuration is unreadable, so it cannot verify the task proof bindings. No tool call was allowed. Repair it or run amabie setup, then retry.');
+    const distrust = untrustedConfigReason(root, cfg);
+    if (distrust) return deny(`Amabie does not trust this local configuration (${distrust}), so it cannot verify task proof bindings. No tool call was allowed. Run amabie setup, then retry.`);
+    const drift = planAuthorityDrift(root, cfg);
+    if (drift) return deny(`Amabie's sealed verification authority has changed (${drift}). No tool call was allowed; restore the sealed plan or have the operator re-run setup.`);
+    if (!turn) return deny('Amabie has no request record for this Claude session. No project change was allowed; submit the current request again so Amabie can start task tracking.');
+    if (input.tool_name === CLAUDE_TASK_TOOL) {
+      if (turn.registeredPromptId !== turn.promptId) return 0;
+      return turn.task && mcpInputMatchesTask(turn.task, input.tool_input)
+        ? 0
+        : deny('A different task is already registered for this request. Start a new request before registering another task.');
+    }
+    if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny('Amabie task registration is missing for this request. No project change was allowed. Call mcp__amabie__amabie_task with the current intent and every stated criterion verbatim (use requirements: [] when none were stated).');
+    return 0;
+  }
   if (!root || cfg === null) return 0; // nothing wired here — stay out of the way
   // GLM F-1: a config file that EXISTS but cannot be read is NOT "nothing wired
   // here" — treating it as absence is a silent allow through damaged authority.
   // Honest UNVERIFIED (allow + systemMessage, same posture as S2/empty-plan):
   // never a fake green, never a fake block on evidence we could not examine.
   if (cfg === 'corrupt') {
-    return emit({ systemMessage: 'Canary could not verify this task because its local config (.canary/canary.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: canary setup' });
+    return emit({ systemMessage: 'Amabie could not verify this task because its local config (.amabie/amabie.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: amabie setup' });
   }
   // A config this installation did not write (bogus cliPath) or that arrived
   // from a clone (tracked in git) must never drive execution (S2) — say so
   // loudly instead of silently laundering an attacker's plan into "pass".
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) return emit({ systemMessage: `Canary found local config it does not trust (${distrust}) — nothing was verified; this completion is UNVERIFIED. Run: canary setup` });
+  if (distrust) return emit({ systemMessage: `Amabie found local config it does not trust (${distrust}) — nothing was verified; this completion is UNVERIFIED. Run: amabie setup` });
   if (!Array.isArray(cfg.plan) || cfg.plan.length === 0) {
     // degenerate/hand-edited config: executing zero checks is NOT a pass — say so, don't fake green
-    return emit({ systemMessage: 'Canary: the verification plan is empty, so nothing was checked — this completion is UNVERIFIED, not a pass. Run: canary doctor' });
+    return emit({ systemMessage: `Amabie: the verification plan is empty, so nothing was checked — this completion is UNVERIFIED, not a pass. Run: ${installedDoctorCommand()}` });
   }
   // M5: check the SEALED AUTHORITY before executing anything — a candidate-
   // edited command must never be certified as proof, not even by failing on
-  // it. Verdict authority stays Canary's own execution; this gate only
+  // it. Verdict authority stays Amabie's own execution; this gate only
   // decides WHICH commands may run as proof at all.
   const drift = adapterFor(cfg).drift(root, cfg);
   if (drift) {
-    writeCheckpoint(root, 'fail', ['authority'], 'checkpoint'); // state, not a bundle: nothing was executed
+    writeCheckpoint(root, 'fail', ['authority'], 'checkpoint', {
+      hookResponse: input.stop_hook_active === true ? 'message-and-continue' : 'blocked',
+      next: 'restore the sealed verification plan or rerun setup after reviewing it',
+    }); // state, not a bundle: nothing was executed
     if (input.stop_hook_active === true) {
       // same no-loop posture as a failed plan: one repair turn, then honest stop
-      return emit({ systemMessage: `Canary: verification authority is still changed (${drift.slice(0, 200)}) after one repair attempt — stopping anyway; a human should look.` });
+      return emit({ systemMessage: `Amabie: verification authority is still changed (${drift.slice(0, 200)}) after one repair attempt — stopping anyway; a human should look.` });
     }
-    // v1.5 audit finding: "have a human run" implied a step nothing enforces — `canary setup`
+    // v1.5 audit finding: "have a human run" implied a step nothing enforces — `amabie setup`
     // has never checked the caller's identity. The claim is narrowed to what is true, without
     // adding an internal the everyday vocabulary ratchet budgets.
-    return emit({ decision: 'block', reason: `Canary blocked completion: verification authority changed by candidate — ${drift}. Canary will not certify proof commands it never sealed. Restore the sealed checks, or run: canary setup (re-runs the new command under a visible smoke test and re-seals it — nothing checks who runs it).` });
+    return emit({ decision: 'block', reason: `Amabie blocked completion: verification authority changed by candidate — ${drift}. Amabie will not certify proof commands it never sealed. Restore the sealed checks, or run: amabie setup (re-runs the new command under a visible smoke test and re-seals it — nothing checks who runs it).` });
   }
 
   // M4 provenance for every bundle this invocation writes — from the TRUSTED
@@ -3569,26 +4670,34 @@ export async function cmdCheckpoint(): Promise<number> {
   const failed: StepResult[] = [];
   const ran: StepResult[] = [];
   let infra = '';
-  for (const s of cfg.plan) {
+  const executionPlan = planWithFreshTests(cfg.plan);
+  for (const s of executionPlan) {
     let r: StepResult;
     try { r = runPlanStep(root, cfg.pm, s); } catch (e) { infra = String(e); break; }
     ran.push(r);
     if (!r.ok) failed.push(r);
   }
   if (infra) {
-    writeVerificationBundle(root, 'checkpoint', ran, 'infra', prov);
-    writeCheckpoint(root, 'infra', failed.map((f) => f.kind), 'checkpoint');
-    return emit({ systemMessage: `Canary could not run the checks (${infra.slice(0, 160)}) — this completion is UNVERIFIED, not a pass.` });
+    const evidenceDir = writeVerificationBundle(root, 'checkpoint', ran, 'infra', prov);
+    writeCheckpoint(root, 'infra', failed.map((f) => f.kind), 'checkpoint', {
+      checks: ran, hookResponse: 'message-and-continue', next: `run ${installedDoctorCommand()} to inspect and retry the checks`,
+      evidencePath: evidenceDir ?? undefined,
+    });
+    return emit({ systemMessage: `Amabie could not run the checks (${infra.slice(0, 160)}) — this completion is UNVERIFIED, not a pass.` });
   }
   if (failed.length === 0) {
-    writeVerificationBundle(root, 'checkpoint', ran, 'pass', prov);
-    writeCheckpoint(root, 'pass', [], 'checkpoint');
+    const evidenceDir = writeVerificationBundle(root, 'checkpoint', ran, 'pass', prov);
+    writeCheckpoint(root, 'pass', [], 'checkpoint', {
+      checks: ran, hookResponse: 'continued', evidencePath: evidenceDir ?? undefined,
+    });
     // M6 (spec M5): the plan passing is the FLOOR, not the finish. Evaluate
-    // this task's proof obligations against what Canary observed in THIS
+    // this task's proof obligations against what Amabie observed in THIS
     // invocation (plan outcome + contained git diff). Objective violation
     // blocks; anything unprovable rides an honest systemMessage — an allow
     // that SAYS so, never a silent fake-complete. TESTS PASSING != PROVEN.
-    const task = readTaskRecord(root);
+    const task = sessionId
+      ? (turn && turn.registeredPromptId === turn.promptId ? turn.task : null)
+      : readTaskRecord(root);
     const kinds = task && task.kinds.length > 0
       ? task.kinds
       : (typeof input.task === 'string' && input.task.trim() ? inferTaskKinds(input.task.trim().slice(0, 4000)) : []);
@@ -3600,39 +4709,46 @@ export async function cmdCheckpoint(): Promise<number> {
      * a bugfix that turns an existing red check green (real regression evidence, no test file
      * touched) would be called unproven, and a test file touched for show would be called met.
      */
-    const regression = discriminationObligation(root, cfg);
+    const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran);
     if (regression !== null) {
       for (let i = obligations.length - 1; i >= 0; i -= 1) {
         if (obligations[i]!.id === regression.id) obligations.splice(i, 1);
       }
       obligations.push(regression);
     }
+    const proof = proofSummary(task?.requirementCount ?? 0, obligations);
     const unmet = obligations.filter((x) => x.status === 'unmet');
     const unproven = obligations.filter((x) => x.status === 'unproven');
     const objectiveOpen = unproven.filter((x) => x.mode === 'objective');
     if (unmet.length > 0) {
-      writeCheckpoint(root, 'fail', ['obligation'], 'checkpoint'); // state, like the authority gate: the plan DID pass — the obligation did not
       const why = unmet.map((x) => x.note).join('; ');
       if (input.stop_hook_active === true) {
-        return emit({ systemMessage: `Canary: a proof obligation is still unmet (${why.slice(0, 200)}) after one repair attempt — stopping anyway; a human should look.` });
+        writeCheckpoint(root, 'fail', ['obligation'], 'checkpoint', {
+          checks: ran, hookResponse: 'message-and-continue', next: why, evidencePath: evidenceDir ?? undefined, proof,
+        }); // the plan passed; the obligation did not
+        return emit({ systemMessage: `Amabie: a proof obligation is still unmet (${why.slice(0, 200)}) after one repair attempt — stopping anyway; a human should look.` });
       }
-      // the advice must actually fix BOTH attributable shapes: `git checkout --`
-      // restores from the INDEX, which is exactly where a staged deletion lives
-      // (review #3) — restore from HEAD across index and worktree instead.
-      return emit({ decision: 'block', reason: `Canary blocked completion: ${why}. A green plan cannot certify checks that no longer exist. Restore them (git restore --source=HEAD --staged --worktree <path>) or have a HUMAN review this deletion — an agent claim cannot authorize it (claims are not evidence).` });
+      writeCheckpoint(root, 'fail', ['obligation'], 'checkpoint', {
+        checks: ran, hookResponse: 'blocked', next: why, evidencePath: evidenceDir ?? undefined, proof,
+      });
+      // The repair must cover staged, worktree and committed deletions. Restore
+      // from the sealed baseline, across both index and worktree; HEAD may
+      // already be missing the file when an agent committed its deletion.
+      const restoreSource = cfg.baseline?.head ?? 'HEAD';
+      return emit({ decision: 'block', reason: `Amabie blocked completion: ${why}. A green plan cannot certify checks that no longer exist. Restore them (git restore --source=${restoreSource} --staged --worktree <path>); if the deletion was already committed, commit the restoration before retrying Amabie. Or have a HUMAN review this deletion — an agent claim cannot authorize it (claims are not evidence).` });
     }
     if (unproven.length > 0) {
       // FAIL CLOSED on an OBJECTIVE obligation, as the product invariant requires: an objective
       // requirement with no adequate proof must stay NOT PROVEN, and "the plan is green" is not a
       // discharge of it.
       if (objectiveOpen.length > 0) {
-        writeCheckpoint(root, 'unproven', objectiveOpen.map((x) => x.id), 'checkpoint');
+        const obligationNext = objectiveOpen.map((x) => x.note).join('; ');
         /**
          * BLOCK ONLY WHAT THE WORKER CAN ACTUALLY CLOSE (v1.2, Mission 2).
          *
          * MEASURED, and this is the whole reason for the split: the block reason embeds each
          * obligation's note, and some notes describe an OPERATOR act — "bind each uncovered digest
-         * in package.json canary.proofs and re-run canary setup". A worker cannot bind a frozen
+         * in package.json amabie.proofs and re-run amabie setup". A worker cannot bind a frozen
          * proof; only the operator can. Blocking with that text reads to a model as an instruction it
          * must satisfy, and it complies: measured on this host, `cli-exit-codes/guarded` with seven
          * unbound requirements ran **39 turns to 537,583 tokens and still timed out**, while the same
@@ -3657,21 +4773,36 @@ export async function cmdCheckpoint(): Promise<number> {
         if (byWorker.length > 0) {
           const why = byWorker.map((x) => x.note).join(' | ');
           if (input.stop_hook_active === true) {
-            return emit({ systemMessage: `Canary: NOT PROVEN (${why.slice(0, 1200)}) — after one repair attempt. Stopping anyway; a human should look, or accept it with: canary accept`.slice(0, 2000) });
+            writeCheckpoint(root, 'unproven', objectiveOpen.map((x) => x.id), 'checkpoint', {
+              checks: ran, hookResponse: 'message-and-continue', next: obligationNext, evidencePath: evidenceDir ?? undefined, proof,
+            });
+            return emit({ systemMessage: `Amabie: NOT PROVEN (${why.slice(0, 1200)}) — after one repair attempt. Stopping anyway; a human should look, or accept it with: amabie accept`.slice(0, 2000) });
           }
-          return emit({ decision: 'block', reason: `Canary blocked completion: NOT PROVEN — ${why.slice(0, 1200)}`.slice(0, 1400) });
+          writeCheckpoint(root, 'unproven', objectiveOpen.map((x) => x.id), 'checkpoint', {
+            checks: ran, hookResponse: 'blocked', next: obligationNext, evidencePath: evidenceDir ?? undefined, proof,
+          });
+          const prefix = 'Amabie blocked completion: NOT PROVEN — ';
+          const evidenceHint = evidenceDir ? ` Full test evidence: ${evidenceDir}` : '';
+          const availableWhy = Math.max(0, 1400 - prefix.length - evidenceHint.length);
+          return emit({ decision: 'block', reason: `${prefix}${why.slice(0, availableWhy)}${evidenceHint}` });
         }
 
         // Every open objective duty is operator-only. Say so, and let the turn end.
         const operatorWhy = byOperator.map((x) => x.note).join(' ');
-        return emit({ systemMessage: `Canary: the sealed checks passed, but the work is NOT PROVEN: ${byOperator.length} duty(ies) remain open and NONE of them is yours to close — each needs the OPERATOR (bind the requirement to a check the sealed plan runs, then re-run canary setup) or a HUMAN (canary accept). This is not a failure of your change: do NOT keep working on it, do NOT edit checks to make it disappear, and do NOT report it as done. Finish now and report exactly what is still open. Details: ${operatorWhy}`.slice(0, 2000) });
+        writeCheckpoint(root, 'unproven', objectiveOpen.map((x) => x.id), 'checkpoint', {
+          checks: ran, hookResponse: 'message-and-continue', next: obligationNext, evidencePath: evidenceDir ?? undefined, proof,
+        });
+        return emit({ systemMessage: `Amabie: the sealed checks passed, but the work is NOT PROVEN: ${byOperator.length} duty(ies) remain open and NONE of them is yours to close — each needs the OPERATOR (amabie bind <matching sealed script> --requirement "<exact text>" --reseal) or a HUMAN (amabie accept). This is not a failure of your change: do NOT keep working on it, do NOT edit checks to make it disappear, and do NOT report it as done. Finish now and report exactly what is still open. Details: ${operatorWhy}`.slice(0, 2000) });
       }
       // Subjective / operator-only duties: an agent cannot accept a duty for a human, and — MEASURED
       // (`bench-r9`) — an agent TOLD to close one spends enormous effort trying: two trials with five
       // registered requirements burned 1.5M and 1.7M tokens over 41 and 45 turns for work that was
       // already green, because the message read as an instruction it could satisfy. So this says
       // plainly that the duty is not the worker's, and that finishing and reporting IS the correct end.
-      return emit({ systemMessage: `Canary: the sealed checks passed. ${unproven.length} duty(ies) remain OPEN, and NONE of them is yours to close — each needs an operator or a human. This is not a failure of your change: do NOT keep trying to satisfy them, do NOT edit checks to make them disappear, and do NOT report them as done. Finish now and report exactly what is still open. Details: ${unproven.map((x) => x.note).join(' ')}`.slice(0, 2000) });
+      writeCheckpoint(root, 'unproven', unproven.map((x) => x.id), 'checkpoint', {
+        checks: ran, hookResponse: 'message-and-continue', next: unproven.map((x) => x.note).join('; '), evidencePath: evidenceDir ?? undefined, proof,
+      });
+      return emit({ systemMessage: `Amabie: the sealed checks passed. ${unproven.length} duty(ies) remain OPEN, and NONE of them is yours to close — each needs an operator or a human. This is not a failure of your change: do NOT keep trying to satisfy them, do NOT edit checks to make them disappear, and do NOT report them as done. Finish now and report exactly what is still open. Details: ${unproven.map((x) => x.note).join(' ')}`.slice(0, 2000) });
     }
     /**
      * Nothing is open: the plan passed, every objective obligation is met, and the
@@ -3682,15 +4813,20 @@ export async function cmdCheckpoint(): Promise<number> {
     /**
      * …EXCEPT when a MET obligation's evidence is weaker than "met" sounds. MEASURED
      * (`bench-final-constraint-hold-guarded-3`): the worker added its own check file, the plan passed,
-     * and the stated rule was STILL broken — the hidden oracle found it while Canary said READY. The
+     * and the stated rule was STILL broken — the hidden oracle found it while Amabie said READY. The
      * gate cannot call that a failure (the check really does discriminate the change, and no
      * requirement was authorized to hold it to), but it must not stay silent either: an allow that
      * SAYS what the evidence is beats a READY that hides it.
      */
     const caveats = obligations.filter((x) => x.status === 'met' && x.caveat !== undefined);
     if (caveats.length > 0) {
-      return emit({ systemMessage: `Canary: the sealed checks passed — with a caveat. ${caveats.map((x) => `${x.id}: ${x.caveat}`).join(' ')}`.slice(0, 2000) });
+      writeCheckpoint(root, 'pass', [], 'checkpoint', {
+        checks: ran, hookResponse: 'message-and-continue', next: caveats.map((x) => x.caveat).join('; '), evidencePath: evidenceDir ?? undefined, proof,
+      });
+      const evidenceHint = evidenceDir === null ? ' Full test evidence could not be written.' : ` Full test evidence: ${evidenceDir}.`;
+      return emit({ systemMessage: `Amabie: the sealed checks passed — with a caveat. ${caveats.map((x) => `${x.id}: ${x.caveat}`).join(' ')}${evidenceHint}`.slice(0, 2000) });
     }
+    writeCheckpoint(root, 'pass', [], 'checkpoint', { checks: ran, hookResponse: 'continued', evidencePath: evidenceDir ?? undefined, proof });
     return 0; // silent even if an agent claim contradicts — claims never BLOCK, and never CREATE a pass
   }
   // The full runner output is written NEXT TO the evidence bundle and referred to by path, so
@@ -3698,15 +4834,21 @@ export async function cmdCheckpoint(): Promise<number> {
   // re-run the suite to see more. Measured before this: the block carried up to 4000 characters
   // of raw output, which is roughly a thousand tokens per failed attempt, on every attempt.
   const bundleDir = writeVerificationBundle(root, 'checkpoint', ran, 'fail', prov);
-  writeCheckpoint(root, 'fail', failed.map((f) => f.kind), 'checkpoint');
   if (input.stop_hook_active === true) {
+    writeCheckpoint(root, 'fail', failed.map((f) => f.kind), 'checkpoint', {
+      checks: ran, hookResponse: 'message-and-continue', next: `run ${installedDoctorCommand()} to inspect the full failure`,
+      evidencePath: bundleDir ?? undefined,
+    });
     // already one repair attempt this turn — never loop the agent; surface honestly instead
-    // v1.5 §4D — MEASURED (clean-room first run): this message named what failed and why Canary
+    // v1.5 §4D — MEASURED (clean-room first run): this message named what failed and why Amabie
     // stopped, but gave the human it hands off to no next action. One clause, no mechanism change.
-    return emit({ systemMessage: `Canary: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look. Run: canary doctor` });
+    return emit({ systemMessage: `Amabie: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look. Run: ${installedDoctorCommand()}` });
   }
+  writeCheckpoint(root, 'fail', failed.map((f) => f.kind), 'checkpoint', {
+    checks: ran, hookResponse: 'blocked', next: 'repair the observed failures and finish again', evidencePath: bundleDir ?? undefined,
+  });
   // M2: an agent claim may only ANNOTATE this already-decided block, and only
-  // as a truthful claim-vs-observation contrast. Verdict authority: Canary's own
+  // as a truthful claim-vs-observation contrast. Verdict authority: Amabie's own
   // execution (exit code). Absent/unparseable claim => no note at all.
   let claimNote = '';
   const claim = readAgentClaim(root);
@@ -3715,23 +4857,24 @@ export async function cmdCheckpoint(): Promise<number> {
     const observed = deriveObservedCounts(failed.map((f) => `${f.stdout}${f.stderr}`).join('\n'));
     if (claimed && observed && (claimed.passed !== observed.passed || claimed.failed !== observed.failed)) {
       claimNote = `Claim is not evidence. Agent claimed: ${claimed.passed} passed / ${claimed.failed} failed (hint recorded ${claim.at}). ` +
-        `Canary observed: ${observed.passed} passed / ${observed.failed} failed, from its own run of ${JSON.stringify(failed.map((f) => f.display).join(' + '))}. ` +
+        `Amabie observed: ${observed.passed} passed / ${observed.failed} failed, from its own run of ${JSON.stringify(failed.map((f) => f.display).join(' + '))}. ` +
         `Repair the observed failures.\n`;
     }
   }
-  // v1.5 BLOCKER 6: when the measured cause is Canary's own environment, the AGENT reads that here —
+  // v1.5 BLOCKER 6: when the measured cause is Amabie's own environment, the AGENT reads that here —
   // otherwise a worker spends its budget repairing a project that was never at fault. The project
-  // case adds nothing (its payload already names the check and the failing test), so the ordinary
-  // block reason is byte-identical unless the environment really is the cause.
+  // case needs no environment advice; the failure payload names the check and repair recheck.
   const attribution = attributeRunFailures(root, cfg, failed, cfg.plan);
-  const reason = `${claimNote}${attribution.cause === 'environment' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
+  const reason = `${claimNote}${attribution.cause !== 'project' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
     steps: failed.map((f) => ({
+      id: stepKey(executionPlan[ran.indexOf(f)]!),
       kind: f.kind, display: f.display, exitCode: f.exitCode,
       stdout: f.stdout ?? '', stderr: f.stderr ?? '',
     })),
-    writeLog: (kind, text) => {
+    doctorCommandPrefix: installedCliPrefix(),
+    writeLog: (name, text) => {
       if (typeof bundleDir !== 'string' || bundleDir === '') return null;
-      const p = path.join(bundleDir, `${kind.replace(/[^A-Za-z0-9-]/g, '-')}.log`);
+      const p = path.join(bundleDir, `${name}.log`); // numbered, safe name derived by the payload builder
       try { fs.writeFileSync(p, text); return p; } catch { return null; }
     },
   })}`;
@@ -3740,20 +4883,20 @@ export async function cmdCheckpoint(): Promise<number> {
 
 /**
  * M2 claim intake: the agent records what it BELIEVED happened. The claim is
- * stored as an untrusted hint next to Canary's own evidence and can never
- * create, block, or modify a verdict — only annotate a block Canary decided
+ * stored as an untrusted hint next to Amabie's own evidence and can never
+ * create, block, or modify a verdict — only annotate a block Amabie decided
  * from checks it executed itself. (Tests passing != task proven complete;
- * agent-reported != canary-observed.)
+ * agent-reported != amabie-observed.)
  */
 /**
- * THE OPERATOR'S BINDING ACT — `canary bind <script> --requirement "<stated requirement>"`.
+ * THE OPERATOR'S BINDING ACT — `amabie bind <script> --requirement "<stated requirement>"`.
  *
  * WHY IT EXISTS (MEASURED, `bench-r9`/`r9b`): a task registered with five requirements and no sealed
  * proof cost the worker 1.5M and 1.7M tokens over 41–48 turns — the work was green, but the open
  * per-requirement duty invited the agent to keep trying to discharge something only an operator can
  * close. The invariant says every objective requirement must have a FROZEN PROOF OBLIGATION or remain
  * NOT PROVEN; the second half was reachable, the first was not, because binding meant hand-editing
- * `package.json` `canary.proofs` with a 64-hex digest nobody had printed.
+ * `package.json` `amabie.proofs` with a 64-hex digest nobody had printed.
  *
  * This command is that act, and it is deliberately narrow: it refuses a script the sealed plan does
  * not run, it writes the DECLARATION, and — with `--reseal` — it also commits that one file and
@@ -3762,57 +4905,93 @@ export async function cmdCheckpoint(): Promise<number> {
  * operator already sealed.
  *
  * WHY `--reseal` ADDS STEPS SAVED AND NOT AUTHORITY (v1.2, Mission 2's last named gap). The ritual
- * was `bind` → commit → `canary setup`, and the middle step is the one that silently breaks the
+ * was `bind` → commit → `amabie setup`, and the middle step is the one that silently breaks the
  * result if forgotten: a binding that lives only in the working tree makes the sealed base dirty,
  * and a dirty base cannot establish discrimination, so the requirement stays NOT PROVEN for a reason
  * that has nothing to do with the requirement (measured; that is why the note below exists). What
- * `--reseal` does NOT change is who may seal: `canary setup` has never enforced that — it runs
+ * `--reseal` does NOT change is who may seal: `amabie setup` has never enforced that — it runs
  * unattended, `--yes` or not — so this flag removes two commands without minting any authority. The
  * script must already be part of the SEALED plan, which is the operator's earlier act.
  */
 export async function cmdBind(rawArgs: string[]): Promise<number> {
-  const { opts, rest } = parseGlobals(rawArgs);
+  const { opts } = parseGlobals(rawArgs);
   const o = new Out(opts.verbose, opts.json);
-  const reseal = rawArgs.includes('--reseal');
-  const positional = rest.filter((a) => !a.startsWith('--'));
-  const script = positional[0];
+  o.context({ command: 'bind' });
+  const positional: string[] = [];
   const requirements: string[] = [];
-  for (let i = 0; i < rawArgs.length; i += 1) {
-    if (rawArgs[i] === '--requirement' && typeof rawArgs[i + 1] === 'string') requirements.push(rawArgs[i + 1] as string);
-  }
-  if (script === undefined || requirements.length === 0) {
-    o.say('usage: canary bind <script> --requirement "<the exact stated requirement>" [--requirement …] [--reseal]');
-    o.say('  the script must be one your SEALED plan runs; bind, then run: canary setup (or add --reseal to do both)');
+  let reseal = false;
+  const globals = new Set(['--verbose', '--yes', '--json', '--fast']);
+  const optionTokens = new Set([...globals, '--requirement', '--reseal']);
+  const refuseInput = (why: string): number => {
+    o.context({ exitCode: 3 });
+    o.verdict('NEEDS ATTENTION', why,
+      'amabie bind <script> --requirement "<the exact stated requirement>" [--requirement …] [--reseal]');
     return 3;
+  };
+  // Validate the entire intake before a partial declaration or reseal can be written.
+  // A requirement beginning with a dash is still TEXT, except an exact option token.
+  for (let i = 0; i < rawArgs.length; i += 1) {
+    const arg = rawArgs[i]!;
+    if (arg === '--requirement') {
+      const value = rawArgs[i + 1];
+      if (value === undefined || value.trim() === '' || optionTokens.has(value)) {
+        return refuseInput('--requirement needs nonblank requirement text; no binding was written.');
+      }
+      requirements.push(value);
+      i += 1;
+    } else if (arg === '--reseal') reseal = true;
+    else if (globals.has(arg)) continue;
+    else if (arg.startsWith('--')) return refuseInput(`unknown bind option "${safePath(arg)}"; no binding was written.`);
+    else positional.push(arg);
   }
-  const root = findRepoRoot(dirArg(rest) ?? process.cwd());
+  const script = positional[0];
+  if (!script?.trim() || requirements.length === 0 || positional.length !== 1) {
+    return refuseInput('bind needs one sealed script and requirement text after each --requirement; no binding was written.');
+  }
+  const root = findRepoRoot(process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is no project to bind a requirement to.', 'cd into your project and try again'); return 2; }
   const cfg = readConfig(root);
-  if (cfg === 'corrupt' || !cfg) { o.verdict('NEEDS ATTENTION', 'Canary is not set up here, so there is no sealed plan to bind to.', 'run: canary setup --yes'); return 2; }
+  if (cfg === 'corrupt' || !cfg) { o.verdict('NEEDS ATTENTION', 'Amabie is not set up here, so there is no sealed plan to bind to.', 'run: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NEEDS ATTENTION', `Canary will not write a binding into a config it does not trust (${distrust}).`, 'run: canary setup --yes'); return 2; }
+  if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not write a binding into a config it does not trust (${distrust}).`, 'run: amabie setup --yes'); return 2; }
   if (!cfg.plan.some((s) => s.script === script)) {
     // Fail closed with the real recovery: the plan is what proves, so a script it does not run cannot
-    // be a proof. (This is the same rule setup enforces when it validates canary.proofs.)
-    o.verdict('NEEDS ATTENTION', `the sealed plan does not run a script named "${safePath(script)}" — a binding to it would prove nothing.`, `add that check to your package.json scripts and run: canary setup, then bind again. Plan scripts: ${cfg.plan.map((s) => s.script).map(safePath).join(', ')}`);
+    // be a proof. (This is the same rule setup enforces when it validates amabie.proofs.)
+    o.verdict('NEEDS ATTENTION', `the sealed plan does not run a script named "${safePath(script)}" — a binding to it would prove nothing.`, `add that check to your package.json scripts and run: amabie setup, then bind again. Plan scripts: ${cfg.plan.map((s) => s.script).map(safePath).join(', ')}`);
+    return 2;
+  }
+  const task = readTaskRecord(root);
+  const mismatchedTarget = requirements
+    .map((requirement) => task?.objectiveTargets.find((target) => target.digest === materialDigest(requirement)))
+    .find((target) => target && !cfg.plan.some((step) => step.script === script && step.kind === target.kind));
+  if (mismatchedTarget) {
+    const matchingScripts = [...new Set(cfg.plan.filter((step) => step.kind === mismatchedTarget.kind).map((step) => safePath(step.script)))];
+    o.verdict('NEEDS ATTENTION', `the sealed script "${safePath(script)}" cannot prove this objective ${mismatchedTarget.kind} target. No binding was written.`,
+      matchingScripts.length > 0
+        ? `use a sealed ${mismatchedTarget.kind} script: ${matchingScripts.join(', ')}`
+        : `add a sealed ${mismatchedTarget.kind} check and run amabie setup before binding`);
     return 2;
   }
   const pkgPath = path.join(root, 'package.json');
-  const manifestPath = path.join(root, 'canary.project.json');
+  const manifestPath = path.join(root, 'amabie.project.json');
+  const legacyManifestPath = path.join(root, 'canary.project.json');
   /**
-   * WHICH DECLARATION SURFACE? A Node project carries `package.json` `canary.proofs`; every other
+   * WHICH DECLARATION SURFACE? A Node project carries `package.json` `amabie.proofs`; every other
    * project (Python, Rust, Go, anything the universal contract covers) has no package.json at all, so
-   * the binding goes into `canary.project.json` `proofs`. MEASURED: before this, a non-Node project
+   * the binding goes into `amabie.project.json` `proofs`. MEASURED: before this, a non-Node project
    * could not bind a requirement anywhere, so its only reachable end state was human acceptance.
    */
-  const targetPath = fs.existsSync(manifestPath) ? manifestPath : pkgPath;
+  const targetPath = fs.existsSync(manifestPath) ? manifestPath : fs.existsSync(legacyManifestPath) ? legacyManifestPath : pkgPath;
   const isNode = targetPath === pkgPath;
-  const surface = isNode ? 'package.json' : 'canary.project.json';
+  const surface = isNode ? 'package.json' : 'amabie.project.json';
   let doc: Record<string, unknown>;
   try { doc = JSON.parse(fs.readFileSync(targetPath, 'utf8')) as Record<string, unknown>; }
   catch (e) { o.verdict('NEEDS ATTENTION', `cannot read ${surface} to record the binding (${String(e).slice(0, 120)}).`, 'fix the file, then re-run'); return 2; }
-  const canarySection = isNode && isRecord(doc.canary) ? { ...(doc.canary as Record<string, unknown>) } : {};
-  const existingProofs = isNode ? canarySection.proofs : doc.proofs;
+  const amabieSection = isNode ? {
+    ...(isRecord(doc.canary) ? doc.canary as Record<string, unknown> : {}),
+    ...(isRecord(doc.amabie) ? doc.amabie as Record<string, unknown> : {}),
+  } : {};
+  const existingProofs = isNode ? amabieSection.proofs : doc.proofs;
   const proofs: Record<string, unknown> = isRecord(existingProofs) ? { ...existingProofs } : {};
   const written: Array<{ digest: string; text: string }> = [];
   for (const r of requirements) {
@@ -3821,19 +5000,19 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
     written.push({ digest: d, text: canonicalText(r).slice(0, 90) });
   }
   const sortedProofs = Object.fromEntries(Object.entries(proofs).sort(([a], [b]) => a.localeCompare(b)));
-  if (isNode) doc.canary = { ...canarySection, proofs: sortedProofs };
+  if (isNode) { doc.amabie = { ...amabieSection, proofs: sortedProofs }; delete doc.canary; }
   else doc.proofs = sortedProofs;
   try { writeFileAtomic(targetPath, `${JSON.stringify(doc, null, 2)}\n`); }
   catch (e) { o.verdict('NEEDS ATTENTION', `could not write the binding into ${surface} (${String(e).slice(0, 120)}).`, 'close whatever holds the file, then re-run'); return 2; }
   o.say(isNode
     ? `bound ${written.length} requirement(s) to the sealed script "${safePath(script)}":`
-    : `bound ${written.length} requirement(s) to the declared check "${safePath(script)}" in canary.project.json:`);
+    : `bound ${written.length} requirement(s) to the declared check "${safePath(script)}" in amabie.project.json:`);
   for (const w of written) o.say(`  ${w.digest}  "${w.text}"`);
 
   // The one-act path (v1.2, Mission 2's last named gap): declare, commit the declaration alone, seal.
   if (reseal) return await resealAfterBind(root, targetPath, script, opts, o);
 
-  o.say('this is a DECLARATION, not a seal: run `canary setup` to seal it into the plan authority.');
+  o.say('this is a DECLARATION, not a seal: run `amabie setup` to seal it into the plan authority.');
   if (isNode) o.say('until then the requirement stays UNPROVEN — a green plan does not cover an unsealed binding.');
   /**
    * THE STEP THAT IS EASY TO MISS, AND IT COSTS A CONFUSING RESULT (v1.2, Mission 2).
@@ -3853,7 +5032,7 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
       o.say('NOTE: the binding is written but NOT committed, and the working tree is now dirty.');
       o.say('  commit it BEFORE re-sealing, or the sealed base is dirty and discrimination cannot be established:');
       o.say(`  git add ${safePath(path.relative(root, targetPath) || path.basename(targetPath))} && git commit -m "bind requirement(s) to ${safePath(script)}"`);
-      o.say('  then: canary setup');
+      o.say('  then: amabie setup');
       o.say('  ...or re-run this bind with --reseal, which commits the declaration and re-seals in one step.');
     } else if (id.dirty === null) {
       o.say('NOTE: could not determine whether the working tree is clean. If the binding is uncommitted, commit it before re-sealing — a dirty sealed base cannot establish discrimination.');
@@ -3869,15 +5048,15 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
  *
  * 1. NOTHING ELSE MAY BE DIRTY. A sealed base must be exactly what the operator reviewed; a commit
  *    that swept unrelated work in would make the base something else while looking like a binding.
- *    Canary's OWN files are excluded, for the reason `setup` excludes them from its baseline:
- *    `.canary/**` is self-ignored, and the managed harness files (`settings.json`, `.mcp.json`) are
- *    written by setup itself — refusing on Canary's own act would block the command with no operator
+ *    Amabie's OWN files are excluded, for the reason `setup` excludes them from its baseline:
+ *    `.amabie/**` is self-ignored, and the managed harness files (`settings.json`, `.mcp.json`) are
+ *    written by setup itself — refusing on Amabie's own act would block the command with no operator
  *    fix available. The excluded set is read from `cfg.touched`, never hard-coded.
  * 2. THE COMMIT CARRIES ONLY THE DECLARATION FILE (`git commit -- <path>`), so a staged, unrelated
  *    change stays staged and uncommitted instead of riding along.
  * 3. IF THAT FILE IS ALREADY COMMITTED, nothing is committed: re-running the act is idempotent
  *    rather than an empty-commit failure.
- * 4. THE SEAL IS THE SAME `canary setup` the operator would have run, forwarded as `--yes` (the flag
+ * 4. THE SEAL IS THE SAME `amabie setup` the operator would have run, forwarded as `--yes` (the flag
  *    IS the consent), with `--json`/`--verbose` preserved so `--json` still emits exactly ONE
  *    envelope, from the setup path.
  */
@@ -3888,12 +5067,12 @@ async function resealAfterBind(
   const declRel = rel(root, targetPath).split(path.sep).join('/');
   const porcelain = gitWithinRoot(root, ['status', '--porcelain']);
   if (porcelain === null) {
-    o.say(`REFUSED — could not read the git working-tree state, so the declaration cannot be committed safely. It IS written to ${safePath(declRel)}: commit it yourself, then run: canary setup`);
+    o.say(`REFUSED — could not read the git working-tree state, so the declaration cannot be committed safely. It IS written to ${safePath(declRel)}: commit it yourself, then run: amabie setup`);
     return 2;
   }
   const ownSettings = rel(root, settingsPath(root)).split(path.sep).join('/');
   /**
-   * What counts as "unrelated work"? Not Canary's own surface.
+   * What counts as "unrelated work"? Not Amabie's own surface.
    *
    * MEASURED while writing this: `git status --porcelain` reports an untracked directory as `dir/` —
    * NOT as each file inside it — so matching the settings PATH alone let `.claude/` through as
@@ -3903,8 +5082,8 @@ async function resealAfterBind(
    * MEASURED AGAIN, and this is why the list is derived rather than spelled: v1.3 taught `setup` to
    * write `.mcp.json` as well, and a hard-coded settings path then refused every `--reseal` on a
    * freshly wired repository — the operator was told their working tree had "other changes" that
-   * Canary itself had just made, with no fix available except committing Canary's own file. The set
-   * of files Canary manages is exactly what `setup` records in `cfg.touched` (the same list it
+   * Amabie itself had just made, with no fix available except committing Amabie's own file. The set
+   * of files Amabie manages is exactly what `setup` records in `cfg.touched` (the same list it
    * already excludes from its baseline), so it is read from there and stays correct as the managed
    * surface grows.
    */
@@ -3912,34 +5091,34 @@ async function resealAfterBind(
   const ownPaths = cfgForOwn !== null && cfgForOwn !== 'corrupt'
     ? cfgForOwn.touched.map((t) => rel(root, t.path).split(path.sep).join('/'))
     : [ownSettings];
-  const isCanaryOwned = (p: string): boolean => {
-    if (p === '.canary' || p.startsWith('.canary/')) return true;
+  const isAmabieOwned = (p: string): boolean => {
+    if (p === '.amabie' || p.startsWith('.amabie/')) return true;
     if (ownPaths.includes(p)) return true;
     return p.endsWith('/') && ownPaths.some((own) => own.startsWith(p));
   };
   const changed = porcelain.split('\n').map(porcelainPath).filter((p): p is string => p !== null);
-  const others = changed.filter((p) => p !== declRel && !isCanaryOwned(p));
+  const others = changed.filter((p) => p !== declRel && !isAmabieOwned(p));
   if (others.length > 0) {
     o.say(`REFUSED — the working tree has ${others.length} other change(s) (${others.slice(0, 3).map(safePath).join(', ')}${others.length > 3 ? ', …' : ''}), and --reseal commits the declaration ALONE: the sealed base must be exactly what you reviewed.`);
-    o.say(`  the declaration IS written to ${safePath(declRel)}: commit that file together with the rest of your work, then run: canary setup`);
+    o.say(`  the declaration IS written to ${safePath(declRel)}: commit that file together with the rest of your work, then run: amabie setup`);
     o.say('  ...or commit or stash the other changes first, then re-run this command.');
     return 2;
   }
   let committed = 'the declaration was already committed — nothing to commit';
   if (changed.includes(declRel)) {
     if (gitWithinRoot(root, ['add', '--', declRel]) === null) {
-      o.say(`REFUSED — git could not stage ${safePath(declRel)}. The declaration IS written: commit it yourself, then run: canary setup`);
+      o.say(`REFUSED — git could not stage ${safePath(declRel)}. The declaration IS written: commit it yourself, then run: amabie setup`);
       return 2;
     }
     if (gitWithinRoot(root, ['commit', '-m', `bind requirement(s) to ${script}`, '--', declRel]) === null) {
-      o.say('REFUSED — git would not create the commit (are user.name and user.email configured?). The declaration IS written and staged: commit it yourself, then run: canary setup');
+      o.say('REFUSED — git would not create the commit (are user.name and user.email configured?). The declaration IS written and staged: commit it yourself, then run: amabie setup');
       return 2;
     }
     const sha = (gitWithinRoot(root, ['rev-parse', '--short', 'HEAD']) ?? '').trim();
     committed = `committed ${safePath(declRel)} alone as ${sha === '' ? 'HEAD' : sha}`;
   }
   o.say(`--reseal: ${committed}.`);
-  o.say('re-sealing now: `canary setup` — the same act, so the saved round trip adds no authority (the script above was already part of the sealed plan).');
+  o.say('re-sealing now: `amabie setup` — the same act, so the saved round trip adds no authority (the script above was already part of the sealed plan).');
   const forwarded = ['--yes'];
   if (opts.json) forwarded.push('--json');
   if (opts.verbose) forwarded.push('--verbose');
@@ -3965,23 +5144,23 @@ export function cmdClaim(rawArgs: string[]): number {
   const { opts, rest } = parseGlobals(rawArgs);
   const o = new Out(opts.verbose, opts.json);
   const text = rest.filter((a) => !a.startsWith('--')).join(' ').trim();
-  if (!text) { o.say('usage: canary claim "<what the agent believes happened>"'); return 3; }
+  if (!text) { o.say('usage: amabie claim "<what the agent believes happened>"'); return 3; }
   const root = findRepoRoot(process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is no project here to attach a claim to.', 'cd into your project and try again'); return 2; }
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Canary's local config is unreadable — it will not attach claims to state it cannot read.", 'run: canary setup'); return 2; }
-  if (!cfg) { o.verdict('NEEDS ATTENTION', 'Canary is not set up in this repo, so there is no verification record to attach a claim to.', 'run: canary setup --yes'); return 2; }
+  if (cfg === 'corrupt') { o.verdict('NEEDS ATTENTION', "Amabie's local config is unreadable — it will not attach claims to state it cannot read.", 'run: amabie setup'); return 2; }
+  if (!cfg) { o.verdict('NEEDS ATTENTION', 'Amabie is not set up in this repo, so there is no verification record to attach a claim to.', 'run: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NEEDS ATTENTION', `Canary will not record claims against a config it does not trust (${distrust}).`, "run: canary setup --yes (rewrites it as this machine's own)"); return 2; }
+  if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not record claims against a config it does not trust (${distrust}).`, "run: amabie setup --yes (rewrites it as this machine's own)"); return 2; }
   try {
     if (containedRealPath(root, path.join(root, CONFIG_DIR)) === null) {
-      o.verdict('NEEDS ATTENTION', '.canary resolves outside the repository (a link?) — Canary will not write claims through it.', 'replace it with a real folder, then re-run'); return 2;
+      o.verdict('NEEDS ATTENTION', '.amabie resolves outside the repository (a link?) — Amabie will not write claims through it.', 'replace it with a real folder, then re-run'); return 2;
     }
-    // the claims PATH (not just .canary) must stay inside: a linked claims/
+    // the claims PATH (not just .amabie) must stay inside: a linked claims/
     // dir would otherwise let the atomic write land outside the repo (S3)
     const claimPath = path.join(root, CONFIG_DIR, CLAIMS_FILE);
     if (containedRealPath(root, claimPath) === null) {
-      o.verdict('NEEDS ATTENTION', `${rel(root, claimPath)} resolves outside the repository (a link?) — Canary will not write claims through it.`, 'replace it with a real folder inside .canary, then re-run'); return 2;
+      o.verdict('NEEDS ATTENTION', `${rel(root, claimPath)} resolves outside the repository (a link?) — Amabie will not write claims through it.`, 'replace it with a real folder inside .amabie, then re-run'); return 2;
     }
     fs.mkdirSync(path.dirname(claimPath), { recursive: true });
     writeFileAtomic(claimPath, JSON.stringify({
@@ -3989,20 +5168,20 @@ export function cmdClaim(rawArgs: string[]): number {
       // M3: the writer is the agent, so the class is AGENT_REPORTED —
       // permanently insufficient for a PASS, by the read side's design.
       trustClass: 'AGENT_REPORTED',
-      authority: 'UNTRUSTED HINT — claims are not evidence; verdicts come only from checks Canary executes',
+      authority: 'UNTRUSTED HINT — claims are not evidence; verdicts come only from checks Amabie executes',
       text: text.slice(0, 4000),
     }, null, 2) + '\n');
   } catch (e) {
     o.verdict('NEEDS ATTENTION', `could not record the claim (${String(e).slice(0, 140)}).`, 'fix the file/permission, then re-run'); return 2;
   }
-  o.say('claim recorded as an UNTRUSTED hint. Canary does not execute, trust, or report anything from it;');
+  o.say('claim recorded as an UNTRUSTED hint. Amabie does not execute, trust, or report anything from it;');
   o.say('the next completion check re-runs the plan itself and judges only its own execution (claim ≠ evidence).');
   return 0;
 }
 
 /**
- * 1.1 §21/§26 — `canary result`: the machine-readable answer to "what does
- * Canary know about this repo right now?" for an agent that must NOT spend its
+ * 1.1 §21/§26 — `amabie result`: the machine-readable answer to "what does
+ * Amabie know about this repo right now?" for an agent that must NOT spend its
  * context parsing prose or slurping logs.
  *
  * It reports FACTS with their provenance: the sealed checks, where the state
@@ -4016,15 +5195,16 @@ export function cmdResult(rawArgs: string[]): number {
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'result', schema: PROTOCOL_RESULT });
   const root = findRepoRoot(dirArg(rest) ?? process.cwd());
-  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — there is no Canary state to report here.', 'cd into your project, then: canary setup --yes'); return 2; }
+  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — there is no Amabie state to report here.', 'cd into your project, then: amabie setup --yes'); return 2; }
   o.context({ root });
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.verdict('NOT CONNECTED', "Canary's local config (.canary/canary.local.json) is unreadable, so nothing here can be reported as its state.", 'run: canary setup --yes (rewrites it; your other settings are untouched)'); return 2; }
-  if (!cfg) { o.verdict('NOT CONNECTED', `${root} is a git repository, but Canary is not set up here yet — so there is nothing to report and nothing has been checked.`, 'when you want verification here: canary setup --yes'); return 2; }
+  if (cfg === 'corrupt') { o.verdict('NOT CONNECTED', "Amabie's local config (.amabie/amabie.local.json) is unreadable, so nothing here can be reported as its state.", 'run: amabie setup --yes (rewrites it; your other settings are untouched)'); return 2; }
+  if (!cfg) { o.verdict('NOT CONNECTED', `${root} is a git repository, but Amabie is not set up here yet — so there is nothing to report and nothing has been checked.`, 'when you want verification here: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.verdict('NOT CONNECTED', `Canary found a local config it does not trust (${distrust}) — it will not report results from it.`, 'run: canary setup --yes (rewrites it as this machine\'s own)'); return 2; }
+  if (distrust) { o.verdict('NOT CONNECTED', `Amabie found a local config it does not trust (${distrust}) — it will not report results from it.`, 'run: amabie setup --yes (rewrites it as this machine\'s own)'); return 2; }
   const problems = readOnlyProblems(root, cfg, false); // state only: no commands, no liveness spawn
   const cp = parseJsonOrNull(path.join(root, CONFIG_DIR, CHECKPOINT_FILE));
+  const lastVerification = lastVerificationFromCheckpoint(cp);
   const task = readTaskRecord(root);
   o.context({
     checks: protocolChecks(cfg),
@@ -4033,26 +5213,46 @@ export function cmdResult(rawArgs: string[]): number {
     // The full record (bundles, checkpoints, claims) lives here; the envelope
     // names it instead of pasting it, so an agent's context stays small.
     evidencePath: path.join(root, CONFIG_DIR),
+    ...(lastVerification ? { lastVerification } : {}),
     ...(task ? { next: `task registered: ${task.kinds.join('+')} (${task.requirementCount} requirement(s))` } : {}),
   });
   o.say(`repo: ${root}`);
   o.say(`checks: ${cfg.plan.map((s) => `${s.kind}:${s.script}`).join(', ')}`);
-  o.say(`last checkpoint: ${cp ? `${cp.status} (${cp.source}) at ${cp.at}` : 'none — no completion has been checked here yet'}`);
+  o.say(`last checkpoint: ${lastVerification ? `${lastVerification.status} (${lastVerification.source}) at ${lastVerification.at} — historical only` : 'none — no completion has been checked here yet'}`);
+  if (lastVerification) {
+    o.say(`proof in that run: ${lastVerification.proof ? proofScopeLine(lastVerification.proof) : 'not recorded (older checkpoint or a pre-check block)'}`);
+    for (const ob of lastVerification.proof?.obligations ?? []) {
+      if (ob.caveat) o.say(`evidence caveat in that run [${ob.id}]: ${ob.caveat}`);
+    }
+    if (lastVerification.checks.length > 0) {
+      const passed = lastVerification.checks.filter((x) => x.ok).length;
+      const failed = lastVerification.checks.length - passed;
+      o.say(`checks in that run: ${passed} passed, ${failed} failed${lastVerification.failed.includes('obligation') ? '; proof obligation remained open' : ''}`);
+      for (const check of lastVerification.checks) o.say(`  ${check.ok ? '✓' : '✗'} ${check.kind}: ${check.display} (exit ${check.exitCode === null ? 'unknown' : check.exitCode})`);
+    } else {
+      o.say('checks in that run: none recorded (older checkpoint or a pre-check block)');
+    }
+    o.say(lastVerification.source === 'checkpoint'
+      ? `completion hook in that run: ${lastVerification.hookResponse}; session end: unknown`
+      : 'diagnostic run; no completion-hook response in this record; session end: unknown');
+    if (lastVerification.next) o.say(`recorded next step: ${lastVerification.next}`);
+    if (lastVerification.evidencePath) o.say(`full evidence: ${lastVerification.evidencePath}`);
+  }
   if (problems.length) {
     o.context({ problems });
-    o.verdict('NEEDS ATTENTION', 'a recorded result cannot be treated as current: the wiring is not sound here.', 'run: canary setup --yes');
+    o.verdict('NEEDS ATTENTION', 'a recorded result cannot be treated as current: the wiring is not sound here.', 'run: amabie setup --yes');
     for (const p of problems) o.say(`  - ${p}`);
     return 2;
   }
   o.verdict('CONNECTED',
-    cp ? `last recorded completion: ${cp.status} (${cp.source}) at ${cp.at} — a past run, not a claim about now`
+    lastVerification ? `last recorded verification: ${lastVerification.status} (${lastVerification.source}) at ${lastVerification.at} — a past run, not a claim about now`
       : 'no completion has been checked here yet — the wiring is sound, but nothing has been proven',
-    'to check the code now: canary doctor');
+    'to check the code now: amabie doctor');
   return 0;
 }
 
 /**
- * 1.1 §18–21 — `canary agents`: which agents work here, what each can ACTUALLY
+ * 1.1 §18–21 — `amabie agents`: which agents work here, what each can ACTUALLY
  * do, and install/uninstall of the ADVISORY integration where no hook can gate.
  *
  * This command exists because "we support your agent" is the kind of sentence
@@ -4070,12 +5270,12 @@ export function cmdAgents(rawArgs: string[]): number {
   const id = mode ? pos[1] : undefined;
   const dirToken = mode ? pos[2] : pos[0];
   const root = findRepoRoot(dirToken ?? process.cwd());
-  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — there is no project to integrate an agent with.', 'cd into your project, then: canary setup --yes'); return 2; }
+  if (!root) { o.verdict('NOT CONNECTED', 'not inside a git repository — there is no project to integrate an agent with.', 'cd into your project, then: amabie setup --yes'); return 2; }
   o.context({ root });
 
   const found = new Set(detectHarnesses(root).found.map((h) => h.name));
   const advisory = hasAdvisory(root);
-  // v1.3, slice 1 — "is Canary's hook installed HERE?" is a different question from "is the agent
+  // v1.3, slice 1 — "is Amabie's hook installed HERE?" is a different question from "is the agent
   // present?", and it is the one a protection claim needs. Computed once, used by the rows below.
   const wired = gatingHookInstalled(root);
   const integrations: ProtocolIntegration[] = AGENT_INTEGRATIONS.map((a) => ({
@@ -4094,24 +5294,24 @@ export function cmdAgents(rawArgs: string[]): number {
 
   if (mode !== null) {
     const advisoryIds = AGENT_INTEGRATIONS.filter((a) => !a.gating).map((a) => a.id).join(', ');
-    if (id === undefined) { o.verdict('NEEDS ATTENTION', `agents ${mode} needs an integration id.`, `advisory integrations: ${advisoryIds} (example: canary agents ${mode} generic)`); return 2; }
+    if (id === undefined) { o.verdict('NEEDS ATTENTION', `agents ${mode} needs an integration id.`, `advisory integrations: ${advisoryIds} (example: amabie agents ${mode} generic)`); return 2; }
     const integration = AGENT_INTEGRATIONS.find((a) => a.id === id);
-    if (!integration) { o.verdict('NEEDS ATTENTION', `"${id}" is not an agent integration Canary knows.`, `known: ${AGENT_INTEGRATIONS.map((a) => a.id).join(', ')}`); return 2; }
-    if (integration.gating) { o.verdict('NEEDS ATTENTION', `${integration.label} is a GATING integration — it is installed by setup, not by an advisory command, so its hook keeps one owner.`, 'run: canary setup --yes'); return 2; }
+    if (!integration) { o.verdict('NEEDS ATTENTION', `"${id}" is not an agent integration Amabie knows.`, `known: ${AGENT_INTEGRATIONS.map((a) => a.id).join(', ')}`); return 2; }
+    if (integration.gating) { o.verdict('NEEDS ATTENTION', `${integration.label} is a GATING integration — it is installed by setup, not by an advisory command, so its hook keeps one owner.`, 'run: amabie setup --yes'); return 2; }
     const res = mode === 'install' ? installAdvisory(root) : removeAdvisory(root);
     if (!res.ok) { o.verdict('NEEDS ATTENTION', res.problem, 'fix that file, then re-run'); return 2; }
     o.verdict('CONNECTED',
       res.changed
-        ? `advisory integration ${mode === 'install' ? 'installed' : 'removed'} in ${rel(root, res.file)} — it tells the agent to consult Canary before claiming completion, and it is ADVISORY: it cannot block anything.`
+        ? `advisory integration ${mode === 'install' ? 'installed' : 'removed'} in ${rel(root, res.file)} — it tells the agent to consult Amabie before claiming completion, and it is ADVISORY: it cannot block anything.`
         : `nothing changed — the advisory block was already ${mode === 'install' ? 'present' : 'absent'} in ${rel(root, res.file)}.`,
-      mode === 'install' ? 'to confirm the checks run: canary doctor' : `to reinstall: canary agents install ${integration.id}`);
+      mode === 'install' ? 'to confirm the checks run: amabie doctor' : `to reinstall: amabie agents install ${integration.id}`);
     return 0;
   }
 
   o.say(`repo: ${root}`);
   o.say('agent integrations (GATED = can block a completion; ADVISORY = the agent is told and may ignore it):');
   // v1.3 §C: whether the agent can also ASK is a separate, useful fact on the "am I protected?"
-  // command. Reported from the same signature-matched evidence the rest of Canary uses.
+  // command. Reported from the same signature-matched evidence the rest of Amabie uses.
   const cfgForTools = readConfig(root);
   const toolsRegistered = cfgForTools !== null && cfgForTools !== 'corrupt'
     && (() => {
@@ -4130,7 +5330,7 @@ export function cmdAgents(rawArgs: string[]): number {
     const extra = i.gating
       ? ` [${wired ? 'hook installed here' : 'hook NOT installed here'}${wired && toolsRegistered ? ', agent tools registered' : ''}${wired && i.gatingNeedsTrust !== undefined ? `; ${i.gatingNeedsTrust}` : ''}]`
       : unmeasured
-        ? ` [Canary's completion hook is ${wired ? 'installed here' : 'NOT installed here'} — whether this harness honours it is UNMEASURED]`
+        ? ` [Amabie's completion hook is ${wired ? 'installed here' : 'NOT installed here'} — whether this harness honours it is UNMEASURED]`
         : ` [AGENTS.md block ${advisory ? 'installed' : 'not installed'}]`;
     o.say(`  ${word} ${i.label} — ${i.detected ? 'detected' : 'not detected'}${extra}`);
     o.detail(i.summary);
@@ -4140,15 +5340,15 @@ export function cmdAgents(rawArgs: string[]): number {
     const unmeasured = integrations.filter((i) => i.gatingMeasured === false && i.detected);
     o.verdict('NEEDS ATTENTION',
       unmeasured.length > 0
-        ? `${unmeasured.map((i) => i.label).join(', ')} is installed here and documents a completion-hook mechanism Canary has NOT measured — so nothing here can be reported as gated. Detecting an agent is not protecting the repository.`
+        ? `${unmeasured.map((i) => i.label).join(', ')} is installed here and documents a completion-hook mechanism Amabie has NOT measured — so nothing here can be reported as gated. Detecting an agent is not protecting the repository.`
         : 'no agent here can be GATED today — a completion can be checked, but nothing can block it.',
-      'any agent can use the protocol directly: canary result --json');
+      'any agent can use the protocol directly: amabie result --json');
     return 2;
   }
   if (!wired) {
     o.verdict('NEEDS ATTENTION',
-      `${gated.map((i) => i.label).join(', ')} is installed here, but Canary's completion hook is NOT — nothing runs automatically, so nothing can block a completion. Detecting the agent is not protecting the repository.`,
-      'to install the hook: canary setup --yes');
+      `${gated.map((i) => i.label).join(', ')} is installed here, but Amabie's completion hook is NOT — nothing runs automatically, so nothing can block a completion. Detecting the agent is not protecting the repository.`,
+      'to install the hook: amabie setup --yes');
     return 2;
   }
   // v1.3 §E: the tools are registered but the harness holds them at its own consent gate. Saying so
@@ -4157,14 +5357,14 @@ export function cmdAgents(rawArgs: string[]): number {
     o.say('note: Claude Code holds a project MCP server at "pending approval" until you approve it once in an interactive session — the entry is written; the tools appear after you approve.');
   }
   // v1.4 §C: the hook is written, and the harness still holds it at ITS gate. This is the one step
-  // Canary cannot take for the user, so CONNECTED is printed with it rather than after it.
+  // Amabie cannot take for the user, so CONNECTED is printed with it rather than after it.
   const trustPending = gated.filter((i) => i.gatingNeedsTrust !== undefined);
   for (const i of trustPending) o.say(`note: ${i.label} — ${i.gatingNeedsTrust}.`);
   // v1.5 §4C — the question this command exists to answer ("what is actually wired here?") had no
   // answer for SCOPE: MEASURED (`git status` after setup) .claude/settings.json, .codex/hooks.json
-  // and .mcp.json are tracked PROJECT files, while .canary/ self-ignores. One line, and the user
+  // and .mcp.json are tracked PROJECT files, while .amabie/ self-ignores. One line, and the user
   // can decide what to commit without reading source.
-  o.say('scope: the harness and tool entries Canary writes (.claude/settings.json, .codex/hooks.json, .mcp.json) are PROJECT files — committing them shares them with a clone, and each developer then runs `canary setup --yes` once so the recorded path matches their machine. Canary\'s own state is local to you: .canary/ (self-ignored) and this machine\'s trust store.');
-  o.verdict('CONNECTED', `${gated.map((i) => i.label).join(', ')} can gate completions here — the hook is installed in this repository.${trustPending.length > 0 ? ` (${trustPending.map((i) => i.label).join(', ')} gates once the hook is trusted.)` : ''}`, 'to confirm end to end: canary doctor');
+  o.say('scope: the harness and tool entries Amabie writes (.claude/settings.json, .codex/hooks.json, .mcp.json) are PROJECT files — committing them shares them with a clone, and each developer then runs `amabie setup --yes` once so the recorded path matches their machine. Amabie\'s own state is local to you: .amabie/ (self-ignored) and this machine\'s trust store.');
+  o.verdict('CONNECTED', `${gated.map((i) => i.label).join(', ')} can gate completions here — the hook is installed in this repository.${trustPending.length > 0 ? ` (${trustPending.map((i) => i.label).join(', ')} gates once the hook is trusted.)` : ''}`, 'to confirm end to end: amabie doctor');
   return 0;
 }

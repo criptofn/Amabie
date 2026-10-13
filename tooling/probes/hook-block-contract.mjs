@@ -2,11 +2,11 @@
 /**
  * WHICH STOP-HOOK SHAPE ACTUALLY GATES, AND WHICH ONE ACTUALLY EXPLAINS?
  *
- * Canary's Claude Code integration is one `Stop` hook running `canary checkpoint`. The product
- * records its OWN decision (`.canary/last-checkpoint.json`), but that is not evidence the harness
+ * Amabie's Claude Code integration is one `Stop` hook running `amabie checkpoint`. The product
+ * records its OWN decision (`.amabie/last-checkpoint.json`), but that is not evidence the harness
  * honoured it OR delivered its reason — and a block whose reason never reaches the model is a gate
  * that loops the agent instead of correcting it. This probe measures the harness side with nothing
- * of Canary's involved except the JSON shape it emits.
+ * of Amabie's involved except the JSON shape it emits.
  *
  * WHY IT EXISTS (MEASURED, first version of this probe): a Stop hook printing
  * `{"decision":"block","reason":"<marker>"}` and exiting 0 produced
@@ -45,7 +45,7 @@ function agentEnv() {
   return env;
 }
 
-const MARKER = 'CANARY-PROBE-MARKER';
+const MARKER = 'AMABIE-PROBE-MARKER';
 
 /**
  * The candidate shapes, each as the hook's whole program. `blocked` says whether the shape is
@@ -54,7 +54,7 @@ const MARKER = 'CANARY-PROBE-MARKER';
 const SHAPES = [
   {
     name: 'json-decision-block',
-    note: 'the shape Canary emits today: {"decision":"block","reason"} on stdout, exit 0',
+    note: 'the shape Amabie emits today: {"decision":"block","reason"} on stdout, exit 0',
     blocked: true,
     body: `process.stdout.write(JSON.stringify({ decision: 'block', reason: '${MARKER}: checks still failing' }));\nprocess.exit(0);`,
   },
@@ -78,20 +78,20 @@ const SHAPES = [
   },
   {
     name: 'systemMessage-only',
-    note: 'the loop-guard shape Canary uses for its second attempt: {"systemMessage"} on stdout, exit 0',
+    note: 'the loop-guard shape Amabie uses for its second attempt: {"systemMessage"} on stdout, exit 0',
     blocked: false,
     body: `process.stdout.write(JSON.stringify({ systemMessage: '${MARKER}: checks still failing after one repair attempt' }));\nprocess.exit(0);`,
   },
   {
     name: 'allow-silent',
-    note: 'what Canary emits when the checks pass: no stdout, exit 0 (control)',
+    note: 'what Amabie emits when the checks pass: no stdout, exit 0 (control)',
     blocked: false,
     body: 'process.exit(0);',
   },
 ];
 
 function project(shape) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-hook-${shape.name}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-hook-${shape.name}-`));
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: `hook-${shape.name}`, private: true }, null, 2)}\n`);
   const hookFile = path.join(root, 'stop-hook.cjs');
@@ -179,7 +179,7 @@ check('3. the shape the product emits today DOES deliver its reason (and the CLI
   assert(current.carrier === 'user-message', `expected the reason on a user message, got ${current.carrier}`);
   assert(current.turns > 1, 'a blocked stop must give the model a repair turn');
   // The CLI reports a hook error for EVERY blocking shape measured (JSON, exit 2, and both
-  // together), so it is a property of blocking, not of Canary's payload. Recorded, not asserted.
+  // together), so it is a property of blocking, not of Amabie's payload. Recorded, not asserted.
   console.log(`      → the CLI logged ${current.errors.length} \`stop-hook-error\` notification(s) for the blocking shape; every blocking shape measured did the same, so it is cosmetic`);
 });
 

@@ -1,5 +1,5 @@
 /**
- * The Canary OBSERVER PRELOAD — the exact source text Canary writes (byte-
+ * The Amabie OBSERVER PRELOAD — the exact source text Amabie writes (byte-
  * stable) into the workspace root and injects into a pinned-bytes mocha via
  * `--require` inside Recorder.expandArgv. This file IS the trusted copy: the
  * on-disk artifact is disposable output of these bytes, and nothing else can
@@ -10,7 +10,7 @@
  * Design rules encoded below (probes on mocha@10.8.2, 2026-09-01/02; panel
  * decisions F + I):
  *  1. Lifecycle ground truth is Runnable.prototype.run + Runner.prototype.emit
- *     TOGETHER: a pass/fail event for a Test object whose run() Canary never
+ *     TOGETHER: a pass/fail event for a Test object whose run() Amabie never
  *     watched execute is REJECTED (reject frame — which fails the round
  *     closed). Printing or emitting is not execution.
  *  2. The preload must never alter subject behavior: every hook body is
@@ -30,10 +30,10 @@
  *     FIXTURE/node_modules and silently no-op. No cache hit under the anchor
  *     ⇒ adapter-error frame ⇒ INVALID (fail-closed, and the subject's run
  *     continues unobserved).
- *  5. module.exports carries {isCanaryObserver:true, version}: the marker
- *     Canary's parent-side read-back check (ensureObserverPreload) plus the
+ *  5. module.exports carries {isAmabieObserver:true, version}: the marker
+ *     Amabie's parent-side read-back check (ensureObserverPreload) plus the
  *     hello.observerVersion frame together pin that the bytes LOADED are
- *     Canary's — a property the parent cannot read through the child's module
+ *     Amabie's — a property the parent cannot read through the child's module
  *     system, so it is pinned at the two points it can reach (file bytes
  *     before spawn; self-report inside hello, validator-enforced).
  *  6. NO secret is injected (none can exist in-process honestly): channel
@@ -45,13 +45,13 @@
  *  7. fd 3 is CLOSED EXACTLY ONCE, in process.on('exit'), after bye has been
  *     flushed (frames are writeSync; flush order is program order). A second
  *     close is the subject's problem (EBADF inside its process cannot forge
- *     our stream — the bytes already sit in Canary's pipe buffer).
+ *     our stream — the bytes already sit in Amabie's pipe buffer).
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { CanaryError, type WorkspaceLayout } from '@canary-rn/support';
+import { AmabieError, type WorkspaceLayout } from '@amabie/support';
 import { OBSERVER_VERSION } from './observation.js';
 
 export const OBSERVER_PRELOAD_BASENAME = 'canary-observer.cjs';
@@ -212,7 +212,7 @@ try {
   frame({ k: 'adapter-error', err: String((e && e.message) || e) });
 }
 
-module.exports = { isCanaryObserver: true, version: OBSERVER_VERSION };
+module.exports = { isAmabieObserver: true, version: OBSERVER_VERSION };
 `;
 
 /** Where the preload lives: workspace root, OUTSIDE artifactsDir (it is not
@@ -223,18 +223,18 @@ export function observerPreloadPath(ws: WorkspaceLayout): string {
 }
 
 /**
- * Canary-side "the loaded bytes are Canary's" guarantee (panel F: the parent
+ * Amabie-side "the loaded bytes are Amabie's" guarantee (panel F: the parent
  * cannot read a property out of the child's module system, so the claim is
  * pinned at the two points it CAN reach):
  *  1. HERE, before spawn: write-if-different + read-back byte comparison.
  *     A prepare script that replaced the file under wsRoot gets rewritten
  *     fresh immediately before each injected round (normal path: one stat-
  *     plus-read, no write — "written once per experiment" holds whenever
- *     nobody touches it). Persistent mismatch ⇒ CanaryError ⇒ InfraAbort.
+ *     nobody touches it). Persistent mismatch ⇒ AmabieError ⇒ InfraAbort.
  *  2. INSIDE the child: hello.observerVersion self-reports, validator-pinned
  *     against OBSERVER_VERSION, plus prove re-compares the on-disk bytes.
  * The residual between (1) and exec is the pre-existing TOCTOU ceiling,
- * documented (docs/exec-authority.md) — the file is Canary-owned content
+ * documented (docs/exec-authority.md) — the file is Amabie-owned content
  * under a subject-reachable path, not a signature-verified artifact.
  */
 export function ensureObserverPreload(ws: WorkspaceLayout): string {
@@ -244,8 +244,8 @@ export function ensureObserverPreload(ws: WorkspaceLayout): string {
   } catch { /* absent: write below */ }
   fs.writeFileSync(p, OBSERVER_PRELOAD_SOURCE, 'utf8');
   if (fs.readFileSync(p, 'utf8') !== OBSERVER_PRELOAD_SOURCE) {
-    throw new CanaryError(
-      `observer preload at ${p} does not match Canary's bytes even after rewrite (workspace is not writable-stable)`,
+    throw new AmabieError(
+      `observer preload at ${p} does not match Amabie's bytes even after rewrite (workspace is not writable-stable)`,
       'observer-preload-tampered',
     );
   }

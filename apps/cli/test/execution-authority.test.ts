@@ -1,7 +1,7 @@
 /**
  * FINDING A — EXECUTION EVIDENCE AUTHORITY (permanent regression battery).
  *
- * A GLM auditor obtained an end-to-end false PASS with an UNMODIFIED Canary CLI
+ * A GLM auditor obtained an end-to-end false PASS with an UNMODIFIED Amabie CLI
  * by setting the downstream test command to:
  *
  *     node -e "console.log('128 passing (1s)')"
@@ -15,7 +15,7 @@
  * THE INVARIANT THIS FILE LOCKS:
  *   A strong/trustful verdict (PASS / CONFIRMED_REGRESSION /
  *   PRE_EXISTING_FAILURE) is unreachable from subject-controlled TEXT ALONE.
- *   A subject that controls only what it prints — never the Canary-owned
+ *   A subject that controls only what it prints — never the Amabie-owned
  *   observation channel — must be rejected to a weak label (INCONCLUSIVE or
  *   INFRASTRUCTURE_FAILURE). Printed text is a claim; a claim is not proof.
  *
@@ -31,15 +31,15 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { runExperiment } from '../src/pipeline.js';
-import { sha256hex } from '@canary-rn/hashing';
+import { sha256hex } from '@amabie/hashing';
 import { writeStagedPayload, stageCommands, WIDGET_PKGS } from './stub-harness.js';
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-authority-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-authority-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FAKE_SHA = 'a'.repeat(40);
-const FAKE_BYTES = Buffer.from('canary-authority-fake-tarball');
+const FAKE_BYTES = Buffer.from('amabie-authority-fake-tarball');
 const FAKE_BLOB = { bytes: FAKE_BYTES, sha256: sha256hex(FAKE_BYTES) };
 
 const STRONG = new Set(['PASS', 'CONFIRMED_REGRESSION', 'PRE_EXISTING_FAILURE']);
@@ -116,7 +116,7 @@ describe('FINDING A — subject text alone can never create a strong verdict', (
       'a zero-runner forgery must degrade to INCONCLUSIVE (the conservative floor), not a strong label');
     // The degradation names the MECHANISM, not a coincidence: prose-only text
     // is refuted at the execution-observation gate (rule 14), and every round
-    // is on record as ABSENT (Canary attempted no observation — there was no
+    // is on record as ABSENT (Amabie attempted no observation — there was no
     // pinned runner to observe).
     assert.equal(bundle.classification.rule, 14);
     for (const r of bundle.rounds) {

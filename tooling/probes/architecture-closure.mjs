@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Deterministic release-closure attack matrix. All Git mutations are confined
- * to mkdtemp fixtures. CANARY_TEST_CLI selects a scratch mutation build ONLY. */
+ * to mkdtemp fixtures. AMABIE_TEST_CLI selects a scratch mutation build ONLY. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,11 +9,11 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { addRegression } from '../test-support/regression-fixture.mjs';
 const REPO = path.resolve(import.meta.dirname,'../..');
-const CLI = process.env.CANARY_TEST_CLI ?? path.join(REPO,'apps/cli/dist/src/main.js');
-const helpers = process.env.CANARY_TEST_HELPERS ?? path.dirname(CLI);
+const CLI = process.env.AMABIE_TEST_CLI ?? path.join(REPO,'apps/cli/dist/src/main.js');
+const helpers = process.env.AMABIE_TEST_HELPERS ?? path.dirname(CLI);
 const A = await import(pathToFileURL(path.join(helpers,'authorization.js')));
 const O = await import(pathToFileURL(path.join(helpers,'onboarding.js')));
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(),'canary-closure-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(),'amabie-closure-'));
 const driver = path.join(REPO,'tooling/test-support/fixtures/accept-review-driver.mjs');
 const selected = process.argv[2];
 let failed=0, passed=0, serial=0, spawns=0;
@@ -33,16 +33,16 @@ function make({e2e=false,bench=false,bindings={}}={}) {
  write(root,'tests/check.cjs',"const a=require('node:assert/strict'),f=require('node:fs');a.ok(f.readFileSync('screen.html','utf8').includes('<button'));\n");
  write(root,'bench.cjs',"const a=require('node:assert/strict'),p=require('node:perf_hooks').performance;const t=p.now();JSON.stringify(Array(100).fill(1));a.ok(p.now()-t<100);\n");
  write(root,'e2e.cjs',"const a=require('node:assert/strict'),f=require('node:fs'),s=f.readFileSync('screen.html','utf8');a.ok(s.includes('#D94141')&&s.includes('width:240px'));\n");
- write(root,'package.json',JSON.stringify({name:'closure-fixture',private:true,scripts:{test:`node tests/check.cjs && node "${path.join(REPO,'tooling','test-support','fixtures','f-regression.cjs')}"`,...(e2e?{e2e:'node e2e.cjs'}:{}),...(bench?{bench:'node bench.cjs'}:{})},canary:{proofs:bindings}}));
- git(root,'init','-b','main');git(root,'config','user.email','closure@canary.local');git(root,'config','user.name','Closure');commit(root);ok(cli(root,'setup','--yes'));return root;
+ write(root,'package.json',JSON.stringify({name:'closure-fixture',private:true,scripts:{test:`node tests/check.cjs && node "${path.join(REPO,'tooling','test-support','fixtures','f-regression.cjs')}"`,...(e2e?{e2e:'node e2e.cjs'}:{}),...(bench?{bench:'node bench.cjs'}:{})},amabie:{proofs:bindings}}));
+ git(root,'init','-b','main');git(root,'config','user.email','closure@amabie.local');git(root,'config','user.name','Closure');commit(root);ok(cli(root,'setup','--yes'));return root;
 }
 // Every isolated candidate carries a REAL discriminating check (the sealed plan
 // must FAIL on the sealed base). These cases are about the closure laws, not the
 // discrimination gate itself — but a green suite that cannot tell candidate from
 // base is NOT PROVEN by design, so the fixture has to supply genuine proof.
-function isolate(root,text,reqs=[]) {ok(task(root,text,reqs));ok(cli(root,'isolate','c'));const c=path.join(root,'.canary/candidates/c');fs.appendFileSync(path.join(c,'screen.html'),'<!-- candidate -->\n');addRegression(c);commit(c);return c;}
+function isolate(root,text,reqs=[]) {ok(task(root,text,reqs));ok(cli(root,'isolate','c'));const c=path.join(root,'.amabie/candidates/c');fs.appendFileSync(path.join(c,'screen.html'),'<!-- candidate -->\n');addRegression(c);commit(c);return c;}
 function accept(root,action='none') {return run(process.execPath,[driver,CLI,action],root);}
-const accPath=r=>path.join(r,'.canary/acceptance/c.json');
+const accPath=r=>path.join(r,'.amabie/acceptance/c.json');
 function verify(root) {return cli(root,'isolate','--verify','c');}
 function promote(root) {return cli(root,'isolate','--promote','c');}
 function notMoved(root,fn) {const h=git(root,'rev-parse','HEAD');fn();assert.equal(git(root,'rev-parse','HEAD'),h);}
@@ -59,7 +59,7 @@ check('A8',()=>{const r=make(),c=isolate(r);ok(accept(r));ok(promote(r));assert.
 check('B1',()=>{const r=make();isolate(r,'make the dialog warm red');ok(accept(r));ok(task(r,'make the dialog cool blue'));notMoved(r,()=>blocked(promote(r)));blocked(accept(r));});
 check('B2-B3',()=>{const r=make();isolate(r,'make the dialog prettier');ok(accept(r));ok(task(r,'  make  the dialog\nprettier '));ok(verify(r));});
 check('B4',()=>{const r=make();ok(cli(r,'task','fix the crash and make the dialog prettier','--kind','refactor'));const t=O.readTaskRecord(r);assert.ok(t.kinds.includes('ui')&&t.kinds.includes('bugfix')&&t.kinds.includes('refactor'));});
-check('B5-B6',()=>{const r=make();isolate(r);const p=path.join(r,'.canary/task/current.json');const original=JSON.parse(fs.readFileSync(p,'utf8'));for(const t of [{...original,taskDigest:undefined},{...original,taskDigest:'bad'},{...original,schema:'canary-task/1'}]){fs.writeFileSync(p,JSON.stringify(t));blocked(verify(r));blocked(accept(r));}});
+check('B5-B6',()=>{const r=make();isolate(r);const p=path.join(r,'.amabie/task/current.json');const original=JSON.parse(fs.readFileSync(p,'utf8'));for(const t of [{...original,taskDigest:undefined},{...original,taskDigest:'bad'},{...original,schema:'amabie-task/1'}]){fs.writeFileSync(p,JSON.stringify(t));blocked(verify(r));blocked(accept(r));}});
 check('C1',()=>{const r=make();isolate(r,'style dialog',['A']);ok(task(r,'style dialog',['B']));blocked(accept(r));notMoved(r,()=>blocked(promote(r)));});
 // v1.2: the FIRST accept closes the genuinely open subjective duty (ui-proof). After requirements
 // are ADDED the growth makes per-requirement an OBJECTIVE-unproven duty, and the point of this case
@@ -72,7 +72,7 @@ check('C3',()=>{const r=make();isolate(r,'style dialog',['A','B']);ok(task(r,'st
 // cannot be closed by a signature, so the candidate stays NOT PROVEN and the base must not move.
 check('C4',()=>{const r=make();isolate(r,'style dialog',['A','B']);ok(accept(r));ok(task(r,'style dialog',['B','A']));blocked(verify(r));});
 check('C5-C6',()=>{const f=A.declaredTask('ui',['ui'],['A','A']);assert.equal(f.requirementCount,2);assert.ok(A.taskWeakening(f,A.declaredTask('ui',['ui'],['A'])).length);assert.equal(A.canonicalTask({...f,requirementDigests:['bad','bad']}),null);});
-check('C7',()=>{const r=make(),rs=Array.from({length:64},(_,i)=>`r${i}`);ok(task(r,'ui',rs));const p=path.join(r,'.canary/task/current.json'),before=fs.readFileSync(p,'utf8');blocked(task(r,'ui',[...rs,'65']));assert.equal(fs.readFileSync(p,'utf8'),before);assert.equal(O.readTaskRecord(r).requirementCount,64);});
+check('C7',()=>{const r=make(),rs=Array.from({length:64},(_,i)=>`r${i}`);ok(task(r,'ui',rs));const p=path.join(r,'.amabie/task/current.json'),before=fs.readFileSync(p,'utf8');blocked(task(r,'ui',[...rs,'65']));assert.equal(fs.readFileSync(p,'utf8'),before);assert.equal(O.readTaskRecord(r).requirementCount,64);});
 check('C8',()=>{const p='x'.repeat(4000),a=A.declaredTask('ui',['ui'],[p+'A']),b=A.declaredTask('ui',['ui'],[p+'B']);assert.notDeepEqual(a.requirementDigests,b.requirementDigests);});
 check('D1',()=>{const r=make({e2e:true});isolate(r,'make my game prettier');const v=blocked(verify(r));assert.match(v.stdout,/SUBJECTIVE ACCEPTANCE: USER JUDGMENT REQUIRED/);assert.match(v.stdout,/subjective-visual-acceptance/);ok(accept(r));ok(promote(r));});
 check('D2-D7',()=>{const r=make();isolate(r);blocked(verify(r));ok(accept(r));ok(promote(r));});
@@ -88,16 +88,16 @@ check('E1-E3-E5',()=>{const r=make({bench:true});isolate(r,'render latency under
 check('E2',()=>{const t='render latency under 100ms',r=make({bench:true,bindings:{[A.materialDigest(t)]:'bench'}});isolate(r,t);ok(promote(r));assert.ok(!fs.existsSync(accPath(r)));});
 check('E4',()=>{for(const bench of [false,true]){const r=make({bench});isolate(r,'make scrolling feel faster');const v=blocked(verify(r));assert.match(v.stdout,/subjective performance feel requires human judgment/);ok(accept(r));ok(promote(r));}});
 check('F1',()=>{const r=make();ok(cli(r,'isolate','c'));ok(task(r,'refactor'));blocked(verify(r));notMoved(r,()=>blocked(promote(r)));});
-check('F2',()=>{const r=make();isolate(r);const p=path.join(r,'.canary/candidates/c.json'),rec=JSON.parse(fs.readFileSync(p,'utf8'));delete rec.intent;fs.writeFileSync(p,JSON.stringify(rec));blocked(verify(r));blocked(promote(r));});
-check('F3-F4',()=>{const r=make();isolate(r);write(r,'.canary/evidence/planted/verification.json',JSON.stringify({status:'pass',trustClass:'CANARY_OBSERVED'}));notMoved(r,()=>blocked(promote(r)));});
+check('F2',()=>{const r=make();isolate(r);const p=path.join(r,'.amabie/candidates/c.json'),rec=JSON.parse(fs.readFileSync(p,'utf8'));delete rec.intent;fs.writeFileSync(p,JSON.stringify(rec));blocked(verify(r));blocked(promote(r));});
+check('F3-F4',()=>{const r=make();isolate(r);write(r,'.amabie/evidence/planted/verification.json',JSON.stringify({status:'pass',trustClass:'AMABIE_OBSERVED'}));notMoved(r,()=>blocked(promote(r)));});
 check('F6',()=>{const r=make();isolate(r);ok(accept(r));write(r,'unrelated','human base commit');commit(r);notMoved(r,()=>blocked(promote(r)));});
 check('F8',()=>{const r=make(),c=isolate(r);ok(accept(r));const p=path.join(c,'package.json'),pkg=JSON.parse(fs.readFileSync(p));pkg.scripts.test='node missing.cjs';fs.writeFileSync(p,JSON.stringify(pkg));commit(c);blocked(promote(r));});
 check('G1-G6',()=>{const r=make(),c=isolate(r,'fix the crash');fs.appendFileSync(path.join(c,'tests/check.cjs'),'// evidence\n');commit(c);const poison=path.join(TMP,'poison');fs.mkdirSync(poison);for(const n of ['npm','git'])write(poison,n,'#!/bin/sh\nexit 97\n');for(const n of ['npm','git'])fs.chmodSync(path.join(poison,n),0o755);const env={...process.env,PATH:poison+path.delimiter+process.env.PATH,NODE_OPTIONS:'--require=missing-preload',NODE_PATH:poison,npm_config_script_shell:path.join(poison,'npm'),GIT_DIR:poison};delete env.NODE_OPTIONS; // Node itself has already started in the product-boundary test below.
  const script=path.join(REPO,'tooling/test-support/fixtures/environment-driver.mjs');ok(run(process.execPath,[script,CLI,r,poison],r,{env}));});
-check('H1-H9',()=>{const r=make();const before=git(r,'status','--porcelain');const cfg=fs.readFileSync(path.join(r,'.canary/canary.local.json'),'utf8');write(r,'.canary/last-checkpoint.json',JSON.stringify({status:'pass',source:'past',at:'yesterday'}));const status=ok(cli(r,'status'));assert.match(status.stdout,/NOT a claim about now/);assert.match(cli(r).stdout,/CONNECTED/);assert.equal(git(r,'status','--porcelain'),before);assert.equal(fs.readFileSync(path.join(r,'.canary/canary.local.json'),'utf8'),cfg);console.log(`METRIC status_stdout_bytes=${Buffer.byteLength(status.stdout)} probe_spawns=${spawns}`);});
-check('H3-H4-H5',()=>{const r=make(),p=path.join(r,'.canary/canary.local.json'),old=fs.readFileSync(p,'utf8');fs.writeFileSync(p,'bad');assert.match(blocked(cli(r,'status')).stdout,/NOT CONNECTED/);assert.match(cli(r).stdout,/NOT CONNECTED/);const c=JSON.parse(old);c.cliPath='foreign';fs.writeFileSync(p,JSON.stringify(c));assert.match(blocked(cli(r,'status')).stdout,/NOT CONNECTED/);assert.match(cli(r).stdout,/NOT CONNECTED/);fs.writeFileSync(p,old);fs.rmSync(path.join(r,'.claude/settings.json'));assert.match(blocked(cli(r,'status')).stdout,/NEEDS ATTENTION/);});
+check('H1-H9',()=>{const r=make();const before=git(r,'status','--porcelain');const cfg=fs.readFileSync(path.join(r,'.amabie/amabie.local.json'),'utf8');write(r,'.amabie/last-checkpoint.json',JSON.stringify({status:'pass',source:'past',at:'yesterday'}));const status=ok(cli(r,'status'));assert.match(status.stdout,/NOT a claim about now/);assert.match(cli(r).stdout,/CONNECTED/);assert.equal(git(r,'status','--porcelain'),before);assert.equal(fs.readFileSync(path.join(r,'.amabie/amabie.local.json'),'utf8'),cfg);console.log(`METRIC status_stdout_bytes=${Buffer.byteLength(status.stdout)} probe_spawns=${spawns}`);});
+check('H3-H4-H5',()=>{const r=make(),p=path.join(r,'.amabie/amabie.local.json'),old=fs.readFileSync(p,'utf8');fs.writeFileSync(p,'bad');assert.match(blocked(cli(r,'status')).stdout,/NOT CONNECTED/);assert.match(cli(r).stdout,/NOT CONNECTED/);const c=JSON.parse(old);c.cliPath='foreign';fs.writeFileSync(p,JSON.stringify(c));assert.match(blocked(cli(r,'status')).stdout,/NOT CONNECTED/);assert.match(cli(r).stdout,/NOT CONNECTED/);fs.writeFileSync(p,old);fs.rmSync(path.join(r,'.claude/settings.json'));assert.match(blocked(cli(r,'status')).stdout,/NEEDS ATTENTION/);});
 check('H6-H7-H8',()=>{const r=make(),c=isolate(r,'refactor');assert.match(blocked(cli(c,'status')).stdout,/NOT CONNECTED/);assert.match(cli(c).stdout,/NOT CONNECTED/);const nested=path.join(r,'nested');fs.mkdirSync(nested);git(nested,'init','-b','main');assert.match(blocked(cli(nested,'status')).stdout,/NOT CONNECTED/);assert.match(cli(nested).stdout,/NOT CONNECTED/);fs.rmSync(path.join(r,'package.json'));assert.match(blocked(cli(r,'status')).stdout,/NEEDS ATTENTION|NOT CONNECTED/);});
-check('I1-storage',()=>{const r=make();isolate(r,'refactor');const p=path.join(r,'.canary/evidence');fs.rmSync(p,{recursive:true,force:true});fs.writeFileSync(p,'unavailable');const v=ok(verify(r));assert.match(v.stdout,/Evidence storage unavailable/);assert.ok(fs.statSync(p).isFile());});
+check('I1-storage',()=>{const r=make();isolate(r,'refactor');const p=path.join(r,'.amabie/evidence');fs.rmSync(p,{recursive:true,force:true});fs.writeFileSync(p,'unavailable');const v=ok(verify(r));assert.match(v.stdout,/Evidence storage unavailable/);assert.ok(fs.statSync(p).isFile());});
 } finally {fs.rmSync(TMP,{recursive:true,force:true});}
 console.log(`ARCHITECTURE CLOSURE: PASS=${passed} FAIL=${failed} SKIP=0`);
 process.exitCode=failed?1:0;

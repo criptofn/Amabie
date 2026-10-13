@@ -42,10 +42,10 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd) {
+function amabie(args, cwd) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 }
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-subjectivity-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-subjectivity-'));
 function makeRepo(name) {
   const root = path.join(TMP, name);
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
@@ -55,11 +55,11 @@ function makeRepo(name) {
   fs.writeFileSync(path.join(root, 'tests', 'baseline.test.js'), '// baseline coverage\n');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts: TWO }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
@@ -67,15 +67,15 @@ function register(root, text, kinds, requirements = []) {
   const args = ['task', text];
   for (const k of kinds) args.push('--kind', k);
   for (const r of requirements) args.push('--requirement', r);
-  const t = canary(args, root);
+  const t = amabie(args, root);
   assert(t.status === 0, `task failed: ${t.stdout}\n${t.stderr}`);
 }
 function isolate(root, name) {
-  const r = canary(['isolate', name, root], root);
+  const r = amabie(['isolate', name, root], root);
   assert(r.status === 0, `isolate failed: ${r.stdout}\n${r.stderr}`);
 }
 function candCommit(root, name, files) {
-  const c = path.join(root, '.canary', 'candidates', name);
+  const c = path.join(root, '.amabie', 'candidates', name);
   // Positive/split controls need actual technical proof. F/H deliberately lack it.
   if (!['f-objective', 'h-mixed'].includes(path.basename(root))) addRegression(c);
   for (const [f, content] of Object.entries(files)) {
@@ -86,7 +86,7 @@ function candCommit(root, name, files) {
   git(c, 'commit', '-m', 'candidate work');
 }
 function latestCandidateBundle(root) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   const dirs = fs.readdirSync(d).filter((x) => x.endsWith('-candidate')).sort();
   assert(dirs.length > 0, 'no candidate bundle written');
   const b = JSON.parse(fs.readFileSync(path.join(d, dirs.at(-1), 'verification.json'), 'utf8'));
@@ -103,7 +103,7 @@ const SPLIT = ['TECHNICAL EVIDENCE: PROVEN', 'SUBJECTIVE ACCEPTANCE: USER JUDGME
 // none of that moves regardless of wording.
 function verifyLadder(root, name, expectBranch) {
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const r = canary(['isolate', '--verify', name, root], root);
+  const r = amabie(['isolate', '--verify', name, root], root);
   const b = latestCandidateBundle(root);
   const open = (b.obligations ?? []).filter((x) => x.status === 'unproven');
   const met = (b.obligations ?? []).filter((x) => x.status === 'met');
@@ -131,11 +131,11 @@ function verifyLadder(root, name, expectBranch) {
   }
   for (const x of open) assert(r.stdout.includes(`[${x.id}] UNPROVEN`), `${name}: open obligation ${x.id} not listed on stdout`);
   assert(/next:/.test(r.stdout), `${name}: block message must say what to do next (PART III)`);
-  const p = canary(['isolate', '--promote', name, root], root);
+  const p = amabie(['isolate', '--promote', name, root], root);
   assert(p.status !== 0, `${name}: promotion must stay locked after ${expectBranch === 'split' ? 'a split verdict' : 'NOT PROVEN'}`);
   assert(!/ELIGIBLE|PROMOTED|APPLIED/.test(p.stdout), `${name}: promote stdout leaks apply wording:\n${p.stdout}`);
-  const promo = fs.existsSync(path.join(root, '.canary', 'evidence'))
-    ? fs.readdirSync(path.join(root, '.canary', 'evidence')).filter((x) => x.endsWith('-promotion')) : [];
+  const promo = fs.existsSync(path.join(root, '.amabie', 'evidence'))
+    ? fs.readdirSync(path.join(root, '.amabie', 'evidence')).filter((x) => x.endsWith('-promotion')) : [];
   assertEq(promo.length, 0, `${name}: zero promotion bundles`);
   assertEq(git(root, 'rev-parse', 'HEAD'), headBefore, `${name}: trusted base HEAD moved`);
   return { r, b };
@@ -147,7 +147,7 @@ check('A positive control: bugfix WITH a test change → CANDIDATE PASS, zero la
   register(root, 'fix the login crash', ['bugfix']);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/login.js': 'fixed\n', 'tests/login.test.js': '// reproduces the crash\n' });
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 0, `A: must PASS: ${r.stdout}`);
   assert(/CANDIDATE PASS/.test(r.stdout), 'A: PASS line');
   assert(!/TECHNICAL EVIDENCE|SUBJECTIVE ACCEPTANCE/.test(r.stdout), 'A: PASS must not carry ladder ceremony');
@@ -185,7 +185,7 @@ check('E multi task with requirements: bundle and branch always agree, whatever 
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/checkout.js': 'rewritten\n' });
   // expect what the bundle implies; verifyLadder cross-checks both directions
-  const probe = canary(['isolate', '--verify', 'c', root], root);
+  const probe = amabie(['isolate', '--verify', 'c', root], root);
   assert(probe.status !== 0, 'E: open duties (per-requirement at minimum) must block PASS');
   const b = latestCandidateBundle(root);
   const open = b.obligations.filter((x) => x.status === 'unproven');

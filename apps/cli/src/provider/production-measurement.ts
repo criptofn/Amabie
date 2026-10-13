@@ -6,7 +6,7 @@ import fs from 'node:fs';
 // v1.4 — canonical filesystem identity (expands Windows 8.3 short names). The anchor stores the
 // store's identity and every later check compares it against a freshly read one; a short/long
 // spelling difference made a valid record read as "foreign custody" / "generation changed".
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -50,7 +50,7 @@ function safeRead(file: string): Buffer {
 }
 const read = <T>(file: string): T => JSON.parse(safeRead(file).toString('utf8')) as T;
 export function anchorPath(store: string): string {
-  return path.join(productionHost().profile, '.canary-native-authorities', `${hash(path.resolve(store).toLowerCase())}.json`);
+  return path.join(productionHost().profile, '.amabie-native-authorities', `${hash(path.resolve(store).toLowerCase())}.json`);
 }
 interface Anchor { store: string; deployment: string; publicKey: string; nonce: string; current: string | null }
 export function measurementGeneration(store: string): { generation: string; measurement: string | null } {
@@ -123,7 +123,7 @@ export interface ProductionTranscript {
 }
 interface PipeReport { nonce?: string; error?: string; broker?: Array<{ response?: { status?: number } }> }
 interface Payload {
-  schema: 'canary-production-measurement/2'; deployment: string; store: string;
+  schema: 'amabie-production-measurement/2'; deployment: string; store: string;
   host: string; user: string; tools: string; nonce: string; startedAt: number; finishedAt: number;
   observations: ProductionTranscript;
 }
@@ -162,7 +162,7 @@ function checkObservations(p: Payload, enrollment: { package: string; verifier: 
         attacks[0]?.executed !== true || attacks[0]?.allowed !== false || ![5, 6, -1073741816].includes(attacks[0]?.error ?? 0)) throw new Error(`native attack/control failed: ${id}`);
     }
     const targets = [path.join(p.store, 'producer.key'), path.join(p.store, 'enrollment.json'), anchorPath(p.store), path.join(enrollment.base, '.git', 'HEAD'),
-      path.join(os.tmpdir(), `canary-production-${p.deployment}-${review.request.candidate}`, '.git')];
+      path.join(os.tmpdir(), `amabie-production-${p.deployment}-${review.request.candidate}`, '.git')];
     for (let i = 0; i < targets.length; i++) {
       if (n.control.attempts.find(x => x.id === `authority-write-${i}`)?.target !== targets[i] ||
           n.restricted.attempts.find(x => x.id === `authority-write-${i}`)?.target !== targets[i]) throw new Error('foreign authority attack target');
@@ -209,7 +209,7 @@ export function publishProductionMeasurement(store: string, nonce: string, start
   const e = read<{ id: string; package: string; verifier: string; project: string; base: string }>(path.join(store, 'enrollment.json'));
   const host = productionHost();
   if (anchor.nonce !== nonce || anchor.deployment !== e.id || anchor.store !== canonicalPath(store)) throw new Error('measurement generation changed');
-  const payload: Payload = { schema: 'canary-production-measurement/2', deployment: e.id, store: anchor.store, host: host.host, user: host.user,
+  const payload: Payload = { schema: 'amabie-production-measurement/2', deployment: e.id, store: anchor.store, host: host.host, user: host.user,
     tools: productionToolsDigest(store), nonce, startedAt, finishedAt: Date.now(), observations };
   checkObservations(payload, e);
   const signature = crypto.sign(null, Buffer.from(JSON.stringify(payload)), safeRead(path.join(store, 'producer.key'))).toString('base64');
@@ -223,7 +223,7 @@ export function readProductionMeasurement(store: string, now = Date.now()): { va
     const record = read<{ payload: Payload; signature: string }>(path.join(store, PRODUCTION_MEASUREMENT));
     const p = record.payload, e = read<{ id: string; package: string; verifier: string; project: string; base: string; pipe: string }>(path.join(store, 'enrollment.json'));
     const host = productionHost();
-    if (p.schema !== 'canary-production-measurement/2' || p.store !== canonicalPath(store) || anchor.store !== p.store ||
+    if (p.schema !== 'amabie-production-measurement/2' || p.store !== canonicalPath(store) || anchor.store !== p.store ||
         p.deployment !== e.id || anchor.deployment !== e.id || p.nonce !== anchor.nonce || anchor.current !== hash(JSON.stringify(record))) throw new Error('copied, replayed or foreign deployment record');
     if (!crypto.verify(null, Buffer.from(JSON.stringify(p)), anchor.publicKey, Buffer.from(record.signature, 'base64'))) throw new Error('unauthenticated measurement producer');
     if (p.host !== host.host || p.user !== host.user) throw new Error('foreign host identity');
@@ -246,7 +246,7 @@ export function readProductionMeasurement(store: string, now = Date.now()): { va
       throw new Error(`live production broker unavailable — ${why}`);
     }
     const live = JSON.parse(heartbeat.stdout);
-    if (live.status !== 200 || live.payload?.schema !== 'canary-production-heartbeat/2' || live.payload.deployment !== e.id || live.payload.nonce !== nonce ||
+    if (live.status !== 200 || live.payload?.schema !== 'amabie-production-heartbeat/2' || live.payload.deployment !== e.id || live.payload.nonce !== nonce ||
         live.payload.generation !== anchor.nonce || live.payload.measurement !== anchor.current ||
         !crypto.verify(null, Buffer.from(JSON.stringify(live.payload)), anchor.publicKey, Buffer.from(live.signature, 'base64'))) throw new Error('live broker identity not proven');
     return { valid: true, reason: 'production deployment and executed attack transcript verified', payload: p };

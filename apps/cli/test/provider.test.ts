@@ -20,14 +20,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provider-'));
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provider-'));
 
 import { measuredCapabilities, requireAuthorizationLevel, requireMeasuredLevel, type BoundaryControl } from '../src/platform-boundary.js';
 import { measureBoundary, parseStoreWriters, providerConfigured, installPlan, installPlanFor, observeSandboxPrimitive, storeDaclGrantsWrite } from '../src/provider/boundary.js';
 import { RestrictedRunner, providerStatus, providerUninstallPlan } from '../src/provider/service.js';
 import { callBroker, createBrokerServer, encodeFrame, ensureBrokerToken, tokenMatches, validateWireRequest } from '../src/provider/ipc.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provider-test-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provider-test-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const ALL_CONTROLS: BoundaryControl[] = ['authorityCustody', 'workerFilesystem', 'verificationSandbox', 'authenticatedReview', 'protectedPromotion', 'networkEgress'];
@@ -53,8 +53,8 @@ describe('icacls parsing: a read grant is not a write grant', () => {
   });
 
   it('a read-only ACE naming the worker is NOT a write grant', () => {
-    const out = 'C:\\store DESKTOP\\canary-worker:(OI)(CI)(RX)\r\n        BUILTIN\\Administrators:(F)';
-    assert.equal(storeDaclGrantsWrite(out, 'canary-worker'), false);
+    const out = 'C:\\store DESKTOP\\amabie-worker:(OI)(CI)(RX)\r\n        BUILTIN\\Administrators:(F)';
+    assert.equal(storeDaclGrantsWrite(out, 'amabie-worker'), false);
     assert.equal(storeDaclGrantsWrite(out, 'Administrators'), true);
     // The directory path must never be mistaken for a principal.
     assert.equal(storeDaclGrantsWrite(out, 'C:\\store'), false);
@@ -129,7 +129,7 @@ describe('boundary measurement on a real host is honest about what it cannot see
   it('a provider is only "configured" when it left a trace', () => {
     const store = { root: path.join(TMP, 'no-trace') };
     assert.equal(providerConfigured(store, {}), false);
-    assert.equal(providerConfigured(store, { CANARY_WORKER_USER: 'canary-worker' }), true);
+    assert.equal(providerConfigured(store, { AMABIE_WORKER_USER: 'amabie-worker' }), true);
     fs.mkdirSync(store.root, { recursive: true });
     ensureBrokerToken(store.root);
     assert.equal(providerConfigured(store, {}), true, 'a store token means a provider ran here');
@@ -141,7 +141,7 @@ describe('boundary measurement on a real host is honest about what it cannot see
 
   it('providerStatus explains HARDENED is unavailable and flags pending activation', () => {
     const store = { root: path.join(TMP, 'status-store') };
-    const s = providerStatus(store, { CANARY_WORKER_USER: 'canary-worker' });
+    const s = providerStatus(store, { AMABIE_WORKER_USER: 'amabie-worker' });
     assert.equal(s.hardened, false);
     assert.equal(s.unavailable.length, ALL_CONTROLS.length);
     assert.equal(s.activationPending, true, 'a worker is enrolled but no deployment is measured and no service runs');
@@ -209,7 +209,7 @@ describe('the install lifecycle is explicit, privileged and reversible', () => {
     // path whose only evidence is that it looks right. Execution must still
     // happen on Linux, and `hostVerified: false` travels with the plan so no
     // reader can mistake coverage for proof.
-    const plan = installPlanFor('linux', '/var/lib/canary/trust', 'canary-worker', '/opt/canary');
+    const plan = installPlanFor('linux', '/var/lib/amabie/trust', 'amabie-worker', '/opt/amabie');
     assert.equal(plan.platform, 'linux');
     assert.equal(plan.hostVerified, false, 'the Linux path has never been executed here and must not claim it');
     const ids = plan.steps.map((s) => s.id);
@@ -224,7 +224,7 @@ describe('the install lifecycle is explicit, privileged and reversible', () => {
     // The unit file is the enforcement point, so it is INSPECTABLE, not a black box.
     const unit = plan.files?.find((f) => f.path.endsWith('.service'));
     assert.ok(unit, 'the systemd unit must be part of the plan');
-    for (const line of ['User=canary-broker', 'NoNewPrivileges=true', 'ProtectSystem=strict', 'ProtectHome=true', `ReadWritePaths=/var/lib/canary/trust`]) {
+    for (const line of ['User=amabie-broker', 'NoNewPrivileges=true', 'ProtectSystem=strict', 'ProtectHome=true', `ReadWritePaths=/var/lib/amabie/trust`]) {
       assert.ok(unit!.content.includes(line), `the unit must set ${line}`);
     }
     assert.ok(plan.postState.some((p) => /IMPLEMENTED_BUT_HOST_UNVERIFIED/.test(p)),
@@ -233,7 +233,7 @@ describe('the install lifecycle is explicit, privileged and reversible', () => {
   });
 
   it('the WINDOWS plan is the host-verified one', () => {
-    const plan = installPlanFor('win32', 'C:\\store', 'canary-worker', 'C:\\ProgramData\\Canary');
+    const plan = installPlanFor('win32', 'C:\\store', 'amabie-worker', 'C:\\ProgramData\\Amabie');
     assert.equal(plan.hostVerified, true);
     assert.ok(plan.steps.some((s) => s.argv[0] === 'icacls'));
     assert.ok(plan.steps.some((s) => s.argv[0] === 'sc.exe' && s.argv[1] === 'create'));
@@ -251,15 +251,15 @@ describe('the restricted runner refuses rather than running as the broker', () =
   });
 
   it('builds a platform-shaped launch only WITH an identity', () => {
-    const r = new RestrictedRunner('canary-worker', null);
+    const r = new RestrictedRunner('amabie-worker', null);
     const argv = r.launchArgv('python', ['-m', 'unittest'], TMP);
     assert.ok(argv !== null);
     if (process.platform === 'win32') assert.equal(argv![0], 'schtasks');
-    else assert.deepEqual(argv!.slice(0, 4), ['sudo', '-n', '-u', 'canary-worker']);
+    else assert.deepEqual(argv!.slice(0, 4), ['sudo', '-n', '-u', 'amabie-worker']);
   });
 
   it('an identity alone is not enough on Windows: it still refuses, because no runner is installed', () => {
-    const r = new RestrictedRunner('canary-worker', { kind: 'identity-runner', account: 'canary-worker' });
+    const r = new RestrictedRunner('amabie-worker', { kind: 'identity-runner', account: 'amabie-worker' });
     if (process.platform === 'win32') {
       assert.match(r.assertUsable()!, /BLOCKED/);
     } else {
@@ -270,7 +270,7 @@ describe('the restricted runner refuses rather than running as the broker', () =
 
 describe('IPC: a closed surface with binding, not a remote control', () => {
   it('refuses unknown operations and caller-supplied fields', () => {
-    const ok = { schema: 'canary-ipc/1', token: 'x'.repeat(32), id: 1, op: 'broker.status' };
+    const ok = { schema: 'amabie-ipc/1', token: 'x'.repeat(32), id: 1, op: 'broker.status' };
     assert.equal(validateWireRequest(ok).op, 'broker.status');
     assert.throws(() => validateWireRequest({ ...ok, op: 'broker.execute' }), /not in the worker surface/);
     // The confused-deputy vector: a client trying to name a command or a path.
@@ -294,7 +294,7 @@ describe('IPC: a closed surface with binding, not a remote control', () => {
   });
 
   it('serves a real call, and refuses the wrong token, unknown ops and stale generations', async () => {
-    const pipe = `canary-test-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+    const pipe = `amabie-test-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
     const token = crypto.randomBytes(32).toString('hex');
     const seen: string[] = [];
     const server = createBrokerServer({

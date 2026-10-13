@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * A REAL Rust project verified end to end by Canary (v1.1 Phase 2 follow-up).
+ * A REAL Rust project verified end to end by Amabie (v1.1 Phase 2 follow-up).
  *
  * THE DEFECT THIS PROVES FIXED, measured: setup pinned whatever `cargo` PATH
  * resolved to — which for a rustup install is the PROXY at `<cargo home>/bin` —
- * and that proxy cannot run inside Canary's sanitized environment
+ * and that proxy cannot run inside Amabie's sanitized environment
  * ("rustup could not choose a version of cargo to run": RUSTUP_HOME/HOME are
  * redirected). So a Rust plan could be discovered, sealed, and then never
  * execute. The real toolchain binary at `<rustup home>/toolchains/<tc>/bin/cargo`
@@ -73,14 +73,14 @@ const env = {
   ...(rust.toolchains.includes('stable-x86_64-pc-windows-gnu') ? { RUSTUP_TOOLCHAIN: 'stable-x86_64-pc-windows-gnu' } : {}),
 };
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-rust-e2e-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-rust-e2e-'));
 const root = path.join(TMP, 'crate');
 fs.mkdirSync(path.join(root, 'src'), { recursive: true });
 // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
 // `<root>/.claude` or the operator's `~/.claude`, so without this the fixture passed only on a
 // machine that has Claude Code installed and failed on every CI runner.
 fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-fs.writeFileSync(path.join(root, 'Cargo.toml'), '[package]\nname = "canary_e2e"\nversion = "0.1.0"\nedition = "2021"\n');
+fs.writeFileSync(path.join(root, 'Cargo.toml'), '[package]\nname = "amabie_e2e"\nversion = "0.1.0"\nedition = "2021"\n');
 fs.writeFileSync(path.join(root, 'src', 'lib.rs'), [
   'pub fn greet(name: &str) -> String { format!("hello {name}") }',
   '',
@@ -97,18 +97,18 @@ const run = (args, timeout = 900_000) => spawnSync(process.execPath, [CLI, ...ar
 const git = (...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 60_000 });
 
 assert(git('init', '-b', 'main').status === 0, 'git init failed');
-git('config', 'user.email', 'rust@canary.local');
+git('config', 'user.email', 'rust@amabie.local');
 git('config', 'user.name', 'Rust E2E');
 git('add', '-A');
 git('commit', '-m', 'initial');
 
 const setup = run(['setup', '--yes']);
-console.log(`\n--- canary setup (exit ${setup.status}) ---`);
+console.log(`\n--- amabie setup (exit ${setup.status}) ---`);
 console.log(`${setup.stdout ?? ''}${setup.stderr ?? ''}`.trim().split('\n').slice(0, 14).join('\n'));
 
 check('setup seals the REAL toolchain binary, not the rustup proxy', () => {
   assert(setup.status === 0, `setup must succeed on a crate:\n${setup.stdout}${setup.stderr}`);
-  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
   const argv0s = (cfg.plan ?? []).filter((s) => s.argv !== undefined).map((s) => s.argv[0]);
   assert(argv0s.length >= 2, `expected cargo argv steps: ${JSON.stringify(cfg.plan)}`);
   for (const a of argv0s) {
@@ -121,7 +121,7 @@ check('setup seals the REAL toolchain binary, not the rustup proxy', () => {
 });
 
 const doctor = run(['doctor']);
-console.log(`\n--- canary doctor (exit ${doctor.status}) ---`);
+console.log(`\n--- amabie doctor (exit ${doctor.status}) ---`);
 console.log(`${doctor.stdout ?? ''}${doctor.stderr ?? ''}`.trim().split('\n').slice(-12).join('\n'));
 
 check('doctor EXECUTES the Rust plan under the sanitized env and reaches READY', () => {
@@ -151,5 +151,5 @@ check('the Rust checks really ran (a failing test would be reported, not ignored
 
 console.log(`\n=== rust project e2e: ${failures === 0 ? 'ALL PASS' : `${failures} FAIL`} ===`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 || process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 || process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(failures === 0 ? 0 : 1);

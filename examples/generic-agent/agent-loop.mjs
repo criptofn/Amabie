@@ -13,14 +13,14 @@
  * gate. Nothing here can mint a verdict: it only reports what Canary decided.
  *
  * usage:  node agent-loop.mjs [project-dir]
- * env:    CANARY_CLI  absolute path to apps/cli/dist/src/main.js (run from a
+ * env:    AMABIE_CLI  absolute path to apps/cli/dist/src/main.js (run from a
  *                     checkout, where `canary` is not on PATH)
  *         CANARY_BIN  the installed `canary` executable (default: `canary`)
  */
 import { spawnSync } from 'node:child_process';
 
 const dir = process.argv[2] ?? process.cwd();
-const cli = process.env.CANARY_CLI;
+const cli = process.env.AMABIE_CLI ?? process.env.CANARY_CLI;
 const bin = process.env.CANARY_BIN ?? 'canary';
 
 function canary(args) {

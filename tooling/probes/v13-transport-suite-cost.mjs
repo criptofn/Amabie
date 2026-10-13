@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const fixture = path.join(repo, 'tooling/benchmark/fixtures/stateful-replay/project');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-suite-cost-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-suite-cost-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }

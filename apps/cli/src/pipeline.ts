@@ -8,20 +8,20 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { runCommand, sanitizedEnv, resolveNpmCli, CanaryError, type WorkspaceLayout } from '@canary-rn/support';
-import { validateSpec, type ExperimentSpec } from '@canary-rn/planner';
-import { auditFixtureDir, expectedExtractedDir } from '@canary-rn/workspace';
-import { downloadTarball } from '@canary-rn/github';
-import { staticFingerprint, withNpmVersion } from '@canary-rn/environment';
+import { runCommand, sanitizedEnv, resolveNpmCli, AmabieError, type WorkspaceLayout } from '@amabie/support';
+import { validateSpec, type ExperimentSpec } from '@amabie/planner';
+import { auditFixtureDir, expectedExtractedDir } from '@amabie/workspace';
+import { downloadTarball } from '@amabie/github';
+import { staticFingerprint, withNpmVersion } from '@amabie/environment';
 import {
   Recorder, roundEvidence as execRoundEvidence, ensureObserverPreload,
   type ExecResult, type ExpansionPlan,
-} from '@canary-rn/executor';
-import { buildPipeline, machineRules, DEFAULT_RULE_NAMES } from '@canary-rn/normalizers';
-import { diffTrees, escapePkgKey, extractFailingTestNamesFor, parseSummaryCountsFor, classifyTreeObservation, dependencyInTree, type DepTree, type TreeStatus } from '@canary-rn/comparator';
-import { classify, applyConfinementGuard, type RoundFact } from '@canary-rn/classification';
-import { EVIDENCE_SCHEMA_VERSION, validateBundle, integrityFor, type EvidenceBundle, type RoundEvidence, type TreeSnapshotRef } from '@canary-rn/evidence-schema';
-import { sha256hex } from '@canary-rn/hashing';
+} from '@amabie/executor';
+import { buildPipeline, machineRules, DEFAULT_RULE_NAMES } from '@amabie/normalizers';
+import { diffTrees, escapePkgKey, extractFailingTestNamesFor, parseSummaryCountsFor, classifyTreeObservation, dependencyInTree, type DepTree, type TreeStatus } from '@amabie/comparator';
+import { classify, applyConfinementGuard, type RoundFact } from '@amabie/classification';
+import { EVIDENCE_SCHEMA_VERSION, validateBundle, integrityFor, type EvidenceBundle, type RoundEvidence, type TreeSnapshotRef } from '@amabie/evidence-schema';
+import { sha256hex } from '@amabie/hashing';
 import { runnerIdentitiesFromSealedPlan } from './runner-authority.js';
 
 const NODE = process.execPath;
@@ -32,7 +32,7 @@ const NODE_DIR = path.dirname(NODE);
 // never silently masquerades as a measurement.
 const NPM_CLI = resolveNpmCli() ?? path.join(NODE_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const SYSTEMROOT = process.env['SystemRoot'] ?? 'C:\\WINDOWS';
-export const CANARY_VERSION = '1.5.0';
+export const AMABIE_VERSION = '2.0.0';
 
 export interface PipelineResult {
   bundle: EvidenceBundle;
@@ -73,7 +73,7 @@ export interface PipelineDeps {
    * spec. The production CLI (main.ts) constructs no PipelineDeps, so a
    * spec file can never reach this grant.
    */
-  allowCanaryDoubleOrigin?: boolean;
+  allowAmabieDoubleOrigin?: boolean;
   /**
    * IN-PROCESS AUTHORITY for a non-package runner's identity (v1.1 Phase 2).
    *
@@ -81,7 +81,7 @@ export interface PipelineDeps {
    * repo-side tree hash the way mocha is. The authority is therefore an explicit
    * statement from the CALLER: "this is the interpreter I have authorized", by
    * version and by a digest of the interpreter's own bytes. It rides the same
-   * in-process channel as `allowCanaryDoubleOrigin` — the production CLI
+   * in-process channel as `allowAmabieDoubleOrigin` — the production CLI
    * constructs no PipelineDeps, so a spec file, env or argv can never reach it,
    * and a spec that ships its own interpreter earns ABSENT
    * (`runner-identity-unpinned`) instead of a strong label.
@@ -90,9 +90,9 @@ export interface PipelineDeps {
 }
 
 /**
- * Public entry: runs the experiment, translating Canary's own POLICY
- * refusals (CanaryError — e.g. a $bin:mocha argv that tries to load its own
- * --require, or a spec flag that collides with Canary's protected config)
+ * Public entry: runs the experiment, translating Amabie's own POLICY
+ * refusals (AmabieError — e.g. a $bin:mocha argv that tries to load its own
+ * --require, or a spec flag that collides with Amabie's protected config)
  * into InfraAbort: the operator-visible outcome of a refused run is
  * INFRASTRUCTURE_FAILURE (exit 2), an honest infra-equivalent degrade —
  * never a PASS-adjacent verdict and never an unclassified crash.
@@ -104,7 +104,7 @@ export async function runExperiment(
     return await runExperimentInner(specRaw, repoRoot, quiet, deps);
   } catch (e) {
     if (e instanceof InfraAbort || (e instanceof Error && e.name === 'InfraAbort')) throw e;
-    if (e instanceof CanaryError) throw new InfraAbort(`spec refused by Canary policy: ${e.message}`);
+    if (e instanceof AmabieError) throw new InfraAbort(`spec refused by Amabie policy: ${e.message}`);
     throw e;
   }
 }
@@ -119,7 +119,7 @@ async function runExperimentInner(
   }
   const spec = validation.spec;
 
-  const WS = path.join(repoRoot, '.canary-runs',
+  const WS = path.join(repoRoot, '.amabie-runs',
     `exp-${spec.id}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   const FIXTURE = path.join(WS, 'fixture');
   const ART = path.join(WS, 'artifacts');
@@ -152,7 +152,7 @@ async function runExperimentInner(
   const runnerIdentities = { ...sealedGrants, ...(deps.runnerIdentities ?? {}) };
   const rec = new Recorder({
     ws, nodeDir: NODE_DIR, npmCli: NPM_CLI, artifactsDir: ART, pipeline,
-    allowCanaryDoubleOrigin: deps.allowCanaryDoubleOrigin === true,
+    allowAmabieDoubleOrigin: deps.allowAmabieDoubleOrigin === true,
     ...(Object.keys(runnerIdentities).length > 0 ? { runnerIdentities } : {}),
   });
   const subs = { dep: spec.dependency.package, baseline: spec.dependency.baseline, candidate: spec.dependency.candidate };
@@ -313,7 +313,7 @@ async function runExperimentInner(
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     runId: path.basename(WS),
     createdAt: new Date().toISOString(),
-    canaryVersion: CANARY_VERSION,
+    canaryVersion: AMABIE_VERSION,
     experimentId: spec.id,
     dependency: {
       package: spec.dependency.package,
@@ -378,7 +378,7 @@ async function runExperimentInner(
   const bundleIssues = validateBundle(bundle);
   fs.writeFileSync(path.join(ART, 'evidence.json'), JSON.stringify(bundle, null, 2));
   fs.writeFileSync(path.join(ART, 'tree-drift.json'), JSON.stringify(drift, null, 2));
-  fs.writeFileSync(path.join(repoRoot, '.canary-runs', `latest-${spec.id}.json`),
+  fs.writeFileSync(path.join(repoRoot, '.amabie-runs', `latest-${spec.id}.json`),
     JSON.stringify({ evidence: path.join(ART, 'evidence.json'), workspace: WS }, null, 2));
 
   // Runner-aware, like the round that produced these bytes: the plan for the first
@@ -628,7 +628,7 @@ async function treeHash(
   ws: WorkspaceLayout, dependency: string, artifactsDir: string, arm: 'baseline' | 'candidate',
 ): Promise<TreeObservation> {
   // post-glm F6e: same re-establish contract as the executor install path —
-  // at the moment npm reads it, the userconfig must be Canary's empty file,
+  // at the moment npm reads it, the userconfig must be Amabie's empty file,
   // not whatever workspace-writable code left there since creation.
   fs.writeFileSync(path.join(ws.root, 'empty.npmrc'), '');
   const r = await runCommand({

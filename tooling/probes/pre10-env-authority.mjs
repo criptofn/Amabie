@@ -51,11 +51,11 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd, env) {
+function amabie(args, cwd, env) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 300_000, env: env ?? process.env });
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-envauth-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-envauth-'));
 
 /** One poison pack: a lying bin dir + a preload that logs which process
  *  loaded it + npm env steering. Logs are per-exe so "did it run?" is
@@ -86,16 +86,16 @@ function makePoison(tag) {
   const clean = () => { for (const p of Object.values(logs)) try { fs.unlinkSync(p); } catch { /* absent = clean */ } };
   return { env, logs, clean };
 }
-/** If the preload EVER ran in a Canary child, that child's script path shows
+/** If the preload EVER ran in a Amabie child, that child's script path shows
  *  up. The CLI process itself (attacker-launched) is allowed: only main.js. */
 function assertPreloadNeverReachedChildren(p) {
   if (!fs.existsSync(p)) return;
   const lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
   const bad = lines.filter((l) => !l.endsWith('main.js'));
-  assert(bad.length === 0, `NODE_OPTIONS preload leaked into Canary children: ${bad.join(', ')}\n       (log: ${p})`);
+  assert(bad.length === 0, `NODE_OPTIONS preload leaked into Amabie children: ${bad.join(', ')}\n       (log: ${p})`);
 }
 function readBundle(root, suffix) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   const dirs = fs.existsSync(d) ? fs.readdirSync(d).filter((x) => x.endsWith(`-${suffix}`)).sort() : [];
   assert(dirs.length > 0, `no "${suffix}" evidence bundle in ${d}`);
   const dir = path.join(d, dirs.at(-1));
@@ -103,14 +103,14 @@ function readBundle(root, suffix) {
 }
 /** The invariant, checked over every step of a bundle: named trusted bytes. */
 function assertEvidenceNamesTrustedPaths(bundle, { not = [] } = {}) {
-  assertEq(bundle.execPolicy, 'canary-sanitized/1', 'bundle execPolicy');
+  assertEq(bundle.execPolicy, 'amabie-sanitized/1', 'bundle execPolicy');
   assert(bundle.steps.length > 0, 'bundle has no steps to inspect');
   for (const s of bundle.steps) {
     assert(s.exec && typeof s.exec.file === 'string' && s.exec.file !== '', `step ${s.kind}: exec.file must name the resolved bytes`);
     assert(TRUSTED.some((td) => s.exec.file.startsWith(td + path.sep)), `step ${s.kind}: exec.file ${s.exec.file} outside trusted dirs ${TRUSTED.join(', ')}`);
     for (const bad of not) assert(!s.exec.file.includes(bad), `step ${s.kind}: exec.file touches the poison dir ${bad}`);
     assert(s.exec.via === 'node-entry' || s.exec.via === 'trusted-path' || s.exec.via === 'trusted-cmd' || s.exec.via === 'trusted-git', `step ${s.kind}: exec.via ${s.exec.via}`);
-    assertEq(s.exec.policy, 'canary-sanitized/1', `step ${s.kind}: exec.policy`);
+    assertEq(s.exec.policy, 'amabie-sanitized/1', `step ${s.kind}: exec.policy`);
     if (/^[0-9a-f]{64}$/.test(s.exec.digest ?? '')) {
       const real = crypto.createHash('sha256').update(fs.readFileSync(s.exec.file)).digest('hex');
       assertEq(s.exec.digest, real, `step ${s.kind}: exec.digest must match the bytes it names`);
@@ -137,18 +137,18 @@ function makeRepo(name, scripts, files) {
   }
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts: scripts ?? { test: PASS, build: BUILD } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
 function isolate(root, name) {
-  const r = canary(['isolate', name, root], root);
+  const r = amabie(['isolate', name, root], root);
   assert(r.status === 0, `isolate failed: ${r.stdout}\n${r.stderr}`);
-  return path.join(root, '.canary', 'candidates', name);
+  return path.join(root, '.amabie', 'candidates', name);
 }
 function candCommit(c, files, msg = 'candidate work') {
   for (const [f, content] of Object.entries(files)) {
@@ -159,7 +159,7 @@ function candCommit(c, files, msg = 'candidate work') {
   git(c, 'commit', '-m', msg);
 }
 const hasPromotionBundle = (root) => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   return fs.existsSync(d) && fs.readdirSync(d).some((x) => x.endsWith('-promotion'));
 };
 
@@ -177,7 +177,7 @@ check('A PATH liar cannot forge PASS over broken code; shadowed git never runs; 
     'tests/regress.test.js': '// honest-looking regression artifact\n',
   });
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const v = canary(['isolate', '--verify', 'c', root], root, poison.env);
+  const v = amabie(['isolate', '--verify', 'c', root], root, poison.env);
   assertEq(v.status, 2, `A: broken plan + liar env must NOT reach PASS:\n${v.stdout}`);
   assert(/CANDIDATE FAIL/.test(v.stdout), `A: FAIL verdict expected:\n${v.stdout}`);
   const { dir, b } = readBundle(root, 'candidate');
@@ -189,7 +189,7 @@ check('A PATH liar cannot forge PASS over broken code; shadowed git never runs; 
   assert(!fs.existsSync(poison.logs.gitLog), 'A: shadowed git was NEVER executed');
   assertPreloadNeverReachedChildren(poison.logs.preLog);
   assertEvidenceNamesTrustedPaths(b, { not: ['poison-a'] });
-  const p = canary(['isolate', '--promote', 'c', root], root, poison.env);
+  const p = amabie(['isolate', '--promote', 'c', root], root, poison.env);
   assert(p.status !== 0, `A: promotion of FAILed code must refuse:\n${p.stdout}`);
   assertEq(git(root, 'rev-parse', 'HEAD'), headBefore, 'A: base HEAD unmoved');
   assert(!hasPromotionBundle(root), 'A: zero accepted bundles');
@@ -201,18 +201,18 @@ check('B honest candidate PASSes and promotes with byte-verified trusted-path ev
     'scripts/brittle.js': "const fs = require('node:fs'); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
     'tests/expected.json': '2\n',
   });
-  const t = canary(['task', 'fix the crash', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `B: task: ${t.stdout}`);
   const poison = makePoison('b'); poison.clean();
   const c = isolate(root, 'b1');
   // This control changes only a test file, so the legitimate no-behavior-change
   // exemption keeps the hardening proof focused on trusted execution paths.
   candCommit(c, { 'src/app.js': 'module.exports = 3;\n', 'tests/expected.json': '3\n', 'tests/regress.test.js': '// regression test present\n' });
-  const v = canary(['isolate', '--verify', 'b1', root], root);
+  const v = amabie(['isolate', '--verify', 'b1', root], root);
   assertEq(v.status, 0, `B: honest green candidate must PASS:\n${v.stdout}`);
   assertEvidenceNamesTrustedPaths(readBundle(root, 'candidate').b, { not: ['poison-b'] });
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const p = canary(['isolate', '--promote', 'b1', root], root);
+  const p = amabie(['isolate', '--promote', 'b1', root], root);
   assertEq(p.status, 0, `B: positive control promotion:\n${p.stdout}`);
   assert(git(root, 'rev-parse', 'HEAD') !== headBefore, 'B: base advanced by the promotion');
   assert(!fs.existsSync(poison.logs.npmLog), 'B: honest path never consults PATH liars either');
@@ -227,18 +227,18 @@ check('C setup under poisoned env: READY is earned by trusted bytes only (detect
   fs.writeFileSync(path.join(root, 'src', 'app.js'), 'module.exports = 1;\n');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'c-setup', private: true, scripts: { test: PASS, build: BUILD } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
   const poison = makePoison('c'); poison.clean();
-  const s = canary(['setup', '--yes', root], root, poison.env);
+  const s = amabie(['setup', '--yes', root], root, poison.env);
   assertEq(s.status, 0, `C: setup must still succeed honestly:\n${s.stdout}`);
   assert(!/99\.99\.99-LIAR/.test(s.stdout), 'C: liar version text must never appear — pm detection used trusted bytes');
   assert(!fs.existsSync(poison.logs.npmLog), 'C: lying npm NEVER ran during detection or smoke');
   assert(!fs.existsSync(poison.logs.gitLog), 'C: shadowed git NEVER ran');
   assertPreloadNeverReachedChildren(poison.logs.preLog);
-  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
   assertEq(cfg.pm, 'npm', 'C: sealed pm recorded');
   assertEvidenceNamesTrustedPaths(readBundle(root, 'setup').b, { not: ['poison-c'] });
 });
@@ -267,18 +267,18 @@ check('D NODE_OPTIONS + npm_config_* + PATH poison during verify: children see a
   fs.writeFileSync(path.join(root, 'src', 'app.js'), 'module.exports = 1;\n');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'd-witness', private: true, scripts: { test: 'node scripts/witness.js', build: BUILD } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s0 = canary(['setup', '--yes', root], root);
+  const s0 = amabie(['setup', '--yes', root], root);
   assertEq(s0.status, 0, `D: baseline setup: ${s0.stdout}`);
-  const t = canary(['task', 'restyle the about page', '--kind', 'ui'], root);
+  const t = amabie(['task', 'restyle the about page', '--kind', 'ui'], root);
   assertEq(t.status, 0, `D: task: ${t.stdout}`);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/about.js': 'styled\n' });
   const poison = makePoison('d'); poison.clean();
-  const v = canary(['isolate', '--verify', 'c', root], root, poison.env);
+  const v = amabie(['isolate', '--verify', 'c', root], root, poison.env);
   const { dir, b } = readBundle(root, 'candidate');
   const test = b.steps.find((x) => x.kind === 'tests');
   assert(test && test.ok && test.exitCode === 0, `D: witness step must be green (child env was clean):\n${JSON.stringify(b.steps.map((x) => [x.kind, x.exitCode]))}`);
@@ -298,19 +298,19 @@ check('E promote under poisoned env: honest PASS still promotes; evidence still 
     'scripts/brittle.js': "const fs = require('node:fs'); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
     'tests/expected.json': '2\n',
   });
-  const t = canary(['task', 'fix the crash', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `E: task: ${t.stdout}`);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/app.js': 'module.exports = 3;\n', 'tests/expected.json': '3\n', 'tests/regress.test.js': '// test\n' });
   const poison = makePoison('e'); poison.clean();
-  const v = canary(['isolate', '--verify', 'c', root], root, poison.env);
+  const v = amabie(['isolate', '--verify', 'c', root], root, poison.env);
   assertEq(v.status, 0, `E: verify under poison must still PASS honestly:\n${v.stdout}`);
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const p = canary(['isolate', '--promote', 'c', root], root, poison.env);
+  const p = amabie(['isolate', '--promote', 'c', root], root, poison.env);
   assertEq(p.status, 0, `E: promote under poison:\n${p.stdout}`);
   assert(git(root, 'rev-parse', 'HEAD') !== headBefore, 'E: base advanced — promotion used trusted git');
   assert(!fs.existsSync(poison.logs.npmLog) && !fs.existsSync(poison.logs.gitLog), 'E: no liar process ran for a single step of it');
-  const pr = fs.readdirSync(path.join(root, '.canary', 'evidence')).filter((x) => x.endsWith('-promotion'));
+  const pr = fs.readdirSync(path.join(root, '.amabie', 'evidence')).filter((x) => x.endsWith('-promotion'));
   assert(pr.length === 1, 'E: exactly one promotion bundle');
   assertEvidenceNamesTrustedPaths(readBundle(root, 'promotion').b, { not: ['poison-e'] });
 });

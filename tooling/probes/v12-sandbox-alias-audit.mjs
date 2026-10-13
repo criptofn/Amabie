@@ -29,7 +29,7 @@ const observer = path.join(repo, 'tooling/test-support/fixtures/alias-observer.c
 const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-alias-audit-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-alias-audit-'));
 const results = [];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let baseline = {};
@@ -51,7 +51,7 @@ const dos = (op, extra = {}) => {
 const map = () => dos('list').map;
 const extraKeys = m => Object.keys(m).filter(k => baseline[k] === undefined).sort();
 /** Letters the LAUNCHER owns: everything new except letters this audit claimed itself. */
-const canaryKeys = (m, claimed = []) => extraKeys(m).filter(k => !claimed.includes(k));
+const amabieKeys = (m, claimed = []) => extraKeys(m).filter(k => !claimed.includes(k));
 const record = (id, passed, evidence) => {
   results.push({ id, passed, evidence });
   console.log(`${passed ? 'PASS' : 'FAIL'} ${id} — ${typeof evidence === 'string' ? evidence : JSON.stringify(evidence)}`);
@@ -115,7 +115,7 @@ try {
   const A = deployment('a'), B = deployment('b');
   deployments.push(A, B);
   A.otherWork = B.work; B.otherWork = A.work;
-  A.authority = { base: A.base, store: A.store, brokerKey: path.join(A.store, 'producer.key'), launcherSource: path.join(repo, 'tools/windows-boundary/CanaryConfinedLauncher.cs') };
+  A.authority = { base: A.base, store: A.store, brokerKey: path.join(A.store, 'producer.key'), launcherSource: path.join(repo, 'tools/windows-boundary/AmabieConfinedLauncher.cs') };
   B.authority = { base: B.base, store: B.store, brokerKey: path.join(B.store, 'producer.key') };
 
   // ── T1/T2: a live run maps exactly one letter, exactly onto its own sandbox ──
@@ -165,8 +165,8 @@ try {
     const during = map();
     const outcome = await r.done;
     const after = map();
-    record('T3-collision-is-not-overwritten', during['Z:'] === claimTarget && canaryKeys(during, ['Z:']).join() === 'Y:',
-      { launcherLetters: canaryKeys(during, ['Z:']), claimedZ: during['Z:'], claimedTarget: claimTarget, carriedBy: during['Y:'] });
+    record('T3-collision-is-not-overwritten', during['Z:'] === claimTarget && amabieKeys(during, ['Z:']).join() === 'Y:',
+      { launcherLetters: amabieKeys(during, ['Z:']), claimedZ: during['Z:'], claimedTarget: claimTarget, carriedBy: during['Y:'] });
     record('T3-run-succeeds-on-another-letter-and-cleans-up',
       outcome.ok === true && outcome.result?.status === 0 && during['Y:'].toLowerCase().includes(A.work.toLowerCase()) && after['Y:'] === undefined && after['Z:'] !== undefined,
       { duringY: during['Y:'], afterY: after['Y:'], afterZ: after['Z:'] });
@@ -190,8 +190,8 @@ try {
     const outcome = await r.done;
     const obs = JSON.parse(fs.readFileSync(report, 'utf8'));
     record('T4-stale-alias-is-skipped-not-reused',
-      during['Z:'] === staleTarget && canaryKeys(during, ['Z:']).join() === 'Y:' && during['Y:'].toLowerCase().includes(A.work.toLowerCase()),
-      { launcherLetters: canaryKeys(during, ['Z:']), staleZ: during['Z:'] });
+      during['Z:'] === staleTarget && amabieKeys(during, ['Z:']).join() === 'Y:' && during['Y:'].toLowerCase().includes(A.work.toLowerCase()),
+      { launcherLetters: amabieKeys(during, ['Z:']), staleZ: during['Z:'] });
     record('T4-stale-alias-cannot-cross-map-a-later-run',
       outcome.ok === true && outcome.result?.status === 0 && obs.aliasRootMarker.allowed === true && obs.cwd.startsWith('Y:'),
       { workerCwd: obs.cwd, markerAllowed: obs.aliasRootMarker.allowed });
@@ -271,8 +271,8 @@ try {
   }
 
   const failures = results.filter(r => !r.passed);
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-alias-audit.json'), JSON.stringify({ baseline, results }, null, 2));
-  console.log(`Alias lifecycle audit: ${results.length - failures.length}/${results.length} passed; evidence: ${path.join(os.tmpdir(), 'canary-alias-audit.json')}`);
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-alias-audit.json'), JSON.stringify({ baseline, results }, null, 2));
+  console.log(`Alias lifecycle audit: ${results.length - failures.length}/${results.length} passed; evidence: ${path.join(os.tmpdir(), 'amabie-alias-audit.json')}`);
   assert.deepEqual(failures.map(f => f.id), [], 'alias lifecycle audit incomplete');
   assert.deepEqual(extraKeys(map()), [], 'audit left the device namespace dirty');
 } finally {

@@ -194,7 +194,7 @@ means the source is changed; see §4 for the artifact caveat.
 
 | # | Step / command | What a user would not know | Proposed fix | Status |
 |---|---|---|---|---|
-| F1 | `canary --help`, bare `canary` | The help exits **3** ("misuse", README.md:681-686) and appends a per-directory status footer. `canary --help && echo ok` never echoes ok; a wrapper that treats non-zero as failure reports Canary as broken while helping. | Print help with exit 0; keep the status footer for the bare invocation (that is genuinely a state answer), or drop it from `--help`. | **NOT changed** — this is the CLI's documented exit-code contract and needs an owner decision, not a wording edit. |
+| F1 | `canary --help`, bare `canary` | The help exited **3** ("misuse", README.md:681-686) and appended a per-directory status footer. `canary --help && echo ok` never echoed ok; a wrapper that treats non-zero as failure reported Canary as broken while helping. | Print help with exit 0; keep the status footer for the bare invocation (that is genuinely a state answer), and drop it from `--help`. | **Fixed** after the original audit: `--help` and `-h` exit 0 with help only; bare invocation and unknown commands remain exit 3. |
 | F2 | `setup`, `agents` | Nothing answers **"is this Canary config mine, or the project's?"** `.mcp.json`, `.claude/settings.json` and `.codex/hooks.json` are tracked PROJECT files; `.canary/` is self-ignored and local; the recorded hook command holds an absolute path valid only on the machine that ran setup. | One sentence each in `setup` and `agents`, naming which files are project-scoped and which are local. | **Fixed** (4C) |
 | F3 | Codex trust step (`setup` line 2652 pre-fix) | It said *what to type* (`/hooks`) but not **what is being approved**, **what Canary changes / does not change**, or **how to undo it** — the three questions a person asks before approving a hook that can interrupt their agent. | Two sentences in `setup`, plus the same three answers in the `canary agents` row. | **Fixed** (4B) |
 | F4 | `checkpoint` block payload on a failing `node --test` | README.md:119-120 promises the message "names the check and the failing test". Measured: the check is named, the **test is not** — because `node --test`'s default spec reporter prints `✖ title (1.2ms)`, a shape `extractFailureIdentities` did not know (TAP `not ok`, mocha `1)`, pytest `FAILED`, `file :: title` were covered). The agent pays a turn to open the log. | Add the spec-reporter shape to `extractFailureIdentities` (`failure-payload.ts`), duration-anchored so the `✖ failing tests:` heading is not mistaken for an identity. Display-only path: it runs after the verdict and cannot change one. | **Fixed** (4D) |
@@ -216,7 +216,7 @@ removed exactly Canary's three; the corrupt-config path never pretended to verif
 
 ## 4. What changed, and what deliberately did not
 
-Changed (source only — see the PENDING-REBUILD caveat at the top):
+Changed during the journey (source-only at that time; rebuilt and remeasured afterwards as noted above):
 
 | File | Change | Friction |
 |---|---|---|
@@ -230,8 +230,6 @@ Changed (source only — see the PENDING-REBUILD caveat at the top):
 
 **Deliberately NOT changed**
 
-- **`canary --help` exit 3** (F1): a documented contract in `README.md:681-686`; changing it is an
-  owner decision, not a first-run wording fix.
 - **F9, F10, F11**: cosmetic or already-disclosed; changing them buys nothing a user can act on.
 - **The dedicated unwritable-store message** (`onboarding.ts:2624`) was left as-is: my input reaches
   the last-resort handler instead, so rerouting it would be an unmeasured change.

@@ -45,7 +45,7 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd, env) {
+function amabie(args, cwd, env) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000, env: env ?? process.env });
 }
 /** A REAL terminal for the human act — util-linux script gives the child a
@@ -60,7 +60,7 @@ if (!TERMINAL.provenRealPty) {
   console.log(`SKIP  acceptance-terminal-provider  ${TERMINAL.skipReason}`);
 }
 const acceptPty = (cwd, args, input) => TERMINAL.run(cwd, args, input);
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-accept-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-accept-'));
 function makeRepo(name) {
   const root = path.join(TMP, name);
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
@@ -71,11 +71,11 @@ function makeRepo(name) {
   fs.writeFileSync(path.join(root, 'src', 'app.js'), 'module.exports = 1;\n');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts: TWO }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
@@ -83,13 +83,13 @@ function register(root, text, kinds, requirements = []) {
   const args = ['task', text];
   for (const k of kinds) args.push('--kind', k);
   for (const r of requirements) args.push('--requirement', r);
-  const t = canary(args, root);
+  const t = amabie(args, root);
   assert(t.status === 0, `task failed: ${t.stdout}\n${t.stderr}`);
 }
 function isolate(root, name) {
-  const r = canary(['isolate', name, root], root);
+  const r = amabie(['isolate', name, root], root);
   assert(r.status === 0, `isolate failed: ${r.stdout}\n${r.stderr}`);
-  return path.join(root, '.canary', 'candidates', name);
+  return path.join(root, '.amabie', 'candidates', name);
 }
 function candCommit(c, files, msg = 'candidate work', proof = true) {
   if (proof) addRegression(c);
@@ -101,32 +101,32 @@ function candCommit(c, files, msg = 'candidate work', proof = true) {
   git(c, 'commit', '-m', msg);
 }
 function latestCandidateBundle(root) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   const dirs = fs.readdirSync(d).filter((x) => x.endsWith('-candidate')).sort();
   assert(dirs.length > 0, 'no candidate bundle written');
   const b = JSON.parse(fs.readFileSync(path.join(d, dirs.at(-1), 'verification.json'), 'utf8'));
   assert(Date.parse(b.at) >= caseStart - 2_000, `newest bundle predates this case: ${b.at}`);
   return b;
 }
-const accPath = (root, name) => path.join(root, '.canary', 'acceptance', `${name}.json`);
+const accPath = (root, name) => path.join(root, '.amabie', 'acceptance', `${name}.json`);
 
 // A — the recovery advice, FOLLOWED VERBATIM, closes the loop end to end.
-check('A happy path: split verdict → printed `canary accept c` run from a pty → re-verify PASS (advice is executable)', () => {
+check('A happy path: split verdict → printed `amabie accept c` run from a pty → re-verify PASS (advice is executable)', () => {
   const root = makeRepo('a-happy');
   register(root, 'make the landing page prettier', ['ui']);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/hero.js': 'new gradient\n' });
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const v1 = canary(['isolate', '--verify', 'c', root], root);
+  const v1 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v1.status, 2, 'A: subjective duty must be open before acceptance');
   assert(/OVERALL COMPLETION: NOT PROVEN/.test(v1.stdout), `A: split verdict expected:\n${v1.stdout}`);
-  const m = v1.stdout.match(/canary accept ([A-Za-z0-9._-]+)/);
+  const m = v1.stdout.match(/amabie accept ([A-Za-z0-9._-]+)/);
   assert(m, 'A: the verdict must PRINT the exact acceptance command');
   const a = acceptPty(root, ['accept', m[1]], `${m[1]}\n`);
   assert(/ACCEPTED from this interactive terminal/.test(a.stdout), `A: pty accept must land:\n${a.stdout}`);
   assert(fs.existsSync(accPath(root, 'c')), 'A: acceptance record written');
   assertEq(git(root, 'rev-parse', 'HEAD'), headBefore, 'A: acceptance must not touch the base');
-  const v2 = canary(['isolate', '--verify', 'c', root], root);
+  const v2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v2.status, 0, `A: after acceptance the candidate must PASS:\n${v2.stdout}`);
   assert(/CANDIDATE PASS/.test(v2.stdout), 'A: PASS line');
   const b = latestCandidateBundle(root);
@@ -140,13 +140,13 @@ check('B mixed task: acceptance never launders an objective gap; proof+acceptanc
   register(root, 'fix the crash and make the dialog prettier', ['bugfix']);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/dialog.js': 'fixed + styled\n' }, 'candidate work', false);
-  const v1 = canary(['isolate', '--verify', 'c', root], root);
+  const v1 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v1.status, 2, 'B: open duties before proof/acceptance');
   assert(/\[regression-evidence\] UNPROVEN \(objective\)/.test(v1.stdout), `B: objective gap named:\n${v1.stdout}`);
   assert(/\[ui-proof\] UNPROVEN \(non-objective\)/.test(v1.stdout), `B: subjective half named alongside — the --kind bugfix flag did not drop it:\n${v1.stdout}`);
   const a = acceptPty(root, ['accept', 'c'], 'c\n');
   assert(/ACCEPTED from this interactive terminal/.test(a.stdout), `B: accept itself must work:\n${a.stdout}`);
-  const v2 = canary(['isolate', '--verify', 'c', root], root);
+  const v2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v2.status, 2, 'B: PASS with only acceptance on a mixed task would be laundering');
   assert(/\[regression-evidence\] UNPROVEN \(objective\)/.test(v2.stdout), `B: objective duty must STILL be open:\n${v2.stdout}`);
   const b2 = latestCandidateBundle(root);
@@ -154,14 +154,14 @@ check('B mixed task: acceptance never launders an objective gap; proof+acceptanc
   // the new regression-test commit changes the reviewed bytes → the signature
   // is now stale; proof arriving must not silently ride an old acceptance
   candCommit(c, { 'tests/dialog.test.js': '// reproduces the crash\n' }, 'add regression test');
-  const v3 = canary(['isolate', '--verify', 'c', root], root);
+  const v3 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v3.status, 2, 'B: proof alone after a byte-change must NOT PASS on the stale signature');
   assert(/STALE/.test(v3.stdout), `B: staleness named:\n${v3.stdout}`);
   const a2 = acceptPty(root, ['accept', 'c'], 'c\n');
   assert(/ACCEPTED from this interactive terminal/.test(a2.stdout), `B: re-accept the final bytes:\n${a2.stdout}`);
-  const v4 = canary(['isolate', '--verify', 'c', root], root);
+  const v4 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v4.status, 0, `B: proof AND a fresh acceptance together must PASS:\n${v4.stdout}`);
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 0, `B positive control: mixed-complete promotes honestly:\n${p.stdout}`);
   assert(git(root, 'rev-parse', 'HEAD') === git(c, 'rev-parse', 'HEAD'), 'B: base now carries the accepted work');
 });
@@ -172,10 +172,10 @@ check('C agent self-accept: pipe streams REFUSED; env/flag escapes do not exist;
   register(root, 'restyle the header', ['ui']);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/header.js': 'restyled\n' });
-  const v1 = canary(['isolate', '--verify', 'c', root], root);
+  const v1 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v1.status, 2, 'C: duty open first');
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const plain = canary(['accept', 'c'], root); // spawnSync: pipes, no TTY
+  const plain = amabie(['accept', 'c'], root); // spawnSync: pipes, no TTY
   assertEq(plain.status, 2, `C: non-TTY accept must refuse:\n${plain.stdout}`);
   assert(/REFUSED — the supported acceptance flow requires an interactive terminal/.test(plain.stdout), 'C: refusal names the boundary');
   assert(!fs.existsSync(accPath(root, 'c')), 'C: no record from a pipe session');
@@ -185,16 +185,16 @@ check('C agent self-accept: pipe streams REFUSED; env/flag escapes do not exist;
   const piped = spawnSync(process.execPath, [CLI, 'accept', 'c'], { cwd: root, encoding: 'utf8', timeout: 60_000, input: 'c\n' });
   assert(piped.status !== 0 && !/ACCEPTED from this interactive terminal/.test(piped.stdout), `C: a piped name is still not a terminal:\n${piped.stdout}`);
   assert(!fs.existsSync(accPath(root, 'c')), 'C: nothing written from a pipe even with the name supplied');
-  const withEnv = canary(['accept', 'c'], root, { ...process.env, CANARY_ACCEPT: '1', CANARY_ACCEPTED_BY: 'tty-human' });
+  const withEnv = amabie(['accept', 'c'], root, { ...process.env, AMABIE_ACCEPT: '1', AMABIE_ACCEPTED_BY: 'tty-human' });
   assertEq(withEnv.status, 2, 'C: no env var flips the gate');
-  const withFlag = canary(['accept', 'c', '--yes'], root);
+  const withFlag = amabie(['accept', 'c', '--yes'], root);
   assert(withFlag.status !== 0 && !/ACCEPTED/.test(withFlag.stdout), `C: a --yes flag cannot bypass the terminal check:\n${withFlag.stdout}`);
   assert(!fs.existsSync(accPath(root, 'c')), 'C: still nothing written');
   // wrong name typed even on a pty does not accept
   const wrong = acceptPty(root, ['accept', 'c'], 'yes i accept\n');
   assert(/NOT ACCEPTED/.test(wrong.stdout), `C: freeform yes must refuse:\n${wrong.stdout}`);
   assert(!fs.existsSync(accPath(root, 'c')), 'C: still nothing written after typed mismatch');
-  const v2 = canary(['isolate', '--verify', 'c', root], root);
+  const v2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v2.status, 2, 'C: verdict unchanged by the attempted acceptance');
   assertEq(git(root, 'rev-parse', 'HEAD'), headBefore, 'C: base untouched');
 });
@@ -204,23 +204,45 @@ check('D stale acceptance: new candidate commit reopens the duty, advice says re
   const root = makeRepo('d-stale');
   register(root, 'make the charts look better', ['ui']);
   const c = isolate(root, 'c');
-  candCommit(c, { 'src/charts.js': 'v1 styling\n' }, 'style v1');
-  assertEq(canary(['isolate', '--verify', 'c', root], root).status, 2, 'D: open first');
+  candCommit(c, { 'src/charts.js': 'v1 styling\n', 'tests/regression.style.json': JSON.stringify('v1 styling\n') }, 'style v1');
+  assertEq(amabie(['isolate', '--verify', 'c', root], root).status, 2, 'D: open first');
   const a = acceptPty(root, ['accept', 'c'], 'c\n');
   assert(/ACCEPTED from this interactive terminal/.test(a.stdout), `D: fresh accept:\n${a.stdout}`);
-  assertEq(canary(['isolate', '--verify', 'c', root], root).status, 0, 'D: accepted state PASSes');
-  candCommit(c, { 'src/charts.js': 'v2 styling pushed AFTER the human signed\n' }, 'style v2');
-  const v = canary(['isolate', '--verify', 'c', root], root);
+  assertEq(amabie(['isolate', '--verify', 'c', root], root).status, 0, 'D: accepted state PASSes');
+  candCommit(c, { 'src/charts.js': 'v2 styling pushed AFTER the human signed\n',
+    'tests/regression.style.json': JSON.stringify('v2 styling pushed AFTER the human signed\n') }, 'style v2');
+  const v = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v.status, 2, 'D: unreviewed bytes must not ride an old signature');
   assert(/STALE/.test(v.stdout), `D: staleness named:\n${v.stdout}`);
-  assert(/canary accept c/.test(v.stdout), 'D: advice names the re-accept command');
+  assert(/amabie accept c/.test(v.stdout), 'D: advice names the re-accept command');
   const b = latestCandidateBundle(root);
   assertEq(b.obligations.find((x) => x.id === 'ui-proof')?.status, 'unproven', 'D: duty reopened in the bundle');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assert(p.status !== 0, 'D: promotion stays locked on the stale acceptance');
   const a2 = acceptPty(root, ['accept', 'c'], 'c\n');
   assert(/ACCEPTED from this interactive terminal/.test(a2.stdout), 'D: re-accept works');
-  assertEq(canary(['isolate', '--verify', 'c', root], root).status, 0, 'D: recovers to PASS — the advice is a real path');
+  const recovered = amabie(['isolate', '--verify', 'c', root], root);
+  assertEq(recovered.status, 0, `D: recovers to PASS — the advice is a real path:\n${recovered.stdout}`);
+});
+
+check('D2 fresh UI acceptance cannot close missing proof for a second change', () => {
+  const root = makeRepo('d2-fresh-proof');
+  register(root, 'make the charts look better', ['ui']);
+  const c = isolate(root, 'c');
+  candCommit(c, { 'src/charts.js': 'v1 styling\n' }, 'first styling');
+  assert(/ACCEPTED from this interactive terminal/.test(acceptPty(root, ['accept', 'c'], 'c\n').stdout), 'D2: accept first styling');
+  assertEq(amabie(['isolate', '--verify', 'c', root], root).status, 0, 'D2: first change passes');
+  candCommit(c, { 'src/charts.js': 'v2 styling\n' }, 'second styling without a new assertion');
+  assert(/ACCEPTED from this interactive terminal/.test(acceptPty(root, ['accept', 'c'], 'c\n').stdout), 'D2: human accepts second styling');
+  const missing = amabie(['isolate', '--verify', 'c', root], root);
+  assertEq(missing.status, 2, `D2: human acceptance cannot waive objective proof:\n${missing.stdout}`);
+  const open = latestCandidateBundle(root).obligations;
+  assertEq(open.find(x => x.id === 'ui-proof')?.status, 'met', 'D2: human UI duty really closed');
+  assertEq(open.find(x => x.id === 'regression-evidence')?.status, 'unproven', 'D2: objective latest-change duty stays open');
+  candCommit(c, { 'tests/regression.style.json': JSON.stringify('v2 styling\n') }, 'assert the actual second styling');
+  assert(/ACCEPTED from this interactive terminal/.test(acceptPty(root, ['accept', 'c'], 'c\n').stdout), 'D2: accept final bytes');
+  const repaired = amabie(['isolate', '--verify', 'c', root], root);
+  assertEq(repaired.status, 0, `D2: real fresh proof plus fresh acceptance recovers:\n${repaired.stdout}`);
 });
 
 // E — forged shapes: agent-authored records carry zero weight; the old v1
@@ -230,18 +252,18 @@ check('E forged acceptance file: agent shape + legacy schemas are refused; only 
   register(root, 'polish the menu', ['ui']);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/menu.js': 'polished\n' });
-  assertEq(canary(['isolate', '--verify', 'c', root], root).status, 2, 'E: open first');
+  assertEq(amabie(['isolate', '--verify', 'c', root], root).status, 2, 'E: open first');
   const head = git(c, 'rev-parse', 'HEAD');
   const base = git(root, 'rev-parse', 'HEAD');
-  fs.mkdirSync(path.join(root, '.canary', 'acceptance'), { recursive: true });
-  const v2rec = { schema: 'canary-acceptance/2', at: new Date().toISOString(), candidate: 'c', baseHead: base, candidateHead: head, intentDigest: '0'.repeat(64), acceptanceScopeDigest: '0'.repeat(64), acceptedBy: 'agent' };
+  fs.mkdirSync(path.join(root, '.amabie', 'acceptance'), { recursive: true });
+  const v2rec = { schema: 'amabie-acceptance/2', at: new Date().toISOString(), candidate: 'c', baseHead: base, candidateHead: head, intentDigest: '0'.repeat(64), acceptanceScopeDigest: '0'.repeat(64), acceptedBy: 'agent' };
   fs.writeFileSync(accPath(root, 'c'), JSON.stringify(v2rec));
-  let v = canary(['isolate', '--verify', 'c', root], root);
+  let v = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v.status, 2, 'E: fully v2-shaped acceptedBy:agent record must carry zero weight');
   assert(!/accepted from an interactive terminal/.test(JSON.stringify(latestCandidateBundle(root))), 'E: no fabricated MET');
-  const v1rec = { schema: 'canary-acceptance/1', at: new Date().toISOString(), candidate: 'c', baseHead: base, candidateHead: head, intentDigest: '0'.repeat(64), acceptedBy: 'tty-human' };
+  const v1rec = { schema: 'amabie-acceptance/1', at: new Date().toISOString(), candidate: 'c', baseHead: base, candidateHead: head, intentDigest: '0'.repeat(64), acceptedBy: 'tty-human' };
   fs.writeFileSync(accPath(root, 'c'), JSON.stringify(v1rec));
-  v = canary(['isolate', '--verify', 'c', root], root);
+  v = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v.status, 2, 'E: legacy schema/1 record (no acceptanceScopeDigest binding) must fail CLOSED, not pass');
   assert(!/accepted from an interactive terminal/.test(JSON.stringify(latestCandidateBundle(root))), 'E: legacy record fabricates no MET');
 });
@@ -256,8 +278,8 @@ check('F no frozen authority: accept refuses and recommends register+re-isolate 
   assert(/RE-ISOLATE/.test(a.stdout), `F: the printed recovery must be the real one:\n${a.stdout}`);
   assert(!fs.existsSync(accPath(root, 'c')), 'F: nothing written');
   register(root, 'refactor', ['refactor']);
-  const live = JSON.parse(fs.readFileSync(path.join(root, '.canary/task/current.json'), 'utf8'));
-  const rp = path.join(root, '.canary/candidates/c.json');
+  const live = JSON.parse(fs.readFileSync(path.join(root, '.amabie/task/current.json'), 'utf8'));
+  const rp = path.join(root, '.amabie/candidates/c.json');
   const record = JSON.parse(fs.readFileSync(rp, 'utf8'));
   record.intent.task = { ...live, kinds: [] };
   fs.writeFileSync(rp, JSON.stringify(record));
@@ -284,16 +306,16 @@ check('G dependency task: no-observed-change says so; after a lockfile edit acce
   register(root, 'upgrade the parsing library', ['dependency']);
   const c = isolate(root, 'c');
   candCommit(c, { 'src/parse.js': 'new import shape\n' });
-  const v1 = canary(['isolate', '--verify', 'c', root], root);
+  const v1 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v1.status, 2, 'G: duty open');
   assert(/touches no dependency file/.test(v1.stdout), `G: must not claim a change it cannot see:\n${v1.stdout}`);
   candCommit(c, { 'package-lock.json': '{"name":"g-dep","lockfileVersion":3}\n' }, 'lockfile bump');
-  const v2 = canary(['isolate', '--verify', 'c', root], root);
+  const v2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(v2.status, 2, 'G: still open after the edit (it is human-closable, not auto-met)');
   assert(/dependency change observed \(.*package-lock\.json.*\)/s.test(v2.stdout), `G: observed evidence is LISTED:\n${v2.stdout}`);
   const a = acceptPty(root, ['accept', 'c'], 'c\n');
   assert(/ACCEPTED from this interactive terminal/.test(a.stdout), 'G: accept closes the dependency duty after review');
-  assertEq(canary(['isolate', '--verify', 'c', root], root).status, 0, 'G: candidate completes');
+  assertEq(amabie(['isolate', '--verify', 'c', root], root).status, 0, 'G: candidate completes');
 });
 
 // H — requirement tasks, under the v1.2 rule.
@@ -317,11 +339,11 @@ check('H1 requirement task: a sealed binding closes the requirement duty — by 
   // is the documented order (declare -> bind -> setup -> hand off).
   const pkgPath = path.join(root, 'package.json');
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-  pkg.canary = { proofs: Object.fromEntries(reqs.map((r) => [materialDigest(r), 'test'])) };
+  pkg.amabie = { proofs: Object.fromEntries(reqs.map((r) => [materialDigest(r), 'test'])) };
   fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'bind the requirements to the sealed test script');
-  const reseal = canary(['setup', '--yes', root], root);
+  const reseal = amabie(['setup', '--yes', root], root);
   assert(reseal.status === 0, `H1: re-seal after binding failed:\n${reseal.stdout}${reseal.stderr}`);
 
   const c = isolate(root, 'h');
@@ -329,14 +351,14 @@ check('H1 requirement task: a sealed binding closes the requirement duty — by 
   // ONLY thing that could keep the requirement duty open is the requirement itself.
   candCommit(c, { 'src/settings.js': 'the stated rules, applied\n' }, 'candidate work', true);
 
-  const v1 = canary(['isolate', '--verify', 'h', root], root);
+  const v1 = amabie(['isolate', '--verify', 'h', root], root);
   assertEq(v1.status, 0, `H1: a BOUND requirement completes by measurement alone:\n${v1.stdout}`);
   const b1 = latestCandidateBundle(root);
   const perDuty = b1.obligations.find((x) => x.id === 'per-requirement');
   assert(perDuty, 'H1: the per-requirement duty must be in the bundle');
   assertEq(perDuty.mode, 'objective', 'H1: an unmeasured requirement is a MEASUREMENT duty, not a signature');
   assertEq(perDuty.status, 'met', 'H1: closed by the sealed binding, not by acceptance');
-  const p = canary(['isolate', '--promote', 'h', root], root);
+  const p = amabie(['isolate', '--promote', 'h', root], root);
   assertEq(p.status, 0, `H1: promotes honestly:\n${p.stdout}`);
 });
 
@@ -347,7 +369,7 @@ check('H2 requirement task: with NO binding the duty stays open, and acceptance 
   const c = isolate(root, 'h');
   candCommit(c, { 'src/settings.js': 'the stated rules, applied\n' }, 'candidate work', true);
 
-  const v = canary(['isolate', '--verify', 'h', root], root);
+  const v = amabie(['isolate', '--verify', 'h', root], root);
   assertEq(v.status, 2, 'H2: an unmeasured requirement keeps the candidate NOT PROVEN');
   const b = latestCandidateBundle(root);
   const perDuty = b.obligations.find((x) => x.id === 'per-requirement');
@@ -367,7 +389,7 @@ check('H2 requirement task: with NO binding the duty stays open, and acceptance 
   if (a.status === 2) {
     assert(!/ACCEPTED from this interactive terminal/.test(a.stdout),
       `H2: a refusing accept must not also report success:\n${a.stdout}`);
-    assert(!fs.existsSync(path.join(root, '.canary', 'acceptance', 'h.json')),
+    assert(!fs.existsSync(path.join(root, '.amabie', 'acceptance', 'h.json')),
       'H2: a refused acceptance must not be written');
   } else {
     assertEq(a.status, 0, `H2: accept either refuses (2) or succeeds (0): ${a.stdout}`);
@@ -377,7 +399,7 @@ check('H2 requirement task: with NO binding the duty stays open, and acceptance 
 
   // The invariant, asserted in BOTH outcomes: the measurement duty is still unproven and nothing was
   // promoted. This is what makes the case meaningful, and it cannot pass by accident.
-  const after = canary(['isolate', '--verify', 'h', root], root);
+  const after = amabie(['isolate', '--verify', 'h', root], root);
   assertEq(after.status, 2, 'H2: the objective duty must still keep the candidate NOT PROVEN');
   const b2 = latestCandidateBundle(root);
   const perAfter = b2.obligations.find((x) => x.id === 'per-requirement');

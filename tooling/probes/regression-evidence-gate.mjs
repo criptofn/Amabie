@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * THE REGRESSION-EVIDENCE GATE — does Canary refuse a green plan that proves nothing about the change?
+ * THE REGRESSION-EVIDENCE GATE — does Amabie refuse a green plan that proves nothing about the change?
  *
- * THE PRODUCT INVARIANT THIS VERIFIES: *Canary must never issue PASS/READY/promotion merely because
+ * THE PRODUCT INVARIANT THIS VERIFIES: *Amabie must never issue PASS/READY/promotion merely because
  * the configured tests are green if authorized requirements are not independently covered by
  * adequate proof. Existing behaviour that must be preserved requires regression evidence. Missing
  * or ambiguous proof must fail closed, never degrade to PASS.*
@@ -10,7 +10,7 @@
  * MEASURED REASON IT EXISTS (`bench-r5-refactor-preserve-invisible-2`): an agent rewrote
  * `formatMoney`'s string handling, ran nothing, and finished while `formatMoney("0.5")` returned
  * `$0.05`. The project's own checks passed BEFORE and AFTER the change, so they carried no evidence
- * about it — and Canary said READY. That is a false green the runner cannot fix, because the checks
+ * about it — and Amabie said READY. That is a false green the runner cannot fix, because the checks
  * do not discriminate the change. The gate now runs the sealed plan against the sealed BASE with the
  * candidate's check files overlaid and asks: do the checks FAIL without this change?
  *
@@ -31,7 +31,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
-const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
+const cliArg = process.argv.indexOf('--cli');
+const CLI = path.resolve(cliArg === -1
+  ? path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js')
+  : process.argv[cliArg + 1]);
 
 let failures = 0;
 const check = (name, fn) => {
@@ -100,7 +103,7 @@ const TEST_DISCRIMINATING = [
 ].join('\n');
 
 function makeRepo(name, src, test, opts = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-regevidence-${name}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-regevidence-${name}-`));
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
   // `<root>/.claude` or the operator's `~/.claude`, so without this the fixture passed only on a
   // machine that has Claude Code installed and failed on every CI runner.
@@ -113,7 +116,7 @@ function makeRepo(name, src, test, opts = {}) {
   fs.writeFileSync(path.join(root, 'tests', 'greet.test.js'), test);
   const git = (args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 60_000, windowsHide: true });
   git(['init', '-b', 'main']);
-  git(['config', 'user.email', 'regevidence@canary.local']);
+  git(['config', 'user.email', 'regevidence@amabie.local']);
   git(['config', 'user.name', 'Regression Evidence Probe']);
   git(['add', '-A']);
   git(['commit', '-m', 'initial']);
@@ -265,7 +268,7 @@ console.log('\n── G: the worker adds its own check to satisfy the gate');
 {
   /**
    * MEASURED (`bench-final-constraint-hold-guarded-3`): an agent added `tests/csv-quoted.test.js`,
-   * the plan passed, the stated rule was still broken, and Canary said READY with no remark. The gate
+   * the plan passed, the stated rule was still broken, and Amabie said READY with no remark. The gate
    * cannot call that a failure — the added check really does discriminate the change, and no
    * requirement was AUTHORIZED to hold it to — but it must not stay silent about what the evidence
    * is. This case pins the honest caveat.

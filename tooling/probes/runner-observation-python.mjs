@@ -3,15 +3,15 @@
  * Python execution observation — channel proof and forgery attempts.
  *
  * This is the empirical basis for the `python-unittest` runner adapter. It
- * exercises the CANARY-OWNED channel directly (no product wiring yet) so the
+ * exercises the AMABIE-OWNED channel directly (no product wiring yet) so the
  * channel can be judged on its own:
  *
- *   sitecustomize.py (Canary's bytes, on PYTHONPATH) -> hooks
+ *   sitecustomize.py (Amabie's bytes, on PYTHONPATH) -> hooks
  *   unittest.TestResult -> NDJSON frames on fd 3 -> parent re-counts.
  *
  * What must hold:
  *   1. a REAL unittest run produces hello/pass/bye agreeing with the printed
- *      summary, with hello.pid equal to the pid Canary spawned;
+ *      summary, with hello.pid equal to the pid Amabie spawned;
  *   2. a program that merely PRINTS a perfect unittest summary without running
  *      tests produces ZERO pass frames — text cannot become observed counts;
  *   3. a result reported for a test whose startTest was never seen is REJECTED
@@ -46,7 +46,7 @@ assert(PY !== undefined, 'no python.exe on PATH — this channel cannot be exerc
 console.log(`python: ${PY}`);
 console.log(`observer bytes: ${PYTHON_OBSERVER_SOURCE.length}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-py-obs-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-py-obs-'));
 const OBS_DIR = path.join(TMP, 'observer');
 fs.mkdirSync(OBS_DIR, { recursive: true });
 fs.writeFileSync(path.join(OBS_DIR, PYTHON_OBSERVER_BASENAME), PYTHON_OBSERVER_SOURCE, 'utf8');
@@ -58,7 +58,7 @@ function runObserved(cwd, args, timeoutMs = 120_000, nonce = 'probe-nonce-1') {
       cwd,
       env: {
         PYTHONPATH: OBS_DIR, PATH: process.env.PATH ?? '', SystemRoot: process.env.SystemRoot ?? 'C:\\WINDOWS',
-        CANARY_OBSERVER_NONCE: nonce,
+        AMABIE_OBSERVER_NONCE: nonce,
       },
       shell: false,
       windowsHide: true,
@@ -117,7 +117,7 @@ check('a real unittest run yields hello -> passes -> bye, nonce- and process-bou
   assert(hello, `no hello frame: ${JSON.stringify(kinds(real.frames))}`);
   assert(hello.runner === PYTHON_RUNNER_ID, `hello.runner = ${JSON.stringify(hello.runner)}`);
   assert(typeof hello.runnerVersion === 'string' && /^\d+\.\d+\.\d+/.test(hello.runnerVersion), `bad runnerVersion: ${JSON.stringify(hello.runnerVersion)}`);
-  assert(hello.observerVersion === 'canary-observer-v1', `observerVersion = ${JSON.stringify(hello.observerVersion)}`);
+  assert(hello.observerVersion === 'amabie-observer-v1', `observerVersion = ${JSON.stringify(hello.observerVersion)}`);
   // A Windows virtualenv's python.exe re-executes the base interpreter, so the
   // reporting pid is legitimately the CHILD of the one Node spawned. The binding
   // that must hold is nonce + (pid or ppid == spawned pid).
@@ -215,5 +215,5 @@ check('an observer that cannot install reports adapter-error, never silence', ()
 
 console.log(`\n=== python observation: ${failures === 0 ? 'ALL PASS' : `${failures} FAIL`} ===`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 || process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 || process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(failures === 0 ? 0 : 1);

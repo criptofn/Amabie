@@ -40,13 +40,15 @@
  * after the toplevel vanishes mid-process. Documented in the final report
  * (item 42) rather than performed as theater.
  */
-import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+import { runProbe } from '../test-support/run-probe.mjs';
 // In-place dist mutation must be RECOVERABLE: a killed battery leaves dist mutated
 // and the build tool will not repair it (see the guard's header for the measured
 // incident this closes).
 import { beginDistMutation, endDistMutation } from '../test-support/dist-mutation-guard.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CLI_FILES = {
@@ -74,7 +76,7 @@ const MUTATIONS = [
   // named `gitCandidates()` helper. The battery's own rule is "update this
   // battery in the same change as the gate", so the anchors follow the code and
   // each mutation keeps its ORIGINAL failure mode, not its original text.
-  { id: 'M5', file: 'onboarding', from: 'const drift = planAuthorityDrift(root, cfg);', to: 'const drift = null;', owner: 'status', what: 'S1 status becomes drift-blind (sealed authority changes go unreported)' },
+  { id: 'M5', file: 'onboarding', from: 'const drift = planAuthorityDrift(root, cfg);\n    if (drift)\n        problems.push(', to: 'const drift = null;\n    if (drift)\n        problems.push(', owner: 'status', what: 'S1 status becomes drift-blind (sealed authority changes go unreported)' },
   { id: 'M6', file: 'onboarding', from: 'const seen = configTrackedMemo.get(root);', to: 'const seen = false;', owner: 'status', what: 'S2 memo poisons config ownership: a git-committed config reads as this machine\'s own' },
   // Pre-1.0 blocker closure: each mutant re-opens exactly one door the GLM audit
   // found. pre10-env-authority owns the execution-authority trio,
@@ -108,35 +110,75 @@ const MUTATIONS = [
  *     making the owner skip, which is exactly the kind of silent green this
  *     battery exists to prevent.
  */
-function runOwner(owner) {
-  const r = spawnSync(process.execPath, OWNERS[owner], { cwd: REPO, encoding: 'utf8', timeout: 900_000, maxBuffer: 64 * 1024 * 1024 });
-  return { status: r.status, green: r.status === 0 || r.status === 3 };
+const onlyIndex = process.argv.indexOf('--only');
+const ids = onlyIndex < 0 ? MUTATIONS.map(m => m.id) : (process.argv[onlyIndex + 1] ?? '').split(',');
+assert(ids.length > 0 && ids.every(id => MUTATIONS.some(m => m.id === id)), '--only requires known mutation IDs');
+const selected = MUTATIONS.filter(m => ids.includes(m.id));
+const logIndex = process.argv.indexOf('--logs-dir');
+const logDir = logIndex < 0 ? null : process.argv[logIndex + 1];
+if (logIndex >= 0) { assert(logDir && path.isAbsolute(logDir)); fs.mkdirSync(logDir, { recursive: true }); }
+async function runOwner(owner, label) {
+  console.log(`START ${label} owner=${owner}; limit=900s`);
+  const prefix = logDir ? path.join(logDir, label) : undefined;
+  const r = await runProbe(process.execPath, OWNERS[owner], { cwd: REPO, timeout: 900_000, prefix });
+  console.log(`END ${label} owner=${owner}; exit=${r.status}; elapsed=${(r.durationMs / 1000).toFixed(1)}s; ${r.error?.code ?? 'completed'}`);
+  if (prefix) fs.writeFileSync(`${prefix}.json`, JSON.stringify({ label, owner, command: OWNERS[owner], status: r.status,
+    signal: r.signal, durationMs: r.durationMs, error: r.error ? { code: r.error.code, message: r.error.message } : null }, null, 2) + '\n');
+  return { ...r, outcome: ownerOutcome(r) };
 }
+function ownerOutcome(r) {
+  if (r.error || r.signal != null) return 'unusable';
+  if (r.status === 0 || r.status === 3) return 'green';
+  return r.status === 1 || r.status === 2 ? 'caught' : 'unusable';
+}
+// A crashed/timed-out owner proves nothing about a mutation. Keep this control
+// in the existing battery so it runs without spawning another process.
+for (const r of [{ status: 3221225477 }, { status: 3221225501 }, { status: null }, { status: 1, signal: 'SIGTERM' }, { status: 1, error: new Error('timeout') }]) {
+  assert(ownerOutcome(r) === 'unusable', 'native or incomplete owner must not count as a mutation catch');
+}
+assert(ownerOutcome({ status: 1 }) === 'caught' && ownerOutcome({ status: 2 }) === 'caught', 'real owner failures must remain catches');
+assert(ownerOutcome({ status: 0 }) === 'green' && ownerOutcome({ status: 3 }) === 'green', 'pass and explicit host skip must not count as catches');
 let failures = 0;
 const originals = new Map();
 for (const [k, p] of Object.entries(CLI_FILES)) originals.set(k, fs.readFileSync(p));
+for (const mutation of MUTATIONS) {
+  assert.equal(originals.get(mutation.file).toString('utf8').split(mutation.from).length - 1, 1,
+    `${mutation.id}: mutation anchor must be unique before running any owner`);
+}
 // Custody: a sidecar copy of every file this battery will mutate, so an interrupted
 // run is discovered and repaired instead of silently trusted. `CLI_FILES` is a
 // MAP of name -> path, so it is `Object.values`, not a spread of the object.
 const custody = beginDistMutation([...new Set(Object.values(CLI_FILES))]);
+const trust = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mutation-trust-'));
+process.env.AMABIE_TRUST_STORE = trust;
 
-console.log('=== master-pass-mutations: baseline owner runs ===');
-for (const owner of new Set(MUTATIONS.map((m) => m.owner))) {
-  const { status, green } = runOwner(owner);
+try {
+console.log(`=== master-pass-mutations: ${selected.map(m => m.id).join(', ')}; baseline owner runs ===`);
+for (const owner of new Set(selected.map((m) => m.owner))) {
+  const r = await runOwner(owner, `baseline-${owner}`);
+  const { status } = r;
+  const green = r.outcome === 'green';
   console.log(`${green ? 'PASS' : 'FAIL'} baseline owner=${owner} (exit ${status}${status === 3 ? ' = host-bound SKIP: ran everything this host could' : ''})`);
-  if (!green) { failures++; console.log('  baseline must be green before mutating — aborting'); process.exit(1); }
+  if (!green) {
+    failures++;
+    console.log(r.stdout ?? ''); console.error(r.stderr ?? '');
+    console.log(`  owner signal=${r.signal ?? 'none'} error=${r.error?.message ?? 'none'}`);
+    console.log('  baseline must be green before mutating — aborting'); break;
+  }
 }
 
-for (const m of MUTATIONS) {
+for (const m of failures ? [] : selected) {
   const p = CLI_FILES[m.file];
   const src = originals.get(m.file).toString('utf8');
   const n = src.split(m.from).length - 1;
   if (n !== 1) { failures++; console.log(`FAIL ${m.id}: anchor not unique (${n}x): ${m.from}`); continue; }
   fs.writeFileSync(p, src.replace(m.from, m.to));
   try {
-    const { status, green } = runOwner(m.owner);
-    if (green) { failures++; console.log(`FAIL ${m.id} SURVIVED: ${m.what}\n     owner=${m.owner} still green (exit ${status}) under this mutation — the proof has a hole`); }
-    else console.log(`PASS ${m.id} caught by ${m.owner} (exit ${status}): ${m.what}`);
+    const r = await runOwner(m.owner, m.id);
+    const { status } = r;
+    if (r.outcome === 'green') { failures++; console.log(`FAIL ${m.id} SURVIVED: ${m.what}\n     owner=${m.owner} still green (exit ${status}) under this mutation — the proof has a hole`); }
+    else if (r.outcome === 'caught') console.log(`PASS ${m.id} caught by ${m.owner} (exit ${status}): ${m.what}`);
+    else { failures++; console.log(`FAIL ${m.id} owner unusable: exit=${status} signal=${r.signal ?? 'none'} error=${r.error?.message ?? 'none'} — no mutation catch was proven`); console.log(r.stdout ?? ''); console.error(r.stderr ?? ''); }
   } finally {
     fs.writeFileSync(p, originals.get(m.file));
     const back = fs.readFileSync(p).equals(originals.get(m.file));
@@ -152,10 +194,14 @@ for (const m of MUTATIONS) {
 // Release custody: verifies every mutated file came back byte-identically and
 // clears the journal. If this process is KILLED before here, the journal
 // survives, and the next battery start (or the oracle) repairs the tree.
+} finally {
+for (const [key, file] of Object.entries(CLI_FILES)) fs.writeFileSync(file, originals.get(key));
 const unrecovered = endDistMutation(custody.entries);
+fs.rmSync(trust, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 if (unrecovered.length > 0) {
   failures++;
   console.log(`FAIL: the dist guard could not restore: ${unrecovered.join(', ')} — run \`npx tsc -b --force\``);
 }
-console.log(`\n=== master-pass-mutations: ${failures === 0 ? `ALL ${MUTATIONS.length} CAUGHT` : failures + ' PROBLEM(S)'} ===`);
+}
+console.log(`\n=== master-pass-mutations: ${failures === 0 ? `ALL ${selected.length} SELECTED CAUGHT` : failures + ' PROBLEM(S)'} ===`);
 process.exit(failures === 0 ? 0 : 1);

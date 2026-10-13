@@ -17,11 +17,11 @@
  *   1. STRUCTURAL — every fixture declares a full configuration (both axes), not just an arm. An
  *      arm-only declaration cannot be matched against a run that registered requirements, which is
  *      the case that caused the harm.
- *   2. MEASURED, PER FIXTURE — copy the fixture's project, `git init`, `canary setup --yes`,
- *      register the fixture's OWN stated requirements with `canary task`, and then read the two
+ *   2. MEASURED, PER FIXTURE — copy the fixture's project, `git init`, `amabie setup --yes`,
+ *      register the fixture's OWN stated requirements with `amabie task`, and then read the two
  *      files the PRODUCT wrote: the task record's requirement digests and the sealed authority's
  *      proof bindings. A requirement is bound when its digest maps to a script the sealed plan runs.
- *      The probe computes no digest of its own — the digests are Canary's, so a change to the
+ *      The probe computes no digest of its own — the digests are Amabie's, so a change to the
  *      digest rule cannot make this probe agree with a stale copy of that rule.
  *   3. THE INVARIANT — `registerRequirements: true` requires EVERY stated requirement to be
  *      bound. Bindings do not force a trial to register requirements. A fixture
@@ -42,7 +42,7 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 const FIXTURES = path.join(REPO, 'tooling', 'benchmark', 'fixtures');
-const ARMS = new Set(['plain', 'guarded', 'invisible', 'canary', 'workflow']);
+const ARMS = new Set(['plain', 'guarded', 'invisible', 'amabie', 'workflow']);
 
 let failures = 0;
 const check = (name, fn) => {
@@ -66,7 +66,7 @@ const declaredOf = (meta) => {
 const requirementsOf = (meta) => (Array.isArray(meta.requirements) ? meta.requirements.filter((r) => typeof r === 'string' && r.trim() !== '') : []);
 
 const git = (root, args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 120_000, windowsHide: true });
-const canary = (root, args) => spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', timeout: 300_000, windowsHide: true });
+const amabie = (root, args) => spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', timeout: 300_000, windowsHide: true });
 
 /**
  * MEASURE ONE FIXTURE. Returns { digests, unbound, setupExit, taskExit } read from the product's own
@@ -76,7 +76,7 @@ const canary = (root, args) => spawnSync(process.execPath, [CLI, ...args], { cwd
 function measure(name, meta) {
   const project = path.join(FIXTURES, name, 'project');
   assert(fs.existsSync(project), `${name} has no project/ directory to measure`);
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-fixture-cfg-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fixture-cfg-'));
   try {
     fs.cpSync(project, root, { recursive: true, filter: (src) => path.basename(src) !== '.git' });
     // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
@@ -84,23 +84,23 @@ function measure(name, meta) {
     // machine that has Claude Code installed and failed on every CI runner.
     fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
     git(root, ['init', '-b', 'main']);
-    git(root, ['config', 'user.email', 'fixture-config@canary.local']);
+    git(root, ['config', 'user.email', 'fixture-config@amabie.local']);
     git(root, ['config', 'user.name', 'Fixture Configuration Probe']);
     git(root, ['add', '-A']);
     const commit = git(root, ['commit', '-m', 'fixture as shipped']);
     assert(commit.status === 0, `${name}: git commit failed: ${commit.stderr}`);
 
-    const setup = canary(root, ['setup', '--yes']);
-    const cfgPath = path.join(root, '.canary', 'canary.local.json');
+    const setup = amabie(root, ['setup', '--yes']);
+    const cfgPath = path.join(root, '.amabie', 'amabie.local.json');
     assert(fs.existsSync(cfgPath), `${name}: setup wrote no config (exit ${setup.status}): ${setup.stdout}${setup.stderr}`);
 
     const reqs = requirementsOf(meta);
     const intent = typeof meta.intent === 'string' && meta.intent !== '' ? meta.intent : 'the stated task';
-    const task = canary(root, ['task', intent, ...reqs.flatMap((r) => ['--requirement', r])]);
-    const taskPath = path.join(root, '.canary', 'task', 'current.json');
+    const task = amabie(root, ['task', intent, ...reqs.flatMap((r) => ['--requirement', r])]);
+    const taskPath = path.join(root, '.amabie', 'task', 'current.json');
     if (reqs.length > 0) {
-      assert(task.status === 0, `${name}: canary task failed (exit ${task.status}): ${task.stdout}${task.stderr}`);
-      assert(fs.existsSync(taskPath), `${name}: canary task wrote no record`);
+      assert(task.status === 0, `${name}: amabie task failed (exit ${task.status}): ${task.stdout}${task.stderr}`);
+      assert(fs.existsSync(taskPath), `${name}: amabie task wrote no record`);
     }
 
     const digests = fs.existsSync(taskPath)

@@ -89,7 +89,7 @@ for (const f of files) {
   if (!fs.existsSync(abs)) { console.error(`FAIL: no compiled test file at ${abs} - run \`npm run build\` first`); process.exit(1); }
 }
 
-const BASE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-shorttemp-'));
+const BASE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-shorttemp-'));
 // A component whose long name does not fit 8.3, so a distinct short name is
 // guaranteed (mirrors the runner's `runneradmin` -> `RUNNER~1`).
 const LONG_DIR = path.join(BASE, 'a-long-directory-name');
@@ -124,7 +124,7 @@ try {
     console.log(`${ok ? 'PASS' : 'FAIL'} ${f} - ${secs}s, exit ${String(r.status)}${timedOut ? ' (TIMED OUT)' : ''}, ${failed.length} failing line(s)`);
     if (!ok) {
       for (const line of failed.slice(0, 8)) console.log(`       ${line.slice(0, 180)}`);
-      const detail = path.join(os.tmpdir(), `canary-shorttemp-${path.basename(f)}.log`);
+      const detail = path.join(os.tmpdir(), `amabie-shorttemp-${path.basename(f)}.log`);
       fs.writeFileSync(detail, out);
       console.log(`       full output: ${detail}`);
     }

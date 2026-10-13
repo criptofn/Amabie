@@ -1,5 +1,5 @@
 /**
- * v1.5 — the focused regression for the two `canary provider status` changes.
+ * v1.5 — the focused regression for the two `amabie provider status` changes.
  *
  * MEASURED before the change, on a host with no measured deployment: the six
  * control lines each printed ~430 characters that said one thing twice —
@@ -29,10 +29,10 @@ import { dedupeReason } from '../src/provider/commands.js';
 const repo = path.resolve(import.meta.dirname, '../../../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 /** A store that provably holds no deployment, so the answer is deterministic. */
-const emptyStore = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-status-empty-'));
+const emptyStore = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-status-empty-'));
 const run = (args: string[]) => spawnSync(process.execPath, [cli, 'provider', 'status', ...args], {
   cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 120_000,
-  env: { ...process.env, CANARY_TRUST_STORE: emptyStore },
+  env: { ...process.env, AMABIE_TRUST_STORE: emptyStore },
 });
 
 describe('dedupeReason collapses duplication and nothing else', () => {
@@ -68,7 +68,7 @@ describe('provider status tells the truth without a measured deployment', () => 
   it('never reads READY or HARDENED, and exits non-zero', () => {
     assert.equal(r.status, 2, r.stderr);
     const envelope = JSON.parse(r.stdout);
-    assert.equal(envelope.schema, 'canary-provider-status/1');
+    assert.equal(envelope.schema, 'amabie-provider-status/1');
     assert.equal(envelope.status, 'NOT CONNECTED');
     assert.notEqual(envelope.security.level, 'HARDENED');
     assert.equal(envelope.exitCode, 2);
@@ -116,7 +116,7 @@ describe('provider status answers the user in compact form by default', () => {
       assert.ok(human.includes(control), `missing control not named: ${control}`);
     }
     assert.match(human, /tooling\/probes\/v12-confined-caller\.mjs/);
-    assert.match(human, /canary provider install-plan/);
+    assert.match(human, /amabie provider install-plan/);
   });
 
   it('does NOT claim HARDENED while no control is measured', () => {
@@ -150,7 +150,7 @@ describe('provider status answers the user in compact form by default', () => {
     assert.match(verbose, /sandbox:\s+\S/, 'the verbose report must name the host sandbox primitive (or none)');
     assert.match(verbose, process.platform === 'win32'
       ? /sandbox:\s+win32-appcontainer-restricted-low|sandbox:\s+none/
-      : /sandbox:\s+(unshare|seatbelt|sandbox-exec|none)/);
+      : /sandbox:\s+(bwrap|unshare|seatbelt|sandbox-exec|none)/);
     // Nothing was deleted from the reasoning: the distinct clause survives.
     assert.match(verbose, /the identity path also leaves it unavailable/);
   });

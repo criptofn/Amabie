@@ -47,13 +47,13 @@ function assertEq(actual, expected, msg) { assert(actual === expected, `${msg}\n
 
 assert(fs.existsSync(CLI), `missing built CLI (run npm run build): ${CLI}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-f4-repro-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-f4-repro-'));
 function git(dir, ...args) {
   const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', timeout: 60_000 });
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.stdout?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd) {
+function amabie(args, cwd) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 }
 function makeRepo(name) {
@@ -69,17 +69,17 @@ function makeRepo(name) {
     "const fs = require('node:fs');\nprocess.exit(fs.readFileSync('marker.txt', 'utf8').includes('FAIL') ? 1 : 0);\n");
   fs.writeFileSync(path.join(root, 'marker.txt'), 'ok\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'repro@canary.local');
-  git(root, 'config', 'user.name', 'Canary Repro');
+  git(root, 'config', 'user.email', 'repro@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Repro');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
-const candPath = (root, name) => path.join(root, '.canary', 'candidates', name);
+const candPath = (root, name) => path.join(root, '.amabie', 'candidates', name);
 function bundles(root, suffix) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((x) => x.endsWith(suffix)).sort()
     .map((x) => JSON.parse(fs.readFileSync(path.join(d, x, 'verification.json'), 'utf8')));
@@ -89,10 +89,10 @@ function bundles(root, suffix) {
 // observed facts — this function never asserts which side of the line they land on.
 function runAttack(root, name, { withTask, addTest }) {
   if (withTask) {
-    const t = canary(['task', 'fix the timer crash', '--kind', 'bugfix'], root);
+    const t = amabie(['task', 'fix the timer crash', '--kind', 'bugfix'], root);
     assertEq(t.status, 0, `task registration failed: ${t.stdout}`);
   }
-  assertEq(canary(['isolate', name, root], root).status, 0, 'isolate failed');
+  assertEq(amabie(['isolate', name, root], root).status, 0, 'isolate failed');
   const c = candPath(root, name);
   fs.writeFileSync(path.join(c, 'src-timer.js'), 'fixed without touching a test\n');
   if (addTest) {
@@ -103,8 +103,8 @@ function runAttack(root, name, { withTask, addTest }) {
   git(c, 'add', '-A');
   git(c, 'commit', '-m', 'testless bugfix-shaped change');
   const headBefore = git(root, 'rev-parse', 'HEAD');
-  const v = canary(['isolate', '--verify', name, root], root);
-  const p = canary(['isolate', '--promote', name, root], root);
+  const v = amabie(['isolate', '--verify', name, root], root);
+  const p = amabie(['isolate', '--promote', name, root], root);
   const headAfter = git(root, 'rev-parse', 'HEAD');
   return {
     vExit: v.status, vOut: v.stdout, pExit: p.status, pOut: p.stdout,
@@ -138,7 +138,7 @@ try {
       const last = bundles(path.join(TMP, 'attack'), '-candidate').at(-1);
       const ta = last.obligations.find((x) => x.id === 'task-authority');
       assert(ta && ta.status === 'unproven', `F4-closed: task-authority rides the bundle bytes: ${JSON.stringify(last.obligations)}`);
-      assertMatch(ta.note, /canary task/, 'F4-closed: the note prints the recovery path');
+      assertMatch(ta.note, /amabie task/, 'F4-closed: the note prints the recovery path');
     });
     check('f4-leg1-closed: promotion is locked — zero promotion bundles, base HEAD byte-unchanged', () => {
       assertEq(obs.pExit, 2, 'F4-closed: promote must refuse an unproven candidate');

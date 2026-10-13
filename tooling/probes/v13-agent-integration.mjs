@@ -6,11 +6,11 @@
 // it without spending a single model token: `claude mcp list` reports, per server, the exact command
 // it read and whether the connection is live.
 //
-// MEASURED, and the reason this file exists: the answer is NOT "connected". Claude Code reads Canary's
+// MEASURED, and the reason this file exists: the answer is NOT "connected". Claude Code reads Amabie's
 // project entry and then holds it at "Pending approval" until a human approves the project's MCP
-// server once, in an interactive session. That is Claude Code's consent gate, not a Canary defect —
+// server once, in an interactive session. That is Claude Code's consent gate, not a Amabie defect —
 // and it is exactly the kind of detail that turns into a false "seamless integration" claim if nobody
-// measures it. So this probe ASSERTS what is Canary's (the entry is written and the agent READ its
+// measures it. So this probe ASSERTS what is Amabie's (the entry is written and the agent READ its
 // exact command) and REPORTS what is the harness's (the approval state), never asserting a human act.
 //
 // It is host-bound by construction: no Claude Code CLI, no measurement — an explicit SKIP, which is
@@ -25,7 +25,7 @@ const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const claude = path.join(os.homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude');
 const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-agent-integration-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-agent-integration-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -52,7 +52,7 @@ try {
     name: 'agent-integration', version: '1.0.0', lockfileVersion: 3, requires: true, packages: {},
   }, null, 2) + '\n');
   run(git, ['init', '-b', 'main'], temp);
-  run(git, ['config', 'user.email', 'integration@canary.local'], temp);
+  run(git, ['config', 'user.email', 'integration@amabie.local'], temp);
   run(git, ['config', 'user.name', 'Integration Probe'], temp);
   run(git, ['add', '-A'], temp);
   run(git, ['commit', '-m', 'base'], temp);
@@ -60,13 +60,15 @@ try {
   const setup = run(process.execPath, [cli, 'setup', '--yes'], temp);
   assert.equal(setup.status, 0, `setup must succeed:\n${setup.stdout}${setup.stderr}`);
 
-  // ── what CANARY is responsible for: the entry exists, and it is ours by argv signature ──
+  // ── what AMABIE is responsible for: the entry exists, and it is ours by argv signature ──
   let doc = null;
-  check('setup writes an MCP entry that names THIS Canary', () => {
+  check('setup writes an MCP entry that names THIS Amabie', () => {
     doc = JSON.parse(fs.readFileSync(path.join(temp, '.mcp.json'), 'utf8'));
-    const entry = doc?.mcpServers?.canary;
-    assert.ok(entry, `.mcp.json has no canary entry: ${JSON.stringify(doc)}`);
-    assert.ok(Array.isArray(entry.args) && entry.args.at(-1) === 'mcp', `unexpected args: ${JSON.stringify(entry.args)}`);
+    const entry = doc?.mcpServers?.amabie;
+    assert.ok(entry, `.mcp.json has no amabie entry: ${JSON.stringify(doc)}`);
+    assert.ok(Array.isArray(entry.args) && entry.args.includes('mcp'), `unexpected args: ${JSON.stringify(entry.args)}`);
+    assert.deepEqual(entry.args.slice(-3), ['mcp', '--profile', 'everyday'],
+      `setup must wire the measured everyday default profile: ${JSON.stringify(entry.args)}`);
     assert.ok(entry.args.some((a) => a.endsWith('main.js')), 'the entry must point at this CLI');
   });
 
@@ -77,20 +79,20 @@ try {
   console.log(out.trimEnd());
   console.log('--- end ---');
 
-  check('the agent CLI READS Canary from the project entry', () => {
+  check('the agent CLI READS Amabie from the project entry', () => {
     assert.equal(listed.status, 0, `claude mcp list exited ${listed.status}:\n${out}`);
-    const line = out.split('\n').find((l) => /^\s*canary\s*:/.test(l));
-    assert.ok(line, `Claude Code did not list a "canary" server:\n${out}`);
+    const line = out.split('\n').find((l) => /^\s*amabie\s*:/.test(l));
+    assert.ok(line, `Claude Code did not list a "amabie" server:\n${out}`);
     assert.match(line, /mcp/, `the listed command must be the MCP server: ${line}`);
   });
 
   // ── the honest part: the state of the harness's own consent gate, reported not asserted ──
-  const line = out.split('\n').find((l) => /^\s*canary\s*:/.test(l)) ?? '';
+  const line = out.split('\n').find((l) => /^\s*amabie\s*:/.test(l)) ?? '';
   const state = /Pending approval/i.test(line) ? 'PENDING HUMAN APPROVAL (Claude Code asks once, in an interactive session)'
     : /Connected/i.test(line) ? 'connected'
       : /Failed to connect/i.test(line) ? 'FAILED TO CONNECT' : 'unrecognised';
   console.log(`\nOBSERVED integration state: ${state}`);
-  console.log('  This is the harness\'s consent gate, not Canary\'s code: Canary writes the entry and the');
+  console.log('  This is the harness\'s consent gate, not Amabie\'s code: Amabie writes the entry and the');
   console.log('  server answers the protocol (see the journey probe); Claude Code decides when to honour it.');
   const failedToConnect = /Failed to connect/i.test(line);
   check('the agent does not report our server as BROKEN', () => {

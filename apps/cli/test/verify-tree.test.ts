@@ -32,15 +32,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
-import { sha256hex } from '@canary-rn/hashing';
-import { integrityFor, validateBundle, type EvidenceBundle, type TreeSnapshotRef } from '@canary-rn/evidence-schema';
-import { KNOWN_RUNNER_RELEASES } from '@canary-rn/support';
+import { sha256hex } from '@amabie/hashing';
+import { integrityFor, validateBundle, type EvidenceBundle, type TreeSnapshotRef } from '@amabie/evidence-schema';
+import { KNOWN_RUNNER_RELEASES } from '@amabie/support';
 import { runExperiment } from '../src/pipeline.js';
 import { verifyArtifacts } from '../src/prove.js';
 import { reflattenNpmLs, recountCopies, deriveConfined, verifyTreeSnapshots } from '../src/verify-tree.js';
 import { writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript, WIDGET_PKGS, assertDoubleObservation } from './stub-harness.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-b6-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-b6-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const reSeal = (b: EvidenceBundle): EvidenceBundle => {
@@ -192,7 +192,7 @@ const FAKE_BLOB = { bytes: Buffer.alloc(0), sha256: 'b'.repeat(64) };
 /**
  * Post-GLM AM-2/Finding A shape (see stub-harness header): the fake
  * node_modules is STAGED outside the reserved name and materialized by the
- * prepare step; test.js runs under the pinned Canary mocha double via
+ * prepare step; test.js runs under the pinned Amabie mocha double via
  * $bin:mocha so the CONFIRMED_REGRESSION this suite tampers with is EARNED
  * through the real observation channel, not printed text. The tree therefore
  * carries mocha (extraneous) alongside widget — every hand-forged canonical
@@ -227,7 +227,7 @@ async function offlineRun(): Promise<{ artifactsDir: string; bundle: EvidenceBun
     repeats: { baseline: 2, candidate: 2 },
     timeoutSecs: { install: 120, test: 120 },
   }, repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ ...FAKE_BLOB }),
     extract: (_tgz, wsRoot) => {
       fs.cpSync(stub, path.join(wsRoot, `downstream-${FAKE_SHA}`), { recursive: true });
@@ -588,7 +588,7 @@ describe('validateBundle — round-3 B6 snapshot/anomaly/version gates', () => {
       };
     }
     const issues = validateBundle(seal(b));
-    assert.ok(issues.some((i) => /strong labels require a VALID Canary observation on EVERY round \(panel H mirror\)/.test(i)),
+    assert.ok(issues.some((i) => /strong labels require a VALID Amabie observation on EVERY round \(panel H mirror\)/.test(i)),
       JSON.stringify(issues));
     assert.ok(issues.some((i) => /yields INCONCLUSIVE rule 14/.test(i)),
       `the re-derivation must route the label down too: ${issues.join('; ')}`);
@@ -602,7 +602,7 @@ describe('validateBundle — round-3 B6 snapshot/anomaly/version gates', () => {
       o.observedMochaVersion = '99.99.99';
     }
     const issues = validateBundle(seal(b));
-    assert.ok(issues.some((i) => /not a Canary-pinned release/.test(i)), JSON.stringify(issues));
+    assert.ok(issues.some((i) => /not an Amabie-pinned release/.test(i)), JSON.stringify(issues));
   });
 
   it('trustful label whose observed counts DISAGREE with the text channel is rejected (cross-channel gate cannot be bypassed)', () => {

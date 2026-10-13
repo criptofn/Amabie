@@ -1,11 +1,11 @@
 /**
  * 1.1 §21/§26/§28 — the machine-readable protocol.
  *
- * Canary is used by agents that are not Claude Code, and by CI systems that are
+ * Amabie is used by agents that are not Claude Code, and by CI systems that are
  * not agents at all. Prose is for humans; a stable, versioned, COMPACT JSON
  * envelope is the interface everything else parses. Two rules shape it:
  *
- *   1. `--json` never changes what Canary DECIDES. It changes where the human
+ *   1. `--json` never changes what Amabie DECIDES. It changes where the human
  *      prose goes (stderr) and puts exactly one JSON object on stdout. Exit
  *      codes are identical in both modes — an agent must never get a different
  *      verdict because it asked for JSON.
@@ -17,8 +17,10 @@
  * The schemas are versioned strings so a consumer can detect a change instead
  * of silently misreading a field.
  */
-export const PROTOCOL_STATUS = 'canary-status/1';
-export const PROTOCOL_RESULT = 'canary-result/1';
+export const PROTOCOL_STATUS = 'amabie-status/1';
+export const PROTOCOL_RESULT = 'amabie-result/1';
+export const PROTOCOL_SETUP_CHECK = 'amabie-setup-check/1';
+export const PROTOCOL_DOCTOR_PARTIAL = 'amabie-doctor-partial/1';
 
 /** One sealed check, as an agent needs to see it: what it is, which ecosystem
  *  declared it, where it lives, and the exact command that will run. */
@@ -30,7 +32,7 @@ export interface ProtocolCheck {
   argv: string[];
 }
 
-/** How much protection Canary can claim here, and why — never more than was
+/** How much protection Amabie can claim here, and why — never more than was
  *  measured (see trust-store probeTrustLevel). */
 export interface ProtocolSecurity {
   level: 'HARDENED' | 'LOCAL' | 'ADVISORY' | 'UNSUPPORTED';
@@ -41,7 +43,7 @@ export interface ProtocolAgent {
   /** Which harnesses were found, and whether each can actually gate an agent's
    *  completion. `gated: true` and `hooked: true` are DIFFERENT facts: `gated`
    *  is a capability of the integration ("this agent's completions could be
-   *  blocked"), `hooked` is a fact about THIS repository ("Canary's hook is
+   *  blocked"), `hooked` is a fact about THIS repository ("Amabie's hook is
    *  installed here"). `hooked: false` means: do not claim protection from it —
    *  a detected agent is not a protected repository. */
   harnesses: Array<{ id: string; label: string; gated: boolean; reason: string }>;
@@ -71,6 +73,17 @@ export interface ProtocolIntegration {
   summary: string;
 }
 
+/** Observed obligation states, not a claim that every requested behavior was declared or proved. */
+export interface ProtocolProof {
+  registeredRequirements: number;
+  obligations: Array<{
+    id: string;
+    mode: 'objective' | 'non-objective';
+    status: 'met' | 'unproven' | 'unmet';
+    caveat?: string;
+  }>;
+}
+
 export interface ProtocolEnvelope {
   schema: string;
   command: string;
@@ -87,12 +100,36 @@ export interface ProtocolEnvelope {
    *  the full plan, and a skip is never a pass. */
   skipped?: Array<{ step: string; reason: string }>;
   problems?: string[];
+  /** A selected-check diagnostic. Its PARTIAL status can never certify the full plan. */
+  partialCheck?: { id: string; passed: boolean; ran: boolean; exitCode: number | null };
+  proof?: ProtocolProof;
   /** The one thing to do next, when there is one. */
   next?: string;
   /** Where the full evidence lives — context stays out of the model's window. */
   evidencePath?: string;
+  /** A compact local history record. It is explicitly historical and never
+   *  read to produce a verdict or certify the current working tree. */
+  lastVerification?: {
+    at: string;
+    source: string;
+    status: string;
+    failed: string[];
+    checks: Array<{ kind: string; display: string; exitCode: number | null; ok: boolean }>;
+    hookResponse: 'blocked' | 'continued' | 'message-and-continue' | 'not-applicable' | 'unknown';
+    sessionEnd: 'unknown';
+    next?: string;
+    evidencePath?: string;
+    historical: true;
+    proof?: ProtocolProof;
+  };
+  setupCheck?: {
+    plan: Array<{ kind: string; display: string; executable: string }>;
+    availableToolchains: Array<{ name: string; path: string; authorized: false }>;
+    harnesses: Array<{ name: string; supported: boolean }>;
+    limitations: string[];
+  };
   /**
-   * `canary provider status` only (v1.5): the honest, machine-readable answer to
+   * `amabie provider status` only (v1.5): the honest, machine-readable answer to
    * "is HARDENED real HERE, and if not, what exactly is missing?".
    *
    * Every field is a MEASURED fact, never a declaration: `hostPrimitives` is what

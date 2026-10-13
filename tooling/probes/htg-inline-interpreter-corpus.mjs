@@ -54,7 +54,7 @@ import { pathToFileURL } from 'node:url';
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const WRAPPER = process.env.HTG_WRAPPER
   || path.join(REPO, 'tooling', 'hooks', 'holdthegoblin-pretooluse-local.mjs');
-const CANARY = REPO;
+const AMABIE = REPO;
 
 function resolveRiskEngine() {
   const nodeDir = path.dirname(process.execPath);
@@ -214,16 +214,16 @@ const KEEP_DENY = [
   { c: `bash -c "guard --client-secret raw-secret"`, a: 'deny: literal credential inside shell -c (precedes inline ask)' },
 ];
 
-// L2: realistic commands from today's Canary workflow (>= 50). Routine =
+// L2: realistic commands from today's Amabie workflow (>= 50). Routine =
 // must NOT produce an approval prompt (wrapper allow, or abstain passthrough).
 const ROUTINE = [
   `bd create --title="Retire inline probes" --description="Replace node -e probes; python -c snippets must go too" --type=task`,
   `bd create --title="X" --description="ban node -e; python -c; bash -c; sh -c" --type=task && bd create --title="Y" --description="verification must not use node -e" --type=task`,
-  `bd close canary-reliability-network-p8b --reason="structural classifier landed; corpus green"`,
+  `bd close amabie-reliability-network-p8b --reason="structural classifier landed; corpus green"`,
   `bd list --status=open`,
   `bd ready`,
   `bd stats`,
-  `bd show canary-reliability-network-a0g`,
+  `bd show amabie-reliability-network-a0g`,
   `bd search classifier`,
   `git status --porcelain`,
   `git status`,
@@ -381,7 +381,7 @@ if (risk && classifierEngine) {
 // ---- layer 2: the REAL effective hook --------------------------------------
 
 function hookDecision(cmd) {
-  const input = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', cwd: CANARY, tool_input: { command: cmd } });
+  const input = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', cwd: AMABIE, tool_input: { command: cmd } });
   const r = spawnSync(process.execPath, [WRAPPER, 'hook', 'claude'], { input, encoding: 'utf8', timeout: 30_000 });
   const out = (r.stdout ?? '').trim();
   if (!out) return 'abstain'; // wrapper passes nothing through -> harness normal flow (autonomous)

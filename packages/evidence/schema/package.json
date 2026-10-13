@@ -1,8 +1,8 @@
 {
-  "name": "@canary-rn/evidence-schema",
+  "name": "@amabie/evidence-schema",
   "version": "0.0.1",
   "private": true,
-  "description": "Evidence Bundle: types, canonical shape, and a structural validator. The artifact that makes a Canary conclusion auditable without trusting Canary.",
+  "description": "Evidence Bundle: types, canonical shape, and a structural validator. The artifact that makes a Amabie conclusion auditable without trusting Amabie.",
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -10,8 +10,8 @@
     ".": { "types": "./dist/src/index.d.ts", "default": "./dist/src/index.js" }
   },
   "dependencies": {
-    "@canary-rn/classification": "*",
-    "@canary-rn/hashing": "*",
-    "@canary-rn/support": "*"
+    "@amabie/classification": "*",
+    "@amabie/hashing": "*",
+    "@amabie/support": "*"
   }
 }

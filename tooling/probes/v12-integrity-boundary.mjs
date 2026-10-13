@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 
 import { applyAuthorityLabel } from '../../apps/cli/dist/src/provider/integrity.js';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-il-verify-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-il-verify-'));
 const authorityDir = path.join(root, 'authority');
 const scratchDir = path.join(root, 'scratch');
 const results = [];
@@ -138,7 +138,7 @@ try {
     console.log(`PROBE-PASS-WITH-SKIP — ${hostSkips} host-bound SKIP(s) above; the mechanism this probe would measure could not be driven here, so the absence of a boundary is REPORTED rather than proven. A skip is never a pass.`);
   }
   console.log('platform:', process.platform, 'node:', process.version, 'elevated:', spawnSync('net', ['session'], { windowsHide: true }).status === 0);
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-integrity-boundary.json'),
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-integrity-boundary.json'),
     JSON.stringify({ at: new Date().toISOString(), platform: process.platform, node: process.version, results, boundaryPresent, hostSkips }, null, 2));
 
   process.exitCode = boundaryPresent && results.every(r => r.ok) ? 0 : 1;

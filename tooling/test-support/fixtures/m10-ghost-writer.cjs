@@ -4,7 +4,7 @@
 //
 // Deliberate confinement: it only writes when its CWD is a candidate
 // worktree (the immediate parent directory is named 'candidates' —
-// <root>/.canary/candidates/<name>). During setup's smoke the same step
+// <root>/.amabie/candidates/<name>). During setup's smoke the same step
 // runs in the base repo root and must leave no residue, so the base stays
 // clean and the scenario's premise ("every deletion in the candidate is
 // the candidate's") holds untouched.

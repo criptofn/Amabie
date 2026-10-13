@@ -1,5 +1,5 @@
 /**
- * The Canary PYTHON OBSERVER — the exact bytes Canary writes (byte-stable) into
+ * The Amabie PYTHON OBSERVER — the exact bytes Amabie writes (byte-stable) into
  * its workspace and makes the interpreter import before any project code runs.
  *
  * WHY (v1.1 Phase 2): the strong-label contract was structurally "pinned mocha".
@@ -12,21 +12,21 @@
  *
  * THE INJECTION POINT: `sitecustomize`. CPython's `site` module imports a module
  * named `sitecustomize` at interpreter startup, before the command line runs and
- * therefore before any test module is imported. Canary owns it by putting a
+ * therefore before any test module is imported. Amabie owns it by putting a
  * directory containing these bytes on the child's `PYTHONPATH` — an environment
- * value Canary computes from its own workspace, never anything a subject
+ * value Amabie computes from its own workspace, never anything a subject
  * supplies (`sanitizedEnv` has no env-merge path, deliberately: audit F9).
  *
  * WHAT MAKES THE OBSERVATION TRUSTWORTHY, and what does not:
  *  1. Lifecycle ground truth is `TestResult.startTest` + `addSuccess`/`addFailure`
- *     TOGETHER: a success reported for a test whose `startTest` Canary never
+ *     TOGETHER: a success reported for a test whose `startTest` Amabie never
  *     watched is REJECTED (`reject` frame, which fails the round closed). Printing
  *     or reporting is not execution.
  *  2. Every hook body is guarded, and a broken hook emits exactly one
  *     `adapter-error` frame and then degrades silently. The observer must never
  *     change what the suite does.
  *  3. `hello` carries pid, parent pid, interpreter version, observerVersion and
- *     the per-round nonce Canary put in the child's observer environment. WHY NOT
+ *     the per-round nonce Amabie put in the child's observer environment. WHY NOT
  *     PID ALONE: on Windows a virtualenv's `python.exe` re-executes the base
  *     interpreter as a CHILD, so `os.getpid()` is legitimately not the pid Node
  *     spawned — a strict pid equality check would make every venv round INVALID.
@@ -44,7 +44,7 @@
  *
  * The source is kept as a template with no interpolated host data so the bytes
  * are identical on every machine: a byte-compare in `ensurePythonObserver` is
- * what makes "the loaded bytes are Canary's" checkable at all.
+ * what makes "the loaded bytes are Amabie's" checkable at all.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -53,19 +53,19 @@ import path from 'node:path';
 import { OBSERVER_VERSION } from '../observation.js';
 // v1.4 — canonical filesystem identity (expands Windows 8.3 short names); the lexical fallback is
 // kept for a path that genuinely cannot be resolved, exactly as before.
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 
 /** Where the observer directory lives inside the workspace (outside artifacts). */
 export const PYTHON_OBSERVER_DIRNAME = 'canary-python-observer';
 export const PYTHON_OBSERVER_BASENAME = 'sitecustomize.py';
 
-/** The directory Canary puts on the child's PYTHONPATH. */
+/** The directory Amabie puts on the child's PYTHONPATH. */
 export function pythonObserverDir(wsRoot: string): string {
   return path.join(wsRoot, PYTHON_OBSERVER_DIRNAME);
 }
 
 /**
- * Write Canary's observer bytes and prove the loaded bytes are Canary's.
+ * Write Amabie's observer bytes and prove the loaded bytes are Amabie's.
  *
  * The SAME two-point pinning the mocha preload uses (`ensureObserverPreload`):
  * here, before spawn, write-if-different plus a read-back byte comparison; inside
@@ -83,7 +83,7 @@ export function ensurePythonObserver(wsRoot: string): string {
   } catch { /* absent: write below */ }
   fs.writeFileSync(p, PYTHON_OBSERVER_SOURCE, 'utf8');
   if (fs.readFileSync(p, 'utf8') !== PYTHON_OBSERVER_SOURCE) {
-    throw new Error(`python observer at ${p} does not match Canary's bytes even after rewrite (workspace is not writable-stable)`);
+    throw new Error(`python observer at ${p} does not match Amabie's bytes even after rewrite (workspace is not writable-stable)`);
   }
   return dir;
 }
@@ -114,7 +114,7 @@ export const OBSERVER_PROTOCOL_VERSION = OBSERVER_VERSION;
 /** `hello.runner` for this channel; the neutral validator binds it. */
 export const PYTHON_RUNNER_ID = 'python-unittest';
 
-export const PYTHON_OBSERVER_SOURCE = `# Canary observation observer (sitecustomize). See packages/runner/executor/src/observers/python-observer.ts
+export const PYTHON_OBSERVER_SOURCE = `# Amabie observation observer (sitecustomize). See packages/runner/executor/src/observers/python-observer.ts
 import json
 import os
 import sys
@@ -264,7 +264,7 @@ try:
         "pythonVersion": _py,
         "pid": os.getpid(),
         "ppid": os.getppid(),
-        "nonce": os.environ.get("CANARY_OBSERVER_NONCE", ""),
+        "nonce": os.environ.get("AMABIE_OBSERVER_NONCE", ""),
         "observerVersion": OBSERVER_VERSION,
         "node": "python-" + _py,
     })

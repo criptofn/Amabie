@@ -9,7 +9,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-p0-mutants-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-p0-mutants-'));
 const modules = ['authority-envelope', 'trust-store', 'authorization', 'broker', 'platform-boundary'];
 const tests = ['trust-store', 'trust-store-attacks', 'broker', 'platform-boundary'];
 const mutations = [
@@ -46,19 +46,20 @@ function prepare(name) {
   const fixtures = path.join(temp, name, 'tooling', 'test-support', 'fixtures');
   fs.mkdirSync(fixtures, { recursive: true });
   fs.copyFileSync(path.join(root, 'tooling/test-support/fixtures/trust-seal-once.mjs'), path.join(fixtures, 'trust-seal-once.mjs'));
+  fs.copyFileSync(path.join(root, 'tooling/test-support/fixtures/trust-lock-denial.mjs'), path.join(fixtures, 'trust-lock-denial.mjs'));
   // v1.4 — MIRROR MODULE RESOLUTION TOO. MEASURED FAILURE: the mirrored tree had no
   // node_modules, so as soon as a copied module gained a legitimate internal import edge
-  // (`trust-store.js` -> `@canary-rn/support`, added with the Windows path-canonicalisation
+  // (`trust-store.js` -> `@amabie/support`, added with the Windows path-canonicalisation
   // helper) the CONTROL crashed with
-  //   Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@canary-rn/support' imported from
+  //   Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@amabie/support' imported from
   //   <temp>/control/apps/cli/dist/src/trust-store.js
   // and this probe reported `actual 1, expected 0` — i.e. it blamed the mutant when its own
   // isolated tree could not load the module at all. A harness that copies code must copy the
   // resolution context with it, or every future internal import becomes a false red.
   // The workspace packages are NOT mutation targets: they are dependencies, so they are linked
   // to the REAL built output, exactly as the real tree resolves them.
-  const scope = path.join(root, 'node_modules', '@canary-rn');
-  const mirrorScope = path.join(temp, name, 'node_modules', '@canary-rn');
+  const scope = path.join(root, 'node_modules', '@amabie');
+  const mirrorScope = path.join(temp, name, 'node_modules', '@amabie');
   fs.mkdirSync(mirrorScope, { recursive: true });
   for (const entry of fs.readdirSync(scope)) {
     const from = path.join(scope, entry), to = path.join(mirrorScope, entry);

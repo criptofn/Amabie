@@ -48,9 +48,9 @@ function copyDir(from, to) {
   }
 }
 
-/** A real repository, wired by the real setup, ready for `canary work`. */
+/** A real repository, wired by the real setup, ready for `amabie work`. */
 function makeProject(label) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-unbound-${label}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-unbound-${label}-`));
   const project = path.join(root, 'project');
   copyDir(path.join(FIXTURES, 'cli-exit-codes', 'project'), project);
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
@@ -59,8 +59,8 @@ function makeProject(label) {
   fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
   const git = (...args) => runCaptured('git', ['-C', project, ...args], { timeout: 60_000 });
   git('init', '-b', 'main');
-  git('config', 'user.email', 'probe@canary.local');
-  git('config', 'user.name', 'Canary Probe');
+  git('config', 'user.email', 'probe@amabie.local');
+  git('config', 'user.name', 'Amabie Probe');
   git('add', '-A');
   git('commit', '-m', 'initial state');
   const setup = runCaptured(process.execPath, [CLI, 'setup', '--yes', project], { cwd: project, timeout: 300_000 });
@@ -71,7 +71,7 @@ function makeProject(label) {
 }
 
 const cli = (project, args, timeout = 300_000) => runCaptured(process.execPath, [CLI, ...args], { cwd: project, timeout });
-const candidateExists = (project, name) => fs.existsSync(path.join(project, '.canary', 'candidates', `${name}.json`));
+const candidateExists = (project, name) => fs.existsSync(path.join(project, '.amabie', 'candidates', `${name}.json`));
 
 const REQ = 'the CLI must exit 2 when the config is invalid';
 
@@ -81,7 +81,7 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
   const { root, project } = makeProject('a');
   try {
     const work = cli(project, ['work', 'c1', 'fix the CLI exit codes', '--requirement', REQ]);
-    check('A: `canary work` refuses with exit 2', work.status === 2, `exit ${String(work.status)}`);
+    check('A: `amabie work` refuses with exit 2', work.status === 2, `exit ${String(work.status)}`);
     check('A: the refusal names REQUIREMENT UNBOUND', /REQUIREMENT UNBOUND/.test(work.stdout), work.stdout.split('\n').filter((l) => /UNBOUND/.test(l))[0] ?? '(not found)');
     check('A: it says worker execution was not started', /NOT started|never started/i.test(work.stdout));
     // The outcome, not just the exit code: a refusal that still opened a candidate is no refusal.
@@ -107,7 +107,7 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
     if (typeof digest === 'string') {
       const pkgPath = path.join(project, 'package.json');
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      pkg.canary = { proofs: { [digest]: 'test' } };
+      pkg.amabie = { proofs: { [digest]: 'test' } };
       fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
       git('add', '-A');
       git('commit', '-m', 'bind the requirement');
@@ -115,7 +115,7 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
       check('B: re-sealing succeeds', reseal.status === 0 || /READY/.test(reseal.stdout), `exit ${String(reseal.status)}`);
 
       const work = cli(project, ['work', 'c2', 'fix the CLI exit codes', '--requirement', REQ]);
-      check('B: `canary work` now PROCEEDS', !/REQUIREMENT UNBOUND/.test(work.stdout), work.stdout.split('\n').filter((l) => /UNBOUND|CONNECTED/.test(l))[0] ?? '(neither)');
+      check('B: `amabie work` now PROCEEDS', !/REQUIREMENT UNBOUND/.test(work.stdout), work.stdout.split('\n').filter((l) => /UNBOUND|CONNECTED/.test(l))[0] ?? '(neither)');
       check('B: the candidate IS opened', candidateExists(project, 'c2'));
     }
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -161,13 +161,13 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
 
 // ---------------------------------------------------------------- E: --reseal is ONE operator act
 {
-  console.log('--- E: `canary bind --reseal` collapses bind -> commit -> setup into one act');
+  console.log('--- E: `amabie bind --reseal` collapses bind -> commit -> setup into one act');
   const { root, project, git } = makeProject('e');
   try {
     const headBefore = git('rev-parse', 'HEAD').stdout.trim();
     const bind = cli(project, ['bind', 'test', '--requirement', REQ, '--reseal']);
     check('E: `bind --reseal` exits 0', bind.status === 0, `exit ${String(bind.status)}`);
-    const cfg = JSON.parse(fs.readFileSync(path.join(project, '.canary', 'canary.local.json'), 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(path.join(project, '.amabie', 'amabie.local.json'), 'utf8'));
     const sealedToTest = Object.entries(cfg.planAuthority?.proofBindings ?? {}).filter(([, s]) => s === 'test');
     check('E: the SEALED authority carries the binding (no second command was needed)',
       sealedToTest.length === 1, JSON.stringify(cfg.planAuthority?.proofBindings ?? {}));
@@ -181,29 +181,29 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
       git('log', '-1', '--pretty=%s').stdout.trim());
     const status = git('status', '--porcelain').stdout.trim().split('\n').filter(Boolean)
       .map((l) => l.slice(3).trim());
-    // The declaration must no longer be dirty, and nothing else may have been touched. Canary's own
+    // The declaration must no longer be dirty, and nothing else may have been touched. Amabie's own
     // surface may legitimately remain untracked: `setup` writes `.claude/settings.json` and, since
     // v1.3, `.mcp.json`.
     //
     // The owned set is DERIVED from the config the product wrote (`touched[]` is exactly the list
     // `setup` records, excludes from its baseline, and `uninstall` prunes) rather than spelled here.
-    // A hard-coded list is what made this probe fail the moment Canary's managed surface grew — and a
+    // A hard-coded list is what made this probe fail the moment Amabie's managed surface grew — and a
     // probe that has to be edited whenever the product changes is a probe that will eventually be
     // edited in the wrong direction. This cannot weaken the property that matters: that `--reseal`
     // sweeps no unrelated work into the commit is asserted separately, on the commit's own contents.
-    const owned = ['.canary'];
+    const owned = ['.amabie'];
     try {
-      const cfg = JSON.parse(fs.readFileSync(path.join(project, '.canary', 'canary.local.json'), 'utf8'));
+      const cfg = JSON.parse(fs.readFileSync(path.join(project, '.amabie', 'amabie.local.json'), 'utf8'));
       for (const t of cfg.touched ?? []) {
         owned.push(path.relative(project, t.path).split(path.sep).join('/'));
       }
-    } catch { /* no config: only the self-ignored store is Canary's */ }
-    const canaryOwned = (p) => owned.some((o) => p === o || p.startsWith(`${o}/`) || (p.endsWith('/') && o.startsWith(p)));
+    } catch { /* no config: only the self-ignored store is Amabie's */ }
+    const amabieOwned = (p) => owned.some((o) => p === o || p.startsWith(`${o}/`) || (p.endsWith('/') && o.startsWith(p)));
     check('E: the declaration is committed and nothing else was touched',
-      status.every(canaryOwned), status.join(', ') || '(clean)');
+      status.every(amabieOwned), status.join(', ') || '(clean)');
     // The outcome that matters: the requirement is no longer unbound, so the worker is handed the duty.
     const work = cli(project, ['work', 'e1', 'fix the CLI exit codes', '--requirement', REQ]);
-    check('E: `canary work` then PROCEEDS', !/REQUIREMENT UNBOUND/.test(work.stdout),
+    check('E: `amabie work` then PROCEEDS', !/REQUIREMENT UNBOUND/.test(work.stdout),
       work.stdout.split('\n').filter((l) => /UNBOUND|CONNECTED/.test(l))[0] ?? '(neither)');
     check('E: and the candidate IS opened', candidateExists(project, 'e1'));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -220,13 +220,13 @@ const REQ = 'the CLI must exit 2 when the config is invalid';
     check('F: it refuses with exit 2', bind.status === 2, `exit ${String(bind.status)}`);
     check('F: the refusal names the OTHER path', /UNRELATED\.txt/.test(bind.stdout),
       bind.stdout.split('\n').find((l) => /REFUSED/.test(l)) ?? '(no refusal line)');
-    const cfg = JSON.parse(fs.readFileSync(path.join(project, '.canary', 'canary.local.json'), 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(path.join(project, '.amabie', 'amabie.local.json'), 'utf8'));
     const bindings = cfg.planAuthority?.proofBindings ?? {};
     check('F: NOTHING was sealed', !Object.values(bindings).includes('test'), JSON.stringify(bindings));
     const pkg = JSON.parse(fs.readFileSync(path.join(project, 'package.json'), 'utf8'));
     check('F: the declaration IS written, so the operator loses no work',
-      Object.values(pkg.canary?.proofs ?? {}).includes('test'), JSON.stringify(pkg.canary?.proofs ?? {}));
-    check('F: and the refusal says how to finish', /canary setup/.test(bind.stdout));
+      Object.values(pkg.amabie?.proofs ?? {}).includes('test'), JSON.stringify(pkg.amabie?.proofs ?? {}));
+    check('F: and the refusal says how to finish', /amabie setup/.test(bind.stdout));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 

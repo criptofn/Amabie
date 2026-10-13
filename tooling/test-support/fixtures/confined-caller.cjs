@@ -2,7 +2,7 @@
 //
 // Runs twice with the same code: once UNRESTRICTED (positive control, ordinary user
 // process) and once CONFINED (AppContainer + restricted + low integrity, zero
-// capabilities) by tools/windows-boundary/CanaryConfinedLauncher.cs. Every attempt is
+// capabilities) by tools/windows-boundary/AmabieConfinedLauncher.cs. Every attempt is
 // recorded with its real result, and the caller never writes a PASS/FAIL verdict —
 // the trusted probe outside decides, from these observations plus its own.
 //
@@ -39,9 +39,9 @@ const report = {
   cwd: process.cwd(),
   argv0: process.argv[0],
   env: {
-    hasBrokerKey: Object.prototype.hasOwnProperty.call(process.env, 'CANARY_CUSTODY_KEY'),
-    hasNonce: Object.prototype.hasOwnProperty.call(process.env, 'CANARY_PROBE_NONCE'),
-    appContainer: process.env.CANARY_APPCONTAINER || null
+    hasBrokerKey: Object.prototype.hasOwnProperty.call(process.env, 'AMABIE_CUSTODY_KEY'),
+    hasNonce: Object.prototype.hasOwnProperty.call(process.env, 'AMABIE_PROBE_NONCE'),
+    appContainer: process.env.AMABIE_APPCONTAINER || null
   },
   attempts: [],
   broker: []

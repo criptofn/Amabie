@@ -34,20 +34,20 @@ const argOf = (name, fallback) => {
 };
 const model = argOf('model', 'qwen3.8-flash');
 const timeoutMin = Number(argOf('timeout-min', '15')) || 15;
-const outPath = path.join(os.tmpdir(), 'canary-edit-choice.json');
+const outPath = path.join(os.tmpdir(), 'amabie-edit-choice.json');
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-edit-choice-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-edit-choice-'));
 const base = path.join(temp, 'project'), work = path.join(temp, 'candidate'), store = path.join(temp, 'store');
 const promptFile = path.join(temp, 'prompt.txt');
 let broker = null, failure = null;
 
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd = base, expect = 0) => {
   const r = spawnSync(exe, args, { cwd, env, encoding: 'utf8', windowsHide: true, timeout: 300000 });
   if (expect !== null) assert.equal(r.status, expect, `${exe} ${args.join(' ')}\n${r.stdout}${r.stderr}`);
   return r;
 };
-const canary = (args, expect = 0) => run(process.execPath, [cli, ...args], base, expect);
+const amabie = (args, expect = 0) => run(process.execPath, [cli, ...args], base, expect);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A ~2 KB module with ONE seeded defect: `remove` forgets to invalidate the cache. */
@@ -112,17 +112,17 @@ try {
   run(gitExe, ['add', '-A']);
   run(gitExe, ['commit', '-m', 'baseline with a seeded defect']);
 
-  canary(['setup', '--yes'], null); // the plan is RED here, which setup reports and still seals
-  assert.ok(fs.existsSync(path.join(base, '.canary', 'canary.local.json')), 'the plan was not sealed');
-  canary(['task', 'fix the ledger so a removed row cannot come back from the cache']);
+  amabie(['setup', '--yes'], null); // the plan is RED here, which setup reports and still seals
+  assert.ok(fs.existsSync(path.join(base, '.amabie', 'amabie.local.json')), 'the plan was not sealed');
+  amabie(['task', 'fix the ledger so a removed row cannot come back from the cache']);
   run(gitExe, ['add', '-A']);
   run(gitExe, ['commit', '--allow-empty', '-m', 'operator wiring']);
-  const enrolled = JSON.parse(canary(['provider', 'enroll', base, store]).stdout);
+  const enrolled = JSON.parse(amabie(['provider', 'enroll', base, store]).stdout);
 
   // The candidate is the same starting bytes, in its own git repo — the workspace the model gets.
-  // `.canary` (the sealed authority) and `.git` (the base's history) belong to the trusted side, not
+  // `.amabie` (the sealed authority) and `.git` (the base's history) belong to the trusted side, not
   // to the worker's copy.
-  const skipOwn = (p) => !p.split(path.sep).some((seg) => seg === '.canary' || seg === '.git');
+  const skipOwn = (p) => !p.split(path.sep).some((seg) => seg === '.amabie' || seg === '.git');
   fs.cpSync(base, work, { recursive: true, filter: skipOwn });
   run(gitExe, ['init', '-b', 'main'], work);
   run(gitExe, ['config', 'user.name', 'Worker'], work);
@@ -136,7 +136,7 @@ try {
     '',
   ].join('\n'));
 
-  const { challenge } = JSON.parse(canary(['provider', 'measurement-begin', store]).stdout);
+  const { challenge } = JSON.parse(amabie(['provider', 'measurement-begin', store]).stdout);
   broker = spawn(process.execPath, [cli, 'provider', 'serve-production', store], { cwd: temp, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let brokerLog = ''; broker.stdout.on('data', (x) => brokerLog += x); broker.stderr.on('data', (x) => brokerLog += x);
   let ready = false;
@@ -158,7 +158,7 @@ try {
   const code = await Promise.race([new Promise((r) => child.once('exit', r)), sleep(timeoutMin * 60000).then(() => 'timeout')]);
   if (code === 'timeout') child.kill();
   const durationMs = Date.now() - startedAt;
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-edit-choice-transport.log'), stdout + stderr);
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-edit-choice-transport.log'), stdout + stderr);
 
   // ── what the model actually sent ──
   const events = stdout.split('\n').filter((l) => l.trim().startsWith('{')).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
@@ -179,7 +179,7 @@ try {
   const suite = spawnSync(process.execPath, ['run-tests.js'], { cwd: work, encoding: 'utf8', windowsHide: true, timeout: 60000 });
 
   const record = {
-    schema: 'canary-edit-choice/1', model, startedAt: new Date(startedAt).toISOString(), durationMs,
+    schema: 'amabie-edit-choice/1', model, startedAt: new Date(startedAt).toISOString(), durationMs,
     transportExit: code === 'timeout' ? 'timeout' : code,
     calls: calls.length, operations: ops.length, byOp, payloadBytes, editBytes, writeBytes, tokens,
     sourceBytes: SOURCE.length,

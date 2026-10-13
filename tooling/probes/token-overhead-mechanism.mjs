@@ -2,14 +2,14 @@
 /**
  * WHY DID THE TOKENS GO DOWN? — the mechanism behind the raw-token delta.
  *
- * The owner's requirement is NEGATIVE overhead: with Canary, the same agent must spend FEWER model
+ * The owner's requirement is NEGATIVE overhead: with Amabie, the same agent must spend FEWER model
  * tokens than without it. A total is not an explanation, and an explanation is what tells us
  * whether the saving generalises or is an artefact of one arm's prompt. This probe reads a stored
  * bench report plus its per-trial records and decomposes the delta into the quantities the ledger
  * measures per trial:
  *
  *   - model turns (each turn re-reads the accumulated context, so turns dominate cache reads),
- *   - how many times the MODEL ran the project's own checks (the work Canary takes over),
+ *   - how many times the MODEL ran the project's own checks (the work Amabie takes over),
  *   - the bytes of tool output the model was shown,
  *   - the tokens the model spent AFTER its last file edit (verification/ceremony, when attributable).
  *
@@ -57,7 +57,7 @@ for (const arm of arms) {
     turns: r1(mean(collect(rs, (r) => num(r.agentResult?.numTurns)))),
     checksByModel: r1(mean(collect(rs, (r) => num(r.stream?.commands?.checks)))),
     visibleBytes: r1(mean(collect(rs, (r) => num(r.stream?.bytes?.toolResultTotal)))),
-    canaryBytes: r1(mean(collect(rs, (r) => num(r.stream?.bytes?.canaryVisible)))),
+    amabieBytes: r1(mean(collect(rs, (r) => num(r.stream?.bytes?.amabieVisible)))),
     tailTokens: r1(mean(collect(rs, (r) => num(r.stream?.tail?.tokensAfterLastEdit)))),
     tailTrials: collect(rs, (r) => num(r.stream?.tail?.tokensAfterLastEdit)).length,
     secs: r1(mean(collect(rs, (r) => num(r.agent?.secs)))),
@@ -66,7 +66,7 @@ for (const arm of arms) {
 
 console.log(`label: ${label}   baseline: ${baseline}   records: ${records.length}`);
 console.log(`instrument(s): ${[...new Set(records.map((r) => r.instrument?.version ?? 'unknown'))].join(', ')}\n`);
-const cols = ['trials', 'tokens', 'cacheRead', 'output', 'turns', 'checksByModel', 'visibleBytes', 'canaryBytes', 'tailTokens', 'secs'];
+const cols = ['trials', 'tokens', 'cacheRead', 'output', 'turns', 'checksByModel', 'visibleBytes', 'amabieBytes', 'tailTokens', 'secs'];
 console.log(`arm        | ${cols.map((c) => c.padStart(13)).join(' | ')}`);
 for (const arm of arms) {
   const s = summary[arm];

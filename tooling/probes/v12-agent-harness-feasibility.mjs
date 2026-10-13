@@ -23,7 +23,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-feasibility-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-feasibility-'));
 const report = { at: new Date().toISOString(), platform: process.platform, node: process.version, checks: [] };
 
 function record(name, ok, detail) {
@@ -97,6 +97,6 @@ console.log(`\n${verdict}`);
 console.log('host capabilities:', report.checks.filter((c) => c.ok).length, '/', report.checks.length);
 
 fs.writeFileSync(path.join(tmp, 'agent-harness-feasibility.json'), JSON.stringify(report, null, 2));
-fs.copyFileSync(path.join(tmp, 'agent-harness-feasibility.json'), path.join(os.tmpdir(), 'canary-agent-harness-feasibility.json'));
+fs.copyFileSync(path.join(tmp, 'agent-harness-feasibility.json'), path.join(os.tmpdir(), 'amabie-agent-harness-feasibility.json'));
 fs.rmSync(tmp, { recursive: true, force: true });
 process.exit(0);

@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const fixture = path.join(repo, 'tooling/test-support/fixtures/confined-caller.cjs');
 const cli = path.join(repo, 'tools/windows-boundary/confined-cli.ps1');
-const launcherModule = path.join(repo, 'tools/windows-boundary/CanaryConfinedLauncher.cs');
+const launcherModule = path.join(repo, 'tools/windows-boundary/AmabieConfinedLauncher.cs');
 const lines = [];
 let pass = 0, fail = 0, inconclusive = 0;
 
@@ -81,8 +81,8 @@ const callerName = callerWho.name;
 const quote = value => '"' + String(value).replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1') + '"';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-confined-'));
-const relayDir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-confined-relay-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confined-'));
+const relayDir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confined-relay-'));
 const work = path.join(root, 'caller-work');
 const store = path.join(root, 'trusted-store');
 const target = path.join(root, 'trusted-target');
@@ -142,7 +142,7 @@ function readSide(file) {
 
 const secret = 'custody-key-material-' + crypto.randomUUID();
 const nonce = crypto.randomUUID();
-const pipeName = 'canary-broker-' + crypto.randomUUID();
+const pipeName = 'amabie-broker-' + crypto.randomUUID();
 const key = crypto.randomUUID().replace(/-/g, '');
 let broker = null, listener = null, mediumPipe = null, serverPort = 0;
 const listenerReady = path.join(relayDir, 'listener-ready');
@@ -277,7 +277,7 @@ try {
   const controlEvidence = path.join(work, 'control-evidence.json');
   const controlArm = spawnSync(process.execPath, [caller, '--mode', 'attacks', '--work', work, '--root', root, '--store', store,
     '--target', target, '--evidence', controlEvidence, '--nonce', nonce, '--port', String(serverPort), '--package', packageSid],
-    { cwd: work, windowsHide: true, timeout: 120000, env: { ...process.env, CANARY_PROBE_NONCE: nonce, CANARY_CUSTODY_KEY: key } });
+    { cwd: work, windowsHide: true, timeout: 120000, env: { ...process.env, AMABIE_PROBE_NONCE: nonce, AMABIE_CUSTODY_KEY: key } });
   const controlReport = readJson(controlEvidence);
   evidence.arms.control = controlReport;
   const controlAttempt = id => controlReport?.attempts?.find(a => a.id === id);
@@ -292,7 +292,7 @@ try {
   control('control-egress-reached-the-local-listener', controlAttempt('tcp-egress')?.result === 'CONNECTED' && controlConnections.length === 1,
     `unrestricted TCP to the live local listener = ${controlAttempt('tcp-egress')?.result}`);
   control('control-inherited-broker-secret-exposed', controlReport?.env?.hasBrokerKey === true,
-    'an unrestricted caller does inherit CANARY_CUSTODY_KEY from its parent');
+    'an unrestricted caller does inherit AMABIE_CUSTODY_KEY from its parent');
   const controlDescendant = readJson(path.join(work, 'descendant.json'));
   control('control-descendant-executed-and-escaped', controlDescendant?.nonce === nonce &&
     controlDescendant?.executed === true && controlDescendant?.result === 'ALLOWED', JSON.stringify(controlDescendant));
@@ -346,7 +346,7 @@ try {
   attack('confined-junction-escape-denied', junctionSide?.completion?.exit === 9,
     `confined read through the junction exited ${junctionSide?.completion?.exit} (9 = EACCES/EPERM)`);
   control('confined-broker-secret-not-inherited', confinedReport?.env?.hasBrokerKey === false,
-    `CANARY_CUSTODY_KEY present in the confined caller's environment = ${confinedReport?.env?.hasBrokerKey}`);
+    `AMABIE_CUSTODY_KEY present in the confined caller's environment = ${confinedReport?.env?.hasBrokerKey}`);
   // Does a descendant escape? Answer from the filesystem, not from the caller's self-report.
   // The arm is disambiguated by content: the child writes this trial's nonce, and the
   // control arm's own escape file was removed before this arm ran.
@@ -519,7 +519,7 @@ try {
     {
       control: 'authorityCustody',
       subject: 'the trusted store and the custody key, from the confined caller and through the broker',
-      positiveControl: `an unrestricted caller inherits CANARY_CUSTODY_KEY (hasBrokerKey=${seen(controlReport?.env?.hasBrokerKey)}) and reads the trusted store (${seen(controlAttempt('trusted-store-read')?.result)})`,
+      positiveControl: `an unrestricted caller inherits AMABIE_CUSTODY_KEY (hasBrokerKey=${seen(controlReport?.env?.hasBrokerKey)}) and reads the trusted store (${seen(controlAttempt('trusted-store-read')?.result)})`,
       attack: `confined read=${seen(confinedAttempt('trusted-store-read')?.result)}, write=${seen(confinedAttempt('trusted-store-write')?.result)}, junction read exit ${seen(junctionSide?.completion?.exit)}, broker impersonated read status ${seen(impersonated?.status)}`,
       denial: (oneOf(confinedAttempt('trusted-store-read')?.result, ['EACCES', 'EPERM'])
         && oneOf(confinedAttempt('trusted-store-write')?.result, ['EACCES', 'EPERM'])
@@ -661,7 +661,7 @@ try {
   if (fail > 0 || inconclusive > 0) deploymentFailures.push(`the battery itself reported ${fail} fail and ${inconclusive} inconclusive`);
   const controls = CM.completeControls(controlFacts);
   const record = {
-    schema: 'canary-confined-measurement/1',
+    schema: 'amabie-confined-measurement/1',
     source: 'tooling/probes/v12-confined-caller.mjs',
     measuredAt: new Date().toISOString(),
     platform: process.platform,

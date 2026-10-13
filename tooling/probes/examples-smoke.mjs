@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 const EXAMPLES = path.join(REPO, 'examples');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-examples-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-examples-'));
 
 let line = 0;
 const ok = (what) => console.log(`PASS  L${++line} ${what}`);
@@ -33,9 +33,9 @@ const bad = (what) => console.log(`FAIL  L${++line} ${what}`);
 let failed = 0;
 let skipped = 0;
 
-const canary = (args, cwd = REPO) => spawnSync(process.execPath, [CLI, ...args], {
+const amabie = (args, cwd = REPO) => spawnSync(process.execPath, [CLI, ...args], {
   cwd, encoding: 'utf8', timeout: 300_000,
-  env: { ...process.env, CANARY_TRUST_STORE: path.join(TMP, 'trust') },
+  env: { ...process.env, AMABIE_TRUST_STORE: path.join(TMP, 'trust') },
 });
 
 /** Copy an example into its own git repository — the documented instruction. */
@@ -48,7 +48,7 @@ function stage(name) {
   fs.mkdirSync(path.join(dest, '.claude'), { recursive: true });
   const git = (args) => spawnSync('git', args, { cwd: dest, encoding: 'utf8' });
   if (git(['init', '-b', 'main']).status !== 0) return null;
-  git(['config', 'user.email', 'examples@canary.local']);
+  git(['config', 'user.email', 'examples@amabie.local']);
   git(['config', 'user.name', 'Examples']);
   if (git(['add', '-A']).status !== 0) return null;
   if (git(['commit', '-m', 'example']).status !== 0) return null;
@@ -64,11 +64,11 @@ function journey(name, { needs } = {}) {
   const dir = stage(name);
   if (dir === null) { bad(`${name}: could not stage a git repository`); failed += 1; return; }
 
-  const setup = canary(['setup', '--yes', dir]);
+  const setup = amabie(['setup', '--yes', dir]);
   if (setup.status === 0 && /READY/.test(setup.stdout)) ok(`${name}: setup discovered the check and reached READY`);
   else { bad(`${name}: setup failed (exit ${setup.status})`); failed += 1; console.log(setup.stdout.slice(-800)); return; }
 
-  const doctor = canary(['doctor', '--json', dir]);
+  const doctor = amabie(['doctor', '--json', dir]);
   let env = null;
   try { env = JSON.parse(doctor.stdout); } catch { /* reported below */ }
   if (doctor.status === 0 && env !== null && env.status === 'READY' && Array.isArray(env.checks) && env.checks.length > 0) {
@@ -79,7 +79,7 @@ function journey(name, { needs } = {}) {
   }
 
   // The sealed check must be a real command an agent could run, not a token.
-  const cfg = JSON.parse(fs.readFileSync(path.join(dir, '.canary', 'canary.local.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(path.join(dir, '.amabie', 'amabie.local.json'), 'utf8'));
   const step = cfg.plan[0];
   if (step.argv !== undefined && Array.isArray(step.argv) && step.argv.length > 0) ok(`${name}: the sealed check is an explicit command (${step.adapter}:${step.script})`);
   else ok(`${name}: the sealed check is a declared script (${step.script})`);

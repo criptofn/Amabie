@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { attachSummary, noOpProvider } from '../src/index.js';
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
 const base = {
   schemaVersion: 1, runId: 'r', createdAt: 'c', canaryVersion: 'v', experimentId: 'e',

@@ -3,19 +3,19 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * The historical everyday token claim (Plain 409,824 vs Canary 379,792 = 92.7 %)
+ * The historical everyday token claim (Plain 409,824 vs Amabie 379,792 = 92.7 %)
  * EXCLUDED a standing MCP payload of ~5,726 bytes per turn. The v1.3 audit recorded
  * that as an open limitation and quoted it as an ESTIMATE derived from bytes ÷ 4.
  *
  * The v1.5 reconnaissance found the real mechanism, and it is not an estimator gap:
  * `tooling/benchmark/run-trial.mjs` passes `--strict-mcp-config` with NO
- * `--mcp-config`, so the Canary MCP server is never launched and its instructions
+ * `--mcp-config`, so the Amabie MCP server is never launched and its instructions
  * and tool schemas never enter the session at all. The provider-native usage total
  * therefore never contained them.
  *
  * This probe answers two questions with a MEASUREMENT rather than a derivation:
  *
- *   1. does the Canary MCP server's standing payload actually load into a
+ *   1. does the Amabie MCP server's standing payload actually load into a
  *      non-interactive `claude -p` session when `--mcp-config` is passed?
  *   2. what does it cost in PROVIDER-NATIVE tokens, measured as the difference
  *      between two otherwise identical sessions?
@@ -65,17 +65,17 @@ function agentEnv() {
   return env;
 }
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-v15-mcp-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v15-mcp-'));
 const dir = path.join(root, 'project');
 fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
 fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'mcp-standing-probe', version: '1.0.0', scripts: { test: 'node -e "process.exit(0)"' } }));
 const git = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8', windowsHide: true });
-git('init'); git('config', 'user.name', 'Canary probe'); git('config', 'user.email', 'probe@localhost');
+git('init'); git('config', 'user.name', 'Amabie probe'); git('config', 'user.email', 'probe@localhost');
 git('add', '.'); git('commit', '-m', 'base');
 
-// `canary setup --yes` is what a real user runs, and it is what writes `.mcp.json`.
+// `amabie setup --yes` is what a real user runs, and it is what writes `.mcp.json`.
 const setup = spawnSync(process.execPath, [cli, 'setup', '--yes', dir], { cwd: dir, encoding: 'utf8', windowsHide: true, timeout: 300_000 });
-check(setup.status === 0, 'canary setup --yes', `exit ${setup.status}${setup.status === 0 ? '' : ' :: ' + (setup.stderr ?? '').slice(0, 300)}`);
+check(setup.status === 0, 'amabie setup --yes', `exit ${setup.status}${setup.status === 0 ? '' : ' :: ' + (setup.stderr ?? '').slice(0, 300)}`);
 
 const mcpFile = path.join(dir, '.mcp.json');
 const mcpPresent = fs.existsSync(mcpFile);
@@ -83,7 +83,7 @@ check(mcpPresent, 'setup wrote .mcp.json', mcpPresent ? mcpFile : 'ABSENT — no
 if (!mcpPresent) { console.log('\nRESULT: the standing payload cannot be measured: setup wrote no MCP config.'); process.exit(1); }
 const mcpJson = JSON.parse(fs.readFileSync(mcpFile, 'utf8'));
 const servers = Object.keys(mcpJson.mcpServers ?? {});
-check(servers.includes('canary'), '.mcp.json declares the canary server', `servers=[${servers.join(', ')}]`);
+check(servers.includes('amabie'), '.mcp.json declares the amabie server', `servers=[${servers.join(', ')}]`);
 
 /** One session. Returns the provider-native ledger, or null when none was parsed. */
 function session(useMcp) {
@@ -103,7 +103,7 @@ function session(useMcp) {
     if (!t.startsWith('{')) continue;
     let ev; try { ev = JSON.parse(t); } catch { continue; }
     // Evidence that the server's TOOLS were advertised to the model at all.
-    if (/mcp__canary/i.test(t)) sawMcpTool = true;
+    if (/mcp__amabie/i.test(t)) sawMcpTool = true;
     if (ev.type === 'result') {
       const u = ev.usage ?? {};
       const n = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : 0);
@@ -136,8 +136,8 @@ check(ledgers.length === REPEATS * 2, 'every session produced a provider-native 
 const models = [...new Set(ledgers.map((s) => s.model).filter(Boolean))];
 check(models.length <= 1, 'both arms ran the same model', `models=[${models.join(', ')}]`);
 const toolSeen = on.filter((s) => s.sawMcpTool).length;
-check(toolSeen > 0, 'the canary MCP tools were ADVERTISED to the model with --mcp-config',
-  `${toolSeen}/${REPEATS} sessions mentioned mcp__canary (control arm: ${off.filter((s) => s.sawMcpTool).length}/${REPEATS})`);
+check(toolSeen > 0, 'the amabie MCP tools were ADVERTISED to the model with --mcp-config',
+  `${toolSeen}/${REPEATS} sessions mentioned mcp__amabie (control arm: ${off.filter((s) => s.sawMcpTool).length}/${REPEATS})`);
 
 if (ledgers.length === REPEATS * 2) {
   const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;

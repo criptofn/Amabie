@@ -4,7 +4,7 @@
  * standalone single executable, and does the result really run without Node on
  * PATH?
  *
- * v1.1 item C wants Canary to stop requiring a Node installation for ordinary
+ * v1.1 item C wants Amabie to stop requiring a Node installation for ordinary
  * Python/Rust/Go users. Node's SEA (`--build-sea`) is the supported way, but its
  * schema and its module-format support change between releases, so this measures
  * the host instead of assuming:
@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-sea-capability-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-sea-capability-'));
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
 const EXT = process.platform === 'win32' ? '.exe' : '';
@@ -50,7 +50,7 @@ function pathWithoutNode() {
 
 function buildSea(label, mainFile, configExtra) {
   banner(label);
-  const out = path.join(TMP, `canary-${label.replace(/[^a-z0-9]+/gi, '-')}${EXT}`);
+  const out = path.join(TMP, `amabie-${label.replace(/[^a-z0-9]+/gi, '-')}${EXT}`);
   const cfgPath = path.join(TMP, `sea-${label.replace(/[^a-z0-9]+/gi, '-')}.json`);
   const cfg = { main: mainFile, output: out, disableExperimentalSEAWarning: true, ...configExtra };
   fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
@@ -116,5 +116,5 @@ banner('SUMMARY');
 console.log(`commonjs main: ${cjs.built ? 'WORKS (runs with Node removed from PATH)' : 'did not work'}`);
 console.log(`module   main: ${esm.built ? 'WORKS (runs with Node removed from PATH)' : 'did not work'}`);
 console.log(`temp kept: ${TMP}`);
-if (process.env.CANARY_SEA_CLEAN === '1') { fs.rmSync(TMP, { recursive: true, force: true }); console.log('(removed)'); }
+if (process.env.AMABIE_SEA_CLEAN === '1') { fs.rmSync(TMP, { recursive: true, force: true }); console.log('(removed)'); }
 process.exit(0);
