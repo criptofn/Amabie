@@ -2,14 +2,14 @@
  * THE FAILURE PAYLOAD — the smallest thing an agent can act on.
  *
  * WHY THIS EXISTS, in the owner's terms: "the worker model should NOT spend tokens operating
- * Canary … on failure, return the smallest actionable payload possible". Measured before this:
+ * Amabie … on failure, return the smallest actionable payload possible". Measured before this:
  * a checkpoint block sent the model up to **4000 characters of raw runner output** plus prose,
  * because there was nowhere else for that output to live. The model then often re-ran the suite
  * to see more — paying twice for the same bytes.
  *
  * So the payload now carries only what a repair needs:
  *
- *   Canary verification failed: tests (node run-tests.js, exit 1). Fix this before finishing.
+ *   Amabie verification failed: tests (node run-tests.js, exit 1). Fix this before finishing.
  *   tests/numbers.test.js :: total includes negative values
  *     expected 5, got 0
  *   full output: <path>
@@ -18,7 +18,7 @@
  * human (or a model that explicitly asks) can still read everything. Nothing is hidden; the
  * model is simply not forced to pay for it.
  *
- * WHAT THIS FILE IS NOT: it is not a second verdict path. It runs only AFTER Canary has already
+ * WHAT THIS FILE IS NOT: it is not a second verdict path. It runs only AFTER Amabie has already
  * decided a block from checks it executed itself, and it can only ever shorten the message —
  * the exit codes and the logs are the evidence, and this is presentation.
  */
@@ -47,7 +47,7 @@ const clip = (s: string, max = MAX_LINE_CHARS): string => (s.length <= max ? s :
 const VITEST_FAILURE = /^\s*FAIL\s+(\S+\.[A-Za-z0-9]+(?:\s*>\s*.+?|\s+\[\s+.+?\s+\]))\s*$/;
 
 /**
- * Failing-test identities, best-effort, from the shapes the runners Canary supports actually
+ * Failing-test identities, best-effort, from the shapes the runners Amabie supports actually
  * print. Best-effort is the honest description: this is a DISPLAY aid, the log path is the
  * authority. Each pattern is one real format:
  *   `not ok 1 - some test`            TAP (node:test)
@@ -118,7 +118,7 @@ export interface FailurePayloadInput {
 }
 
 /** Display command: PowerShell on Windows, POSIX shell elsewhere. Never splice a scope into code. */
-export function doctorCheckCommand(id: string, platform = process.platform, commandPrefix = 'canary'): string {
+export function doctorCheckCommand(id: string, platform = process.platform, commandPrefix = 'amabie'): string {
   const arg = /^[A-Za-z0-9_./:-]+$/.test(id) ? id
     : platform === 'win32' ? `'${id.replace(/'/g, "''")}'` : `'${id.replace(/'/g, "'\\''")}'`;
   return `${commandPrefix} doctor --check ${arg}`;
@@ -128,7 +128,7 @@ export function doctorCheckCommand(id: string, platform = process.platform, comm
  * Build the compact reason. Deterministic: same failure, same message.
  */
 export function buildFailurePayload({ steps, writeLog, doctorCommandPrefix }: FailurePayloadInput): string {
-  const commandPrefix = doctorCommandPrefix === undefined ? 'canary' : doctorCommandPrefix;
+  const commandPrefix = doctorCommandPrefix === undefined ? 'amabie' : doctorCommandPrefix;
   const failing = steps.slice(0, MAX_CHECKS).map((step, i) => {
     const text = `${step.stdout}\n${step.stderr}`;
     const kind = /^[a-z][a-z0-9-]{0,31}$/.test(step.kind) ? step.kind : 'step';
@@ -139,13 +139,13 @@ export function buildFailurePayload({ steps, writeLog, doctorCommandPrefix }: Fa
   for (let count = failing.length; count > 0; count -= 1) {
     for (const details of [true, false]) {
       const shown = failing.slice(0, count);
-      const head = `Canary verification failed: ${shown
+      const head = `Amabie verification failed: ${shown
         .map(({ step: f }) => `${clip(f.kind, 32)} (${clip(f.display)}${f.exitCode === null ? ', could not run' : `, exit ${f.exitCode}`})`)
         .join('; ')}. Fix this before finishing.`;
       const blocks = shown.map(({ step, text, log }) => [
         ...(details ? [...extractFailureIdentities(text), ...extractDetailLines(text).map((d) => `  ${d}`)] : []),
         ...(step.id === undefined ? [] : [commandPrefix === null
-          ? '  focused recheck after repair: use the configured Canary MCP canary_doctor(check) tool'
+          ? '  focused recheck after repair: use the configured Amabie MCP amabie_doctor(check) tool'
           : `  focused recheck after repair: ${doctorCheckCommand(step.id, process.platform, commandPrefix)}`]),
         `  full output: ${log ?? 'unavailable (evidence storage failed)'}`,
       ].join('\n'));
@@ -158,8 +158,8 @@ export function buildFailurePayload({ steps, writeLog, doctorCommandPrefix }: Fa
     }
   }
   const fallback = commandPrefix === null
-    ? 'The installed CLI path cannot be safely quoted for a shell command; use the configured Canary MCP diagnostics or inspect the saved logs.'
+    ? 'The installed CLI path cannot be safely quoted for a shell command; use the configured Amabie MCP diagnostics or inspect the saved logs.'
     : `run ${commandPrefix} result --json for the evidence bundle, or ${commandPrefix} doctor for the full gate.`;
-  return `Canary verification failed: ${clip(steps[0]?.kind ?? 'checks', 32)}. Fix this before finishing.\n` +
+  return `Amabie verification failed: ${clip(steps[0]?.kind ?? 'checks', 32)}. Fix this before finishing.\n` +
     `Full output and recheck details exceed the message limit; ${fallback}`;
 }

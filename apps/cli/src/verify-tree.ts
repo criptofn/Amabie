@@ -25,10 +25,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 // v1.4 — canonical filesystem identity (expands Windows 8.3 short names).
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 
-import { sha256hex } from '@canary-rn/hashing';
-import type { EvidenceBundle, TreeSnapshotRef } from '@canary-rn/evidence-schema';
+import { sha256hex } from '@amabie/hashing';
+import type { EvidenceBundle, TreeSnapshotRef } from '@amabie/evidence-schema';
 
 export interface Reflattened {
   parsed: boolean;

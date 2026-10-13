@@ -7,7 +7,7 @@
 // of observer-preload.ts) finds the Runner/Runnable classes under
 // node_modules/mocha and patches the SAME prototypes the tests will execute
 // through. Unknown options fail loud (exit 255) — a silently ignored flag
-// would mean Canary's argv injection was not what ran.
+// would mean Amabie's argv injection was not what ran.
 const path = require('node:path');
 const M = require('../index.js');
 

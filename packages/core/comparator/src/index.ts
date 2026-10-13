@@ -423,7 +423,7 @@ export function extractNodeTestFailingNames(log: string): string[] {
  *
  * Cross-checked against pytest's own collection line when present
  * (`collected 11 items`): passing + failing + pending + deselected must equal it,
- * so a subject cannot hand Canary a plausible PARTIAL headline. An unrecognised
+ * so a subject cannot hand Amabie a plausible PARTIAL headline. An unrecognised
  * category refuses the whole line — a count nobody mapped is not agreement.
  *
  * Returns undefined when the text is not a pytest summary: rejecting what it cannot

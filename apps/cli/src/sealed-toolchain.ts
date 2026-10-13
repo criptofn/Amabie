@@ -3,17 +3,17 @@
  *
  * THE DEFECT THIS FILE EXISTS FOR, as the auditor reproduced it on commit a004f55 and as
  * tooling/probes/v15-realworld-gate-env.mjs measures on this host: a clean project whose declared
- * check is `npm test` → `java -version` PASSES outside Canary and FAILS inside it, because a sealed
+ * check is `npm test` → `java -version` PASSES outside Amabie and FAILS inside it, because a sealed
  * step child gets `sanitizedEnv` — `PATH` = the Node install dir + the OS-managed dirs, and nothing
  * else (12 entries against the shell's 41; `python`, `java`, `git` invisible; `JAVA_HOME` absent).
- * Canary then printed *"That is your project talking, not Canary."* — a FALSE attribution, because
- * the project's own command passes on the same host outside Canary's restriction.
+ * Amabie then printed *"That is your project talking, not Amabie."* — a FALSE attribution, because
+ * the project's own command passes on the same host outside Amabie's restriction.
  *
  * TWO THINGS ARE FIXED HERE, AND THEY ARE DIFFERENT THINGS.
  *
- * 1. THE ATTRIBUTION. `attributeStepFailure` answers "is Canary's own environment the cause?" from
+ * 1. THE ATTRIBUTION. `attributeStepFailure` answers "is Amabie's own environment the cause?" from
  *    MEASUREMENTS, never from the shape of the output alone:
- *      - Canary's own resolution refused the program (the step never ran): environment;
+ *      - Amabie's own resolution refused the program (the step never ran): environment;
  *      - a toolchain directory the OPERATOR authorized at setup is gone: environment;
  *      - the child's output reports a program it could not find AND that program genuinely does not
  *        resolve in the directories the child was handed: environment.
@@ -22,17 +22,17 @@
  *    finds `java` where it belongs; and a program that npm's own script PATH provides (a project's
  *    `node_modules/.bin/tsc`, say) is not an environment problem either, so those directories are
  *    part of the walk. Nothing here changes a VERDICT — a failing check still fails, still
- *    `NEEDS ATTENTION`, still exit 2. What changes is that Canary no longer blames the project for a
- *    restriction Canary itself imposed, and the two outcomes now have different words:
+ *    `NEEDS ATTENTION`, still exit 2. What changes is that Amabie no longer blames the project for a
+ *    restriction Amabie itself imposed, and the two outcomes now have different words:
  *      PROJECT CHECK FAILURE
- *      CANARY SEALED ENVIRONMENT CANNOT RESOLVE REQUIRED TOOLCHAIN
+ *      AMABIE SEALED ENVIRONMENT CANNOT RESOLVE REQUIRED TOOLCHAIN
  *
  * 2. THE NARROWEST WAY OUT. `trustedDirs()`/`resolveProgram` already pin the PROGRAM each step names
  *    to an absolute path, and that stays exactly as it was: the plan's own program is never resolved
  *    through PATH. What no pin can reach is the TRANSITIVE case this blocker is about — `npm test`
  *    spawns whatever the project's own scripts spawn (`java`, `python`, `git`), and that resolution
  *    happens inside the child, through the PATH the child was handed. So the operator can now name
- *    executable DIRECTORIES at setup (`canary setup --toolchain-dir <dir>`); they are validated,
+ *    executable DIRECTORIES at setup (`amabie setup --toolchain-dir <dir>`); they are validated,
  *    sealed into the local config, and appended to the sealed step PATH after the Node install dir
  *    and the OS dirs. This is NOT the calling PATH: `process.env.PATH` is still ignored at
  *    verification time, a directory is authority only because a human named it at the one
@@ -45,11 +45,11 @@ import path from 'node:path';
 
 /** The two outcomes, in the product's own vocabulary. */
 export const PROJECT_CHECK_FAILURE = 'PROJECT CHECK FAILURE';
-export const SEALED_ENV_CANNOT_RESOLVE = 'CANARY SEALED ENVIRONMENT CANNOT RESOLVE REQUIRED TOOLCHAIN';
+export const SEALED_ENV_CANNOT_RESOLVE = 'AMABIE SEALED ENVIRONMENT CANNOT RESOLVE REQUIRED TOOLCHAIN';
 
 /**
- * Programs whose presence is recorded when Canary is set up. RECORDED EVIDENCE, not authority: the
- * inventory only ever appears in a remediation sentence ("java was at C:\...\bin when Canary was set
+ * Programs whose presence is recorded when Amabie is set up. RECORDED EVIDENCE, not authority: the
+ * inventory only ever appears in a remediation sentence ("java was at C:\...\bin when Amabie was set
  * up — authorize that directory"). Nothing is executed from it, and no verdict reads it.
  */
 export const TOOLCHAIN_CANDIDATES: readonly string[] = [
@@ -99,7 +99,7 @@ export function resolvesIn(program: string, dirs: readonly string[], platform: N
 /**
  * The `node_modules/.bin` directories npm prepends to a script's PATH for a step running in `cwd`
  * (one per ancestor package directory). Included in the resolution walk so that a MISSING
- * project-local tool is never reported as Canary's environment being too narrow.
+ * project-local tool is never reported as Amabie's environment being too narrow.
  */
 export function npmScriptDirs(cwd: string): string[] {
   const out: string[] = [];
@@ -117,7 +117,7 @@ export function npmScriptDirs(cwd: string): string[] {
 /**
  * Accept or refuse a directory the OPERATOR named. Fail closed, and refuse the one source of
  * authority that would make the whole mechanism theatre: a directory inside the repository, i.e.
- * inside the one tree the worker Canary is checking can write.
+ * inside the one tree the worker Amabie is checking can write.
  */
 export function validateToolchainDir(root: string, dir: string): { ok: true; dir: string } | { ok: false; problem: string } {
   if (typeof dir !== 'string' || dir.trim().length === 0) return { ok: false, problem: 'empty path' };
@@ -206,7 +206,7 @@ export function notFoundPrograms(output: string, exitCode?: number | null): stri
 
 export interface FailureAttribution {
   cause: 'project' | 'environment' | 'unknown';
-  /** Programs the child needed and Canary's sealed environment does not provide. */
+  /** Programs the child needed and Amabie's sealed environment does not provide. */
   missing: string[];
   /** One line for the product's verdict, starting with the vocabulary word for the outcome. */
   reason: string;
@@ -229,7 +229,7 @@ export interface AttributeInput {
   executionFailure?: string;
 }
 
-/** Where the operator's own environment had this program when Canary was set up (evidence only). */
+/** Where the operator's own environment had this program when Amabie was set up (evidence only). */
 function suggestDirFor(program: string, seal: ToolchainSeal | null): string | null {
   const hit = seal?.found?.[program];
   if (typeof hit !== 'string' || hit.length === 0) return null;
@@ -238,14 +238,14 @@ function suggestDirFor(program: string, seal: ToolchainSeal | null): string | nu
 
 /**
  * The project-failure line. It KEEPS the sentence the product already printed for this case
- * ("your project's own checks did not pass … That is your project talking, not Canary.") because that
+ * ("your project's own checks did not pass … That is your project talking, not Amabie.") because that
  * sentence was TRUE here and existing consumers read it — the defect was never this branch, it was
- * this branch being printed when the cause was Canary's own restriction. Only the vocabulary word
+ * this branch being printed when the cause was Amabie's own restriction. Only the vocabulary word
  * (`PROJECT CHECK FAILURE`) and the named step are new.
  */
 function projectFailureReason(kinds: readonly string[], detail?: string): string {
   return `${PROJECT_CHECK_FAILURE} — your project's own checks did not pass (${kinds.join(', ')}). `
-    + `${detail === undefined ? '' : `${detail} `}That is your project talking, not Canary.`;
+    + `${detail === undefined ? '' : `${detail} `}That is your project talking, not Amabie.`;
 }
 
 export function attributeStepFailure(input: AttributeInput): FailureAttribution {
@@ -253,7 +253,7 @@ export function attributeStepFailure(input: AttributeInput): FailureAttribution 
   if (input.executionFailure !== undefined) return {
     cause: 'unknown', missing: [],
     reason: `CHECK PROCESS FAILURE — the ${kind} check ("${script}") did not complete normally: ${input.executionFailure}. No completed check result was measured; this does not establish a missing tool or a failed assertion.`,
-    next: 'inspect the recorded command and full output; resolve the process error or time limit, then run canary doctor. Preserve the sealed plan and baseline',
+    next: 'inspect the recorded command and full output; resolve the process error or time limit, then run amabie doctor. Preserve the sealed plan and baseline',
   };
   const reported = notFoundPrograms(output, exitCode);
   // Native return values, not printed crash prose. Accept signed/unsigned DWORDs.
@@ -281,8 +281,8 @@ export function attributeStepFailure(input: AttributeInput): FailureAttribution 
       cause: 'environment', missing: [],
       reason,
       next: vanishedDirs.length > 0
-        ? `restore it, or re-authorize where it lives now: canary setup --toolchain-dir "${vanishedDirs[0]}"`
-        : 'install the tool into a directory you authorize, then: canary setup --toolchain-dir "<that directory>"',
+        ? `restore it, or re-authorize where it lives now: amabie setup --toolchain-dir "${vanishedDirs[0]}"`
+        : 'install the tool into a directory you authorize, then: amabie setup --toolchain-dir "<that directory>"',
     };
   }
 
@@ -291,35 +291,35 @@ export function attributeStepFailure(input: AttributeInput): FailureAttribution 
   //    while `java` resolves in the directories its child was handed, and a project-local tool npm
   //    provides is not an environment question. A vanished authorized directory is reported here only
   //    when the child's own output shows a missing program — otherwise a genuinely failing test would
-  //    be blamed on Canary's environment, which is the same defect in the other direction.
+  //    be blamed on Amabie's environment, which is the same defect in the other direction.
   const missing = reported.filter((name) => resolvesIn(name, childPathDirs) === null);
   if (missing.length > 0) {
     const list = missing.map((m) => {
       const dir = suggestDirFor(m, seal);
-      return dir === null ? m : `${m} (your environment had it at ${dir} when Canary was set up)`;
+      return dir === null ? m : `${m} (your environment had it at ${dir} when Amabie was set up)`;
     }).join(', ');
     const gone = vanishedDirs.length > 0 ? ` A toolchain directory sealed at setup is also gone: ${vanishedDirs[0]}.` : '';
     const reason = `${SEALED_ENV_CANNOT_RESOLVE} — the ${kind} check ("${script}") needed ${list}. `
-      + 'Canary runs your checks without your shell\'s PATH on purpose (a program planted earlier on that PATH would be executed as Canary\'s own authority). '
+      + 'Amabie runs your checks without your shell\'s PATH on purpose (a program planted earlier on that PATH would be executed as Amabie\'s own authority). '
       + `This is NOT your project failing.${gone}`;
     const first = missing[0] as string;
     const dir = vanishedDirs.length > 0 ? vanishedDirs[0] as string : suggestDirFor(first, seal);
-    const namedRepair = `canary setup --yes ${missing.map((name) => `--toolchain ${name}`).join(' ')}`;
+    const namedRepair = `amabie setup --yes ${missing.map((name) => `--toolchain ${name}`).join(' ')}`;
     return {
       cause: 'environment', missing,
       reason,
       next: dir === null
-        ? `install ${missing.join(', ')} and make them visible on your shell PATH, then: ${namedRepair}; alternatively: canary setup --toolchain-dir "<that directory>"`
-        : `authorize the missing tools from your shell PATH: ${namedRepair}; alternatively authorize the known directory: canary setup --toolchain-dir "${dir}"`,
+        ? `install ${missing.join(', ')} and make them visible on your shell PATH, then: ${namedRepair}; alternatively: amabie setup --toolchain-dir "<that directory>"`
+        : `authorize the missing tools from your shell PATH: ${namedRepair}; alternatively authorize the known directory: amabie setup --toolchain-dir "${dir}"`,
     };
   }
 
   // 3. Everything the child complained about resolves inside the sealed environment: this is the
-  //    project's own failure, and Canary says so with the project's name on it.
+  //    project's own failure, and Amabie says so with the project's name on it.
   return {
     cause: 'project', missing: [],
     reason: projectFailureReason([kind], `The ${kind} check ("${script}") ran in the sealed environment and exited ${String(exitCode)}.`),
-    next: 'fix the failing check, then: canary doctor',
+    next: 'fix the failing check, then: amabie doctor',
   };
 }
 
@@ -344,7 +344,7 @@ export function attributeFailures(inputs: AttributeInput[]): FailureAttribution 
   };
   // Nothing was the environment's doing: one line, naming every check that failed.
   const kinds = [...new Set(inputs.map((i) => i.kind))];
-  return { cause: 'project', missing: [], reason: projectFailureReason(kinds), next: 'fix the failing check, then: canary doctor' };
+  return { cause: 'project', missing: [], reason: projectFailureReason(kinds), next: 'fix the failing check, then: amabie doctor' };
 }
 
 /** Only used to keep the temp-dir reasoning in one place for callers that materialize a fixture. */

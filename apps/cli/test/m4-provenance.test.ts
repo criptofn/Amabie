@@ -24,9 +24,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
-import { candidateIdentity, planDigest, readConfig, writeConfig, type CanaryConfig } from '../src/onboarding.js';
+import { candidateIdentity, planDigest, readConfig, writeConfig, type AmabieConfig } from '../src/onboarding.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
@@ -35,7 +35,7 @@ assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 const fx = (f: string): string => `node "${path.join(FIXTURES, f)}"`;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m4-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m4-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const sha256 = (s: string): string => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -50,13 +50,13 @@ function makeProject(name: string, opts: { testScript?: string } = {}): string {
   return root;
 }
 
-function canary(args: string[], cwd?: string, input?: string) {
+function amabie(args: string[], cwd?: string, input?: string) {
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd, input, encoding: 'utf8', timeout: 120_000,
   });
 }
 
-const evidenceDir = (root: string): string => path.join(root, '.canary', 'evidence');
+const evidenceDir = (root: string): string => path.join(root, '.amabie', 'evidence');
 const bundleDir = (root: string, source: string): string => {
   const dirs = fs.readdirSync(evidenceDir(root)).filter((d) => d.endsWith(`-${source}`)).sort();
   assert.ok(dirs.length > 0, `expected a ${source} verification bundle`);
@@ -65,7 +65,7 @@ const bundleDir = (root: string, source: string): string => {
 const readLatestBundle = (root: string, source: string): any =>
   JSON.parse(fs.readFileSync(path.join(bundleDir(root, source), 'verification.json'), 'utf8'));
 const checkpoint = (root: string, extra: Record<string, unknown> = {}) => {
-  const r = canary(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
+  const r = amabie(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
   assert.equal(r.status, 0, `wire contract: checkpoint must exit 0 (got ${r.status})\n${r.output.join('')}`);
   const out = r.stdout ?? '';
   return out.trim() ? JSON.parse(out) : null; // '' = silent pass
@@ -77,8 +77,8 @@ const walk = (d: string): string[] =>
 describe('the bundle answers the M4 questions', () => {
   it('setup records planDigest (matching the in-memory plan), baseline, and ordered per-step stamps', () => {
     const root = makeProject('answers');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     const b = readLatestBundle(root, 'setup');
     assert.equal(b.provenance.planDigest, planDigest(cfg.plan));
     assert.match(b.provenance.planDigest, /^[0-9a-f]{64}$/);
@@ -107,19 +107,19 @@ describe('the bundle answers the M4 questions', () => {
 describe('the task label is a digest with zero verdict authority', () => {
   it('checkpoint records taskDigest on a pass and never stores the prose anywhere', () => {
     const root = makeProject('task-green');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     const task = 'Add a parser for RFC 822 headers   ';
     assert.equal(checkpoint(root, { task }), null, 'a task label must not change a silent pass');
     const b = readLatestBundle(root, 'checkpoint');
     assert.equal(b.provenance.taskDigest, sha256(task.trim()));
-    for (const f of walk(path.join(root, '.canary'))) {
+    for (const f of walk(path.join(root, '.amabie'))) {
       assert.ok(!fs.readFileSync(f, 'utf8').includes('RFC 822'), `${f} must not carry raw task prose`);
     }
   });
   it('on a failing plan the block is byte-identical with or without a task label', () => {
     const mk = (name: string) => {
       const root = makeProject(name, { testScript: fx('f-fail-counts.js') });
-      canary(['setup', '--yes', root]);
+      amabie(['setup', '--yes', root]);
       return root;
     };
     const plainRoot = mk('task-red-plain');
@@ -138,7 +138,7 @@ describe('the task label is a digest with zero verdict authority', () => {
      */
     const normalise = (s: string, root: string) => s
       .split(root).join('<root>')
-      .replace(/\.canary[\\/]evidence[\\/][^\\/]+[\\/]/g, '.canary/evidence/<run>/');
+      .replace(/\.amabie[\\/]evidence[\\/][^\\/]+[\\/]/g, '.amabie/evidence/<run>/');
     assert.deepEqual(
       { ...labeled, reason: normalise(labeled.reason, labeledRoot) },
       { ...plain, reason: normalise(plain.reason, plainRoot) },
@@ -150,7 +150,7 @@ describe('the task label is a digest with zero verdict authority', () => {
   });
   it('absent or empty task yields taskDigest null; an old sender without task still gets full provenance', () => {
     const root = makeProject('task-none');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     assert.equal(checkpoint(root, { task: '   ' }), null);
     assert.equal(readLatestBundle(root, 'checkpoint').provenance.taskDigest, null);
     assert.equal(checkpoint(root), null);
@@ -164,7 +164,7 @@ describe('the task label is a digest with zero verdict authority', () => {
 describe('the companion hash binds bytes — and says what it is not', () => {
   it('verification.sha256 matches the bundle bytes, detects a one-byte tamper, and is labeled tamper-evidence only', () => {
     const root = makeProject('hashbind');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     checkpoint(root);
     const dir = bundleDir(root, 'checkpoint');
     const jsonPath = path.join(dir, 'verification.json');
@@ -184,11 +184,11 @@ describe('the companion hash binds bytes — and says what it is not', () => {
 describe('baseline honesty', () => {
   it('a pre-M4 config (no baseline) yields baseline null, never an invented identity', () => {
     const root = makeProject('pre-m4');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     delete (cfg as { baseline?: unknown }).baseline;
     writeConfig(root, cfg);
-    const r = canary(['doctor', root]);
+    const r = amabie(['doctor', root]);
     assert.equal(r.status, 0, r.stdout);
     assert.equal(readLatestBundle(root, 'doctor').provenance.baseline, null);
     // and candidateIdentity itself stays the pinned honest shape on fake git

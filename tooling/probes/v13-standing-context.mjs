@@ -1,7 +1,7 @@
-// v1.3 §17 — WHAT DOES CANARY COST ON *EVERY* TURN, WHETHER OR NOT IT IS USED?
+// v1.3 §17 — WHAT DOES AMABIE COST ON *EVERY* TURN, WHETHER OR NOT IT IS USED?
 //
 // The token requirement is measured on turns and accumulated context: in the recorded ledgers the
-// dominant term is cache-read, because every turn re-reads the whole conversation. Anything Canary
+// dominant term is cache-read, because every turn re-reads the whole conversation. Anything Amabie
 // puts into that conversation is therefore paid once per turn, not once per session. The MCP server
 // is exactly that kind of cost: its instructions and its tool definitions are advertised to the
 // client at handshake time and re-sent on every request afterwards.
@@ -12,8 +12,8 @@
 // It also records the shape the BENCHMARK measures. Historically
 // `tooling/benchmark/run-trial.mjs` ran the agent with `--strict-mcp-config` and NO
 // `--mcp-config`, which kept a developer's own MCP servers out of the measurement but had a
-// second consequence: the fixture's own `.mcp.json`, written by the `canary setup` the trial
-// just ran, was not loaded either. The measured canary arms were therefore the Stop-hook-only
+// second consequence: the fixture's own `.mcp.json`, written by the `amabie setup` the trial
+// just ran, was not loaded either. The measured amabie arms were therefore the Stop-hook-only
 // shape, and the payload measured below was NOT in the 92.7% figure.
 //
 // v1.5 fixed the harness omission: `run-trial.mjs` passes `--mcp-config <fixture>/.mcp.json`
@@ -30,7 +30,7 @@ import { spawnSync } from 'node:child_process';
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-standing-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-standing-'));
 const project = path.join(temp, 'project');
 let failures = 0;
 const check = (name, fn) => {
@@ -40,10 +40,10 @@ const check = (name, fn) => {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 /** The candidate lifecycle tools the audit measured as costing 177.8% of plain. */
-const CEREMONY = ['canary_work', 'canary_finish'];
-const EXPERT_ONLY = ['canary_agents', ...CEREMONY];
+const CEREMONY = ['amabie_work', 'amabie_finish'];
+const EXPERT_ONLY = ['amabie_agents', ...CEREMONY];
 
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd, input) => spawnSync(exe, args, {
   cwd, env, encoding: 'utf8', windowsHide: true, timeout: 300000,
   ...(input === undefined ? {} : { input }),
@@ -69,7 +69,7 @@ try {
   // without this, `setup` walks up out of the temp dir to whatever repository encloses it and
   // reports UNSUPPORTED for that one instead — a real answer about the wrong project.
   run(git, ['init', '-b', 'main'], project);
-  run(git, ['config', 'user.email', 'standing@canary.local'], project);
+  run(git, ['config', 'user.email', 'standing@amabie.local'], project);
   run(git, ['config', 'user.name', 'Standing Probe'], project);
   run(git, ['add', '-A'], project);
   const commit = run(git, ['commit', '-m', 'base'], project);
@@ -115,7 +115,7 @@ try {
   console.log(`INFO expert lifecycle tools (${CEREMONY.join(', ')}): ${expertCeremonyBytes} B`);
 
   check('A1-the-server-answers-the-handshake-with-instructions-a-client-really-receives', () => {
-    assert(init?.result?.serverInfo?.name === 'canary', 'no canary serverInfo');
+    assert(init?.result?.serverInfo?.name === 'amabie', 'no amabie serverInfo');
     assert(instrBytes > 0, 'the server advertised NO instructions, so this probe would measure nothing');
   });
 
@@ -130,12 +130,12 @@ try {
   });
 
   check('A3-acceptance-is-still-not-advertised-as-a-tool', () => {
-    assert(!tools.some((t) => /accept/i.test(t.name)), 'canary_accept was advertised');
+    assert(!tools.some((t) => /accept/i.test(t.name)), 'amabie_accept was advertised');
   });
 
   check('A4-setup-default-is-the-compact-everyday-profile-and-expert-is-explicit', () => {
     const mcp = JSON.parse(fs.readFileSync(path.join(project, '.mcp.json'), 'utf8'));
-    const args = mcp?.mcpServers?.canary?.args;
+    const args = mcp?.mcpServers?.amabie?.args;
     assert(Array.isArray(args) && args.slice(-3).join('\0') === ['mcp', '--profile', 'everyday'].join('\0'),
       `setup did not configure the everyday profile: ${JSON.stringify(args)}`);
     assert(EXPERT_ONLY.every((n) => expert.tools.some((t) => t.name === n)),
@@ -161,10 +161,10 @@ try {
   const open = [];
   console.log(`NOTE benchmark comparability: run-trial.mjs loads the setup-generated MCP config, but the historical v1.5 token totals do not measure today's ${standingBytes} B everyday payload. No token-saving claim is made from this probe.`);
   console.log('RESOLVED the-everyday-path-advertises-the-expert-ceremony: setup writes the everyday profile; '
-    + 'canary_work and canary_finish appear only when the operator chooses the expert profile.');
-  if (/may, and should, call canary_doctor/i.test(instructions)) {
+    + 'amabie_work and amabie_finish appear only when the operator chooses the expert profile.');
+  if (/may, and should, call amabie_doctor/i.test(instructions)) {
     open.push('the-instructions-invite-a-doctor-call-beside-automatic-verification: the same text says '
-      + 'verification is AUTOMATIC and then tells the model it "may, and should, call canary_doctor". '
+      + 'verification is AUTOMATIC and then tells the model it "may, and should, call amabie_doctor". '
       + 'Whether that invitation COSTS a turn (a redundant check) or SAVES one (the model fixes before '
       + 'the Stop hook blocks it) is NOT measured. Do not remove it on the assumption that it is waste — '
       + 'that assumption is the failure mode the v1.3 audit already retracted once.');

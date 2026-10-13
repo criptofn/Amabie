@@ -11,11 +11,11 @@ const repo = fileURLToPath(new URL('../../', import.meta.url));
 const packs = path.join(repo, 'pack/npm');
 const archives = fs.readdirSync(packs).filter(f => f.endsWith('.tgz'));
 if (archives.length !== 1) throw new Error('Pack first; expected exactly one archive');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary packed provider '));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie packed provider '));
 // Separate reports from the installation fixture and from other native probes.
-const evidenceParent = process.env.CANARY_PROBE_REPORT_DIR ?? os.tmpdir();
+const evidenceParent = process.env.AMABIE_PROBE_REPORT_DIR ?? os.tmpdir();
 fs.mkdirSync(evidenceParent, { recursive: true });
-const evidence = fs.mkdtempSync(path.join(evidenceParent, 'canary-packed-provider-evidence-'));
+const evidence = fs.mkdtempSync(path.join(evidenceParent, 'amabie-packed-provider-evidence-'));
 const reportFile = path.join(evidence, 'provider.json');
 const instrument = path.join(repo, 'tooling/probes/v12-production-authority.mjs');
 const hash = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -30,7 +30,7 @@ try {
   fs.copyFileSync(instrument, path.join(evidence, 'instrument.mjs'));
   fs.writeFileSync(path.join(root, 'package.json'), '{"private":true}');
   requireOk('install exact local tarball', run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', `"${path.join(packs, archives[0])}"`], root, true));
-  const cli = path.join(root, 'node_modules/@canary-rn/cli/dist/main.js');
+  const cli = path.join(root, 'node_modules/@amabie/cli/dist/main.js');
   const args = [instrument, '--cli', cli, '--report', reportFile];
   const result = spawnSync(process.execPath, args,
     { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 600000, maxBuffer: 16 * 1024 * 1024 });

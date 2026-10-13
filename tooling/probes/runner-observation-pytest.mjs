@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The Canary PYTEST observation channel — real execution, forgery, suppression.
+ * The Amabie PYTEST observation channel — real execution, forgery, suppression.
  *
  * Loads the SHIPPED plugin bytes (`PYTEST_OBSERVER_SOURCE`) into a real pytest run
  * and checks what `Recorder.round()` depends on, using the SAME product parsers the
@@ -13,12 +13,12 @@
  *      `error`, which is why the mapping is explicit and measured;
  *   3. a failing run's identities agree with the short-summary nodeids;
  *   4. printed text cannot mint counts;
- *   5. a fabricated `logreport` for an item Canary never watched start is REJECTED;
+ *   5. a fabricated `logreport` for an item Amabie never watched start is REJECTED;
  *   6. an injected frame from test code fails the round closed (pytest runs tests
  *      IN its own process, so this door is real — measured, unlike node:test).
  *
  * The interpreter defaults to the workspace-local `_toolchains/py` venv; override
- * with CANARY_PYTEST_PYTHON. Exits 0 only when everything holds; exits 3 with
+ * with AMABIE_PYTEST_PYTHON. Exits 0 only when everything holds; exits 3 with
  * an explicit host-bound SKIP when the optional local interpreter is absent.
  */
 import { spawn } from 'node:child_process';
@@ -28,7 +28,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
-const PY = process.env.CANARY_PYTEST_PYTHON ?? path.join(REPO, '_toolchains', 'py', 'Scripts', 'python.exe');
+const PY = process.env.AMABIE_PYTEST_PYTHON ?? path.join(REPO, '_toolchains', 'py', 'Scripts', 'python.exe');
 const url = (p) => pathToFileURL(p).href;
 
 let failures = 0;
@@ -44,7 +44,7 @@ function eq(actual, expected, msg) {
 
 if (!fs.existsSync(PY)) {
   console.log(`SKIP host-bound: pytest interpreter not found at ${PY}`);
-  console.log('set CANARY_PYTEST_PYTHON, or provision the ignored project-local venv: python -m venv _toolchains/py && _toolchains/py/Scripts/python -m pip install pytest');
+  console.log('set AMABIE_PYTEST_PYTHON, or provision the ignored project-local venv: python -m venv _toolchains/py && _toolchains/py/Scripts/python -m pip install pytest');
   process.exit(3);
 }
 const PYTEST_MOD = path.join(REPO, 'packages', 'runner', 'executor', 'dist', 'src', 'observers', 'pytest-observer.js');
@@ -61,7 +61,7 @@ const identity = pytestRunnerIdentity(PY);
 assert(identity !== null, `pytest identity must resolve for ${PY}`);
 console.log(`pytest ${identity.version}, tree sha256 ${identity.identitySha256.slice(0, 16)}…, plugin bytes ${PYTEST_OBSERVER_SOURCE.length}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-pytest-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pytest-'));
 const obsDir = path.join(TMP, 'observer');
 fs.mkdirSync(obsDir, { recursive: true });
 fs.writeFileSync(path.join(obsDir, PYTEST_OBSERVER_BASENAME), PYTEST_OBSERVER_SOURCE, 'utf8');
@@ -88,7 +88,7 @@ function runObserved(name, files, extraArgs = []) {
         PYTHONPATH: obsDir,
         PYTHONNOUSERSITE: '1',
         PYTEST_PLUGINS: PYTEST_PLUGIN_MODULE,
-        CANARY_OBSERVER_NONCE: NONCE,
+        AMABIE_OBSERVER_NONCE: NONCE,
       },
       stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
     });
@@ -222,7 +222,7 @@ const fabricated = await runObserved('fabricate', {
     '',
     '',
     'def test_forges_a_report():',
-    '    # Call the real hook with a report object Canary never watched start.',
+    '    # Call the real hook with a report object Amabie never watched start.',
     '    class FakeReport:',
     '        nodeid = "test_fabricate.py::ghost_test"',
     '        when = "teardown"',
@@ -232,15 +232,17 @@ const fabricated = await runObserved('fabricate', {
     '        skipped = False',
     '        wasxfail = None',
     '        longrepr = None',
-    '    import canary_pytest_observer as obs',
+    `    import ${PYTEST_PLUGIN_MODULE} as obs`,
     '    obs.pytest_runtest_logreport(FakeReport())',
     '',
   ].join('\n'),
 });
 console.log(`\n--- fabricated logreport: exit ${fabricated.code} ---`);
+console.log(`  stdout:\n${fabricated.out.split('\n').map((l) => `    |${l}`).join('\n')}`);
 for (const f of fabricated.frames) console.log(`  ${JSON.stringify(f)}`);
 
-check('5. a report for an item Canary never watched start is REJECTED', () => {
+check('5. a report for an item Amabie never watched start is REJECTED', () => {
+  eq(fabricated.code, 0, 'the attack fixture must execute successfully before its rejection is credited');
   const rejects = kindOf(fabricated, 'reject');
   eq(rejects.length, 1, `exactly one reject expected: ${JSON.stringify(fabricated.frames)}`);
   eq(rejects[0].id, 'test_fabricate.py::ghost_test', 'the forged item');
@@ -281,7 +283,7 @@ const suppressed = await runObserved('suppressed', {
 console.log(`\n--- plugin suppressed by project config: exit ${suppressed.code} ---`);
 console.log(`  frames: ${JSON.stringify(suppressed.frames)}`);
 
-check('7. suppressing Canary observer yields NO frames (so the round cannot be VALID)', () => {
+check('7. suppressing Amabie observer yields NO frames (so the round cannot be VALID)', () => {
   eq(suppressed.frames.length, 0,
     'a suppressed plugin writes nothing: an injected round with an empty stream is INVALID, never a weak pass');
   eq(suppressed.code, 0, 'and the tests themselves still passed — the subject gained nothing');
@@ -289,5 +291,5 @@ check('7. suppressing Canary observer yields NO frames (so the round cannot be V
 
 console.log(`\n=== pytest channel: ${failures === 0 ? 'ALL PASS' : `${failures} FAIL`} ===`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 && process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 && process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(failures === 0 ? 0 : 1);

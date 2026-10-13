@@ -1,16 +1,4 @@
-name: canary-release
-
-# Tag-driven release. Today the shipped tarball is built by hand from a local
-# checkout (`npm run build` + `node tooling/pack.mjs`) and uploaded manually,
-# which is how the published asset drifted one commit behind main. This workflow
-# makes the artifact reproducible from the tag alone, publishes it with a
-# verifiable build provenance attestation, and (when an npm token is configured)
-# publishes the same bytes to the registry.
-#
-# Division of labour: VERIFICATION is canary-ci's job, and canary-ci already runs
-# on tag pushes. This workflow does not re-run the unit suite, so a tag cut from
-# an unverified tree can still be packaged â€” that residual is stated rather than
-# hidden. In practice: confirm canary-ci is green for the tagged commit first.
+name: amabie-release
 
 on:
   push:
@@ -18,142 +6,132 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Build, hash and attest, but do not create/update the GitHub release or publish'
+        description: 'Verify and prepare artifacts only; publication requires a version tag and environment approval'
         type: boolean
         default: true
 
 permissions:
-  contents: write       # create/update the release and upload assets
-  id-token: write       # OIDC: build-provenance attestation + npm provenance
-  attestations: write
+  contents: read
+
+concurrency:
+  group: amabie-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    name: pack, attest, release
+  verify:
+    # This local reusable workflow verifies the caller's exact revision.
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  package:
+    name: validate revision and prepare verified package
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Secrets may NOT be referenced directly inside an `if:` expression.
-    # GitHub rejects that, and the workflow then registers as a failed run
-    # with zero jobs ("No jobs were run"). The supported pattern is to
-    # expose the secret as job-level env and test the env value instead.
+    permissions:
+      contents: read
+      actions: read
     env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      PUBLISH: ${{ github.event_name == 'push' || inputs.dry_run == false }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0   # needed for the ancestry check below
-
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
-
-      - name: Tag, root manifest and CLI manifest must agree
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME#v}"
-          ROOT="$(node -p "require('./package.json').version")"
-          CLI="$(node -p "require('./apps/cli/package.json').version")"
-          echo "tag=$TAG root=$ROOT cli=$CLI"
-          if [ "$TAG" != "$CLI" ]; then
-            echo "FAIL: tag $GITHUB_REF_NAME does not match apps/cli/package.json version $CLI"
-            echo "The packed tarball takes its version from the CLI manifest (tooling/pack.mjs)."
-            exit 1
-          fi
-          if [ "$ROOT" != "$CLI" ]; then
-            echo "FAIL: root package.json ($ROOT) and apps/cli/package.json ($CLI) disagree."
-            echo "Source libraries are internal and versioned separately; the shipped CLI and the"
-            echo "root manifest are the public identity and must not drift."
-            exit 1
-          fi
-
-      - name: Tagged commit must be on main
-        run: |
-          set -euo pipefail
-          git fetch --no-tags --depth=1 origin main
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-          echo "OK: $GITHUB_SHA is an ancestor of main"
-
-      - run: npm ci --no-audit --no-fund
-      - run: npm run build
-
-      - name: Pack the distributable bundle
-        run: node tooling/pack.mjs
-
-      - name: Checksum the artifact
-        run: |
-          set -euo pipefail
-          cd pack/npm
-          ls -l
-          sha256sum ./*.tgz > "$(basename "$(ls ./*.tgz)").sha256"
-          cat ./*.sha256
-
-      # Provenance for the exact bytes being published, verifiable with
-      #   gh attestation verify <tgz> --repo criptofn/Canary
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-path: pack/npm/*.tgz
-
-      - name: Publish the GitHub release
-        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+      - name: Validate version, publication ref and approval configuration
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # MEASURED (v1.4.0): creating the release AND uploading its assets in one
-          # `gh release create <tag> <assets...>` call failed twice with
-          # `HTTP 422: Validation Failed (uploads.github.com...)`, leaving a
-          # PUBLISHED release with ZERO assets while the job reported the failure.
-          # The two operations are now separate and explicit.
-          #
-          # MEASURED (v1.5 pre-flight, 2026-09-24): the split below then shipped
-          # v1.4.0 as a DRAFT. `gh release view <tag>` SUCCEEDS on a draft, so the
-          # `|| gh release create` guard treated a pre-existing draft as "already
-          # created", skipped the create, uploaded assets into the draft and
-          # reported success — while the release stayed invisible to anonymous
-          # readers (`releases/tag/v1.4.0` returned 404 and `releases/latest` still
-          # resolved to v1.3.0). The step now (a) reads the draft flag explicitly,
-          # (b) publishes a draft instead of silently accepting it, and (c) asserts
-          # the END STATE — published, not draft, with both assets — so "the job is
-          # green" can no longer mean "the release is invisible".
-          STATE="$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' 2>/dev/null || echo absent)"
-          case "$STATE" in
-            absent)
-              gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
-              ;;
-            true)
-              echo "NOTE: a DRAFT release already exists for $GITHUB_REF_NAME; publishing it — this workflow's contract is a PUBLISHED release."
-              gh release edit "$GITHUB_REF_NAME" --draft=false
-              ;;
-            false)
-              echo "release $GITHUB_REF_NAME is already published; uploading assets into it"
-              ;;
-            *)
-              echo "FAIL: could not determine the release state for $GITHUB_REF_NAME (got '$STATE')"
-              exit 1
-              ;;
-          esac
-          gh release upload "$GITHUB_REF_NAME" pack/npm/*.tgz pack/npm/*.tgz.sha256 --clobber
-          gh release view "$GITHUB_REF_NAME" --json isDraft,assets --jq '.assets[] | "\(.name) \(.size) bytes"'
-          DRAFT="$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')"
-          COUNT="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets | length')"
-          if [ "$DRAFT" != "false" ]; then
-            echo "FAIL: release $GITHUB_REF_NAME is still a DRAFT (isDraft=$DRAFT) and is therefore invisible to anonymous readers"
-            exit 1
+          ROOT="$(node -p "require('./package.json').version")"
+          CLI="$(node -p "require('./apps/cli/package.json').version")"
+          test "$ROOT" = "$CLI" || { echo "FAIL: root/CLI versions disagree"; exit 1; }
+          if [ "$PUBLISH" = "true" ]; then
+            test "$GITHUB_REF_TYPE" = "tag" || { echo "FAIL: publication requires selecting the v$CLI tag, never a branch"; exit 1; }
+            test "$GITHUB_REF_NAME" = "v$CLI" || { echo "FAIL: tag $GITHUB_REF_NAME must equal v$CLI"; exit 1; }
+            git fetch --no-tags origin main
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+            REVIEWERS="$(gh api "repos/$GITHUB_REPOSITORY/environments/amabie-release" --jq '[.protection_rules[] | select(.type == "required_reviewers") | .reviewers[]] | length')"
+            test "$REVIEWERS" -gt 0 || { echo "FAIL: configure required reviewers on amabie-release before publication"; exit 1; }
+          else
+            echo "DRY RUN: branch builds allowed; no public release, attestation or npm publication."
           fi
-          if [ "$COUNT" -lt 2 ]; then echo "FAIL: expected tarball + checksum, found $COUNT asset(s)"; exit 1; fi
-          echo "OK: $GITHUB_REF_NAME is PUBLISHED (not draft) with $COUNT assets"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build:force
+      - run: node tooling/probes/cleanroom-packed-artifact.mjs
+      - name: Hash the exact tested artifact
+        run: |
+          set -euo pipefail
+          cd pack/npm
+          test "$(find . -maxdepth 1 -name '*.tgz' | wc -l)" -eq 1
+          ARTIFACT="$(basename "$(find . -maxdepth 1 -name '*.tgz')")"
+          sha256sum "$ARTIFACT" > "$ARTIFACT.sha256"
+          sha256sum --check "$ARTIFACT.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-package
+          path: pack/npm/*
+          if-no-files-found: error
 
-      # Registry publishing is optional and fails closed on its own precondition:
-      # it needs a repository secret NPM_TOKEN whose account owns the npm scope
-      # used by tooling/pack.mjs (@canary-rn). If that scope does not exist on
-      # npm, publishing fails with an authorization error â€” pick the final
-      # package name there and in tooling/pack.mjs before enabling this.
-      # --provenance is what binds the published bytes to this workflow run.
-      - name: Publish to npm (only when NPM_TOKEN is configured)
-        if: ${{ github.event_name == 'push' && env.NPM_TOKEN != '' }}
+  publish:
+    name: publish approved verified bytes
+    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    needs: [verify, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: amabie-release
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      attestations: write
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-package
+          path: pack/npm
+      - name: Verify approved bytes and revision
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_TYPE" = "tag"
+          test "$GITHUB_REF_NAME" = "v$(node -p "require('./apps/cli/package.json').version")"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          cd pack/npm
+          sha256sum --check ./*.sha256
+      - name: Attest the approved artifact
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: pack/npm/*.tgz
+      - name: Stage release assets, then publish the complete release
+        run: |
+          set -euo pipefail
+          STATE="$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft' 2>/dev/null || echo absent)"
+          if [ "$STATE" = "absent" ]; then
+            gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          elif [ "$STATE" != "true" ] && [ "$STATE" != "false" ]; then
+            echo "FAIL: cannot determine release state"; exit 1
+          fi
+          gh release upload "$GITHUB_REF_NAME" pack/npm/*.tgz pack/npm/*.tgz.sha256 --clobber
+          ARTIFACT="$(basename "$(find pack/npm -maxdepth 1 -name '*.tgz')")"
+          ASSETS="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')"
+          grep -Fx "$ARTIFACT" <<< "$ASSETS"
+          grep -Fx "$ARTIFACT.sha256" <<< "$ASSETS"
+          gh release edit "$GITHUB_REF_NAME" --draft=false
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = "false"
+      - name: Publish the same bytes to npm when configured
+        if: ${{ env.NPM_TOKEN != '' }}
         env:
           NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         run: npm publish ./pack/npm/*.tgz --provenance --access public

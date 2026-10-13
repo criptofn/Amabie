@@ -10,7 +10,7 @@ import { canonicalTask, subjectDigest, taskWeakening, type AuthorizationSubject 
 import { openSealed, sealRecord, type TrustStore } from './trust-store.js';
 import { requireAuthorizationLevel, validateNetworkAuthority, type NetworkAuthority } from './platform-boundary.js';
 
-export const BROKER_SCHEMA = 'canary-broker/1';
+export const BROKER_SCHEMA = 'amabie-broker/1';
 const HEX = /^[0-9a-f]{64}$/;
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -68,7 +68,7 @@ export interface PromotionIntent {
   subjectDigest: string; verificationDigest: string;
 }
 interface State {
-  schema: typeof BROKER_SCHEMA; enrollment: Enrollment;
+  schema: typeof BROKER_SCHEMA | 'canary-broker/1'; enrollment: Enrollment;
   phase: 'enrolled' | 'running' | 'verified' | 'accepted' | 'promotion-reserved';
   run: RunTicket | null;
   verification: VerificationStatement | null;
@@ -133,9 +133,9 @@ export class LocalAuthorityBroker {
     const opened = openSealed(this.#store, { projectId: this.#projectId, kind: 'broker-state' });
     requireThat(opened.status === 'valid' && opened.envelope, `broker authority unavailable: ${opened.status}`);
     const state = opened.envelope.payload as State;
-    requireThat(state?.schema === BROKER_SCHEMA, 'broker state schema mismatch');
+    requireThat(state?.schema === BROKER_SCHEMA || state?.schema === 'canary-broker/1', 'broker state schema mismatch');
     validateEnrollment(state.enrollment);
-    return { state, seq: opened.envelope.seq };
+    return { state: { ...state, schema: BROKER_SCHEMA }, seq: opened.envelope.seq };
   }
   #save(state: State, seq: number): void {
     sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, canaryVersion: BROKER_SCHEMA }, seq);

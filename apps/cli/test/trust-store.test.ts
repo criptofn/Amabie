@@ -14,7 +14,7 @@ import { after, describe, it } from 'node:test';
 
 import * as store from '../src/trust-store.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 let n = 0;
@@ -94,7 +94,7 @@ describe('forging routes all fail closed', () => {
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
     fs.writeFileSync(file, JSON.stringify(store.sealRecord(freshStore(), { projectId: 'proj-x', kind: 'reg-x', payload: {}, canaryVersion: 'test' })));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'forged'); // foreign key, valid shape
-    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), schema: 'canary-authority/0' }));
+    fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), schema: 'amabie-authority/0' }));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
     fs.rmSync(file);
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'missing');
@@ -130,10 +130,10 @@ describe('the level probe measures, it never inflates', () => {
   it('default store root is the platform convention under the OS home', () => {
     const root = store.defaultStoreRoot(path.join(TMP, 'home'));
     assert.ok(root.startsWith(path.join(TMP, 'home')), root);
-    assert.match(root, /canary/);
+    assert.match(root, /amabie/);
     assert.equal(root.includes('.git'), false);
-    if (process.platform === 'win32') assert.ok(root.endsWith(path.join('AppData', 'Local', 'canary', 'trust')), root);
-    else assert.ok(root.endsWith(path.join('.local', 'share', 'canary', 'trust')), root);
+    if (process.platform === 'win32') assert.ok(root.endsWith(path.join('AppData', 'Local', 'amabie', 'trust')), root);
+    else assert.ok(root.endsWith(path.join('.local', 'share', 'amabie', 'trust')), root);
   });
 });
 

@@ -9,7 +9,7 @@
  * `ExecutionObservation` on the same path that feeds verdicts.
  *
  * What makes this channel different from the Python one, and why there is no
- * authorization grant here: the runner IS the Node runtime Canary is executing on.
+ * authorization grant here: the runner IS the Node runtime Amabie is executing on.
  * `node` resolves through the sanitized PATH to `dirname(process.execPath)`, and
  * expansion refuses any program whose realpath is not that file — so "the observed
  * runner" and "the verifying runtime" are the same bytes by construction, and a
@@ -17,14 +17,14 @@
  *
  * Every property has a test that fails if it stops holding:
  *   1. a real project -> VALID observation -> counts agree with the runner's TAP
- *   2. the identity is Canary's OWN runtime, and re-expansion is byte-identical
+ *   2. the identity is Amabie's OWN runtime, and re-expansion is byte-identical
  *      (so prove's replay is a real re-validation)
  *   3. a FOREIGN node binary is refused, never weakly credited
  *   4. a subject-supplied --test-reporter is refused (the reporter set stays closed)
  *   5. printed TAP-shaped text cannot mint counts
  *   6. frames injected onto fd 3 by the subject fail the round closed
  *   7. an absent observation routes the verdict to INCONCLUSIVE
- *   8. the observer door adds ONLY Canary-owned variables for this channel
+ *   8. the observer door adds ONLY Amabie-owned variables for this channel
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -34,11 +34,11 @@ import { pathToFileURL } from 'node:url';
 import { after, describe, it } from 'node:test';
 
 import {
-  Recorder, detectNodeTestRunner, isCanaryOwnRuntime, isNodeReporterToken,
+  Recorder, detectNodeTestRunner, isAmabieOwnRuntime, isNodeReporterToken,
   nodeRunnerIdentity, nodeTestReporterPath, observerNonce, NODE_TEST_RUNNER_ID,
 } from '../src/index.js';
-import { sanitizedEnv, sanitizedEnvKeys } from '@canary-rn/support';
-import { classify, type RoundFact } from '@canary-rn/classification';
+import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
+import { classify, type RoundFact } from '@amabie/classification';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-nodetest-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
@@ -109,12 +109,12 @@ describe('node:test observation through the executor round path', () => {
     assert.equal(plan.expectedRunnerIdentitySha256, own.identitySha256);
     assert.equal(plan.observedRunnerIdentitySha256, own.identitySha256);
     assert.equal(plan.expectedRunnerIdentitySha256, plan.observedRunnerIdentitySha256);
-    // The sealed argv carries both reporters: the ordinary TAP one Canary did NOT
-    // produce, and Canary's own bytes by file URL (a bare Windows path would die
+    // The sealed argv carries both reporters: the ordinary TAP one Amabie did NOT
+    // produce, and Amabie's own bytes by file URL (a bare Windows path would die
     // with ERR_UNSUPPORTED_ESM_URL_SCHEME — measured). They sit in the OPTION
     // region, before the spec's test path: Node stops reading its own options at
     // the first positional, so a suffix injection loads no reporter at all.
-    assert.equal(argv[0], process.execPath, 'the runner must be pinned to Canary own Node');
+    assert.equal(argv[0], process.execPath, 'the runner must be pinned to Amabie own Node');
     assert.equal(argv[1], '--test-reporter=tap');
     assert.equal(argv[2], '--test-reporter-destination=stdout');
     assert.equal(argv[3], `--test-reporter=${pathToFileURL(nodeTestReporterPath(ws.root)).href}`,
@@ -162,18 +162,18 @@ describe('node:test observation through the executor round path', () => {
   it('3. a FOREIGN node binary is refused — ABSENT, never weakly credited', () => {
     const ws = workspace('foreign', PASSING);
     // A file that is called node.exe and is not the running runtime. Nothing
-    // identifies a runner as Canary's own runtime except the bytes and the path.
+    // identifies a runner as Amabie's own runtime except the bytes and the path.
     const foreign = path.join(TMP, 'foreign-node', 'node.exe');
     fs.mkdirSync(path.dirname(foreign), { recursive: true });
     fs.writeFileSync(foreign, 'not a node runtime\n');
-    assert.equal(isCanaryOwnRuntime(foreign), false, 'a different file is not Canary own runtime');
+    assert.equal(isAmabieOwnRuntime(foreign), false, 'a different file is not Amabie own runtime');
 
     const rec = recorder(ws);
     const { argv, plan } = rec.expandArgvWithPlan([foreign, '--test', 'test/'], subs, resolveBin);
     assert.equal(plan.injected, false, `a foreign runtime must not be injected: ${JSON.stringify(plan)}`);
     assert.equal(plan.absentKind, 'runner-identity-unpinned');
     assert.equal(plan.runner, undefined);
-    assert.equal(argv.includes('--test-reporter=tap'), false, 'and nothing of Canary reporter may be added');
+    assert.equal(argv.includes('--test-reporter=tap'), false, 'and nothing of Amabie reporter may be added');
   });
 
   it('4. a subject-supplied test-reporter is refused (the reporter set stays closed)', () => {
@@ -212,7 +212,7 @@ describe('node:test observation through the executor round path', () => {
     assert.deepEqual(o.observedFailingIdentities, [], 'and no forged failing identity appears');
   });
 
-  it('6. a subject cannot reach Canary fd 3 — or, if it can, the round fails closed', async () => {
+  it('6. a subject cannot reach Amabie fd 3 — or, if it can, the round fails closed', async () => {
     const ws = workspace('inject', {
       'test/inject.test.js': [
         "const { test } = require('node:test');",
@@ -240,7 +240,7 @@ describe('node:test observation through the executor round path', () => {
     console.log(`     measured: the subject's write to fd 3 returned ${JSON.stringify(outcome)}`);
 
     // MEASURED ASYMMETRY with the Python channel, and a favourable one: `node --test`
-    // runs each test FILE in its own child process, while Canary's reporter lives in
+    // runs each test FILE in its own child process, while Amabie's reporter lives in
     // the `node --test` parent that owns fd 3. Test code therefore has no handle on
     // the observation pipe (the write fails with EBADF here). The Python observer
     // hooks the same process the tests run in, which is why that channel carries a
@@ -274,7 +274,7 @@ describe('node:test observation through the executor round path', () => {
     assert.equal(c.classification, 'INCONCLUSIVE', `an unobserved run must not reach a strong label: ${JSON.stringify(c)}`);
   });
 
-  it('8. the observer door adds ONLY Canary-owned variables (no env-merge)', () => {
+  it('8. the observer door adds ONLY Amabie-owned variables (no env-merge)', () => {
     const ws = workspace('env', PASSING);
     const obsDir = path.join(ws.root, 'canary-node-observer');
     fs.mkdirSync(obsDir, { recursive: true });
@@ -283,14 +283,14 @@ describe('node:test observation through the executor round path', () => {
       ws, nodeDir: path.dirname(process.execPath),
       observer: { kind: 'node', dir: obsDir, nonce: 'n' },
     }));
-    assert.deepEqual(withObserver.filter((k) => !baseKeys.includes(k)).sort(), ['CANARY_OBSERVER_NONCE'],
+    assert.deepEqual(withObserver.filter((k) => !baseKeys.includes(k)).sort(), ['AMABIE_OBSERVER_NONCE'],
       'the node channel adds exactly its nonce binding and nothing else');
     // The door's containment rule is channel-independent: bytes outside the
     // workspace are still refused.
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-outside-'));
     assert.throws(
       () => sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath), observer: { kind: 'node', dir: outside, nonce: 'n' } }),
-      /must live inside Canary's workspace root/,
+      /must live inside Amabie's workspace root/,
     );
     fs.rmSync(outside, { recursive: true, force: true });
   });

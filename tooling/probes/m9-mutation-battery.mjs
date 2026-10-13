@@ -78,7 +78,7 @@ const MUTS = [
   { id: 'containment pre-gate runs when setup promised the settings file', file: CAND,
     search: 'if (cfg.touched.some((t) => samePath(t.path, settings)))', replace: 'if (false)', count: 1, own: 'stripped harness' },
   { id: 'pre-gate fires on MISSING entry, not on presence (inverted = guard shouts at innocence)', file: CAND,
-    search: 'if (!doc || !hasCanaryEntry(doc, new Set(cfg.hookCommands)))', replace: 'if (doc && hasCanaryEntry(doc, new Set(cfg.hookCommands)))', count: 1, own: 'positive control' },
+    search: 'if (!doc || !hasAmabieEntry(doc, new Set(cfg.hookCommands)))', replace: 'if (doc && hasAmabieEntry(doc, new Set(cfg.hookCommands)))', count: 1, own: 'positive control' },
   // --- the verdict cannot be laundered ---
   { id: 'the mandate exits 2 (code 0 = a modified verifier scoring itself green)', file: CAND,
     search: "'evidence')}`);\n        return { code: 2, startHead: null, rec };",

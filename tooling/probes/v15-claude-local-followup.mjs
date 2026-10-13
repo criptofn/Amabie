@@ -22,7 +22,7 @@ const audited = summary.sessions.map((record) => ({ name: record.name,
   matchesAllModelUsage: claudeUsageMatchesNative(record.terminal, record.nativeUsage, summary.model),
   mainUsage: record.terminal?.usage ?? null, modelUsage: record.terminal?.modelUsage ?? null, nativeUsage: record.nativeUsage }));
 assert.ok(audited.every((record) => record.matchesAllModelUsage), 'not all recorded native totals reconcile');
-const r1 = summary.sessions.find((r) => r.name === 'R1-canary'); assert.ok(r1);
+const r1 = summary.sessions.find((r) => r.name === 'R1-amabie'); assert.ok(r1);
 const omitted = { input_tokens: r1.nativeUsage.input_tokens - r1.terminal.usage.input_tokens,
   output_tokens: r1.nativeUsage.output_tokens - r1.terminal.usage.output_tokens };
 const matching = summary.requests.filter((r) => r1.calls.includes(r.number) && r.usage.input_tokens === omitted.input_tokens && r.usage.output_tokens === omitted.output_tokens);
@@ -30,20 +30,20 @@ assert.equal(matching.length, 1, 'the auxiliary request cannot be identified uni
 const number = matching[0].number;
 const request = read(`api-${number}.request.json`);
 const lastMessage = JSON.stringify(request.messages.at(-1));
-const events = fs.readFileSync(path.join(evidence, 'R1-canary/claude.jsonl'), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
+const events = fs.readFileSync(path.join(evidence, 'R1-amabie/claude.jsonl'), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
 const compactEvents = events.filter((event) => event.subtype === 'compact_boundary');
 const requestElapsedMs = Date.parse(matching[0].finishedAt) - Date.parse(matching[0].startedAt);
 assert.ok(compactEvents.some((event) => Math.abs(event.compact_metadata.duration_ms - requestElapsedMs) < 5000), 'matching compaction timing not observed');
 save('accounting-audit.json', { audited, omitted, requestNumber: number, compactEvents,
   auxiliaryRequestLastMessage: lastMessage, requestElapsedMs, requestSha256: hash(fs.readFileSync(path.join(evidence, `api-${number}.request.json`))),
   responseSha256: hash(fs.readFileSync(path.join(evidence, `api-${number}.response.txt`))) });
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-native-age-control-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-native-age-control-'));
 const controls = [];
 try {
-  const canary = summary.sessions.find((r) => r.name === 'H1-canary'); assert.ok(canary);
+  const amabie = summary.sessions.find((r) => r.name === 'H1-amabie'); assert.ok(amabie);
   const preparation = read('preparation-summary.json');
-  const base = preparation.records.find((r) => r.label === 'H1' && r.arm === 'canary').source.baseCommit;
-  const old = spawnSync('git', ['-C', canary.cwd, 'show', `${base}:src/workflows/fileOrganizer.js`], { encoding: 'utf8', windowsHide: true, timeout: 60000 });
+  const base = preparation.records.find((r) => r.label === 'H1' && r.arm === 'amabie').source.baseCommit;
+  const old = spawnSync('git', ['-C', amabie.cwd, 'show', `${base}:src/workflows/fileOrganizer.js`], { encoding: 'utf8', windowsHide: true, timeout: 60000 });
   assert.equal(old.status, 0);
   const marker = 'if (options.maxAgeDays && ageDays > options.maxAgeDays) continue;';
   assert.equal(old.stdout.split(marker).length, 2);
@@ -63,14 +63,14 @@ try {
   };
   assert.equal(run('baseline-strict', path.join(temp, 'baseline'), true).testPassed, false);
   assert.equal(run('golden-strict', path.join(temp, 'golden'), true).testPassed, true);
-  for (const arm of ['plain', 'canary']) {
+  for (const arm of ['plain', 'amabie']) {
     const record = summary.sessions.find((r) => r.name === `H1-${arm}`); assert.ok(record);
     const original = read(`oracle-H1-${arm}-final/oracle-result.json`);
     assert.equal(hash(fs.readFileSync(path.join(record.cwd, 'src/workflows/fileOrganizer.js'))), original.sourceFiles[0].sha256, 'worker source changed after capture');
     assert.equal(run(`H1-${arm}-original`, record.cwd, false).testPassed, true);
     run(`H1-${arm}-strict`, record.cwd, true);
   }
-  assert.equal(controls.find((c) => c.name === 'H1-canary-strict').testPassed, false, 'rounding error was not observed');
+  assert.equal(controls.find((c) => c.name === 'H1-amabie-strict').testPassed, false, 'rounding error was not observed');
   save('followup-summary.json', { status: 'complete', controls, accountingAudited: audited.length,
     evidence, oracleSha256: hash(fs.readFileSync(oracle)), note: 'Additional H1 cases are post-pilot checks, not predeclared pilot oracle results. Original outcomes remain unchanged.' });
 } finally {

@@ -19,10 +19,10 @@ const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const fileHash = (file) => hash(fs.readFileSync(file));
 const npm = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
 assert.ok(fs.statSync(npm).isFile());
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-focused-repair-timing-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-focused-repair-timing-'));
 fs.mkdirSync(out, { recursive: true });
 const save = (file, value) => fs.writeFileSync(path.join(out, file), typeof value === 'string' ? value : `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
-const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|ANTHROPIC|OPENAI|CLAUDE|CANARY_TRUST)/i.test(key)));
+const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|ANTHROPIC|OPENAI|CLAUDE|AMABIE_TRUST)/i.test(key)));
 const commands = [], rows = [], controls = [];
 let failure = null;
 const allProjects = [
@@ -56,16 +56,16 @@ function must(name, exe, args, cwd, extra) {
   const result = run(name, exe, args, cwd, extra); assert.equal(result.exitCode, 0, `${name}: see raw logs`); return result;
 }
 function check(name, cli, repo, args, expectedExit, trust) {
-  const evidenceRoot = path.join(repo, '.canary/evidence');
+  const evidenceRoot = path.join(repo, '.amabie/evidence');
   const before = new Set(fs.readdirSync(evidenceRoot));
-  const result = run(name, process.execPath, [cli, 'doctor', ...args, '--json'], repo, { CANARY_TRUST_STORE: trust });
+  const result = run(name, process.execPath, [cli, 'doctor', ...args, '--json'], repo, { AMABIE_TRUST_STORE: trust });
   assert.equal(result.exitCode, expectedExit, `${name}: see raw logs`);
   const envelope = JSON.parse(result.stdout);
   const bundles = fs.readdirSync(evidenceRoot).filter((file) => !before.has(file));
   assert.equal(bundles.length, 1, `${name}: exactly one current verification bundle required`);
   const bundleDir = path.join(evidenceRoot, bundles[0]);
   const bundle = JSON.parse(fs.readFileSync(path.join(bundleDir, 'verification.json'), 'utf8'));
-  assert.equal(path.resolve(bundle.canaryEntry), path.resolve(cli));
+  assert.equal(path.resolve(bundle.amabieEntry), path.resolve(cli));
   fs.cpSync(bundleDir, path.join(out, `${name}-evidence`), { recursive: true, errorOnExist: true });
   return { name, elapsedMs: result.elapsedMs, status: envelope.status, steps: bundle.steps,
     executedChecks: bundle.steps.filter((step) => Array.isArray(step.execArgv) && step.execArgv.length > 0).length };
@@ -91,10 +91,10 @@ try {
         must(`${project.name}-${arm}-dependencies`, process.execPath, [npm, 'ci', '--offline', '--ignore-scripts', '--no-audit', '--no-fund'], repo);
         must(`${project.name}-${arm}-prerequisite`, process.execPath, [npm, 'run', 'build'], repo);
       }
-      git('base-add', ['add', '-A']); git('base-commit', ['-c', 'user.name=Canary repair timing', '-c', 'user.email=timing@localhost', 'commit', '--allow-empty', '-m', 'operator repair workload']);
+      git('base-add', ['add', '-A']); git('base-commit', ['-c', 'user.name=Amabie repair timing', '-c', 'user.email=timing@localhost', 'commit', '--allow-empty', '-m', 'operator repair workload']);
       const toolDirs = project.name === 'Refactron' ? [path.join(scratch, 'python311'), path.join(scratch, 'python311/Scripts'), 'C:/Program Files/Git/cmd', 'C:/Program Files/Git/usr/bin'] : [];
-      must(`${project.name}-${arm}-setup`, process.execPath, [cli, 'setup', '--yes', ...toolDirs.flatMap((dir) => ['--toolchain-dir', dir])], repo, { CANARY_TRUST_STORE: trust });
-      const cfg = JSON.parse(fs.readFileSync(path.join(repo, '.canary/canary.local.json'), 'utf8'));
+      must(`${project.name}-${arm}-setup`, process.execPath, [cli, 'setup', '--yes', ...toolDirs.flatMap((dir) => ['--toolchain-dir', dir])], repo, { AMABIE_TRUST_STORE: trust });
+      const cfg = JSON.parse(fs.readFileSync(path.join(repo, '.amabie/amabie.local.json'), 'utf8'));
       assert.equal(cfg.plan.length, project.count);
       save(`${project.name}-${arm}-package.json`, fs.readFileSync(path.join(repo, 'package.json'), 'utf8'));
       save(`${project.name}-${arm}-config.json`, cfg);
@@ -112,7 +112,7 @@ try {
       const rejected = check(`${project.name}-${arm}-broken`, cli, repo, arm === 'after' ? ['--check', project.selected] : [], 2, trust);
       assert.ok(rejected.steps.some((step) => !step.ok)); controls.push(rejected);
       fs.writeFileSync(repair, repaired);
-      const checkpoint = fileHash(path.join(repo, '.canary/last-checkpoint.json'));
+      const checkpoint = fileHash(path.join(repo, '.amabie/last-checkpoint.json'));
       arms.push({ arm, cli, repo, trust, checkpoint });
     }
     for (let round = 0; round <= repeats; round++) {
@@ -122,7 +122,7 @@ try {
         assert.equal(measured.executedChecks, item.arm === 'after' ? 1 : project.count);
         if (item.arm === 'after') {
           assert.equal(measured.status, 'PARTIAL');
-          assert.equal(fileHash(path.join(item.repo, '.canary/last-checkpoint.json')), item.checkpoint);
+          assert.equal(fileHash(path.join(item.repo, '.amabie/last-checkpoint.json')), item.checkpoint);
         } else assert.equal(measured.status, 'READY');
         if (round > 0) rows.push({ project: project.name, arm: item.arm, round, ...measured });
         console.log(`PASS ${project.name}/${item.arm}/${round}: ${Math.round(measured.elapsedMs)} ms, ${measured.executedChecks} executed checks`);
@@ -135,7 +135,7 @@ try {
       : otherBefore.replace('toBe(1)', 'toBe(2)'));
     const partial = check(`${project.name}-other-failure-partial`, after.cli, after.repo, ['--check', project.selected], 0, after.trust);
     assert.equal(partial.status, 'PARTIAL'); assert.equal(partial.executedChecks, 1);
-    assert.equal(fileHash(path.join(after.repo, '.canary/last-checkpoint.json')), after.checkpoint);
+    assert.equal(fileHash(path.join(after.repo, '.amabie/last-checkpoint.json')), after.checkpoint);
     const full = check(`${project.name}-other-failure-full`, after.cli, after.repo, [], 2, after.trust);
     assert.ok(full.steps.some((step) => !step.ok)); controls.push(partial, full);
     fs.writeFileSync(other, otherBefore);

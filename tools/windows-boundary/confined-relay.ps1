@@ -13,8 +13,8 @@ function Save([int]$code) {
   [System.IO.File]::WriteAllText($Log, $record.ToString() + "LAUNCHER-EXIT $code`r`n", (New-Object System.Text.UTF8Encoding($false)))
 }
 try {
-  Add-Type -Path (Join-Path $PSScriptRoot 'CanaryConfinedLauncher.cs')
-  Add-Type -Path (Join-Path $PSScriptRoot 'CanaryBroker.cs')
+  Add-Type -Path (Join-Path $PSScriptRoot 'AmabieConfinedLauncher.cs')
+  Add-Type -Path (Join-Path $PSScriptRoot 'AmabieBroker.cs')
   $lines = @([System.IO.File]::ReadAllLines($ArgumentsFile))
   $operation = $lines[0]
   $argv = @()
@@ -22,9 +22,9 @@ try {
   [void]$record.AppendLine("RELAY mode=$operation argc=$($argv.Count)")
   $code = 0
   switch ($operation) {
-    'identity' { $code = [CanaryConfined]::Main([string[]](@('identity') + $argv)) }
-    'launcher' { $code = [CanaryConfined]::Main([string[]](@('run') + $argv)) }
-    'broker'   { $code = [CanaryBroker.Program]::Main([string[]]$argv) }
+    'identity' { $code = [AmabieConfined]::Main([string[]](@('identity') + $argv)) }
+    'launcher' { $code = [AmabieConfined]::Main([string[]](@('run') + $argv)) }
+    'broker'   { $code = [AmabieBroker.Program]::Main([string[]]$argv) }
     default    { [void]$record.AppendLine("RELAY-ERROR unknown operation $operation"); Save 2; exit 2 }
   }
   Save ([int]$code)

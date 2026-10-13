@@ -1,5 +1,5 @@
 // Confined-Git escape battery. Runs IDENTICALLY as the unrestricted positive control
-// and through the production confined executor (`canary provider ... productionTool`).
+// and through the production confined executor (`amabie provider ... productionTool`).
 //
 // Every vector's output is FILE-BACKED: no nested stdio pipes exist on any path, so a
 // vector can neither stall on a pipe nor hide behind one. Each child has a hard
@@ -82,7 +82,7 @@ if (batch !== 'descendant') {
 if (batch === 'reads') {
   for (const [id, file] of Object.entries(cfg.reads)) readFile(id, file);
   for (const [id, dir] of Object.entries(cfg.listings)) listDir(id, dir);
-  readFile('trusted-launcher-source', path.join(cfg.repo, 'tools', 'windows-boundary', 'CanaryConfinedLauncher.cs'));
+  readFile('trusted-launcher-source', path.join(cfg.repo, 'tools', 'windows-boundary', 'AmabieConfinedLauncher.cs'));
   readFile('nt-device-path', cfg.ntSecret);
   if (cfg.shortSecret) readFile('short-name-path', cfg.shortSecret);
   if (cfg.uncSecret) readFile('unc-path', cfg.uncSecret);
@@ -94,17 +94,17 @@ if (batch === 'reads') {
 }
 
 if (batch === 'git-paths') {
-  git('git-C', ['-C', OUT, 'config', '--local', '--get', 'canary.probe']);
-  git('git-C-slash', ['-C', OUT_SLASH, 'config', '--local', '--get', 'canary.probe']);
+  git('git-C', ['-C', OUT, 'config', '--local', '--get', 'amabie.probe']);
+  git('git-C-slash', ['-C', OUT_SLASH, 'config', '--local', '--get', 'amabie.probe']);
   git('git-dir', ['--git-dir=' + OUT_SLASH + '/.git', 'show', 'HEAD:ESCAPE_CANARY']);
-  git('git-dir-config', ['--git-dir=' + OUT_SLASH + '/.git', 'config', '--local', '--get', 'canary.probe']);
+  git('git-dir-config', ['--git-dir=' + OUT_SLASH + '/.git', 'config', '--local', '--get', 'amabie.probe']);
   git('GIT_DIR', ['show', 'HEAD:ESCAPE_CANARY'], { GIT_DIR: OUT_SLASH + '/.git' });
   git('git-dir-work-tree', ['--git-dir=' + OUT_SLASH + '/.git', '--work-tree=' + OUT_SLASH, 'status', '--porcelain']);
   git('GIT_WORK_TREE', ['ls-files', '--others', '--exclude-standard'], { GIT_WORK_TREE: OUT_SLASH });
   git('GIT_OBJECT_DIRECTORY', ['cat-file', '-p', cfg.secretObject], { GIT_OBJECT_DIRECTORY: OUT_SLASH + '/.git/objects' });
   git('alternate-objects', ['cat-file', '-p', cfg.secretObject], { GIT_ALTERNATE_OBJECT_DIRECTORIES: OUT_SLASH + '/.git/objects' });
-  git('include.path', ['-c', 'include.path=' + OUT_SLASH + '/secret.config', 'config', '--get', 'canary.probe']);
-  git('includeIf', ['-c', 'includeIf.gitdir:**/.git.path=' + OUT_SLASH + '/secret.config', 'config', '--get', 'canary.probe']);
+  git('include.path', ['-c', 'include.path=' + OUT_SLASH + '/secret.config', 'config', '--get', 'amabie.probe']);
+  git('includeIf', ['-c', 'includeIf.gitdir:**/.git.path=' + OUT_SLASH + '/secret.config', 'config', '--get', 'amabie.probe']);
   git('core.worktree', ['-c', 'core.worktree=' + OUT_SLASH, 'status', '--porcelain', '--untracked-files=all']);
   git('core.worktree-config', ['config', 'core.worktree', OUT_SLASH]);
   git('core.worktree-status', ['status', '--porcelain', '--untracked-files=all']);

@@ -3,11 +3,11 @@
 // The confined transport got 51.5% cheaper on the long fixture by returning the project's own check result
 // AFTER each batch, so the worker stopped spending a round trip to ask (MEASURED UPDATE 4). The EVERYDAY
 // path — the shape v1.3 actually ships — has no equivalent: its Stop hook only speaks at the END of a turn,
-// and mid-task the agent must decide for itself to call `canary_doctor`. So the same waste is available
+// and mid-task the agent must decide for itself to call `amabie_doctor`. So the same waste is available
 // there, and the everyday shape is the one at 92.7% of plain.
 //
 // Claude Code documents a `PostToolUse` hook whose `additionalContext` is "added to Claude's context
-// alongside the tool result". If that works here, Canary can hand the agent the project's own check result
+// alongside the tool result". If that works here, Amabie can hand the agent the project's own check result
 // the moment it edits a file — the same information, at the same moment, without the agent asking.
 //
 // THIS PROBE MEASURES THE MECHANISM, ON THIS HOST, WITH THE REAL CLI. A documented field is not evidence
@@ -24,8 +24,8 @@ import { spawnSync } from 'node:child_process';
 
 const claude = path.join(os.homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude');
 const repoRoot = path.resolve(import.meta.dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-posttool-'));
-const MARKER = 'CANARY-MIDTASK-MARKER';
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-posttool-'));
+const MARKER = 'AMABIE-MIDTASK-MARKER';
 let failures = 0;
 /** v1.4 §11 — NONDETERMINISTIC results, counted separately.
  *
@@ -192,16 +192,16 @@ try {
       const d = JSON.parse(fs.readFileSync(path.join(evidence, n), 'utf8'));
       const turns = d.stream?.turns ?? d.agentResult?.numTurns ?? null;
       const checks = d.stream?.commands?.checks ?? null;
-      const canary = d.stream?.commands?.canary ?? null;
-      if (typeof turns === 'number' && typeof checks === 'number') rows.push({ n, turns, checks, canary });
+      const amabie = d.stream?.commands?.amabie ?? null;
+      if (typeof turns === 'number' && typeof checks === 'number') rows.push({ n, turns, checks, amabie });
     } catch { /* a malformed record is not this probe's question */ }
   }
   console.log(`\nINFO everyday (guarded) records with a usable command ledger: ${rows.length}`);
-  for (const r of rows) console.log(`INFO   ${r.n.replace(/^v12tok-guarded-|\.json$/g, '')}: turns=${r.turns} modelRunChecks=${r.checks} canaryCommands=${r.canary}`);
+  for (const r of rows) console.log(`INFO   ${r.n.replace(/^v12tok-guarded-|\.json$/g, '')}: turns=${r.turns} modelRunChecks=${r.checks} amabieCommands=${r.amabie}`);
 
   if (rows.length === 0) {
     dataUnavailable = true;
-    console.log('SKIP D1/D2: no stored everyday guarded command-ledger records; this corpus cannot establish the ceiling or Canary command count');
+    console.log('SKIP D1/D2: no stored everyday guarded command-ledger records; this corpus cannot establish the ceiling or Amabie command count');
   } else {
   check('D1-the-everyday-path-has-little-self-checking-left-to-remove', () => {
     assert(rows.length > 0,
@@ -218,18 +218,18 @@ try {
     console.log('INFO   consistent with MEASURED UPDATE 5: mid-task feedback cannot close the gap on this shape');
   });
 
-  check('D2-no-recorded-everyday-run-called-a-canary-tool', () => {
+  check('D2-no-recorded-everyday-run-called-a-amabie-tool', () => {
     // Second, independent confirmation of the standing-context OPEN finding: the measured everyday arms had
     // NO MCP server (`--strict-mcp-config` with no `--mcp-config`), so the tool surface's token cost is
     // UNMEASURED rather than zero.
-    const withLedger = rows.filter((r) => typeof r.canary === 'number');
-    assert(withLedger.length > 0, 'no record carried a canary command count');
-    const called = withLedger.filter((r) => r.canary > 0);
+    const withLedger = rows.filter((r) => typeof r.amabie === 'number');
+    assert(withLedger.length > 0, 'no record carried a amabie command count');
+    const called = withLedger.filter((r) => r.amabie > 0);
     assert(called.length === 0,
-      `${called.length} everyday record(s) now call Canary tools (${called.map((c) => c.n).join(', ')}). That `
+      `${called.length} everyday record(s) now call Amabie tools (${called.map((c) => c.n).join(', ')}). That `
       + 'means the measured arms DO load an MCP server, the 92.7% figure now includes the tool surface, and '
       + 'both the standing-context OPEN finding and the audit must be re-derived');
-    console.log(`INFO   canary commands = 0 across all ${withLedger.length} everyday records — the tool surface is not in that figure`);
+    console.log(`INFO   amabie commands = 0 across all ${withLedger.length} everyday records — the tool surface is not in that figure`);
   });
   }
 

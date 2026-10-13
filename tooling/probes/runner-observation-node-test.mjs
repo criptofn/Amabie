@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The Canary `node --test` observation channel — real execution, forgery, failure.
+ * The Amabie `node --test` observation channel — real execution, forgery, failure.
  *
  * This is a GATE, not a demonstration. It loads the SHIPPED reporter bytes
  * (`NODE_TEST_REPORTER_SOURCE`) into a real `node --test` run and checks the three
@@ -8,7 +8,7 @@
  * uses (`parseNodeTestCounts` / `extractNodeTestFailingNames` from the built
  * comparator):
  *
- *   1. an INDEPENDENT TAP summary is still on stdout, and Canary's reporter writes
+ *   1. an INDEPENDENT TAP summary is still on stdout, and Amabie's reporter writes
  *      nothing to its own stream;
  *   2. hello/pass/pending/bye arrive on fd 3, nonce- and process-bound, with
  *      counts that agree with that text — pass, fail and pending alike;
@@ -51,7 +51,7 @@ const { parseNodeTestCounts, extractNodeTestFailingNames, parseSummaryCountsFor,
   await import(url(COMPARATOR_MOD));
 console.log(`reporter bytes: ${NODE_TEST_REPORTER_SOURCE.length}, runner id: ${NODE_TEST_RUNNER_ID}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-nodetest-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-nodetest-'));
 const reporterPath = path.join(TMP, NODE_TEST_REPORTER_BASENAME);
 fs.writeFileSync(reporterPath, NODE_TEST_REPORTER_SOURCE, 'utf8');
 
@@ -73,7 +73,7 @@ function runObserved(name, files) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ARGS, {
       cwd, shell: false, windowsHide: true,
-      env: { ...process.env, CANARY_OBSERVER_NONCE: NONCE },
+      env: { ...process.env, AMABIE_OBSERVER_NONCE: NONCE },
       stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
     });
     let out = ''; let err = ''; let fd3 = '';
@@ -102,12 +102,12 @@ const real = await runObserved('passing', {
 });
 console.log(`\n--- real node:test run: exit ${real.code} ---`);
 for (const f of real.frames) console.log(`  ${JSON.stringify(f)}`);
-console.log(`  stderr (Canary's reporter stream): ${JSON.stringify(real.err.slice(0, 200))}`);
+console.log(`  stderr (Amabie's reporter stream): ${JSON.stringify(real.err.slice(0, 200))}`);
 
 check('1. an INDEPENDENT TAP summary is on stdout and the reporter writes nothing to its stream', () => {
   assert(real.code === 0, `the run must succeed: ${real.out}${real.err}`);
   assert(/^# tests 4$/m.test(real.out), `expected a runner summary on stdout, got:\n${real.out}`);
-  assert(real.err.trim() === '', `Canary's reporter must write NOTHING to its own stream, got: ${real.err.slice(0, 200)}`);
+  assert(real.err.trim() === '', `Amabie's reporter must write NOTHING to its own stream, got: ${real.err.slice(0, 200)}`);
 });
 
 check('2. hello/pass/pending/bye arrive on fd 3, nonce- and process-bound', () => {
@@ -222,5 +222,5 @@ check('7. the dispatchers refuse to read a node:test stream as mocha (and vice v
 
 console.log(`\n=== node:test channel: ${failures === 0 ? 'ALL PASS' : `${failures} FAIL`} ===`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 && process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 && process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(failures === 0 ? 0 : 1);

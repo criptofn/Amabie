@@ -28,13 +28,13 @@ try {
   run('dist-tripwire', process.execPath, [path.join(root, 'tooling/probes/v12-dist-tripwire.mjs')]);
   run('pack', process.execPath, [path.join(root, 'tooling/pack.mjs')]);
   const archive = path.join(out, 'final.tgz');
-  fs.copyFileSync(path.join(root, 'pack/npm/canary-rn-cli-1.5.0.tgz'), archive, fs.constants.COPYFILE_EXCL);
+  fs.copyFileSync(path.join(root, 'pack/npm/amabie-rn-cli-1.5.0.tgz'), archive, fs.constants.COPYFILE_EXCL);
   const installed = path.join(out, 'installed'); fs.mkdirSync(installed);
-  fs.writeFileSync(path.join(installed, 'package.json'), '{"name":"canary-product-validation-install","private":true}\n', { flag: 'wx' });
+  fs.writeFileSync(path.join(installed, 'package.json'), '{"name":"amabie-product-validation-install","private":true}\n', { flag: 'wx' });
   run('install', process.execPath, [npm, 'install', '--prefix', installed, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', archive], installed);
-  const cli = path.join(installed, 'node_modules/@canary-rn/cli/dist/main.js');
+  const cli = path.join(installed, 'node_modules/@amabie/cli/dist/main.js');
   const version = run('version', process.execPath, [cli, '--version'], installed);
-  assert.equal(version, 'canary 1.5.0');
+  assert.equal(version, 'amabie 1.5.0');
   artifact = { sourceCommit, package: archive, packageSha256: hash(archive), cli, cliSha256: hash(cli), version };
   console.log(`PASS frozen package: ${artifact.packageSha256}; CLI ${artifact.cliSha256}`);
 } catch (error) { failure = error.stack ?? String(error); console.error(failure); }

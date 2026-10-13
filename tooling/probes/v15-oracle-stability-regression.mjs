@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 const [badSource, runtimeRoot, out] = process.argv.slice(2);
 assert.ok([badSource, runtimeRoot, out].every(p => p && path.isAbsolute(p)) && !fs.existsSync(out));
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-oracle-stability-'));
+const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-oracle-stability-'));
 fs.mkdirSync(out, { recursive: true });
 const rows = [];
 try {

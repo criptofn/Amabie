@@ -7,10 +7,10 @@
  * verdict and its exit code, unmodified. There is no second decision path here,
  * no re-implementation of a gate, and no field a client can set to influence a
  * verdict. An MCP client may REQUEST work; it can never mint PASS, ACCEPTED or
- * PROMOTED, because those words are produced by `canary` and this file only
+ * PROMOTED, because those words are produced by `amabie` and this file only
  * carries them.
  *
- * What is deliberately NOT exposed, and why: `canary accept`. Acceptance is the
+ * What is deliberately NOT exposed, and why: `amabie accept`. Acceptance is the
  * human act that closes SUBJECTIVE duties, and it is gated on a real terminal
  * (`cmdAccept`). Exposing it through a machine channel would be a way to reach
  * the one step the whole design refuses to let an agent perform — so there is no
@@ -27,7 +27,7 @@ import { spawnSync } from 'node:child_process';
 import readline from 'node:readline';
 
 import { CLI_ENTRY, selfArgv, projectTestEntryHint, type McpProfile } from './onboarding.js';
-import { CANARY_VERSION } from './pipeline.js';
+import { AMABIE_VERSION } from './pipeline.js';
 
 /** The MCP revision this server speaks. */
 const MCP_PROTOCOL_VERSION = '2025-06-18';
@@ -66,57 +66,57 @@ interface McpTool {
  */
 const TOOLS: readonly McpTool[] = [
   {
-    name: 'canary_result',
+    name: 'amabie_result',
     description:
-      'Read-only summary of this repository: checks, protection level and next action (`canary result --json`).',
+      'Read-only summary of this repository: checks, protection level and next action (`amabie result --json`).',
     inputSchema: {
       type: 'object',
       properties: { path: { type: 'string', description: 'Repository root (defaults to server cwd).' } },
       additionalProperties: false,
     },
-    annotations: { title: 'Canary result (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    annotations: { title: 'Amabie result (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   },
   {
-    name: 'canary_status',
-    description: 'Read-only wiring status for this repository (`canary status --json`).',
+    name: 'amabie_status',
+    description: 'Read-only wiring status for this repository (`amabie status --json`).',
     inputSchema: {
       type: 'object',
       properties: { path: { type: 'string', description: 'Repository root (defaults to server cwd).' } },
       additionalProperties: false,
     },
-    annotations: { title: 'Canary status (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    annotations: { title: 'Amabie status (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   },
   {
-    name: 'canary_agents',
+    name: 'amabie_agents',
     description: 'Lists available agent integrations and whether each can block completion or only advise.',
     inputSchema: {
       type: 'object',
       properties: { path: { type: 'string', description: 'Repository root (defaults to server cwd).' } },
       additionalProperties: false,
     },
-    annotations: { title: 'Canary agent capabilities (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+    annotations: { title: 'Amabie agent capabilities (read-only)', readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   },
   {
-    name: 'canary_task',
+    name: 'amabie_task',
     description:
-      'Before work, record explicit user criteria verbatim (no placeholders). AGENT_REPORTED only; cannot prove or bind. Binding hints are operator-only.',
+      'Register the current task before project actions on every new request; copy stated criteria exactly and use [] if none. Agent-reported only; cannot prove or bind.',
     inputSchema: {
       type: 'object',
       properties: {
         intent: { type: 'string', minLength: 1 },
         requirements: {
-          type: 'array', minItems: 1,
-          description: 'Explicit user criteria, one per item, copied verbatim; no summaries/placeholders.',
+          type: 'array',
+          description: 'Explicit user criteria, one per item, copied verbatim; use [] if none; no summaries/placeholders.',
           items: { type: 'string', minLength: 1, description: 'One verbatim user criterion.' },
         },
       },
       required: ['intent', 'requirements'],
       additionalProperties: false,
     },
-    annotations: { title: 'Canary task intake', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    annotations: { title: 'Amabie task intake', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
   {
-    name: 'canary_doctor',
+    name: 'amabie_doctor',
     description:
       'Runs sealed checks and project code. Omit `check` for the full gate; an exact check id is PARTIAL only. '
       + 'Copy `check` from the sealed checks list; task and requirement text are not check ids. '
@@ -132,12 +132,12 @@ const TOOLS: readonly McpTool[] = [
       },
       additionalProperties: false,
     },
-    annotations: { title: 'Canary doctor (executes the sealed plan)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    annotations: { title: 'Amabie doctor (executes the sealed plan)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
   {
-    name: 'canary_work',
+    name: 'amabie_work',
     description:
-      'REQUEST a unit of work: register the intent and open an isolated candidate (runs `canary work`). '
+      'REQUEST a unit of work: register the intent and open an isolated candidate (runs `amabie work`). '
       + 'Returns the candidate directory — do the work THERE, never in the base. The intent is a hint with '
       + 'zero authority: it can only ADD obligations, never remove one.',
     inputSchema: {
@@ -156,14 +156,14 @@ const TOOLS: readonly McpTool[] = [
       required: ['name', 'intent'],
       additionalProperties: false,
     },
-    annotations: { title: 'Canary work (opens a candidate)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    annotations: { title: 'Amabie work (opens a candidate)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
   {
-    name: 'canary_finish',
+    name: 'amabie_finish',
     description:
       'REQUEST completion: verify the committed candidate against the base\'s sealed authority and, ONLY '
-      + 'if that live verification passes, fast-forward the trusted base (runs `canary finish`). Promotion '
-      + 'is decided by Canary from live bytes; a stored or claimed PASS is never read back. A refusal means '
+      + 'if that live verification passes, fast-forward the trusted base (runs `amabie finish`). Promotion '
+      + 'is decided by Amabie from live bytes; a stored or claimed PASS is never read back. A refusal means '
       + 'the base was untouched — fix exactly what was reported and call this again.',
     inputSchema: {
       type: 'object',
@@ -174,28 +174,28 @@ const TOOLS: readonly McpTool[] = [
       required: ['name'],
       additionalProperties: false,
     },
-    annotations: { title: 'Canary finish (verify, then promote only if proven)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    annotations: { title: 'Amabie finish (verify, then promote only if proven)', readOnlyHint: false, destructiveHint: false, idempotentHint: false },
   },
 ];
 
 const SERVER_INSTRUCTIONS = [
-  'The trusted CLI alone issues verdicts; relay its output and exit code. Agent-run tests are not Canary proof.',
+  'The trusted CLI alone issues verdicts; relay its output and exit code. Agent-run tests are not Amabie proof.',
   '',
-  'No MCP call can mint a PASS or promotion, or bypass the terminal gate on `canary accept`; only a human may accept or close a SUBJECTIVE duty.',
+  'No MCP call can mint a PASS or promotion, or bypass the terminal gate on `amabie accept`; only a human may accept or close a SUBJECTIVE duty.',
   '',
-  'With a completion hook, finish normally; it runs the plan once. Use file/case filters early; do not repeat a passed full gate.',
-  'Without a hook, use canary_doctor for the full gate.',
-  'Use canary_result for a read-only summary.',
-  'For explicit criteria, call canary_task before work and copy them verbatim; never use placeholders. It records AGENT_REPORTED input only.',
-  'If unbound, keep NOT PROVEN. “Bind it” is operator-only: do not alter checks, baseline or hooks, or run setup/bind/accept. Continue authorized work.',
-  'Regression proof uses the planned test command; Canary compares against the starting commit automatically. Stay on this branch.',
-  'A worker caveat is provenance, not failure; report READY normally.',
+  'With a completion hook, finish normally; filter checks early, then let it run the full gate once.',
+  'Without a hook, use amabie_doctor for the full gate.',
+  'amabie_result summarizes state.',
+  'For each new project request, call amabie_task before writes, shell, delegation or MCP; copy intent and stated criteria exactly, or use requirements: [] if none. Agent-reported only.',
+  'Claude PreToolUse blocks project actions until registration. Then work may continue; unbound objectives stay NOT PROVEN until an operator binds proof. Never edit checks, baseline or hooks or run setup/bind/accept.',
+  'Use planned tests and starting commit comparison for proof; stay on this branch.',
+  'Worker caveats do not block READY.',
 ].join('\n');
 
-const EXPERT_INSTRUCTIONS = '\n\nFor work that must be isolated, `canary_work` opens a candidate and `canary_finish` verifies it and promotes only if the proof holds.';
+const EXPERT_INSTRUCTIONS = '\n\nFor work that must be isolated, `amabie_work` opens a candidate and `amabie_finish` verifies it and promotes only if the proof holds.';
 
 function toolsFor(profile: McpProfile): readonly McpTool[] {
-  return profile === 'expert' ? TOOLS : TOOLS.filter((t) => t.name !== 'canary_agents' && t.name !== 'canary_work' && t.name !== 'canary_finish');
+  return profile === 'expert' ? TOOLS : TOOLS.filter((t) => t.name !== 'amabie_agents' && t.name !== 'amabie_work' && t.name !== 'amabie_finish');
 }
 
 function parseMcpProfile(args: readonly string[]): McpProfile | null {
@@ -219,10 +219,10 @@ function parseMcpProfile(args: readonly string[]): McpProfile | null {
  *  is better than a bare "unknown tool": the absence of `accept` is a design
  *  decision, not an oversight. */
 const REFUSED_TOOLS: Record<string, string> = {
-  canary_accept: 'canary_accept is deliberately NOT exposed. Acceptance closes SUBJECTIVE duties and is a '
+  amabie_accept: 'amabie_accept is deliberately NOT exposed. Acceptance closes SUBJECTIVE duties and is a '
     + 'human act gated on a real terminal; exposing it to a machine channel would defeat the one step the '
-    + 'design refuses to let an agent perform. A human must run `canary accept <candidate>` themselves.',
-  accept: 'see canary_accept: acceptance is a human terminal act and is not exposed over MCP.',
+    + 'design refuses to let an agent perform. A human must run `amabie accept <candidate>` themselves.',
+  accept: 'see amabie_accept: acceptance is a human terminal act and is not exposed over MCP.',
 };
 
 interface RpcRequest { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown }
@@ -251,7 +251,7 @@ function runCli(argv: readonly string[], cwd: string): ChildOutcome {
     stdout: r.stdout ?? '',
     stderr: r.stderr ?? '',
     failure: timedOut ? `timed out after ${CHILD_TIMEOUT_MS} ms`
-      : (r.error !== undefined ? `could not run canary: ${r.error.message}` : null),
+      : (r.error !== undefined ? `could not run amabie: ${r.error.message}` : null),
   };
 }
 
@@ -271,7 +271,7 @@ function cliToolResult(o: ChildOutcome): { content: Array<{ type: 'text'; text: 
     ? (envelope as { status: string }).status
     : null;
   const payload = {
-    // Facts only. `status` is Canary's own word, echoed; `exitCode` is the real
+    // Facts only. `status` is Amabie's own word, echoed; `exitCode` is the real
     // process exit code. Nothing here is derived from anything the client sent.
     ...(status !== null ? { verdict: status } : {}),
     exitCode: o.exitCode,
@@ -279,9 +279,10 @@ function cliToolResult(o: ChildOutcome): { content: Array<{ type: 'text'; text: 
     ...(o.failure !== null ? { failure: o.failure } : {}),
     ...(envelope !== null ? { envelope } : (text !== '' ? { stdout: tail(text) } : {})),
     ...(o.stderr.trim() !== '' ? { stderr: tail(o.stderr.trim()) } : {}),
-    authority: 'produced by the trusted canary CLI; this server relays it and cannot alter it',
+    authority: 'produced by the trusted amabie CLI; this server relays it and cannot alter it',
   };
-  const isError = o.exitCode !== 0 || o.failure !== null;
+  // A nonzero exit with Amabie's JSON verdict is a completed assessment, not a broken MCP call.
+  const isError = o.failure !== null || o.exitCode === null || o.signal !== null || (o.exitCode !== 0 && status === null);
   return { content: [{ type: 'text', text: JSON.stringify(payload) }], isError, structuredContent: payload };
 }
 
@@ -308,26 +309,27 @@ const GENERIC_REQUIREMENT_PLACEHOLDER = /^(?:acceptance criteria|criteria|requir
 /** Validate + dispatch one tools/call. Returns null for an unknown tool. */
 function callTool(name: string, args: Record<string, unknown>): { content: Array<{ type: 'text'; text: string }>; isError: boolean; structuredContent?: Record<string, unknown> } {
   switch (name) {
-    case 'canary_result':
+    case 'amabie_result':
       return cliToolResult(runCli(['result', '--json'], cwdFor(args)));
-    case 'canary_status':
+    case 'amabie_status':
       return cliToolResult(runCli(['status', '--json'], cwdFor(args)));
-    case 'canary_agents':
+    case 'amabie_agents':
       return cliToolResult(runCli(['agents', '--json'], cwdFor(args)));
-    case 'canary_task': {
+    case 'amabie_task': {
       const intent = asString(args.intent, 'intent');
       if (typeof intent !== 'string') return errorResult(intent.error);
+      if (!Array.isArray(args.requirements)) return errorResult('requirements must be an array of non-empty strings');
       const requirements = asStringArray(args.requirements, 'requirements');
       if (!Array.isArray(requirements)) return errorResult(requirements.error);
-      if (requirements.length === 0) return errorResult('requirements must include at least one explicit criterion');
       if (requirements.some((requirement) => GENERIC_REQUIREMENT_PLACEHOLDER.test(requirement.trim().replace(/\s+/g, ' ')))) {
         return errorResult('requirements must be explicit user criteria copied verbatim; a generic placeholder cannot be recorded');
       }
       const argv = ['task', intent];
       for (const requirement of requirements) argv.push('--requirement', requirement);
-      return cliToolResult(runCli(argv, process.cwd()));
+      const result = cliToolResult(runCli(argv, process.cwd()));
+      return result.structuredContent?.exitCode === 0 ? result : { ...result, isError: true };
     }
-    case 'canary_doctor': {
+    case 'amabie_doctor': {
       if (args.fast === true && args.check !== undefined) return errorResult('fast and check cannot be combined');
       const check = args.check === undefined ? undefined : asString(args.check, 'check');
       if (check !== undefined && typeof check !== 'string') return errorResult(check.error);
@@ -336,7 +338,7 @@ function callTool(name: string, args: Record<string, unknown>): { content: Array
           : ['doctor', '--json'];
       return cliToolResult(runCli(argv, cwdFor(args)));
     }
-    case 'canary_work': {
+    case 'amabie_work': {
       const n = asString(args.name, 'name');
       if (typeof n !== 'string') return errorResult(n.error);
       const intent = asString(args.intent, 'intent');
@@ -351,7 +353,7 @@ function callTool(name: string, args: Record<string, unknown>): { content: Array
       for (const r of reqs) argv.push('--requirement', r);
       return cliToolResult(runCli(argv, cwdFor(args)));
     }
-    case 'canary_finish': {
+    case 'amabie_finish': {
       const n = asString(args.name, 'name');
       if (typeof n !== 'string') return errorResult(n.error);
       if (!NAME_RE.test(n)) return errorResult(`name "${n}" is not a valid candidate name`);
@@ -383,9 +385,9 @@ function rpcError(id: unknown, code: number, message: string): void {
 export async function cmdMcp(rawArgs: string[]): Promise<number> {
   // stdout is the protocol channel. Anything that would write prose there is a
   // bug, so route our own diagnostics to stderr explicitly.
-  const log = (s: string): void => { process.stderr.write(`canary mcp: ${s}\n`); };
+  const log = (s: string): void => { process.stderr.write(`amabie mcp: ${s}\n`); };
   if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
-    process.stderr.write('usage: canary mcp [--profile everyday|expert] — run the MCP server on stdio (JSON-RPC 2.0, one object per line)\n');
+    process.stderr.write('usage: amabie mcp [--profile everyday|expert] — run the MCP server on stdio (JSON-RPC 2.0, one object per line)\n');
     return 0;
   }
   const profile = parseMcpProfile(rawArgs);
@@ -414,7 +416,7 @@ export async function cmdMcp(rawArgs: string[]): Promise<number> {
           rpcResult(id, {
             protocolVersion: version,
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: 'canary', version: CANARY_VERSION, title: 'Canary verification layer' },
+            serverInfo: { name: 'amabie', version: AMABIE_VERSION, title: 'Amabie verification layer' },
             instructions: SERVER_INSTRUCTIONS + projectTestEntryHint(process.cwd()) + (profile === 'expert' ? EXPERT_INSTRUCTIONS : ''),
           });
         }
@@ -438,8 +440,8 @@ export async function cmdMcp(rawArgs: string[]): Promise<number> {
         if (typeof name !== 'string') { if (!isNotification) rpcError(id, -32602, 'invalid params: "name" is required'); break; }
         const refusal = REFUSED_TOOLS[name];
         if (refusal !== undefined) { if (!isNotification) rpcResult(id, errorResult(refusal)); break; }
-        if ((name === 'canary_agents' || name === 'canary_work' || name === 'canary_finish') && profile === 'everyday') {
-          if (!isNotification) rpcResult(id, errorResult(`"${name}" is available in the expert tool profile. Enable it with: canary setup --mcp-profile expert`));
+        if ((name === 'amabie_agents' || name === 'amabie_work' || name === 'amabie_finish') && profile === 'everyday') {
+          if (!isNotification) rpcResult(id, errorResult(`"${name}" is available in the expert tool profile. Enable it with: amabie setup --mcp-profile expert`));
           break;
         }
         if (!toolsFor(profile).some((t) => t.name === name)) {

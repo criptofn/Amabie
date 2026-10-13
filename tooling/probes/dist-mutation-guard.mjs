@@ -38,13 +38,13 @@ function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 // The guard's journal/sidecars live in the repo, so this probe must leave them
 // exactly as it found them.
-const DIR = path.join(REPO, '.canary-runs', 'dist-mutation-guard');
+const DIR = path.join(REPO, '.amabie-runs', 'dist-mutation-guard');
 const preexisting = fs.existsSync(DIR);
 assert(!preexisting || fs.readdirSync(DIR).length === 0,
   'a dist-mutation journal already exists — a battery was interrupted; run a battery (or `npx tsc -b --force`) before this probe');
 
 // A temp "dist" file we may abuse freely, plus a pristine copy to compare to.
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-dist-guard-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-dist-guard-'));
 const target = path.join(TMP, 'candidate.js');
 const pristineBytes = Buffer.from('const authority = [configPath(root), settings, recordPath(root, name)];\n');
 fs.writeFileSync(target, pristineBytes);

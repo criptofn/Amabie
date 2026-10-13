@@ -24,7 +24,7 @@
  * REAL CONFIRMED_REGRESSION base run, so the stub now runs through the
  * genuine observation channel — fake deps are STAGED and materialized by
  * prepare (a fixture that ships node_modules is refused at audit), and the
- * test command executes under the hash-pinned Canary mocha double via
+ * test command executes under the hash-pinned Amabie mocha double via
  * $bin:mocha. The bundles therefore carry VALID executionObservations
  * produced by the actual injection mechanism, and the per-round artifact
  * tuple is five files (each round's .attest.ndjson rides along — the
@@ -42,14 +42,14 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { runExperiment } from '../src/pipeline.js';
-import { validateBundle, integrityFor, type EvidenceBundle } from '@canary-rn/evidence-schema';
+import { validateBundle, integrityFor, type EvidenceBundle } from '@amabie/evidence-schema';
 import {
   assertProof, actualHostFingerprint, verifyArtifacts, verifyArtifactSemantics,
   verifyRunIdentity, verifyClassificationDerivation, hostBoundEvidenceChecks,
   type ProofExpectation, type HostFingerprint, type TrustedRunSpec,
 } from '../src/prove.js';
 import { verifyTreeSnapshots } from '../src/verify-tree.js';
-import { sha256hex } from '@canary-rn/hashing';
+import { sha256hex } from '@amabie/hashing';
 import {
   writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript,
   WIDGET_PKGS, assertDoubleObservation,
@@ -59,7 +59,7 @@ import {
 // ACTUAL runtime, sampled once (these tests run on the recording machine).
 const RUNTIME: HostFingerprint = actualHostFingerprint();
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-prov-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-prov-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const FAKE_SHA = 'a'.repeat(40);
 
@@ -89,23 +89,23 @@ async function realRun(): Promise<{ bundle: EvidenceBundle; artifactsDir: string
   } satisfies TrustedRunSpec & Record<string, unknown>;
   // The fetch stub must declare the REAL digest of its bytes: the pipeline
   // retains fixture.tgz and verifyRunIdentity re-hashes it (round-3 B4-A).
-  const bytes = Buffer.from('canary-provenance-stub-tarball');
+  const bytes = Buffer.from('amabie-provenance-stub-tarball');
   const result = await runExperiment(spec, repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ bytes, sha256: sha256hex(bytes) }),
     extract: (_t, ws) => fs.cpSync(stub, path.join(ws, `downstream-${FAKE_SHA}`), { recursive: true }),
   });
   if (result.bundle.classification.label !== 'CONFIRMED_REGRESSION') {
     // Keep the actual failed run before this suite's cleanup, so a native/process failure
     // can be investigated without replacing it with a later successful retry.
-    const failedRun = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provenance-failure-'));
+    const failedRun = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provenance-failure-'));
     fs.cpSync(repoRoot, path.join(failedRun, 'run'), { recursive: true });
     fs.writeFileSync(path.join(failedRun, 'bundle.json'), JSON.stringify(result.bundle, null, 2));
     assert.fail(`pristine run must confirm; observed ${JSON.stringify(result.bundle.classification)}; retained run: ${failedRun}`);
   }
   const b = result.bundle;
   // Post-GLM Finding A: the rule-5 was EARNED — every round carries a VALID
-  // Canary observation of the pinned double agreeing with the text channel.
+  // Amabie observation of the pinned double agreeing with the text channel.
   // Every forgery below reseals a bundle that legitimately holds these.
   assertDoubleObservation(b.rounds);
   const hashes = (arm: 'baseline' | 'candidate') => b.rounds.filter((r) => r.arm === arm).map((r) => r.normalizedStdoutSha256);

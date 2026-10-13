@@ -3,14 +3,14 @@
  *
  * The rule this file exists to pin: a plan is SEALED AUTHORITY, so the set of
  * directories that contribute checks is stated by the human in
- * `canary.scopes.json` and NOTHING ELSE is ever added. No walk, no heuristics,
+ * `amabie.scopes.json` and NOTHING ELSE is ever added. No walk, no heuristics,
  * no "it looked like a project". The failure mode being prevented is concrete
  * and lives in this very repository: root-only discovery is why
  * `archive/python-golden-prototype/pyproject.toml` does not silently contribute
- * a pytest step to Canary's own plan, and a declaration must not become a
+ * a pytest step to Amabie's own plan, and a declaration must not become a
  * loophole that re-opens the same door by accident.
  *
- * Also pinned: a declaration Canary cannot honour is REFUSED in full — never
+ * Also pinned: a declaration Amabie cannot honour is REFUSED in full — never
  * partially applied, never quietly reduced to the entries that happened to
  * validate, because shipping a plan that silently omits a check the human asked
  * for is worse than shipping none.
@@ -22,14 +22,14 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-nested-'));
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-nested-'));
 
-import { SCOPES_FILE, SCOPES_SCHEMA, composePlan, readScopeDeclaration } from '../src/project.js';
+import { SCOPES_FILE, SCOPES_SCHEMA, composePlan, readScopeDeclaration, scopeDir } from '../src/project.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-nested-scopes-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-nested-scopes-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function dir(name: string, files: Record<string, string>): string {
@@ -72,6 +72,19 @@ describe('no declaration — root only, and subdirectories never add authority',
     const root = dir('root-only', { ...POLYGLOT, 'package.json': nodePkg({ test: 'node -e "process.exit(0)"' }) });
     assert.deepEqual(where(root), ['.:node'], 'exactly the root, exactly one scope');
     assert.equal(composePlan(root).scopeSource, 'root-only');
+  });
+
+  it('reads the legacy Canary scope file and refuses two declarations', () => {
+    const legacy = dir('legacy-scopes', { ...POLYGLOT,
+      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'web', ecosystem: 'node' }] }),
+    });
+    assert.deepEqual(where(legacy), ['web:node']);
+
+    const both = dir('both-scope-files', { ...POLYGLOT,
+      [SCOPES_FILE]: decl([{ path: 'web', ecosystem: 'node' }]),
+      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'backend', ecosystem: 'python' }] }),
+    });
+    assert.match(composePlan(both).problems.join(' '), /both amabie\.scopes\.json and canary\.scopes\.json exist/);
   });
 });
 
@@ -135,10 +148,11 @@ describe('a declaration names exactly the scopes that count', () => {
 describe('an unusable declaration is REFUSED in full, never partially applied', () => {
   const bad: Array<[string, string, RegExp]> = [
     ['not JSON', '{ this is not json', /not valid JSON/],
-    ['wrong schema', JSON.stringify({ schema: 'canary-scopes/99', scopes: [{ path: 'web', ecosystem: 'node' }] }), /must declare "schema"/],
+    ['wrong schema', JSON.stringify({ schema: 'amabie-scopes/99', scopes: [{ path: 'web', ecosystem: 'node' }] }), /must declare "schema"/],
     ['empty scopes', decl([]), /non-empty "scopes" array/],
     ['scopes not an array', JSON.stringify({ schema: SCOPES_SCHEMA, scopes: { path: 'web' } }), /non-empty "scopes" array/],
-    ['unknown ecosystem', decl([{ path: 'web', ecosystem: 'cobol' }]), /is not one Canary can model/],
+    ['unknown ecosystem', decl([{ path: 'web', ecosystem: 'cobol' }]), /is not one Amabie can model/],
+    ['inherited ecosystem', decl([{ path: 'web', ecosystem: '__proto__' }]), /is not one Amabie can model/],
     ['absolute path', decl([{ path: '/etc', ecosystem: 'node' }]), /must be repo-relative, not absolute/],
     ['drive-qualified path', decl([{ path: 'C:/x', ecosystem: 'node' }]), /drive-qualified/],
     ['parent traversal', decl([{ path: '../outside', ecosystem: 'node' }]), /must not contain "\." or "\.\."/],
@@ -164,7 +178,7 @@ describe('an unusable declaration is REFUSED in full, never partially applied', 
 
   it('refuses a scope that declares its ecosystem but has nothing of that ecosystem', () => {
     // The directory exists, the ecosystem id is real, but nothing there declares
-    // it: Canary must not invent a check to satisfy the declaration.
+    // it: Amabie must not invent a check to satisfy the declaration.
     const root = dir('declared-but-empty', {
       'web/package.json': nodePkg({ test: 'node -e "process.exit(0)"' }),
       'backend/README.md': 'no python here\n',
@@ -187,6 +201,35 @@ describe('an unusable declaration is REFUSED in full, never partially applied', 
   });
 });
 
+describe('resolved scope containment', () => {
+  it('refuses a declared scope linked outside the repository', () => {
+    const outside = dir('scope-outside', { 'package.json': nodePkg({ test: 'node checks.js' }) });
+    const root = dir('scope-link-outside', { [SCOPES_FILE]: decl([{ path: 'web', ecosystem: 'node' }]) });
+    fs.symlinkSync(outside, path.join(root, 'web'), process.platform === 'win32' ? 'junction' : 'dir');
+    const composed = composePlan(root);
+    assert.match(composed.problems.join(' '), /resolves outside this repository/);
+    assert.deepEqual(composed.plan, [], 'a refused scope cannot contribute checks');
+  });
+
+  it('allows a contained link and refuses it after it is redirected outside', () => {
+    const root = dir('scope-link-inside', {
+      'actual/package.json': nodePkg({ test: 'node checks.js' }),
+      [SCOPES_FILE]: decl([{ path: 'web', ecosystem: 'node' }]),
+    });
+    const outside = dir('scope-swap-outside', { 'package.json': nodePkg({ test: 'node checks.js' }) });
+    const link = path.join(root, 'web');
+    fs.symlinkSync(path.join(root, 'actual'), link, process.platform === 'win32' ? 'junction' : 'dir');
+    const composed = composePlan(root);
+    assert.deepEqual(composed.problems, []);
+    const step = composed.plan.find((s) => s.scope === 'web')!;
+    assert.equal(scopeDir(root, step), fs.realpathSync.native(path.join(root, 'actual')));
+    fs.unlinkSync(link);
+    fs.symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(() => scopeDir(root, step), /resolves outside this repository/,
+      'an existing sealed plan must recheck the working directory before execution');
+  });
+});
+
 describe('the CLI refuses an unusable declaration instead of shipping a partial plan', () => {
   it('setup exits 2, names the declaration file, and writes no config', () => {
     assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
@@ -198,9 +241,9 @@ describe('the CLI refuses an unusable declaration instead of shipping a partial 
     assert.equal(g.status, 0, g.stderr);
     const r = spawnSync(process.execPath, [CLI, 'setup', '--yes'], { cwd: root, encoding: 'utf8', timeout: 120_000 });
     assert.equal(r.status, 2, `setup must refuse:\n${r.stdout}`);
-    assert.match(`${r.stdout}${r.stderr}`, /SCOPES_FILE|canary\.scopes\.json/);
+    assert.match(`${r.stdout}${r.stderr}`, /SCOPES_FILE|amabie\.scopes\.json/);
     assert.match(`${r.stdout}${r.stderr}`, /cobol/);
-    assert.ok(!fs.existsSync(path.join(root, '.canary', 'canary.local.json')),
+    assert.ok(!fs.existsSync(path.join(root, '.amabie', 'amabie.local.json')),
       'a refused setup must not seal authority it could not honour');
   });
 });

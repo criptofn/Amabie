@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/support",
+  "name": "@amabie/support",
   "version": "0.0.1",
   "private": true,
   "description": "Shared primitives: sanitized process execution, logging, errors, exit codes.",

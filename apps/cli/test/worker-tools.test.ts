@@ -7,11 +7,11 @@ import { after, it } from 'node:test';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-worker-tools-'));
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-worker-trust-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-worker-tools-'));
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-worker-trust-'));
 after(() => {
   fs.rmSync(TMP, { recursive: true, force: true });
-  fs.rmSync(process.env.CANARY_TRUST_STORE!, { recursive: true, force: true });
+  fs.rmSync(process.env.AMABIE_TRUST_STORE!, { recursive: true, force: true });
 });
 
 it('describes full-file replacement and targeted edits truthfully to MCP clients', () => {
@@ -25,7 +25,7 @@ it('describes full-file replacement and targeted edits truthfully to MCP clients
     encoding: 'utf8',
     timeout: 30_000,
     windowsHide: true,
-    env: { ...process.env, CANARY_CONFINED_CHECK: '0' },
+    env: { ...process.env, AMABIE_CONFINED_CHECK: '0' },
   });
   assert.equal(response.status, 0, `${response.stdout}\n${response.stderr}`);
   const message = JSON.parse(response.stdout.trim()) as {

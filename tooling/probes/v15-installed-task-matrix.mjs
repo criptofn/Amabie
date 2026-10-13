@@ -87,10 +87,10 @@ try {
   for (const record of preparation.records) {
     const measured = JSON.parse(fs.readFileSync(path.join(record.output, 'attempt-result.json'), 'utf8'));
     assert.ok(measured.commands.every((c) => c.exitCode === 0 && !c.timedOut && !c.spawnError), `${record.label}/${record.arm}: baseline check failed`);
-    if (record.arm === 'canary') assert.equal(record.canaryVerdict, 'READY');
+    if (record.arm === 'amabie') assert.equal(record.amabieVerdict, 'READY');
   }
   for (const label of selectedTasks) {
-    const start = preparation.records.find((r) => r.label === label && r.arm === 'canary');
+    const start = preparation.records.find((r) => r.label === label && r.arm === 'amabie');
     assert.ok(start, `${label}: missing independent baseline`);
     const repo = start.repo;
     const taskFile = path.join(taskRoot, taskNames[label]);
@@ -129,9 +129,9 @@ try {
       run(`${label}-${role}-checks`, process.execPath, args);
       runOracle(role, role === 'positive' ? 'pass' : 'fail');
       const attempt = JSON.parse(fs.readFileSync(path.join(checkOut, 'attempt-result.json'), 'utf8'));
-      const checkpoint = JSON.parse(fs.readFileSync(path.join(repo, '.canary/last-checkpoint.json'), 'utf8'));
+      const checkpoint = JSON.parse(fs.readFileSync(path.join(repo, '.amabie/last-checkpoint.json'), 'utf8'));
       assert.equal(checkpoint.source, 'checkpoint', `${label}/${role}: stale checkpoint`);
-      const hook = fs.readFileSync(path.join(checkOut, 'canary-checkpoint-candidate.stdout.txt'), 'utf8');
+      const hook = fs.readFileSync(path.join(checkOut, 'amabie-checkpoint-candidate.stdout.txt'), 'utf8');
       const tests = attempt.commands.filter((c) => c.name.startsWith('plain-'));
       const hookBlocked = /"decision"\s*:\s*"block"/.test(hook);
       const row = { label, role, repo, base, head, checkOutput: checkOut,

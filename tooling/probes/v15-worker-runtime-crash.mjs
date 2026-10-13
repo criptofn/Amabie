@@ -18,7 +18,7 @@ if (![before, after, observed, source, out].every(value => typeof value === 'str
 for (const cli of [before, after]) assert.ok(fs.statSync(cli).isFile());
 for (const name of files) assert.ok(fs.lstatSync(path.join(observed, name)).isFile(), `missing observed file: ${name}`);
 fs.mkdirSync(out, { recursive: true });
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-worker-crash-replay-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-worker-crash-replay-'));
 const relativeTemp = path.relative(fs.realpathSync(os.tmpdir()), fs.realpathSync(temp));
 assert.ok(relativeTemp && !relativeTemp.startsWith('..') && !path.isAbsolute(relativeTemp));
 const records = [];
@@ -27,7 +27,7 @@ try {
     const repo = path.join(temp, arm);
     const evidence = path.join(out, arm);
     fs.mkdirSync(repo); fs.mkdirSync(evidence);
-    const env = { ...process.env, CANARY_TRUST_STORE: path.join(evidence, 'trust-store') };
+    const env = { ...process.env, AMABIE_TRUST_STORE: path.join(evidence, 'trust-store') };
     const commands = [];
     function run(name, executable, args, input) {
       const start = Date.now();
@@ -45,7 +45,7 @@ try {
     git('init', ['init', '-b', 'replay']);
     git('fetch', ['fetch', '--depth=1', source, base]);
     git('checkout', ['reset', '--hard', 'FETCH_HEAD']);
-    git('name', ['config', 'user.name', 'Canary Replay']);
+    git('name', ['config', 'user.name', 'Amabie Replay']);
     git('email', ['config', 'user.email', 'replay@localhost']);
     const version = run('version', process.execPath, [cli, '--version']);
     assert.equal(version.status, 0);
@@ -62,7 +62,7 @@ try {
     const checkpoint = run('checkpoint', process.execPath, [cli, 'checkpoint'], JSON.stringify({ cwd: repo, hook_event_name: 'Stop', stop_hook_active: false }));
     assert.equal(checkpoint.status, 0, checkpoint.stderr);
     const hook = checkpoint.stdout.trim() ? JSON.parse(checkpoint.stdout) : null;
-    const checkpointRecord = JSON.parse(fs.readFileSync(path.join(repo, '.canary/last-checkpoint.json'), 'utf8'));
+    const checkpointRecord = JSON.parse(fs.readFileSync(path.join(repo, '.amabie/last-checkpoint.json'), 'utf8'));
     if (arm === 'before') {
       assert.equal(doctor.status, 0, doctor.stdout + doctor.stderr);
       assert.equal(status, 'READY');
@@ -75,7 +75,7 @@ try {
       assert.equal(hook.decision, 'block');
       assert.match(hook.reason, /worker-authored check.*same inputs/);
     }
-    fs.cpSync(path.join(repo, '.canary/evidence'), path.join(evidence, 'product-evidence'), { recursive: true, errorOnExist: true, force: false });
+    fs.cpSync(path.join(repo, '.amabie/evidence'), path.join(evidence, 'product-evidence'), { recursive: true, errorOnExist: true, force: false });
     fs.writeFileSync(path.join(evidence, 'checkpoint.json'), `${JSON.stringify(checkpointRecord, null, 2)}\n`, { flag: 'wx' });
     records.push({ arm, cli, cliSha256: hash(fs.readFileSync(cli)), version: version.stdout.trim(), baselineHead, doctorStatus: status, checkpointStatus: checkpointRecord.status, hook, commands });
     console.log(`PASS ${arm}: replay observed doctor ${status}, checkpoint ${checkpointRecord.status}`);

@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 const [cli, action = 'none', typedIn = 'c', candidateName = 'c'] = process.argv.slice(2);
-const candidate = path.join(process.cwd(), '.canary', 'candidates', candidateName);
+const candidate = path.join(process.cwd(), '.amabie', 'candidates', candidateName);
 const originalRead = fs.readSync;
 Object.defineProperty(process.stdin, 'isTTY', { value: true });
 Object.defineProperty(process.stdout, 'isTTY', { value: true });
@@ -30,7 +30,7 @@ fs.readSync = function(fd, buffer, ...args) {
     }
   }
   if (action === 'task') {
-    const p = path.join(process.cwd(), '.canary/task/current.json');
+    const p = path.join(process.cwd(), '.amabie/task/current.json');
     const t = JSON.parse(fs.readFileSync(p,'utf8')); t.taskDigest = 'f'.repeat(64); fs.writeFileSync(p,JSON.stringify(t));
   }
   return buffer.write(typedIn.endsWith('\n') ? typedIn : `${typedIn}\n`);

@@ -25,7 +25,7 @@
  *   FAIL                the control was measured and did NOT hold
  *   HOST UNSUPPORTED    this host cannot execute inside the native confinement,
  *                       so nothing about the control was measured here
- *   CONTROL NOT PROVIDED Canary does not implement the control at all (see the
+ *   CONTROL NOT PROVIDED Amabie does not implement the control at all (see the
  *                       non-claims section: these are never counted as passes)
  *
  * Exit code: 0 all six controls PASS; 1 a measured FAIL; 3 HOST UNSUPPORTED
@@ -63,7 +63,7 @@ function runBattery(args) {
 }
 
 say('==============================================================');
-say(' CANARY v1.5 — HARDENED BOUNDARY EVIDENCE');
+say(' AMABIE v1.5 — HARDENED BOUNDARY EVIDENCE');
 say('==============================================================');
 say(`host      : ${HOST}`);
 say(`user      : ${process.env.USERNAME ?? process.env.USER ?? 'unknown'}`);
@@ -133,7 +133,7 @@ if (!fs.existsSync(saved)) {
 }
 const report_ = JSON.parse(fs.readFileSync(saved, 'utf8'));
 const p = report_.productionMeasurement?.payload;
-if (!p || p.schema !== 'canary-production-measurement/2') {
+if (!p || p.schema !== 'amabie-production-measurement/2') {
   say(`NO PRODUCTION TRANSCRIPT in ${saved} (schema ${p?.schema ?? 'absent'}) — the production boundary`);
   say('was not measured on this run. Review-only or protocol-only results do not establish HARDENED.');
   process.exit(4);
@@ -235,7 +235,7 @@ row('networkEgress',
     || (net.diagnosticReturn === 0 && [1, 2, 3].includes(net.isolationError) && netCtl.diagnosticReturn === 0 && netCtl.isolationError === 0))
     ? 'PASS' : 'FAIL');
 
-// The controls Canary does NOT implement. Listed so an auditor can see the edge of
+// The controls Amabie does NOT implement. Listed so an auditor can see the edge of
 // the claim: these are never counted as passes and never folded into the six.
 const nonClaims = [
   ['administrator resistance', 'no claim: a local administrator can reconfigure the boundary'],
@@ -246,7 +246,7 @@ const nonClaims = [
   ['Linux runtime verification', 'NOT PROVIDED: the Linux enforcement code carries hostVerified: false'],
 ];
 say('');
-say('--- control NOT provided (Canary does not claim these; they are not passes) ---');
+say('--- control NOT provided (Amabie does not claim these; they are not passes) ---');
 for (const [name, why] of nonClaims) say(`  CONTROL NOT PROVIDED  ${name.padEnd(32)} ${why}`);
 
 /*
@@ -291,7 +291,7 @@ if (FROM_SAVED) {
   say('#  taken now, and it does NOT establish that HARDENED holds here today.        #');
   say('#  For the current state run, WITHOUT --from-saved:                            #');
   say('#      node tooling/probes/v15-hardened-boundary.mjs                           #');
-  say('#  or ask the product: canary provider status                                  #');
+  say('#  or ask the product: amabie provider status                                  #');
   say('##############################################################################');
 }
 

@@ -18,18 +18,18 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-metrics-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-metrics-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const run = (args: string[], metrics?: string) => spawnSync(process.execPath, [CLI, ...args], {
   cwd: REPO, encoding: 'utf8', timeout: 120_000,
-  env: metrics === undefined ? { ...process.env, CANARY_METRICS: '' } : { ...process.env, CANARY_METRICS: metrics },
+  env: metrics === undefined ? { ...process.env, AMABIE_METRICS: '' } : { ...process.env, AMABIE_METRICS: metrics },
 });
 const readRecords = (file: string): Array<Record<string, unknown>> =>
   fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>);
 
 describe('1.1 metrics: off by default, one record per invocation', () => {
-  it('writes nothing when CANARY_METRICS is unset or empty', () => {
+  it('writes nothing when AMABIE_METRICS is unset or empty', () => {
     const target = path.join(TMP, 'never.jsonl');
     const r = run(['version']);
     assert.equal(r.status, 0);
@@ -46,14 +46,14 @@ describe('1.1 metrics: off by default, one record per invocation', () => {
     const records = readRecords(target);
     assert.equal(records.length, 1, 'one line per invocation');
     const rec = records[0]!;
-    assert.equal(rec.schema, 'canary-metrics/1');
+    assert.equal(rec.schema, 'amabie-metrics/1');
     assert.equal(rec.command, 'status');
     assert.deepEqual(rec.flags, []);
     assert.equal(rec.exitCode, r.status);
     assert.equal(rec.ok, r.status === 0);
     assert.equal(typeof rec.durationMs, 'number');
     assert.ok((rec.durationMs as number) >= 0);
-    assert.equal(typeof rec.canaryVersion, 'string');
+    assert.equal(typeof rec.amabieVersion, 'string');
     assert.equal(typeof rec.node, 'string');
     assert.match(String(rec.platform), /^(win32|linux|darwin)\//);
     assert.ok(rec.stdoutBytes === null || typeof rec.stdoutBytes === 'number');

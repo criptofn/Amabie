@@ -28,9 +28,9 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
-const STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-routing-store-'));
-process.env['CANARY_TRUST_STORE'] = STORE;
-delete process.env['CANARY_WORKER_USER']; // no enrolled identity: this host's real state
+const STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-routing-store-'));
+process.env['AMABIE_TRUST_STORE'] = STORE;
+delete process.env['AMABIE_WORKER_USER']; // no enrolled identity: this host's real state
 
 import { IpcError, callBroker, createBrokerServer, ensureBrokerToken } from '../src/provider/ipc.js';
 import { PROVIDER_PIPE_NAME, createProviderHandler } from '../src/provider/service.js';
@@ -43,7 +43,7 @@ import { storeFromEnv } from '../src/trust-store.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-routing-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-routing-'));
 const PROJECT = crypto.randomBytes(32).toString('hex'); // a controller-issued identity
 
 const token = ensureBrokerToken(STORE);
@@ -58,7 +58,7 @@ function refused(o: BrokerRouteOutcome): { code: string; message: string } | nul
 // ---------------------------------------------------------------------------
 describe('provider-only routing — no broker', () => {
   it('with NO provider configured, routing is not required (the local path stays)', async () => {
-    const sparse = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-routing-noprovider-'));
+    const sparse = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-routing-noprovider-'));
     const store = { root: sparse } as ReturnType<typeof storeFromEnv>;
     try {
       assert.equal(brokerRoutingRequired(store), false, 'a store with no token and no enrolled identity is not a provider');
@@ -106,13 +106,13 @@ function git(dir: string, ...args: string[]): string {
  * succeeded while 2/2 asynchronous ones did, and the server's handler recorded
  * every request either way.
  */
-function canary(args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<{ status: number | null; stdout: string; stderr: string }> {
+function amabie(args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<{ status: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
       // An explicitly supplied store (the "no provider" case) must win over the
       // default: the whole point of that test is a CLI that sees no provider.
-      env: { CANARY_TRUST_STORE: STORE, ...env },
+      env: { AMABIE_TRUST_STORE: STORE, ...env },
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -132,21 +132,21 @@ async function makeRepo(name: string): Promise<string> {
     "const fs = require('node:fs');\nprocess.exit(fs.readFileSync('marker.txt', 'utf8').includes('FAIL') ? 1 : 0);\n");
   fs.writeFileSync(path.join(root, 'marker.txt'), 'ok\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'routing@canary.local');
-  git(root, 'config', 'user.name', 'Canary Routing');
+  git(root, 'config', 'user.email', 'routing@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Routing');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const setup = await canary(['setup', '--yes', root], root);
+  const setup = await amabie(['setup', '--yes', root], root);
   assert.equal(setup.status, 0, `setup failed: ${setup.stdout}\n${setup.stderr}`);
-  const task = await canary(['task', 'provider routing probe change', '--kind', 'refactor'], root);
+  const task = await amabie(['task', 'provider routing probe change', '--kind', 'refactor'], root);
   assert.equal(task.status, 0, `task registration failed: ${task.stdout}\n${task.stderr}`);
   return root;
 }
 /** Create a candidate and advance it so promotion would otherwise succeed. */
 async function preparedCandidate(root: string, name: string): Promise<{ iso: string; candidate: string; baseHead: string }> {
-  const create = await canary(['isolate', name], root);
+  const create = await amabie(['isolate', name], root);
   assert.equal(create.status, 0, `isolate failed: ${create.stdout}\n${create.stderr}`);
-  const iso = path.join(root, '.canary', 'candidates', name);
+  const iso = path.join(root, '.amabie', 'candidates', name);
   fs.writeFileSync(path.join(iso, 'work.txt'), 'worker work\n');
   git(iso, 'add', '-A');
   git(iso, 'commit', '-m', 'worker work');
@@ -163,7 +163,7 @@ describe('provider-only routing — the CLI acts with no broker', () => {
     const root = await makeRepo('no-broker');
     await preparedCandidate(root, 'w1');
     const before = fingerprint(root);
-    const r = await canary(['isolate', '--promote', 'w1'], root);
+    const r = await amabie(['isolate', '--promote', 'w1'], root);
     assert.equal(r.status, 2, `promotion must refuse: ${r.stdout}\n${r.stderr}`);
     assert.match(r.stdout, /a provider is configured here, so promotion must be authorized by the broker/);
     assert.match(r.stdout, /connect-failed \(the broker is not running/);
@@ -174,11 +174,11 @@ describe('provider-only routing — the CLI acts with no broker', () => {
   it('accept with a provider configured writes NO local acceptance record', async () => {
     const root = await makeRepo('accept');
     await preparedCandidate(root, 'w4');
-    const dir = path.join(root, '.canary', 'acceptance');
+    const dir = path.join(root, '.amabie', 'acceptance');
     const before = fs.existsSync(dir) ? fs.readdirSync(dir) : [];
     // No TTY here, so the supported flow refuses before writing anything — and with a
     // provider installed there is no non-interactive path that could write one either.
-    const r = await canary(['accept', 'w4'], root);
+    const r = await amabie(['accept', 'w4'], root);
     assert.equal(r.status, 2);
     assert.match(r.stdout, /requires an interactive terminal|broker/);
     assert.deepEqual(fs.existsSync(dir) ? fs.readdirSync(dir) : [], before, 'no acceptance record may be written');
@@ -188,9 +188,9 @@ describe('provider-only routing — the CLI acts with no broker', () => {
   it('with NO provider configured the local promotion path is unchanged', async () => {
     const root = await makeRepo('local-mode');
     const { candidate } = await preparedCandidate(root, 'w5');
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-routing-bare-'));
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-routing-bare-'));
     try {
-      const r = await canary(['isolate', '--promote', 'w5'], root, { ...process.env, CANARY_TRUST_STORE: bare });
+      const r = await amabie(['isolate', '--promote', 'w5'], root, { ...process.env, AMABIE_TRUST_STORE: bare });
       assert.equal(r.status, 0, `the local path must still work: ${r.stdout}\n${r.stderr}`);
       assert.equal(git(root, 'rev-parse', 'HEAD'), candidate);
       assert.doesNotMatch(r.stdout, /broker/, 'no broker is consulted when none is configured');
@@ -295,7 +295,7 @@ describe('provider-only routing — with a real broker serving', () => {
       const root = await makeRepo('mismatch');
       await preparedCandidate(root, 'w2');
       const before = fingerprint(root);
-      const r = await canary(['isolate', '--promote', 'w2'], root);
+      const r = await amabie(['isolate', '--promote', 'w2'], root);
       assert.equal(r.status, 2, `promotion must refuse: ${r.stdout}\n${r.stderr}`);
       assert.match(r.stdout, /DIFFERENT promotion window/, `the refusal must name the mismatch: ${r.stdout}`);
       assert.deepEqual(fingerprint(root), before, 'a mismatched authorization must not move the base');
@@ -309,7 +309,7 @@ describe('provider-only routing — with a real broker serving', () => {
     window = { targetId: 'w3', expectedHead: baseHead, candidateCommit: candidate };
     mode = 'approve-exact';
     try {
-      const r = await canary(['isolate', '--promote', 'w3'], root);
+      const r = await amabie(['isolate', '--promote', 'w3'], root);
       assert.equal(r.status, 2, `reservation without broker apply must refuse: ${r.stdout}\n${r.stderr}`);
       assert.match(r.stdout, /caller-owned apply is forbidden/);
       const after = fingerprint(root);

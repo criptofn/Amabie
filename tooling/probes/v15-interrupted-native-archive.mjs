@@ -34,7 +34,7 @@ fs.writeFileSync(path.join(out, 'archive.stdout.txt'), archive.stdout ?? '', { f
 fs.writeFileSync(path.join(out, 'archive.stderr.txt'), archive.stderr ?? '', { flag: 'wx' });
 assert.equal(archive.status, 0, `${archive.stdout} ${archive.stderr}`);
 const snapshots = preparation.records.map((record) => {
-  const file = path.join(record.repo, '.canary/last-checkpoint.json');
+  const file = path.join(record.repo, '.amabie/last-checkpoint.json');
   return { name: `${record.label}-${record.arm}`, snapshotCheckpoint: fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null };
 });
 fs.writeFileSync(path.join(out, 'snapshot-checkpoints.json'), `${JSON.stringify(snapshots, null, 2)}\n`, { flag: 'wx' });

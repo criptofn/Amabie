@@ -35,20 +35,20 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { runExperiment, InfraAbort } from '../src/pipeline.js';
-import { validateObservation, OBSERVER_VERSION, type ValidateInput } from '@canary-rn/executor';
-import { KNOWN_RUNNER_RELEASES } from '@canary-rn/support';
-import { sha256hex } from '@canary-rn/hashing';
+import { validateObservation, OBSERVER_VERSION, type ValidateInput } from '@amabie/executor';
+import { KNOWN_RUNNER_RELEASES } from '@amabie/support';
+import { sha256hex } from '@amabie/hashing';
 import {
   writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript,
   WIDGET_PKGS, STAGING_REL, DOUBLE_VERSION, assertDoubleObservation,
 } from './stub-harness.js';
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-attest-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-attest-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FAKE_SHA = 'a'.repeat(40);
-const FAKE_BYTES = Buffer.from('canary-attest-fake-tarball');
+const FAKE_BYTES = Buffer.from('amabie-attest-fake-tarball');
 const FAKE_BLOB = { bytes: FAKE_BYTES, sha256: sha256hex(FAKE_BYTES) };
 const STRONG = new Set(['PASS', 'CONFIRMED_REGRESSION', 'PRE_EXISTING_FAILURE']);
 
@@ -184,7 +184,7 @@ describe('panel K layer 1 — the validator refuses hostile frame streams', () =
     }));
     assert.equal(pid.invalidReason, 'pid-mismatch');
     const ov = validateObservation(baseInput({
-      raw: stream([hello({ observerVersion: 'not-canary' }), pass('a'), bye({ pass: 1, fail: 0, pending: 0 })]),
+      raw: stream([hello({ observerVersion: 'not-amabie' }), pass('a'), bye({ pass: 1, fail: 0, pending: 0 })]),
       textCounts: { passing: 1 },
     }));
     assert.equal(ov.invalidReason, 'observerVersion-mismatch');
@@ -220,7 +220,7 @@ describe('panel K layer 1 — the validator refuses hostile frame streams', () =
     }));
     assert.equal(adapter.status, 'INVALID');
     assert.equal(adapter.invalidReason, 'adapter-error');
-    // masked failure: Canary WATCHED a test fail, the runner exited 0 —
+    // masked failure: Amabie WATCHED a test fail, the runner exited 0 —
     // the exit channel is lying about the watched lifecycle.
     const masked = validateObservation(baseInput({
       raw: stream([hello(), pass('a'), fail('s > z'), bye({ pass: 1, fail: 1, pending: 0 })]),
@@ -281,9 +281,9 @@ async function pipelineRun(stub: string, test: readonly string[] = MOCHA_TEST_AR
     repeats: { baseline: 2, candidate: 2 },
     timeoutSecs: { install: 120, test: 120 },
   }, repoRoot, true, {
-    // post-GLM F5: this offline harness is the canary double's designated
+    // post-GLM F5: this offline harness is the amabie double's designated
     // execution authority — the grant lives HERE, never in a spec file.
-    allowCanaryDoubleOrigin: true,
+    allowAmabieDoubleOrigin: true,
     fetch: async () => ({ ...FAKE_BLOB }),
     extract: (_tgz, wsRoot) => {
       fs.cpSync(stub, path.join(wsRoot, `downstream-${FAKE_SHA}`), { recursive: true });
@@ -379,7 +379,7 @@ describe('panel K layer 2 — the pipeline end-to-end refuses unattested executi
       assert.equal(o.status, 'ABSENT', `${r.arm}#${r.round}`);
       assert.equal(o.absentKind, 'runner-identity-unpinned', `${r.arm}#${r.round}`);
       assert.notEqual(o.observedRunnerTreeSha256, DOUBLE_PIN!.treeSha256,
-        'the OBSERVED hash is Canary-derived and must differ from the pin (this is what refuted the version claim)');
+        'the OBSERVED hash is Amabie-derived and must differ from the pin (this is what refuted the version claim)');
       assert.equal(o.strayFd3Bytes, undefined, 'clean fake output must not be flagged as an emulation attempt');
     }
     assert.ok(!STRONG.has(bundle.classification.label), `unpinned bytes reached ${bundle.classification.label}`);
@@ -455,7 +455,7 @@ describe('panel K layer 2 — the pipeline end-to-end refuses unattested executi
 // the canonical pinned runner to OCCUPY THE EXECUTED RUNNER POSITION — the
 // expanded argv is [execPath, <pinned bin>, …], i.e. the token must be spec
 // argv[0]. An inert/off-position token is REFUSED fail-closed
-// (CanaryError → InfraAbort → exit 2), the subject-require-refused
+// (AmabieError → InfraAbort → exit 2), the subject-require-refused
 // precedent: subject-controlled argv is refused, not parsed. The positive
 // control pins that the honest form still earns VALID + a strong verdict.
 // ───────────────────────────────────────────────────────────────────────────
@@ -530,13 +530,13 @@ describe('post-GLM F4 — infra prose cannot mask an attested regression', () =>
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// POST-GLM F5 (P1) — THE CANARY DOUBLE IS NOT AN EXECUTION AUTHORITY.
+// POST-GLM F5 (P1) — THE AMABIE DOUBLE IS NOT AN EXECUTION AUTHORITY.
 // The double's bytes are PUBLIC in-repo (apps/cli/test/fixtures/mocha-double)
 // and its observation seams are exactly the seams an attacker knows best.
 // findRunnerPin matched (version, treeSha256) only — origin-blind — so ANY
 // untrusted spec could fs-copy the double onto the canonical
 // <fixture>/node_modules/mocha anchor in its OWN prepare step (the same
-// mechanism this test file's harness uses) and earn Canary's observer
+// mechanism this test file's harness uses) and earn Amabie's observer
 // injection — strong labels included — through a runner it fully controls.
 // The canonical-path check was never a trust boundary: node_modules/mocha is
 // exactly where a real install lands. Repair: origin 'canary-double' is
@@ -544,7 +544,7 @@ describe('post-GLM F4 — infra prose cannot mask an attested regression', () =>
 // production CLI never passes — the PipelineDeps/ExecutorDeps seam channel,
 // the same trust channel as fetch/extract.
 // ───────────────────────────────────────────────────────────────────────────
-describe('post-GLM F5 — an untrusted spec cannot select the canary double', () => {
+describe('post-GLM F5 — an untrusted spec cannot select the amabie double', () => {
   it('double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14', async () => {
     const stub = realStub();
     w(path.join(stub, 'test.js'), widgetSpec());
@@ -571,8 +571,8 @@ describe('post-GLM F5 — an untrusted spec cannot select the canary double', ()
       const o = r.executionObservation;
       assert.equal(o.status, 'ABSENT', `${r.arm}#${r.round}: the double must not earn execution authority`);
       assert.equal(o.absentKind, 'runner-identity-unpinned', `${r.arm}#${r.round}`);
-      assert.equal(o.expectedMochaVersion, undefined, 'no expected* may ride a round Canary never injected into');
-      assert.equal(o.observedRunnerTreeSha256, DOUBLE_PIN!.treeSha256, '"what bytes were there" stays Canary-derived and recorded');
+      assert.equal(o.expectedMochaVersion, undefined, 'no expected* may ride a round Amabie never injected into');
+      assert.equal(o.observedRunnerTreeSha256, DOUBLE_PIN!.treeSha256, '"what bytes were there" stays Amabie-derived and recorded');
     }
     assert.ok(!STRONG.has(bundle.classification.label), `double-staged spec reached ${bundle.classification.label}`);
     assert.equal(bundle.classification.rule, 14);
@@ -583,7 +583,7 @@ describe('post-GLM F5 — an untrusted spec cannot select the canary double', ()
     w(path.join(stub, 'test.js'), widgetSpec());
     w(path.join(stub, 'swap.js'), swapScript(false));
     // Byte-for-byte the run above — the ONLY difference is that pipelineRun()
-    // holds the allowCanaryDoubleOrigin grant. Authority, not bytes, decides.
+    // holds the allowAmabieDoubleOrigin grant. Authority, not bytes, decides.
     const bundle = await pipelineRun(stub);
     assertDoubleObservation(bundle.rounds);
     assert.equal(bundle.classification.label, 'CONFIRMED_REGRESSION', bundle.classification.reason);

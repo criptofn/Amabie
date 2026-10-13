@@ -1,6 +1,6 @@
 param([string]$Pipe, [string]$Package, [string]$Ready, [switch]$DenyPackage)
 $ErrorActionPreference = 'Stop'
-Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/CanaryBroker.cs')
+Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/AmabieBroker.cs')
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -42,7 +42,7 @@ $server = [System.IO.Pipes.NamedPipeServerStream]::new($Pipe,
 try {
   [MediumPipeLabel]::Set($server.SafePipeHandle.DangerousGetHandle())
   $rejected = $false
-  try { [CanaryBroker.Broker]::VerifyLowMandatoryLabel($server.SafePipeHandle.DangerousGetHandle()) }
+  try { [AmabieBroker.Broker]::VerifyLowMandatoryLabel($server.SafePipeHandle.DangerousGetHandle()) }
   catch { $rejected = $true }
   if (-not $rejected) { throw 'negative pipe unexpectedly has a low label' }
   $dacl = $server.GetAccessControl().GetSecurityDescriptorSddlForm([System.Security.AccessControl.AccessControlSections]::Access)

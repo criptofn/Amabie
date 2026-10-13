@@ -27,7 +27,7 @@ for (const record of summary.sessions) {
   fs.writeFileSync(path.join(targetRoot, 'git-history.txt'), git(repo, 'log', '--format=fuller', '--all'), { flag: 'wx' });
   const files = new Set([...git(repo, 'diff', '--name-only', before.head).trim().split('\n'),
     ...git(repo, 'ls-files', '--others', '--exclude-standard').trim().split('\n'),
-    'package.json', 'build.gradle.kts', '.canary/canary.local.json', '.claude/settings.json', '.mcp.json'].filter(Boolean));
+    'package.json', 'build.gradle.kts', '.amabie/amabie.local.json', '.claude/settings.json', '.mcp.json'].filter(Boolean));
   for (const file of files) {
     const relative = path.relative(repo, path.resolve(repo, file)); assert.ok(!relative.startsWith('..') && !path.isAbsolute(relative));
     const source = path.join(repo, relative); if (!fs.statSync(source, { throwIfNoEntry: false })?.isFile()) continue;

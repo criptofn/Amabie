@@ -3,7 +3,7 @@
  * lazy-connect-status — PART I (Lazy Connect) + PART III (failure UX) +
  * PART IV (eliminate work, do not cache it) contract, real git, product CLI:
  *
- *   - `canary status` answers "does Canary already know this repo?" WITHOUT
+ *   - `amabie status` answers "does Amabie already know this repo?" WITHOUT
  *     executing a single project command and WITHOUT writing a byte: proven by
  *     a whole-tree (incl. .git) byte manifest around every status run, and by
  *     a plan that TOUCHES a sentinel file — status never creates it, doctor
@@ -13,7 +13,7 @@
  *     CONNECTED (a statement about state; never a claim the project passes).
  *   - Subdirectory entry routes to the repo root (the agent's cwd is not a
  *     config problem to solve manually).
- *   - Bare `canary` shows compact read-only state and the next commands, and
+ *   - Bare `amabie` shows compact read-only state and the next commands, and
  *     remains a usage error; explicit --help succeeds with the full command list.
  *   - Unattended `setup` without --yes (no TTY) runs the smoke test like
  *     doctor already does; a failing project still never reads READY.
@@ -47,10 +47,10 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd, opts = {}) {
+function amabie(args, cwd, opts = {}) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000, stdio: opts.stdinNull ? ['ignore', 'pipe', 'pipe'] : undefined, ...opts.extra });
 }
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-status-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-status-'));
 function manifest(root) {
   const m = new Map();
   const stack = [root];
@@ -78,12 +78,12 @@ function makeRepo(name, { setup = true } = {}) {
   fs.writeFileSync(path.join(root, 'checks', 'touch.cjs'), "require('node:fs').writeFileSync('sentinel.txt', 'executed\\n');\n");
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts: { test: 'node checks/touch.cjs' } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
   if (setup) {
-    const s = canary(['setup', '--yes', root], root);
+    const s = amabie(['setup', '--yes', root], root);
     assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
     fs.rmSync(path.join(root, 'sentinel.txt'), { force: true }); // the setup run's own touch is not evidence
   }
@@ -94,10 +94,10 @@ check('verbose version identifies the actual runtime and CLI bytes without touch
   const root = path.join(TMP, 'version-only'); fs.mkdirSync(root);
   fs.writeFileSync(path.join(root, 'package.json'), '{"scripts":{"test":"must never execute"}}');
   const before = manifest(root);
-  const plain = canary(['--version'], root);
+  const plain = amabie(['--version'], root);
   assertEq(plain.status, 0, 'plain version exit');
-  assert(/^canary \d+\.\d+\.\d+\r?\n$/.test(plain.stdout), 'plain version must remain one line');
-  const detailed = canary(['--version', '--verbose'], root);
+  assert(/^amabie \d+\.\d+\.\d+\r?\n$/.test(plain.stdout), 'plain version must remain one line');
+  const detailed = amabie(['--version', '--verbose'], root);
   assertEq(detailed.status, 0, detailed.stderr);
   assertEq(detailed.stdout.split(/\r?\n/)[0], plain.stdout.trim(), 'same product version');
   assert(detailed.stdout.includes(`Node: ${process.version} (${process.platform}/${process.arch})`), 'actual Node runtime');
@@ -109,16 +109,16 @@ check('verbose version identifies the actual runtime and CLI bytes without touch
 
 check('outside any git repo: NOT CONNECTED, tells the human the one next command', () => {
   const bare = path.join(TMP, 'not-a-repo'); fs.mkdirSync(bare, { recursive: true });
-  const r = canary(['status'], bare);
+  const r = amabie(['status'], bare);
   assertEq(r.status, 2, `exit: ${r.stdout}\n${r.stderr}`);
   assert(/NOT CONNECTED/.test(r.stdout), 'NOT CONNECTED verdict');
-  assert(/next:|canary setup/.test(r.stdout), 'PART III: says what to do next');
+  assert(/next:|amabie setup/.test(r.stdout), 'PART III: says what to do next');
 });
 
 check('git repo, never set up: NOT CONNECTED with zero writes', () => {
   const root = makeRepo('fresh', { setup: false });
   const before = manifest(root);
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assertEq(r.status, 2, `exit: ${r.stdout}`);
   assert(/NOT CONNECTED/.test(r.stdout), 'NOT CONNECTED verdict');
   assert(/never set up/.test(r.stdout), 'names WHY (PART III)');
@@ -128,7 +128,7 @@ check('git repo, never set up: NOT CONNECTED with zero writes', () => {
 check('connected repo: CONNECTED — read-only facts, ZERO commands executed, ZERO bytes written', () => {
   const root = makeRepo('connected');
   const before = manifest(root);
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assertEq(r.status, 0, `exit: ${r.stdout}\n${r.stderr}`);
   assert(/CONNECTED/.test(r.stdout) && !/NOT CONNECTED/.test(r.stdout), 'CONNECTED verdict');
   assert(/plan: 1 step/.test(r.stdout), 'plan facts line');
@@ -139,7 +139,7 @@ check('connected repo: CONNECTED — read-only facts, ZERO commands executed, ZE
   assert(/NOT a claim|statement about state/.test(r.stdout), 'CONNECTED never claims the project passes');
   assertStable(root, before, 'connected');
   // positive control that the sentinel really does work: doctor executes
-  const d = canary(['doctor', root], root);
+  const d = amabie(['doctor', root], root);
   assertEq(d.status, 0, `doctor: ${d.stdout}`);
   assert(fs.existsSync(path.join(root, 'sentinel.txt')), 'doctor DID execute (tripwire live)');
 });
@@ -147,7 +147,7 @@ check('connected repo: CONNECTED — read-only facts, ZERO commands executed, ZE
 check('from a subdirectory: status still answers about the repo root', () => {
   const root = makeRepo('subdir');
   const sub = path.join(root, 'checks');
-  const r = canary(['status'], sub);
+  const r = amabie(['status'], sub);
   assertEq(r.status, 0, `subdir status exit: ${r.stdout}\n${r.stderr}`);
   assert(r.stdout.includes(root), `repo line names the root:\n${r.stdout}`);
 });
@@ -158,7 +158,7 @@ check('drifted authority (sealed script text edited after setup): NEEDS ATTENTIO
   pkg.scripts.test = 'node checks/touch.cjs && echo watered-down';
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pkg, null, 2));
   const before = manifest(root);
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assertEq(r.status, 2, `drift must not read CONNECTED: ${r.stdout}`);
   assert(/NEEDS ATTENTION/.test(r.stdout), 'NEEDS ATTENTION verdict');
   assert(/authority changed since setup/.test(r.stdout), 'names the drift (PART III: what is missing)');
@@ -174,7 +174,7 @@ check('hook registration removed: NEEDS ATTENTION names the broken wiring', () =
   doc.hooks.Stop = [];
   fs.writeFileSync(settingsPath, JSON.stringify(doc, null, 2));
   const before = manifest(root); // AFTER the deliberate break
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assertEq(r.status, 2, `broken wiring must not read CONNECTED: ${r.stdout}`);
   assert(/no longer registered|NOT registered/.test(r.stdout), 'names the missing hook');
   assertStable(root, before, 'unhooked');
@@ -182,47 +182,47 @@ check('hook registration removed: NEEDS ATTENTION names the broken wiring', () =
 
 check('corrupt config: NOT CONNECTED, plain words, zero writes', () => {
   const root = makeRepo('corrupt');
-  fs.writeFileSync(path.join(root, '.canary', 'canary.local.json'), '{nope');
+  fs.writeFileSync(path.join(root, '.amabie', 'amabie.local.json'), '{nope');
   const before = manifest(root);
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assertEq(r.status, 2, `exit: ${r.stdout}`);
   assert(/NOT CONNECTED/.test(r.stdout) && /unreadable/.test(r.stdout), 'corrupt verdict');
   assertStable(root, before, 'corrupt');
 });
 
-check('tracked config (git-committed .canary/canary.local.json): never CONNECTED — ownership distrust holds', () => {
+check('tracked config (git-committed .amabie/amabie.local.json): never CONNECTED — ownership distrust holds', () => {
   const root = makeRepo('tracked');
-  git(root, 'add', '-f', '.canary/canary.local.json');
+  git(root, 'add', '-f', '.amabie/amabie.local.json');
   git(root, 'commit', '-m', 'launder config through git');
   const before = manifest(root);
-  const r = canary(['status', root], root);
+  const r = amabie(['status', root], root);
   assert(/^CONNECTED —/m.test(r.stdout) === false, `tracked config must never read CONNECTED:\n${r.stdout}`);
   assert(/NOT CONNECTED/.test(r.stdout), 'tracked config is distrusted, loudly');
   assertEq(r.status, 2, 'exit 2 (not trusted)');
   assertStable(root, before, 'tracked');
 });
 
-check('bare `canary` remains a usage error; explicit help succeeds with the full command list', () => {
+check('bare `amabie` remains a usage error; explicit help succeeds with the full command list', () => {
   const root = makeRepo('bare');
   const before = manifest(root);
-  const r = canary([], root);
+  const r = amabie([], root);
   assertEq(r.status, 3, 'bare usage keeps exit 3');
   assert(r.stdout.trimStart().startsWith('CONNECTED —'), 'state is the first answer:\n' + r.stdout);
   assert(/last verification \(historical only\): "pass" \("setup"\)/.test(r.stdout), 'show the last diagnostic as history, not current proof');
   assert(/session end: unknown/.test(r.stdout), 'a setup pass cannot establish session completion');
-  assert(/canary result/.test(r.stdout) && /canary --help/.test(r.stdout), 'names verification state and full help');
-  assert(!/canary isolate|canary accept|canary bind/.test(r.stdout), 'bare entry must not print the expert command list');
-  const help = canary(['--help'], root);
+  assert(/amabie result/.test(r.stdout) && /amabie --help/.test(r.stdout), 'names verification state and full help');
+  assert(!/amabie isolate|amabie accept|amabie bind/.test(r.stdout), 'bare entry must not print the expert command list');
+  const help = amabie(['--help'], root);
   assertEq(help.status, 0, 'explicit help succeeds');
-  assert(/canary isolate/.test(help.stdout) && /canary bind/.test(help.stdout), 'full help keeps the expert commands');
+  assert(/amabie isolate/.test(help.stdout) && /amabie bind/.test(help.stdout), 'full help keeps the expert commands');
   assertStable(root, before, 'bare and explicit help');
   assert(!fs.existsSync(path.join(root, 'sentinel.txt')), 'bare/help must not execute project checks');
   const bare = makeRepo('bare-unconnected', { setup: false });
-  const r2 = canary([], bare);
+  const r2 = amabie([], bare);
   assertEq(r2.status, 3, 'exit 3');
   assert(/NOT CONNECTED/.test(r2.stdout), 'unconnected git repo footer');
   const nb = path.join(TMP, 'bare-nonrepo'); fs.mkdirSync(nb, { recursive: true });
-  const r3 = canary([], nb);
+  const r3 = amabie([], nb);
   assertEq(r3.status, 3, 'exit 3 outside git');
   // Some machines keep TEMP inside an ancestor git repo (e.g. a dotfile-homed
   // Windows profile) — then the honest footer names the UNTRUSTED repo, which
@@ -232,7 +232,7 @@ check('bare `canary` remains a usage error; explicit help succeeds with the full
 
 check('bare history stays read-only and cannot turn a forged or absent record into current proof', () => {
   const root = makeRepo('bare-history');
-  const file = path.join(root, '.canary', 'last-checkpoint.json');
+  const file = path.join(root, '.amabie', 'last-checkpoint.json');
   for (const record of [
     { at: '2026-01-01T00:00:00Z', source: 'checkpoint', status: 'fail', hookResponse: 'blocked' },
     { at: '2026-01-01T00:00:00Z', source: 'doctor', status: 'pass\nREADY' },
@@ -242,7 +242,7 @@ check('bare history stays read-only and cannot turn a forged or absent record in
     if (record === null) fs.rmSync(file);
     else fs.writeFileSync(file, JSON.stringify(record));
     const before = manifest(root);
-    const answer = canary([], root);
+    const answer = amabie([], root);
     assertEq(answer.status, 3, 'history cannot change the bare CLI exit contract');
     assert(answer.stdout.trimStart().startsWith('CONNECTED —'), 'history cannot decide wiring');
     assert(!/^READY/m.test(answer.stdout), 'recorded text cannot inject a current verdict');
@@ -255,15 +255,15 @@ check('bare history stays read-only and cannot turn a forged or absent record in
 
 check('unattended setup without --yes (no TTY): smoke test RUNS — READY is earned, failures still never pass', () => {
   const good = makeRepo('notty-good', { setup: false });
-  const r = canary(['setup', good], good, { stdinNull: true });
+  const r = amabie(['setup', good], good, { stdinNull: true });
   assertEq(r.status, 0, `unattended setup must now run the smoke test: ${r.stdout}\n${r.stderr}`);
   assert(/READY/.test(r.stdout), 'READY after a passing run');
-  assert(fs.existsSync(path.join(good, '.canary', 'last-checkpoint.json')), 'checkpoint written by the run');
+  assert(fs.existsSync(path.join(good, '.amabie', 'last-checkpoint.json')), 'checkpoint written by the run');
   assert(!/NEEDS ATTENTION/.test(r.stdout), 'no more demand for a memorized flag when the checks pass');
   const bad = makeRepo('notty-bad', { setup: false });
   fs.writeFileSync(path.join(bad, 'checks', 'touch.cjs'), "process.exit(7);\n");
   git(bad, 'add', '-A'); git(bad, 'commit', '-m', 'break the check');
-  const rb = canary(['setup', bad], bad, { stdinNull: true });
+  const rb = amabie(['setup', bad], bad, { stdinNull: true });
   assertEq(rb.status, 2, `failing checks must still block READY: ${rb.stdout}`);
   assert(!/READY/.test(rb.stdout), 'executing is not forgiving');
 });

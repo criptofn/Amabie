@@ -1,12 +1,12 @@
 /**
  * v1.4 — FILESYSTEM IDENTITY REGRESSION SUITE.
  *
- * WHY THIS FILE EXISTS. Canary compares filesystem identities in many security-sensitive places:
+ * WHY THIS FILE EXISTS. Amabie compares filesystem identities in many security-sensitive places:
  * repository containment, the candidate's shared git store, the trust store's project id, the
  * provider's enrolled deployment, custody anchors, and the symlink-escape gate. On Windows one
  * object can have TWO spellings — its long name and its 8.3 SHORT alias
  * (`C:\Users\runneradmin\...` vs `C:\Users\RUNNER~1\...`) — and `fs.realpathSync` (the JavaScript
- * one) returns the short spelling unchanged. Comparing the two spellings made Canary refuse
+ * one) returns the short spelling unchanged. Comparing the two spellings made Amabie refuse
  * legitimate objects: MEASURED on GitHub Actions Windows (which sets `TEMP=C:\Users\RUNNER~1\...`)
  * as `isolate: the trusted base identity is unresolvable (broken .git?)` and
  * `... does not share this repo's git store`, and reproduced offline by pointing TEMP at a
@@ -14,7 +14,7 @@
  *
  * THE CHANGE UNDER TEST is `fs.realpathSync.native` (the OS call, which returns the canonical long
  * form) behind the helpers `canonicalPath` / `canonicalPathOrNull` / `sameFilesystemIdentity` /
- * `containsPath` in `@canary-rn/support`.
+ * `containsPath` in `@amabie/support`.
  *
  * WHAT THIS FILE MUST PROVE, in the project's own terms: the change may reduce FALSE REFUSALS
  * only. It must NOT create FALSE ACCEPTANCE. So every acceptance case below is paired with a
@@ -39,10 +39,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-import { canonicalPath, canonicalPathOrNull, sameFilesystemIdentity, containsPath } from '@canary-rn/support';
+import { canonicalPath, canonicalPathOrNull, sameFilesystemIdentity, containsPath } from '@amabie/support';
 import { containedRealPath, candidateIdentity, gitExe } from '../src/onboarding.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-path-identity-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-path-identity-'));
 const mk = (name: string): string => { const d = path.join(TMP, name); fs.mkdirSync(d, { recursive: true }); return d; };
 const cleanup = () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* OS temp */ } };
 process.on('exit', cleanup);

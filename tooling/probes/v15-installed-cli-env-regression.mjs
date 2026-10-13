@@ -13,8 +13,8 @@ assert.deepEqual(Object.keys(env).filter(key => key.toUpperCase() === 'PATH'), [
 const bin = env.PATH.split(path.delimiter)[0], rows = [];
 fs.mkdirSync(out, { recursive: true });
 for (const [name, executable, args, expected] of [
-  ['cmd', 'C:/Windows/System32/where.exe', ['canary'], path.join(bin, 'canary.cmd')],
-  ['bash', 'C:/Program Files/Git/bin/bash.exe', ['--noprofile', '--norc', path.resolve(import.meta.dirname, '../test-support/fixtures/pilot-cli-resolution.sh')], path.join(bin, 'canary')],
+  ['cmd', 'C:/Windows/System32/where.exe', ['amabie'], path.join(bin, 'amabie.cmd')],
+  ['bash', 'C:/Program Files/Git/bin/bash.exe', ['--noprofile', '--norc', path.resolve(import.meta.dirname, '../test-support/fixtures/pilot-cli-resolution.sh')], path.join(bin, 'amabie')],
 ]) {
   const r = spawnSync(executable, args, { env, encoding: 'utf8', windowsHide: true, timeout: 30000 });
   fs.writeFileSync(path.join(out, name + '.stdout.log'), r.stdout ?? '');
@@ -26,6 +26,6 @@ for (const [name, executable, args, expected] of [
   console.log(`PASS ${name}: resolves the explicitly installed package`);
 }
 assert.throws(() => installedCliEnvironment(import.meta.filename, process.env));
-console.log('PASS a development file cannot silently fall back to global Canary');
+console.log('PASS a development file cannot silently fall back to global Amabie');
 fs.writeFileSync(path.join(out, 'result.json'), JSON.stringify({ rows, cli, cliSha256: crypto.createHash('sha256').update(fs.readFileSync(cli)).digest('hex'),
   instrumentSha256: crypto.createHash('sha256').update(fs.readFileSync(import.meta.filename)).digest('hex') }, null, 2));

@@ -1,6 +1,6 @@
 param([string]$Work,[string]$Store,[string]$Package,[string]$HostAddress,[int]$Port,[string]$Side,[string]$Symlink = 'absent',[string]$SecretPath,[string]$AuthorityTargets = 'absent')
 $ErrorActionPreference = 'Stop'
-Add-Type -Path @((Join-Path $PSScriptRoot '../../../tools/windows-boundary/CanaryConfinedLauncher.cs'),
+Add-Type -Path @((Join-Path $PSScriptRoot '../../../tools/windows-boundary/AmabieConfinedLauncher.cs'),
   (Join-Path $PSScriptRoot 'boundary-native-parent.cs'))
 $exe = Join-Path $Work 'native-child.exe'
 if (-not (Test-Path -LiteralPath $exe)) {
@@ -16,12 +16,12 @@ function Command([string]$report) {
     ForEach-Object { '"' + [string]$_ + '"' }) -join ' '
 }
 try {
-  if ($AuthorityTargets -ne 'absent') { $env:CANARY_PRODUCTION_SENTINEL = 'trusted-parent-only-test-value' }
+  if ($AuthorityTargets -ne 'absent') { $env:AMABIE_PRODUCTION_SENTINEL = 'trusted-parent-only-test-value' }
   $control = [BoundaryNativeParent]::RunControl((Command (Join-Path $Work 'native-control.json')),$Work)
   if ($control -ne 0) { throw "native control exit $control" }
   [System.IO.File]::WriteAllText($secret + '.rename', 'test-only rename target')
   Remove-Item -LiteralPath (Join-Path $Work 'copied-secret'),(Join-Path $Work 'renamed-secret') -Force -ErrorAction SilentlyContinue
-  $restricted = [CanaryConfined]::Run((Command (Join-Path $Work 'native-restricted.json')),$Work,$Side,$Package,$false)
+  $restricted = [AmabieConfined]::Run((Command (Join-Path $Work 'native-restricted.json')),$Work,$Side,$Package,$false)
   exit $restricted
 } finally {
   [void][BoundaryNativeParent]::CloseHandle($file)

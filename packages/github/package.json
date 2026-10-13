@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/github",
+  "name": "@amabie/github",
   "version": "0.0.1",
   "private": true,
   "description": "Fetch pinned repository content by commit SHA (tarballs only — no git auth surface).",

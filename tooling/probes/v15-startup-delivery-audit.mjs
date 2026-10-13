@@ -25,10 +25,10 @@ const texts = (value) => {
 const rows = summary.sessions.map((session) => {
   assert.ok(session.calls.length && session.captureComplete);
   const request = read(`api-${session.calls[0]}.request.json`);
-  const context = texts(request).find((text) => text.includes('Canary completion workflow (not a verification result).'));
-  const canary = session.name.endsWith('-canary');
-  assert.equal(!!context, canary, `${session.name}: startup delivery differs from its integration`);
-  if (canary) {
+  const context = texts(request).find((text) => text.includes('Amabie completion workflow (not a verification result).'));
+  const amabie = session.name.endsWith('-amabie');
+  assert.equal(!!context, amabie, `${session.name}: startup delivery differs from its integration`);
+  if (amabie) {
     assert.ok(context.includes(summary.cli));
     assert.ok(context.includes('finish normally'));
     assert.ok(context.includes('sealed test'));

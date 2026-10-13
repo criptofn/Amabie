@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Stop'
-Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/CanaryBroker.cs')
+Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/AmabieBroker.cs')
 Add-Type -TypeDefinition @'
 using System;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
-public static class CanaryAuditPipeLabel {
+public static class AmabieAuditPipeLabel {
   [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
   static extern bool ConvertStringSecurityDescriptorToSecurityDescriptorW(string s,uint revision,out IntPtr descriptor,out uint size);
   [DllImport("advapi32.dll")]
@@ -17,7 +17,7 @@ public static class CanaryAuditPipeLabel {
     if(!ConvertStringSecurityDescriptorToSecurityDescriptorW("S:(ML;;NW;;;LW)",1,out descriptor,out size))
       throw new InvalidOperationException("SDDL conversion failed");
     try {
-      using(var pipe=new NamedPipeServerStream("canary-audit-"+Guid.NewGuid().ToString("N"),PipeDirection.InOut)) {
+      using(var pipe=new NamedPipeServerStream("amabie-audit-"+Guid.NewGuid().ToString("N"),PipeDirection.InOut)) {
         IntPtr handle=pipe.SafePipeHandle.DangerousGetHandle();
         bool missingRejected=false;
         try { verify(handle); }
@@ -34,4 +34,4 @@ public static class CanaryAuditPipeLabel {
   }
 }
 '@
-[CanaryAuditPipeLabel]::Run([Action[IntPtr]]{ param($handle) [CanaryBroker.Broker]::VerifyLowMandatoryLabel($handle) })
+[AmabieAuditPipeLabel]::Run([Action[IntPtr]]{ param($handle) [AmabieBroker.Broker]::VerifyLowMandatoryLabel($handle) })

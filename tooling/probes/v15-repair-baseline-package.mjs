@@ -13,7 +13,7 @@ const root = path.resolve(import.meta.dirname, '../..');
 const ref = '2171535496f4fda3af060c03449e6b1a65b6380f';
 const hash = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const npm = path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-repair-baseline-build-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-repair-baseline-build-'));
 const source = path.join(temp, 'source');
 fs.mkdirSync(source); fs.mkdirSync(out, { recursive: true });
 const commands = [];
@@ -37,14 +37,14 @@ try {
   run('build', process.execPath, [npm, 'run', 'build:force'], source);
   run('pack', process.execPath, [path.join(source, 'tooling/pack.mjs')], source);
   const archive = path.join(out, 'baseline.tgz');
-  fs.copyFileSync(path.join(source, 'pack/npm/canary-rn-cli-1.5.0.tgz'), archive, fs.constants.COPYFILE_EXCL);
+  fs.copyFileSync(path.join(source, 'pack/npm/amabie-rn-cli-1.5.0.tgz'), archive, fs.constants.COPYFILE_EXCL);
   const installed = path.join(out, 'installed'); fs.mkdirSync(installed);
   // Own manifest + explicit prefix stop npm anchoring at an ancestor workspace.
-  fs.writeFileSync(path.join(installed, 'package.json'), '{"name":"canary-repair-baseline-install","private":true}\n', { flag: 'wx' });
+  fs.writeFileSync(path.join(installed, 'package.json'), '{"name":"amabie-repair-baseline-install","private":true}\n', { flag: 'wx' });
   run('install', process.execPath, [npm, 'install', '--prefix', installed, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', archive], installed);
-  const cli = path.join(installed, 'node_modules/@canary-rn/cli/dist/main.js');
+  const cli = path.join(installed, 'node_modules/@amabie/cli/dist/main.js');
   const version = run('version', process.execPath, [cli, '--version'], installed).trim();
-  assert.equal(version, 'canary 1.5.0');
+  assert.equal(version, 'amabie 1.5.0');
   artifact = { sourceCommit: ref, package: archive, packageSha256: hash(archive), cli, cliSha256: hash(cli), version };
 } catch (error) { failure = error.stack ?? String(error); console.error(failure); }
 finally {

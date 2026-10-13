@@ -5,7 +5,7 @@
  * granted. This file proves where the grant COMES FROM in the product, and — more
  * importantly — every way it must refuse:
  *
- *   1. an operator who ran `canary setup` on a Python project has authorized that
+ *   1. an operator who ran `amabie setup` on a Python project has authorized that
  *      interpreter, so the sealed plan yields the identity;
  *   2. a plan edited AFTER setup grants nothing (the seal is the authority, not the
  *      file's current contents);
@@ -14,7 +14,7 @@
  *   4. a plan entry that merely runs python — not a test runner — grants nothing.
  *
  * Refusal is the interesting half: this function is the door through which an
- * attacker would try to make Canary trust an interpreter it brought.
+ * attacker would try to make Amabie trust an interpreter it brought.
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -22,11 +22,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-authority-'));
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-authority-'));
 
-import { pytestRunnerIdentity } from '@canary-rn/executor';
+import { pytestRunnerIdentity } from '@amabie/executor';
 
-import { readConfig, writeConfig, type CanaryConfig } from '../src/onboarding.js';
+import { readConfig, writeConfig, type AmabieConfig } from '../src/onboarding.js';
 import { runnerIdentitiesFromSealedPlan } from '../src/runner-authority.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
@@ -42,7 +42,7 @@ function findPytestPython(): string | null {
 const PY = findPytestPython();
 const SKIP = PY === null ? 'no workspace-local pytest interpreter (_toolchains/py)' : false;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-runner-authority-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-runner-authority-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 /** A PYTHON-only project: pytest declared, a test directory, no package.json. */
@@ -60,7 +60,7 @@ function pythonProject(name: string): string {
 }
 
 /**
- * `canary setup` with the workspace venv FIRST on PATH — which is exactly the
+ * `amabie setup` with the workspace venv FIRST on PATH — which is exactly the
  * situation on a real machine where the operator's venv is the python they mean.
  * `pinPlanPrograms` is the ONE moment PATH is consulted, and what it seals is the
  * absolute path.
@@ -80,8 +80,8 @@ describe('the sealed setup plan is the runner-identity authority', { skip: SKIP 
 
     const cfg = readConfig(root);
     assert.ok(cfg !== null && cfg !== 'corrupt', 'setup must write a readable config');
-    const testsStep = (cfg as CanaryConfig).plan.find((s) => s.script === 'pytest');
-    assert.ok(testsStep?.argv, `setup must seal a pytest check with explicit argv: ${JSON.stringify((cfg as CanaryConfig).plan)}`);
+    const testsStep = (cfg as AmabieConfig).plan.find((s) => s.script === 'pytest');
+    assert.ok(testsStep?.argv, `setup must seal a pytest check with explicit argv: ${JSON.stringify((cfg as AmabieConfig).plan)}`);
     assert.equal(testsStep.argv[0], PY, 'the sealed program is the venv interpreter (absolute, from PATH at setup)');
     assert.deepEqual(testsStep.argv.slice(1), ['-m', 'pytest']);
 
@@ -98,7 +98,7 @@ describe('the sealed setup plan is the runner-identity authority', { skip: SKIP 
   it('an UNSEALED edit to the plan grants nothing (the seal is the authority)', () => {
     const root = pythonProject('tampered');
     assert.equal(setup(root).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    const cfg = readConfig(root) as AmabieConfig;
     assert.deepEqual(Object.keys(runnerIdentitiesFromSealedPlan(root)), ['pytest']);
 
     // Point the sealed step at an interpreter of the attacker's choosing, without
@@ -106,7 +106,7 @@ describe('the sealed setup plan is the runner-identity authority', { skip: SKIP 
     const attacker = path.join(TMP, 'attacker-python', process.platform === 'win32' ? 'python.exe' : 'python');
     fs.mkdirSync(path.dirname(attacker), { recursive: true });
     fs.writeFileSync(attacker, 'not an interpreter\n');
-    const tampered: CanaryConfig = {
+    const tampered: AmabieConfig = {
       ...cfg,
       plan: cfg.plan.map((s) => (s.script === 'pytest' ? { ...s, argv: [attacker, '-m', 'pytest'] } : s)),
     };
@@ -120,13 +120,13 @@ describe('the sealed setup plan is the runner-identity authority', { skip: SKIP 
     assert.deepEqual(runnerIdentitiesFromSealedPlan(noCfg), {});
 
     const corrupt = pythonProject('corrupt-config');
-    fs.mkdirSync(path.join(corrupt, '.canary'), { recursive: true });
-    fs.writeFileSync(path.join(corrupt, '.canary', 'canary.local.json'), '{ not json');
+    fs.mkdirSync(path.join(corrupt, '.amabie'), { recursive: true });
+    fs.writeFileSync(path.join(corrupt, '.amabie', 'amabie.local.json'), '{ not json');
     assert.deepEqual(runnerIdentitiesFromSealedPlan(corrupt), {});
 
     const foreign = pythonProject('foreign-config');
     assert.equal(setup(foreign).status, 0);
-    const cfg = readConfig(foreign) as CanaryConfig;
+    const cfg = readConfig(foreign) as AmabieConfig;
     writeConfig(foreign, { ...cfg, cliPath: path.join(TMP, 'elsewhere', 'main.js') });
     assert.deepEqual(runnerIdentitiesFromSealedPlan(foreign), {},
       'a config written by another installation is not this machine authority');
@@ -135,10 +135,10 @@ describe('the sealed setup plan is the runner-identity authority', { skip: SKIP 
   it('a plan entry that merely runs python grants nothing', () => {
     const root = pythonProject('not-a-runner');
     assert.equal(setup(root).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    const cfg = readConfig(root) as AmabieConfig;
     // A python step that is not a test runner: the allowlisted interpreter is
     // legitimate to RUN, but it authorizes no observation channel.
-    const nonRunner: CanaryConfig = {
+    const nonRunner: AmabieConfig = {
       ...cfg,
       plan: cfg.plan.map((s) => (s.script === 'pytest' ? { ...s, argv: [PY!, '-m', 'http.server'] } : s)),
     };

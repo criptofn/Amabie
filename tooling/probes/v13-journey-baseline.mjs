@@ -5,12 +5,12 @@
 // The candidate lifecycle below invokes expert CLI commands directly; the MCP section measures the
 // configured everyday profile and its explicit expert opt-in separately. No provider is used.
 //
-//   A. what `canary setup --yes` does on a fresh repository (and whether it needs a human);
+//   A. what `amabie setup --yes` does on a fresh repository (and whether it needs a human);
 //   B. whether the ordinary path (`work` -> commit in candidate -> `finish`) can COMPLETE,
 //      for three intents that differ only in their WORDING;
 //   C. what a naive agent that edits the working tree directly gets told afterwards
 //      (the realistic default: agents edit the repository, not a candidate);
-//   D. what `canary agents` claims when `.claude/` exists but no hook was ever installed;
+//   D. what `amabie agents` claims when `.claude/` exists but no hook was ever installed;
 //   E. the user-facing vocabulary of the ordinary path, counted, so jargon is measured.
 //
 // Everything happens under the OS temp dir. Nothing in the repository is touched.
@@ -21,13 +21,13 @@ import { spawnSync } from 'node:child_process';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-journey-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-journey-'));
 const results = [];
 const check = (name, ok, detail) => {
   results.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name} — ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
 };
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd, expect = 0, input) => {
   const r = spawnSync(exe, args, { cwd, env, encoding: 'utf8', windowsHide: true, timeout: 300000, ...(input === undefined ? {} : { input }) });
   if (expect !== null && r.status !== expect) {
@@ -37,7 +37,7 @@ const run = (exe, args, cwd, expect = 0, input) => {
   }
   return r;
 };
-const canary = (args, cwd, expect = 0) => run(process.execPath, [cli, ...args], cwd, expect);
+const amabie = (args, cwd, expect = 0) => run(process.execPath, [cli, ...args], cwd, expect);
 const out = (r) => `${r.stdout ?? ''}${r.stderr ?? ''}`;
 
 /** A trivial but REAL Node project whose declared check is green on the starting bytes. */
@@ -83,8 +83,8 @@ const FIXED_TEST =
 function journey(label, intent, extraFlags) {
   const root = path.join(temp, label);
   makeProject(root, label);
-  canary(['setup', '--yes'], root, 0);
-  const w = canary(['work', 'task1', intent, ...extraFlags], root, null);
+  amabie(['setup', '--yes'], root, 0);
+  const w = amabie(['work', 'task1', intent, ...extraFlags], root, null);
   const wText = out(w);
   const printed = [...wText.matchAll(/[A-Za-z]:\\[^\s"']+/g)].map((m) => m[0].replace(/[.,)]+$/, ''));
   const cand = printed.find((p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } }) ?? null;
@@ -94,11 +94,11 @@ function journey(label, intent, extraFlags) {
     fs.writeFileSync(path.join(cand, 'greeting.test.cjs'), FIXED_TEST);
     run('git', ['add', '.'], cand);
     run('git', ['-c', 'user.name=Worker', '-c', 'user.email=worker@localhost', 'commit', '-m', 'reject empty names'], cand);
-    const f = canary(['finish', 'task1'], root, null);
+    const f = amabie(['finish', 'task1'], root, null);
     fStatus = f.status; fText = out(f);
   }
   const rec = (() => {
-    try { return JSON.parse(fs.readFileSync(path.join(root, '.canary', 'candidates', 'task1.json'), 'utf8')); }
+    try { return JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'candidates', 'task1.json'), 'utf8')); }
     catch { return null; }
   })();
   const promoted = run('git', ['log', '--oneline', '-1'], root, 0).stdout.trim();
@@ -124,15 +124,15 @@ try {
   // ─────────────────────────────────────────────────────────── A. setup on a fresh repo ──
   const naive = path.join(temp, 'naive');
   makeProject(naive, 'naive-project');
-  const setup = canary(['setup', '--yes'], naive, null);
+  const setup = amabie(['setup', '--yes'], naive, null);
   const setupText = out(setup);
-  console.log('\n===== A. canary setup --yes (fresh repo) =====');
+  console.log('\n===== A. amabie setup --yes (fresh repo) =====');
   console.log(setupText.trimEnd());
   console.log('===== end setup =====\n');
   check('setup-on-a-fresh-node-repo-exits-0', setup.status === 0, { exit: setup.status });
   check('setup-names-the-checks-it-will-run', /✓ tests: npm run test/.test(setupText),
     (setupText.match(/^.*✓ tests.*$/m) ?? ['(none)'])[0].trim());
-  const statusR = canary(['status'], naive, null);
+  const statusR = amabie(['status'], naive, null);
   check('status-reports-CONNECTED', /CONNECTED/.test(out(statusR)) && !/NOT CONNECTED/.test(out(statusR)),
     out(statusR).split('\n').filter(Boolean)[0]?.slice(0, 120));
 
@@ -166,7 +166,7 @@ try {
 
   // THE v1.3 INVARIANT this slice establishes: `work` may complete the task, or refuse it BEFORE
   // opening anything — but it may never open a candidate that nothing could ever judge. Measured at
-  // v1.2: B1 exited 0, opened a candidate, printed a success-shaped `next: canary finish`, and the
+  // v1.2: B1 exited 0, opened a candidate, printed a success-shaped `next: amabie finish`, and the
   // correct fix that followed was refused with `task-authority UNPROVEN` after the whole session.
   const v1RefusedCleanly = v1.w.status === 2 && v1.cand === null && v1.fStatus === null;
   check('B1-the-ordinary-path-never-opens-a-candidate-that-cannot-complete',
@@ -181,9 +181,9 @@ try {
   // ───────────────────────────────── C. the naive agent edits the BASE directly ──
   fs.writeFileSync(path.join(naive, 'greeting.cjs'), FIXED_SRC);
   fs.writeFileSync(path.join(naive, 'greeting.test.cjs'), FIXED_TEST);
-  const naiveDoctor = canary(['doctor'], naive, null);
+  const naiveDoctor = amabie(['doctor'], naive, null);
   const naiveText = out(naiveDoctor);
-  console.log('===== C. canary doctor after the agent edited the BASE directly =====');
+  console.log('===== C. amabie doctor after the agent edited the BASE directly =====');
   console.log(naiveText.trimEnd());
   console.log('===== end doctor =====\n');
   const dirty = run('git', ['status', '--porcelain'], naive, 0).stdout.trim();
@@ -209,21 +209,21 @@ try {
     (naiveText.match(/^.*(READY|NOT PROVEN|NEEDS ATTENTION|UNSUPPORTED).*$/m) ?? ['(none)'])[0].trim().slice(0, 120));
   console.log('INFO everyday MCP stays compact; isolated candidate work and promotion are available in the expert profile.');
 
-  // ────────────────────── D. `canary agents` when `.claude/` exists but NO hook is installed ──
+  // ────────────────────── D. `amabie agents` when `.claude/` exists but NO hook is installed ──
   const noHook = path.join(temp, 'claude-no-hook');
   makeProject(noHook, 'claude-no-hook');
   fs.mkdirSync(path.join(noHook, '.claude', 'skills', 'demo'), { recursive: true });
   fs.writeFileSync(path.join(noHook, '.claude', 'skills', 'demo', 'SKILL.md'), '# a skill, not a hook\n');
   const hookFile = path.join(noHook, '.claude', 'settings.json');
-  const agentsR = canary(['agents'], noHook, null);
+  const agentsR = amabie(['agents'], noHook, null);
   const agentsText = out(agentsR);
-  console.log('===== D. canary agents with .claude/ present but NO hook installed =====');
+  console.log('===== D. amabie agents with .claude/ present but NO hook installed =====');
   console.log(agentsText.trimEnd());
   console.log('===== end agents =====\n');
   const saysGated = /CONNECTED/.test(agentsText);
   check('agents-does-not-claim-gating-without-an-installed-hook', !(saysGated && !fs.existsSync(hookFile)),
     { saidConnected: saysGated, hookInstalled: fs.existsSync(hookFile), exit: agentsR.status,
-      statusCommand: out(canary(['status'], noHook, null)).split('\n').filter(Boolean)[0]?.slice(0, 90) });
+      statusCommand: out(amabie(['status'], noHook, null)).split('\n').filter(Boolean)[0]?.slice(0, 90) });
 
   // ──────────────────────────────────────────── E. the measured vocabulary load ──
   const vocab = merge(jargonHits(setupText + work0(v1)), jargonHits(v1.fText));
@@ -235,7 +235,7 @@ try {
 
   // ─────────────── F. WHAT THE COMPLETION GATE ACTUALLY DECIDES ON THE EVERYDAY PATH ──
   // The everyday path is: the agent edits the working tree with its own tools, and the Stop hook runs
-  // `canary checkpoint`. Nothing here is isolated and nothing is promoted, so the only question that
+  // `amabie checkpoint`. Nothing here is isolated and nothing is promoted, so the only question that
   // matters is what the gate DECIDES. Measured, not inferred: the hook is invoked exactly as the
   // harness invokes it — the CLI with the hook JSON on stdin.
   const hookVerdict = (root) => {
@@ -248,7 +248,7 @@ try {
   function hookFixture(label) {
     const root = path.join(temp, label);
     makeProject(root, label);
-    canary(['setup', '--yes'], root, 0);
+    amabie(['setup', '--yes'], root, 0);
     run('git', ['add', '.'], root);
     run('git', ['-c', 'user.name=Op', '-c', 'user.email=op@localhost', 'commit', '-m', 'wiring'], root);
     return root;
@@ -299,9 +299,9 @@ try {
   check('F3-a-docs-only-change-is-not-asked-for-behavioural-evidence', allowed(v3h), describeVerdict(v3h));
 
   // ─────────── G. THE AGENT'S TOOLS: `setup` wires the MCP server, and nothing else moves ──
-  // The point of installing it is that the agent can ASK Canary whether it is done instead of
+  // The point of installing it is that the agent can ASK Amabie whether it is done instead of
   // authoring its own verification campaign. The risk of installing it is that it becomes a second
-  // file Canary writes into a user's repository, so every property the hook already has must hold:
+  // file Amabie writes into a user's repository, so every property the hook already has must hold:
   // merge (never overwrite a stranger's entry), refuse rather than clobber, survive re-setup,
   // be exactly removable, and NOT turn the verifier's own file into "the change".
   const foreign = path.join(temp, 'g-mcp');
@@ -311,7 +311,7 @@ try {
   }, null, 2) + '\n');
   run('git', ['add', '.'], foreign);
   run('git', ['-c', 'user.name=Op', '-c', 'user.email=op@localhost', 'commit', '-m', 'foreign mcp'], foreign);
-  canary(['setup', '--yes'], foreign, 0);
+  amabie(['setup', '--yes'], foreign, 0);
 
   const mcpDoc = () => JSON.parse(fs.readFileSync(path.join(foreign, '.mcp.json'), 'utf8'));
   const g1 = mcpDoc();
@@ -319,9 +319,9 @@ try {
   console.log(JSON.stringify(g1, null, 2));
   console.log('===== end mcp =====\n');
 
-  check('G1-setup-registers-the-everyday-MCP-profile', !!g1.mcpServers?.canary?.args?.includes('mcp')
-    && JSON.stringify(g1.mcpServers.canary.args.slice(-2)) === JSON.stringify(['--profile', 'everyday']),
-    JSON.stringify(g1.mcpServers?.canary ?? null));
+  check('G1-setup-registers-the-everyday-MCP-profile', !!g1.mcpServers?.amabie?.args?.includes('mcp')
+    && JSON.stringify(g1.mcpServers.amabie.args.slice(-2)) === JSON.stringify(['--profile', 'everyday']),
+    JSON.stringify(g1.mcpServers?.amabie ?? null));
   check('G2-a-stranger-s-entry-is-preserved-byte-for-byte',
     JSON.stringify(g1.mcpServers?.someoneelse) === JSON.stringify({ command: 'node', args: ['their-server.js'] }),
     JSON.stringify(g1.mcpServers?.someoneelse ?? null));
@@ -329,7 +329,7 @@ try {
   // THE REGRESSION THAT WOULD BREAK EVERY USER: setup's own file must not read as "the change".
   // If `.mcp.json` were counted, the sealed checks would be green on the base too and EVERY freshly
   // wired repository would report NOT PROVEN.
-  const gStatus = canary(['status'], foreign, null);
+  const gStatus = amabie(['status'], foreign, null);
   check('G3-writing-the-mcp-entry-does-not-make-the-repo-look-changed', /CONNECTED/.test(out(gStatus)) && !/NOT CONNECTED/.test(out(gStatus)),
     out(gStatus).split('\n').filter(Boolean)[0]?.slice(0, 140));
   const gHook = hookVerdict(foreign);
@@ -337,21 +337,21 @@ try {
 
   // Re-setup is idempotent, and a foreign entry under OUR key is refused rather than replaced.
   const before = fs.readFileSync(path.join(foreign, '.mcp.json'), 'utf8');
-  canary(['setup', '--yes'], foreign, 0);
+  amabie(['setup', '--yes'], foreign, 0);
   check('G5-re-running-setup-is-byte-identical', fs.readFileSync(path.join(foreign, '.mcp.json'), 'utf8') === before,
     `${before.length} bytes before and after`);
 
   const squatter = path.join(temp, 'g-squatter');
   makeProject(squatter, 'g-squatter');
   fs.writeFileSync(path.join(squatter, '.mcp.json'), JSON.stringify({
-    mcpServers: { canary: { command: 'node', args: ['not-ours.js'] } },
+    mcpServers: { amabie: { command: 'node', args: ['not-ours.js'] } },
   }, null, 2) + '\n');
-  const squat = canary(['setup', '--yes'], squatter, null);
+  const squat = amabie(['setup', '--yes'], squatter, null);
   const squatDoc = JSON.parse(fs.readFileSync(path.join(squatter, '.mcp.json'), 'utf8'));
   check('G6-a-foreign-server-under-our-key-is-REFUSED-not-replaced',
     squat.status === 2 && /did not write/.test(out(squat))
-    && JSON.stringify(squatDoc.mcpServers.canary) === JSON.stringify({ command: 'node', args: ['not-ours.js'] }),
-    { exit: squat.status, entry: squatDoc.mcpServers.canary, unchanged: true });
+    && JSON.stringify(squatDoc.mcpServers.amabie) === JSON.stringify({ command: 'node', args: ['not-ours.js'] }),
+    { exit: squat.status, entry: squatDoc.mcpServers.amabie, unchanged: true });
 
   // The server must actually answer a real MCP handshake, or "wired" means nothing.
   const rpc = [
@@ -371,8 +371,8 @@ try {
   };
   const everyday = mcpTools('everyday');
   const expert = mcpTools('expert');
-  const everydayExpected = ['canary_doctor', 'canary_result', 'canary_status', 'canary_task'];
-  const expertExpected = [...everydayExpected, 'canary_agents', 'canary_finish', 'canary_work'].sort();
+  const everydayExpected = ['amabie_doctor', 'amabie_result', 'amabie_status', 'amabie_task'];
+  const expertExpected = [...everydayExpected, 'amabie_agents', 'amabie_finish', 'amabie_work'].sort();
   check('G7-the-everyday-profile-lists-status-and-explicit-task-intake-tools',
     !!everyday.init?.result?.serverInfo && JSON.stringify(everyday.names) === JSON.stringify(everydayExpected),
     { server: everyday.init?.result?.serverInfo?.name, tools: everyday.names });
@@ -382,12 +382,12 @@ try {
   check('G9-the-accept-power-is-not-exposed-as-a-tool',
     !expert.names.some((n) => /accept/i.test(n)), expert.names.join(', '));
 
-  // Exactly removable: uninstall takes Canary's entry and leaves the stranger's.
-  const un = canary(['uninstall'], foreign, null);
+  // Exactly removable: uninstall takes Amabie's entry and leaves the stranger's.
+  const un = amabie(['uninstall'], foreign, null);
   const afterDoc = fs.existsSync(path.join(foreign, '.mcp.json'))
     ? JSON.parse(fs.readFileSync(path.join(foreign, '.mcp.json'), 'utf8')) : {};
   check('G10-uninstall-removes-exactly-our-entry-and-keeps-the-stranger-s',
-    un.status === 0 && afterDoc.mcpServers?.canary === undefined
+    un.status === 0 && afterDoc.mcpServers?.amabie === undefined
     && JSON.stringify(afterDoc.mcpServers?.someoneelse) === JSON.stringify({ command: 'node', args: ['their-server.js'] }),
     { exit: un.status, remaining: Object.keys(afterDoc.mcpServers ?? {}) });
 

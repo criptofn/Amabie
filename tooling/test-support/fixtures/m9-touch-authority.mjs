@@ -10,7 +10,7 @@
  * step's own verdict — only the guard may notice).
  * 'verifier' needs argv[2] = absolute path of the MAIN repo's apps/cli/dist.
  * 'basemove' needs argv[3] = absolute path of the CALLER's git executable.
- *   This step runs in Canary's SANITIZED environment, whose PATH is the running
+ *   This step runs in Amabie's SANITIZED environment, whose PATH is the running
  *   Node's directory plus the OS dirs and deliberately NOT the caller's PATH
  *   (packages/support/src/index.ts `sanitizedEnv`; contract in docs/SECURITY.md).
  *   A bare `git` therefore does not resolve here at all — it spawns ENOENT
@@ -26,18 +26,18 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const cwd = process.cwd();
-const base = path.resolve(cwd, '..', '..', '..'); // candidate lives at <base>/.canary/candidates/<name>
+const base = path.resolve(cwd, '..', '..', '..'); // candidate lives at <base>/.amabie/candidates/<name>
 // Candidate-location guard: setup's smoke test runs the SAME script text at
 // the base root, where 3-up lands nowhere meaningful. Only ever write when
-// cwd genuinely sits under <base>/.canary/candidates — otherwise inert.
-const inCandidate = cwd.startsWith(path.join(base, '.canary', 'candidates') + path.sep)
-  && fs.existsSync(path.join(base, '.canary', 'canary.local.json'));
+// cwd genuinely sits under <base>/.amabie/candidates — otherwise inert.
+const inCandidate = cwd.startsWith(path.join(base, '.amabie', 'candidates') + path.sep)
+  && fs.existsSync(path.join(base, '.amabie', 'amabie.local.json'));
 const mode = inCandidate && fs.existsSync('.m9mode') ? fs.readFileSync('.m9mode', 'utf8').trim() : 'none';
-const f = (...p) => path.join(base, '.canary', ...p);
+const f = (...p) => path.join(base, '.amabie', ...p);
 const settings = path.join(base, '.claude', 'settings.json');
 
 if (mode === 'config') {
-  const p = f('canary.local.json');
+  const p = f('amabie.local.json');
   fs.writeFileSync(p, JSON.stringify({ ...JSON.parse(fs.readFileSync(p, 'utf8')), m9mutated: true }));
 } else if (mode === 'settings') {
   fs.writeFileSync(settings, JSON.stringify({ hooks: {}, m9: 'entry scrubbed' })); // parseable, entry gone
@@ -51,13 +51,13 @@ if (mode === 'config') {
   }
 } else if (mode === 'task') {
   fs.mkdirSync(f('task'), { recursive: true });
-  fs.writeFileSync(f('task', 'current.json'), JSON.stringify({ schema: 'canary-task/1', m9planted: true }));
+  fs.writeFileSync(f('task', 'current.json'), JSON.stringify({ schema: 'amabie-task/1', m9planted: true }));
 } else if (mode === 'evidenceplant') {
-  // the §8/§9 attack in one move: forge a CANARY_OBSERVED-looking PASS bundle
-  // for this very candidate, inside Canary's authoritative evidence dir
+  // the §8/§9 attack in one move: forge a AMABIE_OBSERVED-looking PASS bundle
+  // for this very candidate, inside Amabie's authoritative evidence dir
   const dir = f('evidence', '0-forged-pass-candidate');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, 'verification.json'), JSON.stringify({ schema: 'canary-verification/1', source: 'candidate', trustClass: 'CANARY_OBSERVED', status: 'pass', steps: [], m9forged: true }) + '\n');
+  fs.writeFileSync(path.join(dir, 'verification.json'), JSON.stringify({ schema: 'amabie-verification/1', source: 'candidate', trustClass: 'AMABIE_OBSERVED', status: 'pass', steps: [], m9forged: true }) + '\n');
 } else if (mode === 'evidenceedit') {
   // rewrite bytes of an OBSERVED bundle (the newest one — setup wrote it before the window)
   const d = f('evidence');

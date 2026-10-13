@@ -42,9 +42,9 @@ const check = (ok, name, detail) => {
   if (ok) pass++; else fail++;
 };
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provenance-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provenance-'));
 const store = path.join(root, 'trust-store');
-const env = { ...process.env, CANARY_TRUST_STORE: store };
+const env = { ...process.env, AMABIE_TRUST_STORE: store };
 
 const run = (exe, args, cwd, input) => spawnSync(exe, args, {
   cwd, env, encoding: 'utf8', windowsHide: true, timeout: 600_000, input,
@@ -54,7 +54,7 @@ const git = (cwd, args) => {
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stdout}${r.stderr}`);
   return r.stdout;
 };
-const canary = (cwd, args, input) => run(process.execPath, [cli, ...args], cwd, input);
+const amabie = (cwd, args, input) => run(process.execPath, [cli, ...args], cwd, input);
 
 /** Build a sealed fixture. `testScript` is the OPERATOR's sealed check command. */
 function fixture(name, { testScript, checkFile, checkBody }) {
@@ -67,11 +67,11 @@ function fixture(name, { testScript, checkFile, checkBody }) {
   fs.writeFileSync(path.join(dir, 'src.cjs'), 'module.exports = (n) => `Hello, ${n}!`;\n');
   fs.writeFileSync(path.join(dir, checkFile), checkBody);
   git(dir, ['init', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'probe@canary.local']);
+  git(dir, ['config', 'user.email', 'probe@amabie.local']);
   git(dir, ['config', 'user.name', 'Provenance Probe']);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-m', 'sealed base']);
-  const setup = canary(dir, ['setup', '--yes', dir]);
+  const setup = amabie(dir, ['setup', '--yes', dir]);
   if (setup.status !== 0) throw new Error(`setup failed in ${name}: ${setup.stdout}${setup.stderr}`);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '--allow-empty', '-m', 'operator setup artifacts']);
@@ -80,7 +80,7 @@ function fixture(name, { testScript, checkFile, checkBody }) {
 
 /** Drive the completion gate the way a harness does. */
 function checkpoint(dir) {
-  const r = canary(dir, ['checkpoint'], JSON.stringify({ cwd: dir, stop_hook_active: false }));
+  const r = amabie(dir, ['checkpoint'], JSON.stringify({ cwd: dir, stop_hook_active: false }));
   return { status: r.status, stdout: (r.stdout ?? '').trim(), stderr: (r.stderr ?? '').trim() };
 }
 const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m', msg]); };

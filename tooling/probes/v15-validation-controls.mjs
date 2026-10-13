@@ -14,7 +14,7 @@ const arg = (name, fallback = null) => {
 const outRoot = path.resolve(arg('out') ?? '.');
 const archiveRoot = path.resolve(arg('archive-root', path.join(outRoot, 'source-archives')));
 const worktree = path.resolve(arg('worktree') ?? path.resolve(import.meta.dirname, '../..'));
-const scratchRoot = path.resolve(arg('scratch-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927');
+const scratchRoot = path.resolve(arg('scratch-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927');
 const oracle = path.resolve(arg('oracle', path.join(worktree, 'tooling/probes/v15-validation-oracle.mjs')));
 const evidenceRoot = path.join(worktree, 'tooling/benchmark/results/session-evidence/post-v15-validation-2026-09-27');
 const cli = path.resolve(arg('cli') ?? '');
@@ -78,7 +78,7 @@ for (const label of Object.keys(tasks)) {
   runOracle(label, candidate, 'candidate', 'pass');
 }
 const summary = {
-  schema: 'canary-validation-oracle-controls/1', startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+  schema: 'amabie-validation-oracle-controls/1', startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
   worktree, scratchRoot, archiveRoot, archiveHashes, oracle, cli, artifactSha256: artifact,
   candidateHeads: Object.fromEntries(Object.entries(tasks).map(([label, ids]) => [label, ids.candidate])),
   controls: oracleResults,

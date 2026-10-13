@@ -26,7 +26,7 @@ const step = (over: Partial<Parameters<typeof buildFailurePayload>[0]['steps'][n
   ...over,
 });
 
-describe('failure identities are read from the runners Canary supports', () => {
+describe('failure identities are read from the runners Amabie supports', () => {
   it('colored Vitest collection failures lead the details when a required build is missing', () => {
     const text = [
       'Error: expected caught failure from a passing control',
@@ -87,21 +87,21 @@ describe('failure identities are read from the runners Canary supports', () => {
 
 describe('the payload is compact, actionable and points at the full log', () => {
   it('quotes unusual check ids as data for the host shell', () => {
-    assert.equal(doctorCheckCommand('web app::test', 'win32'), "canary doctor --check 'web app::test'");
-    assert.equal(doctorCheckCommand("web'$name::test", 'win32'), "canary doctor --check 'web''$name::test'");
-    assert.equal(doctorCheckCommand("web'$name::test", 'linux'), "canary doctor --check 'web'\\''$name::test'");
-    assert.equal(doctorCheckCommand('test', 'win32', 'node "C:\\Program Files\\Canary\\main.js"'), 'node "C:\\Program Files\\Canary\\main.js" doctor --check test');
+    assert.equal(doctorCheckCommand('web app::test', 'win32'), "amabie doctor --check 'web app::test'");
+    assert.equal(doctorCheckCommand("web'$name::test", 'win32'), "amabie doctor --check 'web''$name::test'");
+    assert.equal(doctorCheckCommand("web'$name::test", 'linux'), "amabie doctor --check 'web'\\''$name::test'");
+    assert.equal(doctorCheckCommand('test', 'win32', 'node "C:\\Program Files\\Amabie\\main.js"'), 'node "C:\\Program Files\\Amabie\\main.js" doctor --check test');
   });
   it('names the check, the identity, the detail and the log path', () => {
     const message = buildFailurePayload({
       steps: [step({ stdout: 'Failures:\n  numbers.test.js :: total includes negative values\n    5 !== 0\n' })],
-      writeLog: () => 'C:\\ws\\.canary\\evidence\\2026-checkpoint\\tests.log',
+      writeLog: () => 'C:\\ws\\.amabie\\evidence\\2026-checkpoint\\tests.log',
     });
-    assert.match(message, /Canary verification failed: tests \(node run-tests\.js, exit 1\)/,
+    assert.match(message, /Amabie verification failed: tests \(node run-tests\.js, exit 1\)/,
       'the phrase the existing contract test asserts on must survive');
     assert.match(message, /total includes negative values/);
     assert.match(message, /5 !== 0/);
-    assert.match(message, /full output: C:\\ws\\\.canary/);
+    assert.match(message, /full output: C:\\ws\\\.amabie/);
   });
 
   it('stays far below the payload it replaced (4000 chars of raw output)', () => {
@@ -138,30 +138,30 @@ describe('the payload is compact, actionable and points at the full log', () => 
     } });
     assert.equal(logs.size, 2, 'same-kind checks must not overwrite one another');
     for (const id of ['backend::test', 'frontend::test']) {
-      assert.ok(message.includes(`canary doctor --check ${id}`), message);
+      assert.ok(message.includes(`amabie doctor --check ${id}`), message);
       assert.ok([...logs.values()].some((text) => text.includes(id)));
     }
   });
 
-  it('uses the hook installation path for repair commands instead of a global canary binary', () => {
-    const prefix = 'node "C:\\Program Files\\Canary\\main.js"';
+  it('uses the hook installation path for repair commands instead of a global amabie binary', () => {
+    const prefix = 'node "C:\\Program Files\\Amabie\\main.js"';
     const message = buildFailurePayload({
       steps: [step({ id: 'test', stderr: 'Error: assertion failed' })],
       doctorCommandPrefix: prefix,
-      writeLog: () => 'C:\\repo\\.canary\\evidence\\tests.log',
+      writeLog: () => 'C:\\repo\\.amabie\\evidence\\tests.log',
     });
     assert.ok(message.includes(`${prefix} doctor --check test`), message);
-    assert.ok(!message.includes('canary doctor --check test'), message);
+    assert.ok(!message.includes('amabie doctor --check test'), message);
   });
 
   it('does not recommend a PATH-resolved CLI when this installation path is unsafe for shells', () => {
     const message = buildFailurePayload({
       steps: [step({ id: 'test', stderr: 'Error: assertion failed' })],
       doctorCommandPrefix: null,
-      writeLog: () => '/repo/.canary/evidence/tests.log',
+      writeLog: () => '/repo/.amabie/evidence/tests.log',
     });
-    assert.match(message, /configured Canary MCP canary_doctor\(check\)/);
-    assert.doesNotMatch(message, /canary doctor/);
+    assert.match(message, /configured Amabie MCP amabie_doctor\(check\)/);
+    assert.doesNotMatch(message, /amabie doctor/);
   });
 
   it('never clips a log path or repair command to meet the payload limit', () => {
@@ -172,7 +172,7 @@ describe('the payload is compact, actionable and points at the full log', () => 
     const message = buildFailurePayload({ steps, writeLog: () => logPath });
     assert.ok(message.length <= MAX_TOTAL_CHARS, `${message.length} chars`);
     assert.ok(message.includes(`full output: ${logPath}`), 'an intact path must remain available');
-    assert.match(message, /canary doctor --check tests/);
+    assert.match(message, /amabie doctor --check tests/);
     assert.match(message, /additional failing checks: 2/i);
   });
 
@@ -180,7 +180,7 @@ describe('the payload is compact, actionable and points at the full log', () => 
     const message = buildFailurePayload({ steps: [step()], writeLog: () => '/tmp/' + 'x'.repeat(2000) });
     assert.ok(message.length <= MAX_TOTAL_CHARS);
     assert.match(message, /exceed the message limit/);
-    assert.match(message, /canary result --json/);
+    assert.match(message, /amabie result --json/);
     assert.doesNotMatch(message, /full output: \/tmp/);
   });
 });

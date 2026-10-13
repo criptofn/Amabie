@@ -14,11 +14,11 @@ const attempt = JSON.parse(fs.readFileSync(attemptFile, 'utf8'));
 const repo = fs.realpathSync.native(attempt.repo);
 const relative = path.relative(fs.realpathSync.native(os.tmpdir()), repo);
 assert.ok(!relative.startsWith('..') && !path.isAbsolute(relative));
-assert.match(relative.split(path.sep)[0], /^canary-improved-six-task-/);
+assert.match(relative.split(path.sep)[0], /^amabie-improved-six-task-/);
 assert.equal(path.basename(repo), 'plain'); assert.equal(attempt.label, 'R1');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 let env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|AUTH|CLAUDE|OPENAI|ANTHROPIC|CODEX)/i.test(key)));
-env.CANARY_TRUST_STORE = attempt.trustStore;
+env.AMABIE_TRUST_STORE = attempt.trustStore;
 env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1';
 env.PATH = [...attempt.toolchainDirectories, process.env.PATH ?? ''].filter(Boolean).join(path.delimiter);
 const sanitized = process.argv.includes('--sanitized');
@@ -45,8 +45,8 @@ if (workerTrace) {
   const exit = 'this.process.on("exit", this.onUnexpectedExit);';
   assert.equal(text.split(send).length, 2);
   assert.equal(text.split(exit).length, 2);
-  instrumented = text.replace(exit, `${exit}\nthis.process.on("exit", (code, signal) => console.error("CANARY_OPERATOR_WORKER_EXIT", JSON.stringify({pid:this.process.pid, code, signal, terminating:this.isTerminating})));`)
-    .replace(send, `if (!this.isTerminating) { if (!this.process.connected) console.error("CANARY_OPERATOR_WORKER_DISCONNECTED_SEND", JSON.stringify({pid:this.process.pid, exitCode:this.process.exitCode, signalCode:this.process.signalCode, connected:this.process.connected})); this.process.send(message); }`);
+  instrumented = text.replace(exit, `${exit}\nthis.process.on("exit", (code, signal) => console.error("AMABIE_OPERATOR_WORKER_EXIT", JSON.stringify({pid:this.process.pid, code, signal, terminating:this.isTerminating})));`)
+    .replace(send, `if (!this.isTerminating) { if (!this.process.connected) console.error("AMABIE_OPERATOR_WORKER_DISCONNECTED_SEND", JSON.stringify({pid:this.process.pid, exitCode:this.process.exitCode, signalCode:this.process.signalCode, connected:this.process.connected})); this.process.send(message); }`);
 } else {
 const start = text.indexOf(`'${title}'`), end = text.indexOf('    it.skipIf(NO_COVERAGE)', start);
 assert.ok(start >= 0 && end > start);
@@ -54,7 +54,7 @@ const block = text.slice(start, end);
 const assertion = "        expect(report.coverage.uncovered).toEqual([{ file: 'mod.py', line: 12 }]);";
 assert.equal(block.split(assertion).length, 2, 'pin the existing assertion; never remove or replace it');
 instrumented = text.slice(0, start) + block.replace(assertion,
-  `        console.log('CANARY_OPERATOR_BASELINE_REPORT', JSON.stringify(report));\n${assertion}`) + text.slice(end);
+  `        console.log('AMABIE_OPERATOR_BASELINE_REPORT', JSON.stringify(report));\n${assertion}`) + text.slice(end);
 }
 fs.mkdirSync(out);
 fs.copyFileSync(import.meta.filename, path.join(out, 'instrument.mjs'), fs.constants.COPYFILE_EXCL);
@@ -67,7 +67,7 @@ const metadata = { repo, baseline: attempt.expectedHead, full, workerTrace, sani
   originalTestSha256: hash(original), instrumentedTestSha256: hash(instrumented),
   instrumentSha256: hash(fs.readFileSync(import.meta.filename)), attemptSha256: hash(fs.readFileSync(attemptFile)),
   toolchainDirectories: attempt.toolchainDirectories, environmentKeyNames: Object.keys(env).sort(),
-  startedAt: new Date().toISOString(), scope: 'external project diagnostic, not a Canary verdict or agent session' };
+  startedAt: new Date().toISOString(), scope: 'external project diagnostic, not a Amabie verdict or agent session' };
 let result, failure = null;
 try {
   fs.writeFileSync(testFile, instrumented);

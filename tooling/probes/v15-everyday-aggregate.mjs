@@ -57,14 +57,14 @@ const records = [];
 for (const f of fs.readdirSync(dir).filter((x) => /^v15-everyday.*\.json$/.test(x))) {
   let j;
   try { j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
-  if (j.schema !== 'canary-benchmark-trial/2') continue;
+  if (!['canary-benchmark-trial/2', 'amabie-benchmark-trial/2'].includes(j.schema)) continue;
   const run = f.replace(new RegExp(`-${j.task}-${j.arm}-\\d+\\.json$`), '');
   const judged = cellEligibility(j);
   records.push({ file: f, run, task: j.task, arm: j.arm, mcp: j.agent?.mcpToolsAdvertised, instrument: instrumentOf(j), ...judged });
 }
 
 check('per-trial records were found', () => {
-  assert(records.length > 0, 'no canary-benchmark-trial/2 records matched v15-everyday*.json');
+  assert(records.length > 0, 'no amabie-benchmark-trial/2 records matched v15-everyday*.json');
   console.log(`     ${records.length} per-trial records across runs: ${[...new Set(records.map((r) => r.run))].sort().join(', ')}`);
 });
 
@@ -75,9 +75,9 @@ check('the standing MCP payload was inside the eligible guarded cells', () => {
   const p = withField.filter((r) => r.arm === 'plain');
   const on = g.filter((r) => r.mcp === true).length;
   const plainOn = p.filter((r) => r.mcp === true).length;
-  assert(g.length > 0 && on === g.length, `only ${on}/${g.length} guarded trials advertised mcp__canary`);
-  assert(plainOn === 0, `${plainOn} plain trials advertised mcp__canary`);
-  console.log(`     ${on}/${g.length} guarded advertised mcp__canary; ${plainOn}/${p.length} plain did`);
+  assert(g.length > 0 && on === g.length, `only ${on}/${g.length} guarded trials advertised mcp__amabie`);
+  assert(plainOn === 0, `${plainOn} plain trials advertised mcp__amabie`);
+  console.log(`     ${on}/${g.length} guarded advertised mcp__amabie; ${plainOn}/${p.length} plain did`);
 });
 
 // ── per-run completeness: one bad cell condemns the RUN, not just the cell ────────

@@ -1,5 +1,5 @@
 /**
- * Experiment spec — the declarative input to Canary (docs/PLAN.md §4).
+ * Experiment spec — the declarative input to Amabie (docs/PLAN.md §4).
  * Validation is strict and total: a spec that validates cannot crash the
  * planner downstream.
  */

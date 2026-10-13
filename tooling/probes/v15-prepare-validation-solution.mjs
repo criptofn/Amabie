@@ -64,7 +64,7 @@ const sourceCommitByLabel = {
 };
 const sourcePaths = taskDiffByLabel[label]
   ? [path.join(evidenceRoot, 'runs', taskDiffByLabel[label])]
-  : [path.join('C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch', label === 'S1' ? 'schniedelsmp' : 'hermes-agent')];
+  : [path.join('C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch', label === 'S1' ? 'schniedelsmp' : 'hermes-agent')];
 const inputHashes = [];
 let operation;
 
@@ -213,10 +213,10 @@ fs.writeFileSync(path.join(outDir, 'candidate.diff'), diff.stdout, { flag: 'wx' 
 fs.writeFileSync(path.join(outDir, 'git-before.json'), `${JSON.stringify(before, null, 2)}\n`, { flag: 'wx' });
 fs.writeFileSync(path.join(outDir, 'git-after.json'), `${JSON.stringify(after, null, 2)}\n`, { flag: 'wx' });
 const attempt = {
-  schema: 'canary-release-validation-solution/1', label,
+  schema: 'amabie-release-validation-solution/1', label,
   probe: 'tooling/probes/v15-prepare-validation-solution.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
-  canaryPath: cli, canaryBinarySha256: sha256(fs.readFileSync(cli)),
+  amabiePath: cli, amabieBinarySha256: sha256(fs.readFileSync(cli)),
   publishedArtifactSha256: artifactSha256, taskPath: taskFile,
   taskSha256: sha256(fs.readFileSync(taskFile)), baselineHead,
   operation, candidateSourceSha256,

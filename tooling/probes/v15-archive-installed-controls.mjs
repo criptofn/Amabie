@@ -24,7 +24,7 @@ for (const arm of ['before', 'after']) {
   const log = fs.readFileSync(path.join(root, `toolchain-${arm}.log`), 'utf8');
   assert.ok(log.includes('SEALED-TOOLCHAIN PROBE PASSED')); assert.ok(!/^FAIL /m.test(log));
   const source = /^artifacts: (.+)$/m.exec(log)?.[1].trim(); assert.ok(source && path.isAbsolute(source));
-  assert.match(path.basename(source), /^canary-v15-sealed-toolchain-[A-Za-z0-9]+$/);
+  assert.match(path.basename(source), /^amabie-v15-sealed-toolchain-[A-Za-z0-9]+$/);
   assert.equal(fs.realpathSync.native(source), path.join(fs.realpathSync.native(os.tmpdir()), path.basename(source)));
   const target = path.join(root, `toolchain-${arm}-artifacts`);
   assert.ok(!fs.existsSync(target));

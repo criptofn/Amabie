@@ -7,14 +7,14 @@ import { createRequire } from 'node:module';
 import { after, test } from 'node:test';
 import { candidateDiffSignals, collectDiffSignals, discriminationObligation, planDiscrimination, readConfig } from '../src/onboarding.js';
 
-const packagedCli = process.env.CANARY_TEST_CLI;
+const packagedCli = process.env.AMABIE_TEST_CLI;
 const CLI = packagedCli ?? path.resolve(import.meta.dirname, '../src/main.js');
 if (packagedCli !== undefined) {
-  assert.ok(path.isAbsolute(CLI), 'CANARY_TEST_CLI must be absolute; no development fallback');
-  assert.ok(fs.statSync(CLI, { throwIfNoEntry: false })?.isFile(), 'CANARY_TEST_CLI must name an existing file');
+  assert.ok(path.isAbsolute(CLI), 'AMABIE_TEST_CLI must be absolute; no development fallback');
+  assert.ok(fs.statSync(CLI, { throwIfNoEntry: false })?.isFile(), 'AMABIE_TEST_CLI must name an existing file');
 }
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-discrimination-completion-'));
-process.env.CANARY_TRUST_STORE = path.join(TMP, 'store');
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-discrimination-completion-'));
+process.env.AMABIE_TRUST_STORE = path.join(TMP, 'store');
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const SOURCE = "module.exports = n => 'hello ' + n;\n";
 const FIXED = "module.exports = n => 'hello ' + n.trimStart();\n";
@@ -31,7 +31,7 @@ function pythonRuns(): boolean {
   const r = spawnSync(command, ['--version'], { encoding: 'utf8', windowsHide: true, timeout: 10_000 });
   return r.status === 0;
 }
-function canary(root: string, ...args: string[]) {
+function amabie(root: string, ...args: string[]) {
   const r = spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 120_000 });
   return { code: r.status, out: r.stdout + r.stderr };
 }
@@ -41,15 +41,15 @@ test('a stale pre-build baseline failure cannot prove an unrelated change', () =
   const root = path.join(TMP, 'baseline-build-freshness');
   for (const dir of ['.claude', 'dist']) fs.mkdirSync(path.join(root, dir), { recursive: true });
   const program = path.resolve(import.meta.dirname, '../../../../tooling/test-support/fixtures/build-dependent-check.cjs');
-  fs.writeFileSync(path.join(root, 'canary.project.json'), JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [
+  fs.writeFileSync(path.join(root, 'amabie.project.json'), JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [
     { name: 'tests', kind: 'tests', argv: [process.execPath, program, 'test'] },
     { name: 'build', kind: 'build', argv: [process.execPath, program, 'build'] },
   ] }] }));
   fs.writeFileSync(path.join(root, 'implementation.json'), 'true\n');
   fs.writeFileSync(path.join(root, 'dist/implementation.json'), 'false\n');
   fs.writeFileSync(path.join(root, 'app.cjs'), 'module.exports = 1;\n');
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Canary Regression'); git(root, 'config', 'user.email', 'regression@canary.local'); commit(root);
-  assert.equal(canary(root, 'setup', '--yes').code, 2, 'initial sealed failure is retained');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
+  assert.equal(amabie(root, 'setup', '--yes').code, 2, 'initial sealed failure is retained');
   const cfg = readConfig(root);
   assert.ok(cfg && cfg !== 'corrupt');
   fs.writeFileSync(path.join(root, 'app.cjs'), 'module.exports = 2;\n');
@@ -79,9 +79,9 @@ function fixture(name: string): string {
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
   write(root, 'package.json', JSON.stringify({ name, private: true, scripts: { test: 'node --test tests/greet.test.cjs' } }));
   write(root, 'greet.cjs', SOURCE); write(root, 'tests/greet.test.cjs', TEST);
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Canary Regression'); git(root, 'config', 'user.email', 'regression@canary.local'); commit(root);
-  assert.equal(canary(root, 'setup', '--yes').code, 0);
-  commit(root); assert.equal(canary(root, 'setup', '--yes').code, 0);
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
+  assert.equal(amabie(root, 'setup', '--yes').code, 0);
+  commit(root); assert.equal(amabie(root, 'setup', '--yes').code, 0);
   return root;
 }
 function mixedSummaryFixture(name: string): string {
@@ -101,10 +101,10 @@ function mixedSummaryFixture(name: string): string {
     'process.exitCode = result.status ?? 1;',
     '',
   ].join('\n'));
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Canary Regression'); git(root, 'config', 'user.email', 'regression@canary.local'); commit(root);
-  const setup = canary(root, 'setup', '--yes');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
+  const setup = amabie(root, 'setup', '--yes');
   assert.equal(setup.code, 0, setup.out);
-  commit(root); assert.equal(canary(root, 'setup', '--yes').code, 0);
+  commit(root); assert.equal(amabie(root, 'setup', '--yes').code, 0);
   return root;
 }
 function jestSummaryFixture(name: string): string {
@@ -116,10 +116,10 @@ function jestSummaryFixture(name: string): string {
   write(root, 'greet.cjs', SOURCE);
   write(root, 'tests/greet.test.cjs', "console.log('Tests: 1 passed, 1 total');\n");
   write(root, 'scripts/run-tests.cjs', "require('../tests/greet.test.cjs');\n");
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Canary Regression'); git(root, 'config', 'user.email', 'regression@canary.local'); commit(root);
-  const setup = canary(root, 'setup', '--yes');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
+  const setup = amabie(root, 'setup', '--yes');
   assert.equal(setup.code, 0, setup.out);
-  commit(root); assert.equal(canary(root, 'setup', '--yes').code, 0);
+  commit(root); assert.equal(amabie(root, 'setup', '--yes').code, 0);
   return root;
 }
 function pythonFixture(name: string): string {
@@ -130,15 +130,15 @@ function pythonFixture(name: string): string {
   write(root, 'app.py', 'def value():\n    return 1\n');
   write(root, 'tests/__init__.py', '');
   write(root, 'tests/test_app.py', 'import unittest\nfrom app import value\n\nclass AppTests(unittest.TestCase):\n    def test_value(self):\n        self.assertEqual(value(), 1)\n');
-  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Canary Regression'); git(root, 'config', 'user.email', 'regression@canary.local'); commit(root);
-  const setup = canary(root, 'setup', '--yes');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
+  const setup = amabie(root, 'setup', '--yes');
   assert.equal(setup.code, 0, setup.out);
   return root;
 }
 function work(root: string): string {
-  const r = canary(root, 'work', 'fix', 'fix greeting whitespace', '--kind', 'bugfix');
+  const r = amabie(root, 'work', 'fix', 'fix greeting whitespace', '--kind', 'bugfix');
   assert.equal(r.code, 0, r.out);
-  return (JSON.parse(fs.readFileSync(path.join(root, '.canary/candidates/fix.json'), 'utf8')) as { root: string }).root;
+  return (JSON.parse(fs.readFileSync(path.join(root, '.amabie/candidates/fix.json'), 'utf8')) as { root: string }).root;
 }
 function hook(root: string, active = false) {
   const r = spawnSync(process.execPath, [CLI, 'checkpoint'], {
@@ -151,13 +151,13 @@ function hook(root: string, active = false) {
 function assertBlocked(root: string, reason: RegExp) {
   const before = git(root, 'rev-parse', 'HEAD');
   for (const args of [['isolate', '--verify', 'fix'], ['isolate', '--promote', 'fix'], ['finish', 'fix']]) {
-    const r = canary(root, ...args);
+    const r = amabie(root, ...args);
     assert.equal(r.code, 2, r.out); assert.match(r.out, /NOT PROVEN/); assert.match(r.out, reason);
     assert.equal(git(root, 'rev-parse', 'HEAD'), before, 'unproven candidate cannot move the base');
   }
 }
 function assertDoctorAndHookBlocked(root: string, reason: RegExp) {
-  const d = canary(root, 'doctor'); assert.equal(d.code, 2, d.out); assert.match(d.out, /NOT PROVEN/); assert.match(d.out, reason);
+  const d = amabie(root, 'doctor'); assert.equal(d.code, 2, d.out); assert.match(d.out, /NOT PROVEN/); assert.match(d.out, reason);
   const h = hook(root); assert.equal(h.decision, 'block'); assert.match(h.reason ?? '', reason);
   // The existing one-repair hook policy may stop, but must still disclose NOT PROVEN.
   assert.match(hook(root, true).systemMessage ?? '', /NOT PROVEN/);
@@ -166,7 +166,7 @@ function assertDoctorAndHookBlocked(root: string, reason: RegExp) {
 test('a normalized-equal source rewrite cannot hide a committed covered fix', () => {
   const root = fixture('normalized-source-rewrite');
   git(root, 'config', 'core.autocrlf', 'true');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', '// production greeting\n' + FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   commit(root);
@@ -180,7 +180,7 @@ test('a normalized-equal source rewrite cannot hide a committed covered fix', ()
   write(root, 'greet.cjs', checkout.replace(/\r\n$/, '\n'));
   assert.equal(git(root, 'diff', '--name-only', 'HEAD', '--', 'greet.cjs'), '');
   assert.ok(candidateDiffSignals(root, git(root, 'rev-parse', 'HEAD')).touched.includes('greet.cjs'), 'fixture must retain the status-only source change');
-  const covered = canary(root, 'doctor', '--json');
+  const covered = amabie(root, 'doctor', '--json');
   assert.equal(covered.code, 0, covered.out);
   assert.match(covered.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
   const completion = hook(root);
@@ -196,46 +196,46 @@ test('a normalized-equal source rewrite cannot hide a committed covered fix', ()
 
 test('a committed earlier regression cannot prove a later uncovered change', () => {
   const root = fixture('consecutive-changes');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
   const first = discriminationObligation(root, cfg);
   assert.equal(first?.status, 'met', first?.note);
-  const firstDoctor = canary(root, 'doctor', '--json');
+  const firstDoctor = amabie(root, 'doctor', '--json');
   assert.equal(firstDoctor.code, 0, firstDoctor.out);
   commit(root);
-  assert.equal(canary(root, 'task', 'fix trailing whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix trailing whitespace', '--kind', 'bugfix').code, 0);
   // This second implementation still passes the earlier leading-space assertion,
   // but does not implement the next task's trailing-space requirement.
   write(root, 'greet.cjs', "module.exports = n => 'hello ' + n.replace(/^\\s+/, '');\n");
   const greet = createRequire(import.meta.url)(path.join(root, 'greet.cjs')) as (n: string) => string;
   assert.notEqual(greet('Ada  '), 'hello Ada', 'the second requested behavior is observably absent');
-  const secondDoctor = canary(root, 'doctor', '--json');
+  const secondDoctor = amabie(root, 'doctor', '--json');
   assert.equal(secondDoctor.code, 2, secondDoctor.out);
   const secondEnvelope = JSON.parse(secondDoctor.out.split(/\r?\n/)[0]!) as { next: string };
   assert.match(secondEnvelope.next, /regression assertion/);
-  assert.match(secondEnvelope.next, /Canary compares with the starting commit automatically; stay on this branch/);
+  assert.match(secondEnvelope.next, /Amabie compares with the starting commit automatically; stay on this branch/);
   assert.match(secondEnvelope.next, /node --test tests\/greet\.test\.cjs/);
-  assert.doesNotMatch(secondEnvelope.next, /re-run canary setup/);
+  assert.doesNotMatch(secondEnvelope.next, /re-run amabie setup/);
   const second = discriminationObligation(root, cfg);
   assert.equal(second?.status, 'unproven', second?.note);
   assert.match(second?.note ?? '', /latest change's preceding commit/);
   commit(root);
-  const committed = canary(root, 'doctor', '--json');
+  const committed = amabie(root, 'doctor', '--json');
   assert.equal(committed.code, 2, committed.out);
   write(root, 'README.md', 'Documentation after the uncovered implementation.\n');
   commit(root);
   assertDoctorAndHookBlocked(root, /base commit too/);
   write(root, 'greet.cjs', "module.exports = n => 'hello ' + n.trim();\n");
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION + "test('trailing whitespace', () => assert.equal(greet('Ada  '), 'hello Ada'));\n");
-  const repaired = canary(root, 'doctor', '--json');
+  const repaired = amabie(root, 'doctor', '--json');
   assert.equal(repaired.code, 0, repaired.out);
   assert.match(repaired.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
   commit(root);
   write(root, 'README.md', 'Documentation after the covered repair.\n');
   commit(root);
-  const committedRepair = canary(root, 'doctor', '--json');
+  const committedRepair = amabie(root, 'doctor', '--json');
   assert.equal(committedRepair.code, 0, committedRepair.out);
   assert.match(committedRepair.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
 });
@@ -261,7 +261,7 @@ test('an imported dash-test check is compared and retains worker provenance, whi
 test('a failed setup links its completed output while the check and checkpoint remain failed', () => {
   const root = fixture('setup-repair-output');
   write(root, 'tests/greet.test.cjs', TEST + "console.log('SETUP_REPAIR_LOG_MARKER'); test('setup failure', () => assert.equal(1, 2));\n");
-  const failed = canary(root, 'setup', '--yes', '--json');
+  const failed = amabie(root, 'setup', '--yes', '--json');
   assert.equal(failed.code, 2, failed.out);
   const packet = JSON.parse(failed.out.split(/\r?\n/)[0]!) as { status: string; next: string };
   assert.equal(packet.status, 'NEEDS ATTENTION');
@@ -273,7 +273,7 @@ test('a failed setup links its completed output while the check and checkpoint r
   const check = bundle.steps.find((step: { kind: string }) => step.kind === 'tests');
   assert.ok(check && check.exitCode !== 0 && check.ok === false);
   assert.match(fs.readFileSync(path.join(output, check.stdout.file), 'utf8'), /SETUP_REPAIR_LOG_MARKER/);
-  const checkpoint = JSON.parse(fs.readFileSync(path.join(root, '.canary/last-checkpoint.json'), 'utf8'));
+  const checkpoint = JSON.parse(fs.readFileSync(path.join(root, '.amabie/last-checkpoint.json'), 'utf8'));
   assert.equal(checkpoint.status, 'fail');
   assert.equal(checkpoint.source, 'setup');
   assert.equal(checkpoint.hookResponse, 'not-applicable');
@@ -282,9 +282,9 @@ test('a failed setup links its completed output while the check and checkpoint r
 
 test('a nondiscriminating check links its actual comparison output without changing the verdict or completion history', () => {
   const root = fixture('comparison-repair-output');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', FIXED);
-  const blocked = canary(root, 'doctor', '--json');
+  const blocked = amabie(root, 'doctor', '--json');
   assert.equal(blocked.code, 2, blocked.out);
   const packet = JSON.parse(blocked.out.split(/\r?\n/)[0]!) as { problems: string[] };
   const output = packet.problems.find((problem) => problem.includes('baseline output: '))?.match(/baseline output: (.+)$/)?.[1];
@@ -299,10 +299,10 @@ test('a nondiscriminating check links its actual comparison output without chang
   assert.equal(fs.existsSync(bundle.cwd), false, 'output survives removal of the comparison tree');
 
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
-  const covered = canary(root, 'doctor', '--json');
+  const covered = amabie(root, 'doctor', '--json');
   assert.equal(covered.code, 0, covered.out);
   assert.match(covered.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
-  const history = canary(root, 'result', '--json');
+  const history = amabie(root, 'result', '--json');
   const historyPacket = JSON.parse(history.out.split(/\r?\n/)[0]!) as { lastVerification: { status: string; source: string } };
   assert.equal(historyPacket.lastVerification.status, 'pass');
   assert.equal(historyPacket.lastVerification.source, 'doctor', 'a baseline failure is not a failed current verification');
@@ -369,7 +369,7 @@ test('BLOCKER 2: helper missing only from baseline cannot improve any completion
 test('candidate comparison uses isolation base even when setup baseline would discriminate', () => {
   const root = fixture('frozen-base');
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION); commit(root);
-  assert.equal(canary(root, 'setup', '--yes').code, 2, 'setup baseline is red');
+  assert.equal(amabie(root, 'setup', '--yes').code, 2, 'setup baseline is red');
   write(root, 'greet.cjs', FIXED); commit(root);
   const candidate = work(root);
   write(candidate, 'greet.cjs', FIXED + '// no behavior change\n'); write(candidate, 'tests/greet.test.cjs', TEST + REGRESSION + '// comment\n'); commit(candidate);
@@ -380,14 +380,14 @@ test('a discriminating check allows the same candidate to finish and promote', (
   const root = fixture('positive'); const candidate = work(root);
   write(candidate, 'greet.cjs', FIXED); write(candidate, 'tests/greet.test.cjs', TEST + REGRESSION); commit(candidate);
   const expected = git(candidate, 'rev-parse', 'HEAD');
-  const r = canary(root, 'finish', 'fix'); assert.equal(r.code, 0, r.out); assert.equal(git(root, 'rev-parse', 'HEAD'), expected);
+  const r = amabie(root, 'finish', 'fix'); assert.equal(r.code, 0, r.out); assert.equal(git(root, 'rev-parse', 'HEAD'), expected);
   assert.match(r.out, /full evidence: .*per-step logs and verification\.json/);
-  assert.equal(canary(root, 'doctor').code, 0); assert.notEqual(hook(root).decision, 'block');
+  assert.equal(amabie(root, 'doctor').code, 0); assert.notEqual(hook(root).decision, 'block');
 });
 
 test('completion refuses to prove a change when the candidate skips an extra test', () => {
   const root = fixture('pending-count-increase');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + SKIPPED_REGRESSION);
   const completion = hook(root);
@@ -395,21 +395,21 @@ test('completion refuses to prove a change when the candidate skips an extra tes
   const completionText = completion.systemMessage ?? completion.reason ?? '';
   assert.match(completionText, /more skipped\/pending cases.*test check 1: 0→1/);
   assert.match(completionText, /did not execute a comparable set of checks/);
-  const checkpoint = JSON.parse(fs.readFileSync(path.join(root, '.canary/last-checkpoint.json'), 'utf8')) as {
+  const checkpoint = JSON.parse(fs.readFileSync(path.join(root, '.amabie/last-checkpoint.json'), 'utf8')) as {
     status: string; evidencePath?: string; proof: { obligations: Array<{ id: string; caveat?: string }> };
   };
   assert.equal(checkpoint.status, 'unproven', 'extra skipped tests cannot support a passing proof');
   assert.ok(checkpoint.evidencePath);
   assert.ok(completionText.includes(`Full test evidence: ${checkpoint.evidencePath}`));
   assert.match(checkpoint.proof.obligations.find((x) => x.id === 'regression-evidence')?.caveat ?? '', /0→1/);
-  const doctor = canary(root, 'doctor', '--json');
+  const doctor = amabie(root, 'doctor', '--json');
   assert.equal(doctor.code, 2, doctor.out);
-  const doctorCheckpoint = JSON.parse(fs.readFileSync(path.join(root, '.canary/last-checkpoint.json'), 'utf8')) as { evidencePath?: string };
+  const doctorCheckpoint = JSON.parse(fs.readFileSync(path.join(root, '.amabie/last-checkpoint.json'), 'utf8')) as { evidencePath?: string };
   assert.ok(doctorCheckpoint.evidencePath);
   assert.ok(doctor.out.includes(`full evidence: ${doctorCheckpoint.evidencePath}`));
 
   const control = fixture('pending-count-unchanged');
-  assert.equal(canary(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(control, 'greet.cjs', FIXED);
   write(control, 'tests/greet.test.cjs', TEST + REGRESSION);
   const normal = hook(control);
@@ -421,7 +421,7 @@ test('completion refuses to prove a change when the candidate skips an extra tes
   write(candidate, 'greet.cjs', FIXED);
   write(candidate, 'tests/greet.test.cjs', TEST + SKIPPED_REGRESSION);
   commit(candidate);
-  const finish = canary(candidateRoot, 'finish', 'fix');
+  const finish = amabie(candidateRoot, 'finish', 'fix');
   assert.equal(finish.code, 2, finish.out);
   assert.match(finish.out, /CANDIDATE NOT PROVEN/);
   assert.match(finish.out, /more skipped\/pending cases.*test check 1: 0→1/);
@@ -432,7 +432,7 @@ test('completion refuses to prove a change when the candidate skips an extra tes
 
 test('mixed runner summaries still block when one runner reports an extra skipped test', () => {
   const root = mixedSummaryFixture('mixed-pending-summaries');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + SKIPPED_REGRESSION);
   const completion = hook(root);
@@ -442,7 +442,7 @@ test('mixed runner summaries still block when one runner reports an extra skippe
   assert.match(completionText, /did not execute a comparable set of checks/);
 
   const control = mixedSummaryFixture('mixed-pending-summaries-control');
-  assert.equal(canary(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(control, 'greet.cjs', FIXED);
   write(control, 'tests/greet.test.cjs', TEST + REGRESSION);
   const normal = hook(control);
@@ -452,7 +452,7 @@ test('mixed runner summaries still block when one runner reports an extra skippe
 
 test('Jest-style skipped counts keep a successful completion unproven', () => {
   const root = jestSummaryFixture('jest-pending-summary');
-  assert.equal(canary(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
+  assert.equal(amabie(root, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', [
     "const greet = require('../greet.cjs');",
@@ -482,13 +482,13 @@ test('a worker check crashing on absent baseline data cannot certify a change', 
 
   // Wrapping the same crash in an assertion does not establish input parity.
   write(root, 'tests/greet.test.cjs', TEST + "require('./check-input.cjs').missingFixtureWrapped();\n");
-  const stillMissing = canary(root, 'doctor');
+  const stillMissing = amabie(root, 'doctor');
   assert.equal(stillMissing.code, 2, stillMissing.out);
   assert.match(stillMissing.out, /same inputs used for the baseline comparison/);
 
   // A real assertion over defined inputs still proves the fix, with worker provenance.
   write(root, 'tests/greet.test.cjs', TEST + "require('./check-input.cjs').assertExpected();\n");
-  const repaired = canary(root, 'doctor');
+  const repaired = amabie(root, 'doctor');
   assert.equal(repaired.code, 0, repaired.out);
   assert.match(repaired.out, /NOT independent authority/);
   assert.notEqual(hook(root).decision, 'block');
@@ -499,10 +499,10 @@ test('a genuine old implementation crash remains discriminating when the input c
   const old = path.resolve(import.meta.dirname, '../../../../tooling/test-support/fixtures/f-greet-runtime-base.cjs');
   fs.copyFileSync(old, path.join(root, 'greet.cjs'));
   commit(root);
-  assert.equal(canary(root, 'setup', '--yes').code, 0);
+  assert.equal(amabie(root, 'setup', '--yes').code, 0);
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
-  const result = canary(root, 'doctor');
+  const result = amabie(root, 'doctor');
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /NOT independent authority/);
 });
@@ -537,9 +537,9 @@ test('argv-based projects get the exact sealed test command in regression guidan
   assert.ok(result.reason?.includes(`The plan's test command is ${JSON.stringify(step.argv)} (entry ${JSON.stringify(step.script)})`), result.reason);
   assert.match(result.reason ?? '', /a new test file counts only if this command runs it/);
 
-  const mutated = JSON.parse(fs.readFileSync(path.join(root, '.canary/canary.local.json'), 'utf8')) as typeof cfg;
+  const mutated = JSON.parse(fs.readFileSync(path.join(root, '.amabie/amabie.local.json'), 'utf8')) as typeof cfg;
   mutated.plan[0]!.argv = ['python', '-c', 'print("unsealed")'];
-  write(root, '.canary/canary.local.json', JSON.stringify(mutated, null, 2));
+  write(root, '.amabie/amabie.local.json', JSON.stringify(mutated, null, 2));
   const drift = hook(root);
   assert.match(drift.reason ?? '', /verification authority changed/);
   assert.doesNotMatch(drift.reason ?? '', /print\("unsealed"\)/);
@@ -550,7 +550,7 @@ test('doctor visibly labels worker-authored regression evidence as non-independe
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
 
-  const human = canary(root, 'doctor');
+  const human = amabie(root, 'doctor');
   assert.equal(human.code, 0, human.out);
   assert.match(human.out, /READY/);
   assert.match(human.out, /NOT independent authority/);
@@ -569,7 +569,7 @@ test('doctor visibly labels worker-authored regression evidence as non-independe
   assert.match(json.stderr, /NOT independent authority/);
 
   assert.notEqual(hook(root).decision, 'block');
-  const stored = JSON.parse(fs.readFileSync(path.join(root, '.canary/last-checkpoint.json'), 'utf8'));
+  const stored = JSON.parse(fs.readFileSync(path.join(root, '.amabie/last-checkpoint.json'), 'utf8'));
   assert.deepEqual(stored.proof, envelope.proof);
   const history = spawnSync(process.execPath, [CLI, 'result', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true });
   const recorded = JSON.parse(history.stdout).lastVerification;
@@ -581,7 +581,7 @@ test('JSON proof information does not upgrade an unbound task requirement to REA
   const root = fixture('proof-unbound-requirement');
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
-  assert.equal(canary(root, 'task', 'fix greeting', '--requirement', 'Preserve the requested whitespace contract').code, 0);
+  assert.equal(amabie(root, 'task', 'fix greeting', '--requirement', 'Preserve the requested whitespace contract').code, 0);
   const result = spawnSync(process.execPath, [CLI, 'doctor', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 120_000 });
   assert.equal(result.status, 2, result.stderr);
   const envelope = JSON.parse(result.stdout);
@@ -589,7 +589,7 @@ test('JSON proof information does not upgrade an unbound task requirement to REA
   assert.equal(envelope.proof.registeredRequirements, 1);
   assert.match(envelope.next, /bind the requirement/);
   assert.ok(envelope.proof.obligations.some((ob: { status: string }) => ob.status === 'unproven'));
-  const checkpointPath = path.join(root, '.canary/last-checkpoint.json');
+  const checkpointPath = path.join(root, '.amabie/last-checkpoint.json');
   const forged = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
   forged.proof = { registeredRequirements: 0, obligations: [] };
   fs.writeFileSync(checkpointPath, JSON.stringify(forged));
@@ -603,7 +603,7 @@ test('historical proof retains the supported maximum requirement set and rejects
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   const requirements = Array.from({ length: 64 }, (_, i) => `Keep runtime below ${i + 1} ms`);
-  assert.equal(canary(root, 'task', 'fix greeting', ...requirements.flatMap((text) => ['--requirement', text])).code, 0);
+  assert.equal(amabie(root, 'task', 'fix greeting', ...requirements.flatMap((text) => ['--requirement', text])).code, 0);
   const doctor = spawnSync(process.execPath, [CLI, 'doctor', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 120_000 });
   assert.equal(doctor.status, 2, doctor.stderr);
   const proof = JSON.parse(doctor.stdout).proof;
@@ -619,7 +619,7 @@ test('historical proof retains the supported maximum requirement set and rejects
   assert.equal(historical.status, 'CONNECTED');
   assert.equal(historical.lastVerification.historical, true);
   assert.deepEqual(historical.lastVerification.proof, proof);
-  const checkpointPath = path.join(root, '.canary/last-checkpoint.json');
+  const checkpointPath = path.join(root, '.amabie/last-checkpoint.json');
   const malformed = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
   malformed.proof.obligations[0].status = 'invented-pass';
   fs.writeFileSync(checkpointPath, JSON.stringify(malformed));
@@ -634,9 +634,9 @@ test('historical proof retains the supported maximum requirement set and rejects
 
 test('no change and documentation-only changes retain their comparison exemptions', () => {
   const root = fixture('no-change');
-  assert.equal(canary(root, 'doctor').code, 0);
+  assert.equal(amabie(root, 'doctor').code, 0);
   write(root, 'README.md', 'Documentation only.\n');
-  assert.equal(canary(root, 'doctor').code, 0); assert.notEqual(hook(root).decision, 'block');
+  assert.equal(amabie(root, 'doctor').code, 0); assert.notEqual(hook(root).decision, 'block');
 });
 
 test('unavailable base, materialization, and execution remain objective UNPROVEN', (t) => {

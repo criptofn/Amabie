@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
-import { verifyArtifacts, assertProof, proofVerdict, environmentAttestationIssues, actualHostFingerprint, type ProofExpectation } from '../src/prove.js';
-import { sha256hex } from '@canary-rn/hashing';
-import type { EvidenceBundle, RoundEvidence } from '@canary-rn/evidence-schema';
+import { verifyArtifacts, assertProof, proofVerdict, environmentAttestationIssues, actualHostFingerprint, findLatestEvidencePath, type ProofExpectation } from '../src/prove.js';
+import { sha256hex } from '@amabie/hashing';
+import type { EvidenceBundle, RoundEvidence } from '@amabie/evidence-schema';
 
 /** Real files on disk, real hashes — no mocks (audit F3/F4 spirit). */
 function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void } {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-prove-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-prove-'));
   const write = (name: string, content: string): string => {
     fs.writeFileSync(path.join(dir, name), content, 'utf8');
     return sha256hex(content);
@@ -51,6 +51,18 @@ function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void }
 }
 
 describe('verifyArtifacts — audit F4 (proof must rehash the real artifacts)', () => {
+  it('finds evidence pointers left under the legacy Canary run directory', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-legacy-runs-'));
+    try {
+      const evidence = path.join(root, 'evidence.json');
+      fs.writeFileSync(evidence, '{}');
+      const legacyRuns = path.join(root, '.canary-runs');
+      fs.mkdirSync(legacyRuns);
+      fs.writeFileSync(path.join(legacyRuns, 'latest-old.json'), JSON.stringify({ evidence }));
+      assert.deepEqual(findLatestEvidencePath(root), { experimentId: 'old', evidencePath: evidence });
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+
   it('accepts a bundle whose every recorded hash matches the file on disk', () => {
     const { dir, bundle, cleanup } = harness();
     try {
@@ -112,7 +124,7 @@ describe('verifyArtifacts — audit F4 (proof must rehash the real artifacts)', 
 describe('verifyArtifacts — audit B3 (path confinement + ownership)', () => {
   // Independent harness so each case controls file bytes + claimed paths.
   function art(): { dir: string; outside: string; cleanup: () => void } {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-b3-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-b3-'));
     const dir = path.join(tmp, 'artifacts');
     fs.mkdirSync(dir, { recursive: true });
     const outside = path.join(tmp, 'external');
@@ -249,7 +261,7 @@ describe('verifyArtifacts — audit B3 (path confinement + ownership)', () => {
 
 function canSymlink(): boolean {
   try {
-    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-sym-'));
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-sym-'));
     fs.writeFileSync(path.join(t, 'a'), 'x');
     fs.symlinkSync(path.join(t, 'a'), path.join(t, 'b'));
     fs.rmSync(t, { recursive: true, force: true });
@@ -534,7 +546,7 @@ describe('round-3 B4-D — exact failing-identity set equality (proof vs candida
 describe('post-sol secondary — host sampling is immune to the verifier process environment', () => {
   it('a poisoned NODE_OPTIONS in the verifying process does NOT crash or steer the fingerprint', () => {
     const saved = process.env['NODE_OPTIONS'];
-    process.env['NODE_OPTIONS'] = '--invalid-option-canary-probe';
+    process.env['NODE_OPTIONS'] = '--invalid-option-amabie-probe';
     try {
       const fp = actualHostFingerprint();
       assert.match(fp.npmVersion, /^\d+\.\d+\.\d+/, 'must still sample a real npm version');

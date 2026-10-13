@@ -92,7 +92,7 @@ public static class BoundaryNativeChild {
       try { File.Copy(secret,Path.Combine(work,"copied-secret")); Record("temp-copy",true,0); }
       catch(UnauthorizedAccessException) { Record("temp-copy",false,5); }
       catch(Exception e) { Record("temp-copy",false,Marshal.GetHRForException(e)); }
-      // Rename a dedicated canary file, never a real custody key.
+      // Rename a dedicated amabie file, never a real custody key.
       bool renamed=MoveFileExW(secret+".rename",Path.Combine(work,"renamed-secret"),0);
       Record("rename-out",renamed,renamed?0:Marshal.GetLastWin32Error());
       string host=args[6]; int port=Int32.Parse(args[7]);
@@ -109,7 +109,7 @@ public static class BoundaryNativeChild {
       native=NetworkIsolationDiagnoseConnectFailureAndGetInfo(host,out diagnostic);
       File.WriteAllText(output,new JavaScriptSerializer().Serialize(new {
         pid=System.Diagnostics.Process.GetCurrentProcess().Id, attempts=Attempts,
-        environment=Environment.GetEnvironmentVariable("CANARY_PRODUCTION_SENTINEL"),
+        environment=Environment.GetEnvironmentVariable("AMABIE_PRODUCTION_SENTINEL"),
         network=new { executed=true,host=host,port=port,result=network,diagnosticReturn=native,isolationError=diagnostic }
       }));
       return 0;

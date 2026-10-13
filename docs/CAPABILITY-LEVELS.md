@@ -1,15 +1,15 @@
 # Capability levels
 
-Canary reports how much protection it can actually provide, and it **measures**
-that instead of assuming it. The level is in every `canary result --json` /
-`canary status --json` envelope (`security.level`) and in the verbose `status`
+Amabie reports how much protection it can actually provide, and it **measures**
+that instead of assuming it. The level is in every `amabie result --json` /
+`amabie status --json` envelope (`security.level`) and in the verbose `status`
 line, and it is produced by a probe that fails closed.
 
 | Level | Means | How it is established |
 |---|---|---|
-| `HARDENED` | Authority is protected from the worker's own identity: the worker cannot rewrite the records, the key, or the history that judge it. | Requires a broker with a **different OS identity** than the worker. The provider that establishes it is IMPLEMENTED (`apps/cli/src/provider/`) but not INSTALLED here, and `HARDENED` is produced only by a boundary MEASUREMENT in which every control is observed available (`measuredCapabilities`). Run `canary provider status` to see which control is missing on this host, and `canary provider install-plan` for the privileged steps. |
+| `HARDENED` | Authority is protected from the worker's own identity: the worker cannot rewrite the records, the key, or the history that judge it. | Requires a broker with a **different OS identity** than the worker. The provider that establishes it is IMPLEMENTED (`apps/cli/src/provider/`) but not INSTALLED here, and `HARDENED` is produced only by a boundary MEASUREMENT in which every control is observed available (`measuredCapabilities`). Run `amabie provider status` to see which control is missing on this host, and `amabie provider install-plan` for the privileged steps. |
 | `LOCAL` | Records are sealed with an Ed25519 key that lives outside every project tree, so rewriting repo bytes no longer rewrites the checker's memory of them. The **same uid** that runs the worker can still replace the store, the key and the ledger together. | The store write probe **succeeds** — which is exactly what proves a same-uid writer could also write it. |
-| `ADVISORY` | Canary observes and reports, but cannot prevent or block. | Used where a mechanism is a convention rather than an enforcement point. |
+| `ADVISORY` | Amabie observes and reports, but cannot prevent or block. | Used where a mechanism is a convention rather than an enforcement point. |
 | `UNSUPPORTED` | The probe could not establish even the weaker guarantees (for example: the store is not writable, so authority-changing operations cannot be trusted). | The write probe fails, or the store cannot be examined. Verdicts that would need authority fail closed. |
 
 ## What `LOCAL` does and does not buy
@@ -26,7 +26,7 @@ together — which is why the level is `LOCAL` and why the words "hardened" and
 "protected" are not used for it anywhere in this build.
 
 **It also does not** mean the worker was kept out of the choice of what is
-checked. `canary setup --yes` runs unattended and has never checked the caller's
+checked. `amabie setup --yes` runs unattended and has never checked the caller's
 identity, so the same user that runs the worker — the worker's own shell included
 — can re-run it and make a **different plan and a different starting commit** the
 ones the completion gate judges (`docs/EXECUTION-AUTHORITY.md`, and
@@ -62,5 +62,5 @@ activation, the honest level remains `LOCAL`, and the measurement says so.
 
 `docs/SECURITY.md` remains the full contract, including the tiers
 (A: enforced in code, B: structural convention, C: absent and not claimed) and
-the list of things Canary deliberately does not claim: no filesystem jail, no
+the list of things Amabie deliberately does not claim: no filesystem jail, no
 network egress allowlist, no cryptographic trust root.

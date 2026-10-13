@@ -15,7 +15,7 @@ assert.ok(!fs.existsSync(out));
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const fileHash = (file) => sha(fs.readFileSync(file));
 const fixtureRoot = path.resolve(import.meta.dirname, '../test-support/fixtures');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-setup-recovery-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-setup-recovery-'));
 fs.mkdirSync(out, { recursive: true });
 const save = (name, data) => fs.writeFileSync(path.join(out, name), typeof data === 'string' ? data : `${JSON.stringify(data, null, 2)}\n`, { flag: 'wx' });
 const commands = [], rows = [];
@@ -27,7 +27,7 @@ save('manifest.json', manifest); save('instrument.mjs', fs.readFileSync(import.m
 function run(arm, name, repo, trust, args) {
   const startedAt = new Date().toISOString();
   const result = spawnSync(process.execPath, [arm.cli, ...args, repo], { encoding: 'utf8', windowsHide: true,
-    timeout: 120000, env: { ...process.env, CANARY_TRUST_STORE: trust } });
+    timeout: 120000, env: { ...process.env, AMABIE_TRUST_STORE: trust } });
   save(`${arm.name}-${name}.out.log`, result.stdout ?? ''); save(`${arm.name}-${name}.err.log`, result.stderr ?? '');
   commands.push({ arm: arm.name, name, executable: process.execPath, args: [arm.cli, ...args, repo],
     startedAt, finishedAt: new Date().toISOString(), exitCode: result.status, error: result.error?.message ?? null });
@@ -56,7 +56,7 @@ function preservedAndUnique(repo) {
   }
   const mcp = JSON.parse(fs.readFileSync(path.join(repo, integrations[2]), 'utf8'));
   assert.deepEqual(mcp.mcpServers.teammate, { command: 'node', args: ['teammate.js'] });
-  assert.ok(mcp.mcpServers.canary);
+  assert.ok(mcp.mcpServers.amabie);
 }
 let failure = null;
 try {
@@ -67,21 +67,21 @@ try {
     const aborted = run(arm, 'late-failure', repo, blockedStore, ['setup', '--yes']);
     assert.equal(aborted.status, 2);
     const restored = integrations.every((file, index) => fileHash(path.join(repo, file)) === before[index]);
-    const activeConfigLeft = fs.existsSync(path.join(repo, '.canary/canary.local.json'));
+    const activeConfigLeft = fs.existsSync(path.join(repo, '.amabie/amabie.local.json'));
     if (arm.name === 'after') { assert.ok(restored); assert.equal(activeConfigLeft, false); }
     rows.push({ arm: arm.name, control: 'late authority-store failure', exitCode: aborted.status, restored, activeConfigLeft });
     for (const n of [1, 2]) { assert.equal(run(arm, `retry-${n}`, repo, trust, ['setup', '--yes']).status, 0); preservedAndUnique(repo); }
-    rows.push({ arm: arm.name, control: 'retry twice', preservedUserSettings: true, canaryEntriesPerHarness: 1 });
+    rows.push({ arm: arm.name, control: 'retry twice', preservedUserSettings: true, amabieEntriesPerHarness: 1 });
     const malformed = project(`${arm.name}-malformed`); fs.writeFileSync(path.join(malformed, integrations[0]), '{not json');
     const malformedBefore = integrations.map((file) => fileHash(path.join(malformed, file)));
     assert.equal(run(arm, 'malformed', malformed, trust, ['setup', '--yes']).status, 2);
     const untouched = integrations.every((file, index) => fileHash(path.join(malformed, file)) === malformedBefore[index]);
-    if (arm.name === 'after') { assert.ok(untouched); assert.equal(fs.existsSync(path.join(malformed, '.canary/canary.local.json')), false); }
-    rows.push({ arm: arm.name, control: 'malformed settings preflight', untouched, activeConfigLeft: fs.existsSync(path.join(malformed, '.canary/canary.local.json')) });
+    if (arm.name === 'after') { assert.ok(untouched); assert.equal(fs.existsSync(path.join(malformed, '.amabie/amabie.local.json')), false); }
+    rows.push({ arm: arm.name, control: 'malformed settings preflight', untouched, activeConfigLeft: fs.existsSync(path.join(malformed, '.amabie/amabie.local.json')) });
     const red = project(`${arm.name}-red-project`, true);
     assert.equal(run(arm, 'red-project', red, trust, ['setup', '--yes']).status, 2);
     preservedAndUnique(red);
-    assert.equal(JSON.parse(fs.readFileSync(path.join(red, '.canary/last-checkpoint.json'), 'utf8')).status, 'fail');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(red, '.amabie/last-checkpoint.json'), 'utf8')).status, 'fail');
     rows.push({ arm: arm.name, control: 'red project check', integrationRetained: true, checkpoint: 'fail' });
     console.log(`PASS ${arm.name}: setup recovery observations captured`);
   }

@@ -11,6 +11,6 @@ for(const name of ['writeFileSync','appendFileSync','mkdirSync','rmSync','rename
  const original=fs[name];fs[name]=function(...args){writes++;return original.apply(this,args);};
 }
 syncBuiltinESMExports();
-process.on('exit',()=>process.stderr.write(`\nCANARY_METRIC ${JSON.stringify({spawns,writes})}\n`));
+process.on('exit',()=>process.stderr.write(`\nAMABIE_METRIC ${JSON.stringify({spawns,writes})}\n`));
 process.argv=[process.execPath,cli,...process.argv.slice(3)];
 await import(pathToFileURL(cli));

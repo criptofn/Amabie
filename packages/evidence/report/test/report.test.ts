@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { renderHtml } from '../src/index.js';
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
 const H = 'a'.repeat(64);
 
@@ -80,7 +80,7 @@ describe('post-sol F1 — the verification banner says SELF-CONSISTENT, not VERI
     const h = renderHtml(bundle, undefined, { status: 'SELF_CONSISTENT' });
     assert.match(h, /SELF-CONSISTENT/);
     assert.match(h, /committed proof/i);
-    assert.match(h, /canary (prove|check)/i);
+    assert.match(h, /amabie (prove|check)/i);
     // the overstating word must be entirely gone from the positive render:
     assert.ok(!h.includes('VERIFIED'), 'no bare VERIFIED may remain in a self-consistency banner');
   });

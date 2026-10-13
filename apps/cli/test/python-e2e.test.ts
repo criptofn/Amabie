@@ -15,16 +15,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-python-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-python-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const canary = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 180_000 });
+const amabie = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 180_000 });
 
 /** Is a real `python` runnable here? Probed, never assumed. */
 function pythonRuns(): boolean {
@@ -62,11 +62,11 @@ describe('1.1 ecosystems: a real Python project, no Node in it', () => {
     // thing that justifies `python -m unittest discover`.
     fs.writeFileSync(path.join(root, 'pyproject.toml'), '[project]\nname = "pyproj"\nversion = "0.1.0"\nrequires-python = ">=3.8"\n');
 
-    const setup = canary(['setup', '--yes', root]);
+    const setup = amabie(['setup', '--yes', root]);
     assert.equal(setup.status, 0, `setup failed:\n${setup.stdout}\n${setup.stderr}`);
     assert.match(setup.stdout, /READY/);
 
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8')) as {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8')) as {
       pm: string; plan: Array<{ kind: string; script: string; adapter?: string; argv?: string[] }>;
     };
     assert.equal(cfg.plan.length, 1);
@@ -78,7 +78,7 @@ describe('1.1 ecosystems: a real Python project, no Node in it', () => {
     assert.ok(path.isAbsolute(step.argv![0]!), `the interpreter must be sealed as an absolute path, got ${step.argv![0]}`);
     assert.ok(fs.existsSync(step.argv![0]!), 'the sealed interpreter must still exist');
 
-    const doctor = canary(['doctor', '--json', root]);
+    const doctor = amabie(['doctor', '--json', root]);
     assert.equal(doctor.status, 0, `doctor failed:\n${doctor.stdout}\n${doctor.stderr}`);
     const env = JSON.parse(doctor.stdout) as { status: string; checks: Array<{ adapter: string; script: string }>; security: { level: string } };
     assert.equal(env.status, 'READY');

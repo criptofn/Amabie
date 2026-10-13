@@ -1,5 +1,5 @@
 /**
- * Narrow authenticated IPC between a worker (untrusted) and the Canary broker
+ * Narrow authenticated IPC between a worker (untrusted) and the Amabie broker
  * (trusted provider) — v1.1 Phase 3.
  *
  * WHAT THIS TRANSPORT GUARANTEES BY CONSTRUCTION:
@@ -42,7 +42,7 @@ import crypto from 'node:crypto';
 
 /** Windows named pipe or POSIX socket path for a given provider pipe name. */
 export function providerEndpoint(pipeName: string, platform: string = process.platform): string {
-  return platform === 'win32' ? `\\\\.\\pipe\\${pipeName}` : path.join('/tmp', `canary-${pipeName}.sock`);
+  return platform === 'win32' ? `\\\\.\\pipe\\${pipeName}` : path.join('/tmp', `amabie-${pipeName}.sock`);
 }
 
 /** The ONLY operations a worker may request. Nothing here takes a caller path,
@@ -69,7 +69,7 @@ const OPERATIONS = new Set<string>(WORKER_OPERATIONS);
 export const MAX_FRAME_BYTES = 64 * 1024;
 
 export interface WireRequest {
-  schema: 'canary-ipc/1';
+  schema: 'amabie-ipc/1';
   /** Per-install token; proves possession of the broker's protected secret. */
   token: string;
   /** Monotonic per-connection id, echoed in the reply. */
@@ -83,8 +83,8 @@ export interface WireRequest {
 }
 
 export type WireReply =
-  | { schema: 'canary-ipc/1'; id: number; ok: true; result: unknown }
-  | { schema: 'canary-ipc/1'; id: number; ok: false; error: { code: string; message: string } };
+  | { schema: 'amabie-ipc/1'; id: number; ok: true; result: unknown }
+  | { schema: 'amabie-ipc/1'; id: number; ok: false; error: { code: string; message: string } };
 
 export class IpcError extends Error {
   constructor(readonly code: string, message: string) { super(message); }
@@ -131,7 +131,7 @@ export function createFrameDecoder(): FrameDecoder {
 
 /** Validate the SHAPE of an inbound request. Rejects anything unknown by name. */
 export function validateWireRequest(v: Record<string, unknown>): WireRequest {
-  if (v.schema !== 'canary-ipc/1') throw new IpcError('bad-schema', 'unsupported IPC schema');
+  if (v.schema !== 'amabie-ipc/1') throw new IpcError('bad-schema', 'unsupported IPC schema');
   if (typeof v.token !== 'string' || v.token.length < 32) throw new IpcError('bad-token', 'missing or short token');
   if (typeof v.id !== 'number' || !Number.isInteger(v.id)) throw new IpcError('bad-id', 'missing request id');
   if (typeof v.op !== 'string' || !OPERATIONS.has(v.op)) {
@@ -213,20 +213,20 @@ export function createBrokerServer(opts: {
     socket.on('data', (chunk) => {
       let frames: Array<Record<string, unknown>>;
       try { frames = decoder.push(chunk); } catch (e) {
-        reply({ schema: 'canary-ipc/1', id: -1, ok: false, error: { code: e instanceof IpcError ? e.code : 'bad-frame', message: String((e as Error).message) } });
+        reply({ schema: 'amabie-ipc/1', id: -1, ok: false, error: { code: e instanceof IpcError ? e.code : 'bad-frame', message: String((e as Error).message) } });
         socket.destroy();
         return;
       }
       for (const raw of frames) {
         let req: WireRequest;
         try { req = validateWireRequest(raw); } catch (e) {
-          reply({ schema: 'canary-ipc/1', id: typeof raw.id === 'number' ? raw.id : -1, ok: false, error: { code: e instanceof IpcError ? e.code : 'bad-request', message: String((e as Error).message) } });
+          reply({ schema: 'amabie-ipc/1', id: typeof raw.id === 'number' ? raw.id : -1, ok: false, error: { code: e instanceof IpcError ? e.code : 'bad-request', message: String((e as Error).message) } });
           socket.destroy(); // a malformed request ends the session, not just the call
           return;
         }
         if (!tokenMatches(req.token, opts.token)) {
           log(`refused a connection presenting the wrong token (op=${req.op})`);
-          reply({ schema: 'canary-ipc/1', id: req.id, ok: false, error: { code: 'unauthorized', message: 'token does not match this broker installation' } });
+          reply({ schema: 'amabie-ipc/1', id: req.id, ok: false, error: { code: 'unauthorized', message: 'token does not match this broker installation' } });
           socket.destroy();
           return;
         }
@@ -235,19 +235,19 @@ export function createBrokerServer(opts: {
         // serves is refused. `hello`/`status` are the only generation-free reads.
         if (req.op !== 'broker.hello' && req.op !== 'broker.status'
           && req.authorityGeneration !== undefined && req.authorityGeneration !== opts.authorityGeneration) {
-          reply({ schema: 'canary-ipc/1', id: req.id, ok: false, error: { code: 'stale-generation', message: `request names authority generation ${req.authorityGeneration}; the broker serves ${opts.authorityGeneration}` } });
+          reply({ schema: 'amabie-ipc/1', id: req.id, ok: false, error: { code: 'stale-generation', message: `request names authority generation ${req.authorityGeneration}; the broker serves ${opts.authorityGeneration}` } });
           continue;
         }
         let result: unknown;
         try {
           result = opts.handler(req, { authorityGeneration: opts.authorityGeneration });
         } catch (e) {
-          reply({ schema: 'canary-ipc/1', id: req.id, ok: false, error: { code: e instanceof IpcError ? e.code : 'handler-failed', message: String((e as Error).message) } });
+          reply({ schema: 'amabie-ipc/1', id: req.id, ok: false, error: { code: e instanceof IpcError ? e.code : 'handler-failed', message: String((e as Error).message) } });
           continue;
         }
         Promise.resolve(result).then(
-          (r) => reply({ schema: 'canary-ipc/1', id: req.id, ok: true, result: r }),
-          (e: unknown) => reply({ schema: 'canary-ipc/1', id: req.id, ok: false, error: { code: 'handler-failed', message: String((e as Error)?.message ?? e) } }),
+          (r) => reply({ schema: 'amabie-ipc/1', id: req.id, ok: true, result: r }),
+          (e: unknown) => reply({ schema: 'amabie-ipc/1', id: req.id, ok: false, error: { code: 'handler-failed', message: String((e as Error)?.message ?? e) } }),
         );
       }
     });
@@ -281,7 +281,7 @@ export async function callBroker(
     const finish = (fn: () => void): void => { if (!settled) { settled = true; fn(); socket.destroy(); } };
     const timer = setTimeout(() => finish(() => reject(new IpcError('timeout', `no reply from the broker within ${timeoutMs} ms`))), timeoutMs);
     socket.on('connect', () => {
-      socket.write(encodeFrame({ schema: 'canary-ipc/1', token: opts.token, id, ...req }));
+      socket.write(encodeFrame({ schema: 'amabie-ipc/1', token: opts.token, id, ...req }));
     });
     socket.on('data', (chunk) => {
       let frames: Array<Record<string, unknown>>;

@@ -24,7 +24,7 @@
  *                                           in runs/H1-hermes-maxagedays/agent.stream.jsonl);
  *   2. objective evidence FAILS          -> the sealed plan exits 1 with a named
  *                                           assertion, captured verbatim;
- *   3. Canary BLOCKS                     -> raw `canary checkpoint` stdout decision;
+ *   3. Amabie BLOCKS                     -> raw `amabie checkpoint` stdout decision;
  *   4. the block is JUSTIFIED            -> asserted: the same plan passes once the fix
  *                                           is restored and fails only while it is not;
  *   5. after repair the evidence PASSES   -> second raw decision, no `block`.
@@ -131,9 +131,9 @@ try {
     assert(plan.status !== 0, `the sealed plan exited 0 with the fix reverted — the demonstration is void`);
   });
 
-  // ---------------------------------------------------------------- condition 3: Canary BLOCKS
+  // ---------------------------------------------------------------- condition 3: Amabie BLOCKS
   const decisionBlocked = driveCheckpoint('decision-blocked');
-  check('Canary BLOCKS the completion', () => {
+  check('Amabie BLOCKS the completion', () => {
     const d = decisionBlocked.stdout ? JSON.parse(decisionBlocked.stdout) : {};
     assert(d.decision === 'block', `expected {"decision":"block"}, got: ${decisionBlocked.stdout.slice(0, 300)}`);
     assert(/tests/.test(String(d.reason ?? '')), `the block reason does not name the failing check: ${d.reason}`);
@@ -152,7 +152,7 @@ try {
     assert(planAfter.status === 0, `the sealed plan still exits ${planAfter.status} after the repair`);
   });
   const decisionAfter = driveCheckpoint('decision-after-repair');
-  check('condition 5 — Canary no longer blocks', () => {
+  check('condition 5 — Amabie no longer blocks', () => {
     const d = decisionAfter.stdout ? JSON.parse(decisionAfter.stdout) : {};
     assert(decisionAfter.status === 0, `checkpoint exit ${decisionAfter.status}`);
     assert(d.decision !== 'block', `still blocked after repair: ${decisionAfter.stdout.slice(0, 300)}`);

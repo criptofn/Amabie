@@ -1,4 +1,4 @@
-// Canary confined-caller launcher + trusted broker (measurement harness).
+// Amabie confined-caller launcher + trusted broker (measurement harness).
 //
 // The whole untrusted caller runs inside a fresh AppContainer added to the existing
 // restricted, low-integrity token. Zero capabilities => no network grant. Only the
@@ -18,7 +18,7 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading;
 
-public static class CanaryConfined {
+public static class AmabieConfined {
   [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] struct SI {
     public uint cb; public string reserved, desktop, title; public uint x, y, xSize, ySize, xChars, yChars, fill, flags;
     public ushort show, reservedSize; public IntPtr reserved2, stdin, stdout, stderr;
@@ -124,15 +124,15 @@ public static class CanaryConfined {
 
   /// <summary>Truthful report of the identity this helper hands to the caller.</summary>
   public static string Identity(bool delete) {
-    return Identity(delete, "Canary.Confined.Identity");
+    return Identity(delete, "Amabie.Confined.Identity");
   }
   public static string Identity(bool delete, string name) {
-    if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^Canary\\.Confined\\.[A-Za-z0-9.-]+$"))
-      throw new ArgumentException("invalid Canary profile name");
+    if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^Amabie\\.Confined\\.[A-Za-z0-9.-]+$"))
+      throw new ArgumentException("invalid Amabie profile name");
     IntPtr package = IntPtr.Zero;
     string value = null; bool created = false;
     try {
-      int hr = CreateAppContainerProfile(name, name, "Canary confined caller identity", IntPtr.Zero, 0, out package);
+      int hr = CreateAppContainerProfile(name, name, "Amabie confined caller identity", IntPtr.Zero, 0, out package);
       if (hr >= 0) { value = new SecurityIdentifier(package).Value; created = true; }
       else {
         // Already present: derive the SID from the profile instead of inventing one.
@@ -171,7 +171,7 @@ public static class CanaryConfined {
       throw new ArgumentException("profile must stay inside the sandbox");
     for (var p = new DirectoryInfo(profile); p != null; p = p.Parent)
       if ((p.Attributes & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("reparse profile refused");
-    string name = "Canary.Confined." + Guid.NewGuid().ToString("N");
+    string name = "Amabie.Confined." + Guid.NewGuid().ToString("N");
     IntPtr current = IntPtr.Zero, restricted = IntPtr.Zero, low = IntPtr.Zero, package = IntPtr.Zero;
     IntPtr attributes = IntPtr.Zero, environment = IntPtr.Zero, job = IntPtr.Zero;
     PI child = new PI(); bool initialized = false; FileSystemAccessRule grant = null;
@@ -182,7 +182,7 @@ public static class CanaryConfined {
       // changes: Git's GetLongPathName fallback can resolve this root directly.
       // Never overwrite an existing device; absence or allocation failure is fatal.
       if (gitDirectoryAlias) {
-        // Serialize Canary allocations across stores in this logon session.
+        // Keep the mutex name stable so an older Canary launcher shares this lock during upgrades.
         // A contended/unavailable namespace fails closed, never uses a real cwd.
         aliasLock = new Mutex(false, "Local\\Canary.SandboxDrive." + WindowsIdentity.GetCurrent().User.Value);
         try { ownsAliasLock = aliasLock.WaitOne(10000); }
@@ -228,7 +228,7 @@ public static class CanaryConfined {
       var startup = new SIX(); startup.info.cb = (uint)Marshal.SizeOf(startup); startup.attributes = attributes;
       // A diagnostic channel: the exact command line and cwd handed to the kernel, so a launch
       // failure can be attributed to the boundary or to the tool without guessing.
-      string record = Environment.GetEnvironmentVariable("CANARY_LAUNCH_RECORD");
+      string record = Environment.GetEnvironmentVariable("AMABIE_LAUNCH_RECORD") ?? Environment.GetEnvironmentVariable("CANARY_LAUNCH_RECORD");
       if (!String.IsNullOrEmpty(record))
         File.WriteAllText(record, "cwd=" + directory + "\ncmd=" + command + "\n");
       Check(CreateProcessAsUserW(restricted, null, new StringBuilder(command), IntPtr.Zero, IntPtr.Zero, false,

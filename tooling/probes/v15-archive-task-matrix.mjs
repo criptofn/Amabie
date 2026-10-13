@@ -19,7 +19,7 @@ if (cleanup) {
   const manifest = JSON.parse(fs.readFileSync(path.join(out, 'export-manifest.json'), 'utf8'));
   assert.equal(path.resolve(manifest.source), source);
   assert.equal(manifest.captureStatus, 'complete');
-  assert.match(path.basename(source), /^canary-(?:(?:release|improved)-six-task|installed-matrix)-/);
+  assert.match(path.basename(source), /^amabie-(?:(?:release|improved)-six-task|installed-matrix)-/);
   assert.equal(fs.realpathSync.native(source), path.join(fs.realpathSync.native(os.tmpdir()), path.basename(source)),
     'only a direct owned OS-temp directory may be removed');
   const stores = new Set();
@@ -34,10 +34,10 @@ if (cleanup) {
       if (attempt.trustStore) {
         const repoRelative = path.relative(source, attempt.repo);
         assert.ok(repoRelative && !repoRelative.startsWith('..') && !path.isAbsolute(repoRelative));
-        const expected = path.join(os.tmpdir(), 'canary-v15-validation-trust', sha(attempt.repo));
+        const expected = path.join(os.tmpdir(), 'amabie-v15-validation-trust', sha(attempt.repo));
         assert.equal(path.resolve(attempt.trustStore), expected);
         if (fs.existsSync(expected)) {
-          assert.equal(fs.realpathSync.native(path.dirname(expected)), path.join(fs.realpathSync.native(os.tmpdir()), 'canary-v15-validation-trust'));
+          assert.equal(fs.realpathSync.native(path.dirname(expected)), path.join(fs.realpathSync.native(os.tmpdir()), 'amabie-v15-validation-trust'));
           assert.equal(fs.realpathSync.native(expected), path.join(fs.realpathSync.native(path.dirname(expected)), path.basename(expected)));
           stores.add(expected);
         }
@@ -78,7 +78,7 @@ for (const instrument of summary.instruments) {
     `instrument snapshot differs: ${instrument.file}`);
 }
 for (const label of ['H1', 'H2', 'H3', 'H5', 'R1', 'S1']) {
-  const evidence = path.join(source, 'prepared/projects', label, 'canary/.canary/evidence');
+  const evidence = path.join(source, 'prepared/projects', label, 'amabie/.amabie/evidence');
   if (fs.existsSync(evidence)) walk(evidence, path.join('product-evidence', label));
 }
 for (const input of summary.solutions) {

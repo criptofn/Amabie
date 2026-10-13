@@ -10,11 +10,11 @@ assert.ok(cliArg && outputArg, 'usage: node v15-bind-intake-regression.mjs <expl
 const cli = fs.realpathSync(cliArg);
 const output = path.resolve(outputArg);
 fs.mkdirSync(output, { recursive: false });
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-bind-intake-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-bind-intake-'));
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const records = [];
 const observations = [];
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'store') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'store') };
 function invoke(id, executable, args, cwd) {
   const r = spawnSync(executable, args, { cwd, env, encoding: 'utf8', windowsHide: true, timeout: 120_000 });
   fs.writeFileSync(path.join(output, `${id}.stdout.txt`), r.stdout ?? '');
@@ -36,12 +36,12 @@ try {
   fs.writeFileSync(manifest, original);
   fs.copyFileSync(new URL('../test-support/fixtures/f-pass.js', import.meta.url), path.join(root, 'check.cjs'));
   for (const [id, args] of [['init', ['init', '-b', 'main']], ['add', ['add', '.']],
-    ['commit', ['-c', 'user.name=Canary Regression', '-c', 'user.email=regression@canary.local', 'commit', '-m', 'baseline']]]) {
+    ['commit', ['-c', 'user.name=Amabie Regression', '-c', 'user.email=regression@amabie.local', 'commit', '-m', 'baseline']]]) {
     assert.equal(invoke(id, 'git', args, root).status, 0);
   }
   assert.equal(invoke('setup', process.execPath, [cli, 'setup', '--yes'], root).status, 0);
   const head = invoke('head-before', 'git', ['rev-parse', 'HEAD'], root).stdout.trim();
-  const config = path.join(root, '.canary/canary.local.json');
+  const config = path.join(root, '.amabie/amabie.local.json');
   const sealed = fs.readFileSync(config);
   const first = 'Keep stable identifiers across runs';
   for (const [id, tail] of [['typo', ['--requirment', 'Preserve distinct parameter cases']],
@@ -66,7 +66,7 @@ try {
   fs.writeFileSync(manifest, original);
   const valid = invoke('valid-dash-text', process.execPath, [cli, 'bind', 'test', '--requirement', first,
     '--requirement', '--strict preserves warnings as errors'], root);
-  const proofs = JSON.parse(fs.readFileSync(manifest, 'utf8')).canary?.proofs ?? {};
+  const proofs = JSON.parse(fs.readFileSync(manifest, 'utf8')).amabie?.proofs ?? {};
   observe('valid-dash-text', valid.status === 0 && Object.keys(proofs).length === 2
     && Object.values(proofs).every((script) => script === 'test') && fs.readFileSync(config).equals(sealed),
     { exitCode: valid.status, proofs, sealUnchanged: fs.readFileSync(config).equals(sealed) });

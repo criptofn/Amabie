@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://canary-reliability-network.local/schemas/evidence.schema.json",
-  "title": "Canary Evidence Bundle",
-  "description": "Machine-readable output of one Canary experiment. GENERATED FILE — the single source of truth is packages/evidence/schema/src/contract.ts (schema.test.ts regenerates and deep-compares; edit the contract, never this file). The classification field is produced exclusively by the deterministic decision table (docs/PLAN.md section 6); no field in this schema can be authored by an AI provider. Trustful-tier fields (round infraSignal; treeComparison.snapshots/observationAnomalies) are required exactly when classification.label is PASS/CONFIRMED_REGRESSION/PRE_EXISTING_FAILURE — see the allOf block; the runtime validator enforces the same tier and additionally requires the anomaly lists to be EMPTY for a trustful label (a rule beyond JSON-schema presence).",
+  "$id": "https://amabie-reliability-network.local/schemas/evidence.schema.json",
+  "title": "Amabie Evidence Bundle",
+  "description": "Machine-readable output of one Amabie experiment. GENERATED FILE — the single source of truth is packages/evidence/schema/src/contract.ts (schema.test.ts regenerates and deep-compares; edit the contract, never this file). The classification field is produced exclusively by the deterministic decision table (docs/PLAN.md section 6); no field in this schema can be authored by an AI provider. Trustful-tier fields (round infraSignal; treeComparison.snapshots/observationAnomalies) are required exactly when classification.label is PASS/CONFIRMED_REGRESSION/PRE_EXISTING_FAILURE — see the allOf block; the runtime validator enforces the same tier and additionally requires the anomaly lists to be EMPTY for a trustful label (a rule beyond JSON-schema presence).",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -59,7 +59,7 @@ const rows = summary.sessions.map(session => {
     providerUsdCharge: outcome.providerUsdCharge, manualInterventions: outcome.manualInterventions };
 });
 assert.equal(seenCalls.size, summary.requests.filter(r => r.route === '/v1/messages').length);
-const totals = ['plain', 'canary'].map(arm => {
+const totals = ['plain', 'amabie'].map(arm => {
   const selected = rows.filter(r => r.arm === arm); assert.equal(selected.length, 6);
   return { arm, correct: selected.filter(r => r.correct).length, complete: selected.filter(r => r.complete).length,
     passedStop: selected.filter(r => r.passedStop).length,

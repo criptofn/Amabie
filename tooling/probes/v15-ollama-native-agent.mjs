@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SKIP_DIRS = new Set(['.git', '.canary', '.claude', '.codex', '.repowise', 'node_modules', '.gradle', 'build', 'dist']);
+const SKIP_DIRS = new Set(['.git', '.amabie', '.claude', '.codex', '.repowise', 'node_modules', '.gradle', 'build', 'dist']);
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_TOOL_CALLS = 24;
 const totals = { inputTokens: 0, outputTokens: 0, usageComplete: false, toolCalls: 0, requests: 0, digest: null, started: Date.now(), checkpoints: [] };
@@ -71,7 +71,7 @@ export function executeWorkspaceTool(workspace, name, input) {
 }
 
 /** Operator-owned argv and captured outputs; this is a measurement harness, not a security sandbox. */
-export function createVerificationTools(workspace, checksFile, outputDir, { canaryCli = null } = {}) {
+export function createVerificationTools(workspace, checksFile, outputDir, { amabieCli = null } = {}) {
   const root = fs.realpathSync(workspace);
   const below = (base, target) => {
     const relative = path.relative(base, target);
@@ -94,8 +94,8 @@ export function createVerificationTools(workspace, checksFile, outputDir, { cana
       || !Array.isArray(c.args) || c.args.some((a) => typeof a !== 'string'))) {
     throw new Error('checks must contain unique ids, absolute executables and string argv arrays');
   }
-  if (canaryCli && (!path.isAbsolute(canaryCli) || !fs.statSync(canaryCli, { throwIfNoEntry: false })?.isFile())) {
-    throw new Error('Canary diagnostics require an explicit installed CLI file');
+  if (amabieCli && (!path.isAbsolute(amabieCli) || !fs.statSync(amabieCli, { throwIfNoEntry: false })?.isFile())) {
+    throw new Error('Amabie diagnostics require an explicit installed CLI file');
   }
   fs.mkdirSync(output, { recursive: true });
   let sequence = 0;
@@ -123,8 +123,8 @@ export function createVerificationTools(workspace, checksFile, outputDir, { cana
     definitions: [
       { type: 'function', function: { name: 'list_checks', description: 'List operator-authorized project checks and their fixed commands.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
       { type: 'function', function: { name: 'run_check', description: 'Run a listed project check by id after a code or test edit. Returns actual exit code, stdout, stderr and complete saved output paths.', parameters: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'], additionalProperties: false } } },
-      { type: 'function', function: { name: 'read_check_output', description: 'Read a saved check output path (including Canary evidence logs). For truncated output, continue at nextOffset.', parameters: { type: 'object', properties: { path: { type: 'string' }, offset: { type: 'integer', minimum: 0 } }, required: ['path'], additionalProperties: false } } },
-      ...(canaryCli ? [{ type: 'function', function: { name: 'canary_doctor', description: 'Run Canary diagnostics. An optional sealed check id selects a PARTIAL repair recheck; omit id for the full gate. Never reseals authority.', parameters: { type: 'object', properties: { id: { type: 'string' } }, additionalProperties: false } } }] : []),
+      { type: 'function', function: { name: 'read_check_output', description: 'Read a saved check output path (including Amabie evidence logs). For truncated output, continue at nextOffset.', parameters: { type: 'object', properties: { path: { type: 'string' }, offset: { type: 'integer', minimum: 0 } }, required: ['path'], additionalProperties: false } } },
+      ...(amabieCli ? [{ type: 'function', function: { name: 'amabie_doctor', description: 'Run Amabie diagnostics. An optional sealed check id selects a PARTIAL repair recheck; omit id for the full gate. Never reseals authority.', parameters: { type: 'object', properties: { id: { type: 'string' } }, additionalProperties: false } } }] : []),
     ],
     execute(name, input) {
       if (name === 'list_checks') return { checks };
@@ -133,16 +133,16 @@ export function createVerificationTools(workspace, checksFile, outputDir, { cana
         if (!check) throw new Error(`unknown check: ${String(input.id)}`);
         return run(check.executable, check.args);
       }
-      if (name === 'canary_doctor' && canaryCli) {
+      if (name === 'amabie_doctor' && amabieCli) {
         if (input.id !== undefined && (typeof input.id !== 'string' || !input.id)) throw new Error('check id must be a non-empty string');
-        return run(process.execPath, [canaryCli, 'doctor', '--json', ...(input.id === undefined ? [] : ['--check', input.id])]);
+        return run(process.execPath, [amabieCli, 'doctor', '--json', ...(input.id === undefined ? [] : ['--check', input.id])]);
       }
       if (name === 'read_check_output') {
         if (typeof input.path !== 'string' || !input.path) throw new Error('output path must be a string');
         const target = path.resolve(root, input.path);
         const relative = path.relative(root, target);
         if (outputFiles.has(target)) resolveWorkspacePath(output, path.relative(output, target), new Set());
-        else if (canaryCli && /^\.canary[/\\]evidence[/\\].+\.log$/i.test(relative)) resolveWorkspacePath(root, relative, new Set());
+        else if (amabieCli && /^\.amabie[/\\]evidence[/\\].+\.log$/i.test(relative)) resolveWorkspacePath(root, relative, new Set());
         else throw new Error('path is not an accessible check output');
         const offset = input.offset ?? 0;
         if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('offset must be a non-negative integer');
@@ -172,25 +172,25 @@ export function ollamaResponseUsage(body) {
   return { input_tokens: body.prompt_eval_count, output_tokens: body.eval_count };
 }
 
-export function isCanaryStopGuard(response) {
+export function isAmabieStopGuard(response) {
   return typeof response?.systemMessage === 'string'
     && /after one repair attempt[\s\S]*stopping anyway/i.test(response.systemMessage);
 }
 
-export function canaryHookDecision(checkpoint, record) {
+export function amabieHookDecision(checkpoint, record) {
   if (checkpoint.exitCode !== 0 || (checkpoint.stdout && !checkpoint.response)) {
-    throw new Error('Canary checkpoint did not return a valid hook response');
+    throw new Error('Amabie checkpoint did not return a valid hook response');
   }
   if (!checkpoint.stdout) {
     if (record?.source !== 'checkpoint' || record?.status !== 'pass') {
-      throw new Error('Canary was silent without a passing checkpoint');
+      throw new Error('Amabie was silent without a passing checkpoint');
     }
     return 'allow';
   }
   return checkpoint.response.decision ?? null;
 }
 
-export function canaryEvidenceStatus(response, checkpoint) {
+export function amabieEvidenceStatus(response, checkpoint) {
   const text = String(response?.systemMessage ?? response?.reason ?? '');
   if (/after one repair attempt|stopping anyway/i.test(text)) return 'stopped_after_repair_attempt';
   if (/NOT PROVEN|UNVERIFIED|could not verify|could not run|nothing was verified/i.test(text)) return 'unverified_or_unproven';
@@ -205,13 +205,13 @@ export function canaryEvidenceStatus(response, checkpoint) {
 
 export function pilotSessionComplete(outcome) {
   return outcome.runExitCode === 0 && !outcome.runTimeout && outcome.attemptStatus === 'complete'
-    && ['completed', 'completed_after_block_and_repair', 'completed_after_canary_stop_guard'].includes(outcome.agentSessionOutcome)
+    && ['completed', 'completed_after_block_and_repair', 'completed_after_amabie_stop_guard'].includes(outcome.agentSessionOutcome)
     && ['pass', 'fail'].includes(outcome.correctnessStatus)
     && (outcome.protocol !== 'ollama-native' || outcome.localModelUnload?.exitCode === 0);
 }
 
 const TOOL_DEFINITIONS = [
-  { type: 'function', function: { name: 'list_files', description: 'List project files. Generated, dependency, and protected Canary state directories are omitted.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'list_files', description: 'List project files. Generated, dependency, and protected Amabie state directories are omitted.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'read_file', description: 'Read one UTF-8 project file by relative path.', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'], additionalProperties: false } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or replace one UTF-8 project file by relative path.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'], additionalProperties: false } } },
 ];
@@ -235,7 +235,7 @@ async function main() {
   const workspaceArg = cliArg('workspace', process.cwd());
   const promptFile = cliArg('prompt-file');
   const arm = cliArg('arm', 'plain');
-  const canaryCli = cliArg('canary-cli');
+  const amabieCli = cliArg('amabie-cli');
   const sessionId = cliArg('session-id', 'ollama-native-session');
   const transcriptArg = cliArg('transcript-path');
   const checksFile = cliArg('checks-file');
@@ -246,13 +246,13 @@ async function main() {
     throw new Error('usage: --prompt-file <file> [--workspace <directory>] [--model <local model>] [--max-requests 1..24]');
   }
   const workspace = fs.realpathSync(workspaceArg);
-  if (!['plain', 'canary'].includes(arm)) throw new Error('arm must be plain or canary');
+  if (!['plain', 'amabie'].includes(arm)) throw new Error('arm must be plain or amabie');
   if (Boolean(checksFile) !== Boolean(outputDir)) throw new Error('--checks-file and --tool-output-dir must be provided together');
-  const verification = checksFile ? createVerificationTools(workspace, checksFile, outputDir, { canaryCli: arm === 'canary' ? canaryCli : null }) : null;
+  const verification = checksFile ? createVerificationTools(workspace, checksFile, outputDir, { amabieCli: arm === 'amabie' ? amabieCli : null }) : null;
   const toolDefinitions = [...TOOL_DEFINITIONS, ...(verification?.definitions ?? [])];
-  if (arm === 'canary') {
-    if (!canaryCli || !fs.statSync(canaryCli, { throwIfNoEntry: false })?.isFile() || !transcriptArg) {
-      throw new Error('the Canary arm requires --canary-cli and --transcript-path');
+  if (arm === 'amabie') {
+    if (!amabieCli || !fs.statSync(amabieCli, { throwIfNoEntry: false })?.isFile() || !transcriptArg) {
+      throw new Error('the Amabie arm requires --amabie-cli and --transcript-path');
     }
     transcriptPath = path.resolve(transcriptArg);
     const relativeTranscript = path.relative(workspace, transcriptPath);
@@ -272,7 +272,7 @@ async function main() {
   totals.digest = digest;
 
   const messages = [
-    { role: 'system', content: 'You are a coding agent working in one disposable project copy. Use the available tools to inspect and change files. Make the smallest correct change that satisfies the request and preserves unrelated behavior. Do not claim a change unless you made it with a tool. Do not edit .git, .canary, dependency, generated, or unrelated files. When finished, give a short factual summary.' + (verification ? ' Use list_checks to find the project checks, run_check to test your edits, and read_check_output to inspect full failure output. Repair failures before finishing. Added regression tests must be executed by a listed check.' : '') },
+    { role: 'system', content: 'You are a coding agent working in one disposable project copy. Use the available tools to inspect and change files. Make the smallest correct change that satisfies the request and preserves unrelated behavior. Do not claim a change unless you made it with a tool. Do not edit .git, .amabie, dependency, generated, or unrelated files. When finished, give a short factual summary.' + (verification ? ' Use list_checks to find the project checks, run_check to test your edits, and read_check_output to inspect full failure output. Repair failures before finishing. Added regression tests must be executed by a listed check.' : '') },
     { role: 'user', content: prompt },
   ];
   emit({ type: 'system', subtype: 'init', model, local_model_digest: digest, workspace });
@@ -303,7 +303,7 @@ async function main() {
     emit({ type: 'assistant', message: { role: 'assistant', model, content, usage: responseUsage } });
     messages.push(assistant);
     if (calls.length === 0) {
-      if (arm === 'canary') {
+      if (arm === 'amabie') {
         const hookInput = {
           session_id: sessionId,
           transcript_path: transcriptPath,
@@ -311,7 +311,7 @@ async function main() {
           hook_event_name: 'Stop',
           stop_hook_active: totals.checkpoints.length > 0,
         };
-        const checkpointRun = spawnSync(process.execPath, [canaryCli, 'checkpoint'], {
+        const checkpointRun = spawnSync(process.execPath, [amabieCli, 'checkpoint'], {
           cwd: workspace, input: JSON.stringify(hookInput), encoding: 'utf8', timeout: 1_800_000,
           windowsHide: true, maxBuffer: 32 * 1024 * 1024,
         });
@@ -323,12 +323,12 @@ async function main() {
         };
         try { checkpoint.response = checkpoint.stdout ? JSON.parse(checkpoint.stdout) : null; } catch { checkpoint.response = null; }
         totals.checkpoints.push(checkpoint);
-        emit({ type: 'system', subtype: 'canary_checkpoint', checkpoint });
+        emit({ type: 'system', subtype: 'amabie_checkpoint', checkpoint });
         let checkpointRecord = null;
-        try { checkpointRecord = JSON.parse(fs.readFileSync(path.join(workspace, '.canary', 'last-checkpoint.json'), 'utf8')); } catch { /* checked below for silent allow */ }
-        const decision = canaryHookDecision(checkpoint, checkpointRecord);
-        if (isCanaryStopGuard(checkpoint.response)) {
-          emit({ type: 'result', subtype: 'success', is_error: false, stop_reason: 'canary_stop_guard', usage: { input_tokens: totals.inputTokens, output_tokens: totals.outputTokens, cached_input_tokens: 0, reasoning_output_tokens: 0 }, num_turns: totals.requests + 1, duration_ms: Date.now() - totals.started, total_cost_usd: null, local_model_digest: digest, tool_calls: totals.toolCalls, manual_checkpoints: totals.checkpoints });
+        try { checkpointRecord = JSON.parse(fs.readFileSync(path.join(workspace, '.amabie', 'last-checkpoint.json'), 'utf8')); } catch { /* checked below for silent allow */ }
+        const decision = amabieHookDecision(checkpoint, checkpointRecord);
+        if (isAmabieStopGuard(checkpoint.response)) {
+          emit({ type: 'result', subtype: 'success', is_error: false, stop_reason: 'amabie_stop_guard', usage: { input_tokens: totals.inputTokens, output_tokens: totals.outputTokens, cached_input_tokens: 0, reasoning_output_tokens: 0 }, num_turns: totals.requests + 1, duration_ms: Date.now() - totals.started, total_cost_usd: null, local_model_digest: digest, tool_calls: totals.toolCalls, manual_checkpoints: totals.checkpoints });
           return;
         }
         if (decision === 'block' && totals.checkpoints.length === 1) {
@@ -337,8 +337,8 @@ async function main() {
           emit({ type: 'user', message: { role: 'user', content: feedback } });
           continue;
         }
-        if (decision === 'block' && totals.checkpoints.length > 1) throw new Error('Canary still blocked after the single allowed repair pass');
-        if (decision !== 'allow' && !checkpoint.response?.systemMessage) throw new Error(`Canary returned unexpected completion decision: ${String(decision)}`);
+        if (decision === 'block' && totals.checkpoints.length > 1) throw new Error('Amabie still blocked after the single allowed repair pass');
+        if (decision !== 'allow' && !checkpoint.response?.systemMessage) throw new Error(`Amabie returned unexpected completion decision: ${String(decision)}`);
       }
       emit({ type: 'result', subtype: 'success', is_error: false, stop_reason: 'end_turn', usage: { input_tokens: totals.inputTokens, output_tokens: totals.outputTokens, cached_input_tokens: 0, reasoning_output_tokens: 0 }, num_turns: totals.requests + 1, duration_ms: Date.now() - totals.started, total_cost_usd: null, local_model_digest: digest, tool_calls: totals.toolCalls, manual_checkpoints: totals.checkpoints });
       return;

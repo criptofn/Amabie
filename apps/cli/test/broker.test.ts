@@ -8,7 +8,7 @@ import { authorityJson, RECORD_SCHEMA, signedBytes, type RecordEnvelope } from '
 import { BROKER_SCHEMA, LocalAuthorityBroker, type Enrollment, type RunTicket, type VerificationStatement } from '../src/broker.js';
 import { declaredTask, subjectDigest } from '../src/authorization.js';
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-broker-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-broker-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 const projectId = 'a'.repeat(64), targetId = 'b'.repeat(64);
 const verifier = crypto.generateKeyPairSync('ed25519'), reviewer = crypto.generateKeyPairSync('ed25519');

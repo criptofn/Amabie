@@ -17,14 +17,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const PY = process.env.CANARY_PYTEST_PYTHON ?? path.resolve(import.meta.dirname, '..', '..', '_toolchains', 'py', 'Scripts', 'python.exe');
+const PY = process.env.AMABIE_PYTEST_PYTHON ?? path.resolve(import.meta.dirname, '..', '..', '_toolchains', 'py', 'Scripts', 'python.exe');
 if (!fs.existsSync(PY)) {
   console.log(`pytest interpreter not found at ${PY}`);
-  console.log('set CANARY_PYTEST_PYTHON, or create it: python -m venv _toolchains/py && _toolchains/py/Scripts/python -m pip install pytest');
+  console.log('set AMABIE_PYTEST_PYTHON, or create it: python -m venv _toolchains/py && _toolchains/py/Scripts/python -m pip install pytest');
   process.exit(1);
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-pytest-events-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pytest-events-'));
 const project = path.join(TMP, 'project');
 fs.mkdirSync(path.join(project, 'tests'), { recursive: true });
 
@@ -150,10 +150,10 @@ for (const h of hooks) {
 fs.rmSync(LOG, { force: true });
 
 // 2. the same run in quiet mode, and with no plugin at all, to see what the TEXT
-//    channel looks like in each form Canary might meet.
+//    channel looks like in each form Amabie might meet.
 run(['-q'], 'quiet mode (with plugin)');
 fs.rmSync(LOG, { force: true });
 run(['-p', 'no:measure_plugin'], 'no measuring plugin');
 
 console.log(`\nscratch: ${TMP}`);
-if (process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });

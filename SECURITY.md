@@ -1,6 +1,6 @@
 # Security policy
 
-Canary's security model — what is enforced in code, what is a structural
+Amabie's security model — what is enforced in code, what is a structural
 convention, what is only a contract without an installed provider, and the local
 ceilings it explicitly does **not** claim — lives in:
 
@@ -15,7 +15,7 @@ This file exists so GitHub's security tooling and anyone scanning the repository
 root can find the policy.
 
 **Read the ceilings before reporting.** They are deliberate and detailed: there is
-no filesystem jail and no network egress allowlist for the code Canary runs, the
+no filesystem jail and no network egress allowlist for the code Amabie runs, the
 evidence manifest is tamper-*evidence* rather than authenticated provenance, the
 trust store is protected against forging but not against a same-UID process
 replacing it wholesale, and `HARDENED` is not available because no provider with a
@@ -33,7 +33,7 @@ details**.
 Please include, where applicable:
 
 - the exact commit or tag;
-- the command you ran and its full output (Canary's own discipline: a claim
+- the command you ran and its full output (Amabie's own discipline: a claim
   without a reproduced command is not yet a report);
 - which tier of `docs/SECURITY.md` the finding breaks — Tier A (enforced in code),
   Tier B (structural convention), or Tier C (absent and not claimed);

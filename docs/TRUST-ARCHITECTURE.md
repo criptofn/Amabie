@@ -3,7 +3,7 @@
 > Current v1.2 production boundary: [mechanism and limits](V1.2-CONFINED-CALLER.md).
 > Executed integration evidence and release status: [report](V1.2-HARDENED-FINAL-BLOCKERS.md).
 
-Where Canary's authority physically lives, what guards it, and — stated with the
+Where Amabie's authority physically lives, what guards it, and — stated with the
 same emphasis — which parts of the design are **contracts without an installed
 provider**. Capability levels and how they are measured are in
 [`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md); the full security contract with

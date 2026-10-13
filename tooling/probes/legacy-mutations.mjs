@@ -5,12 +5,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn, spawnSync} from 'node:child_process';
-const repo=path.resolve(import.meta.dirname,'../..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'canary-legacy-mutations-'));
+const repo=path.resolve(import.meta.dirname,'../..'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'amabie-legacy-mutations-'));
 const selected=process.argv.slice(2).map(Number),ids=selected.length?selected:[7,8,9,10];
 let failures=0;
 async function run(id) {
  const root=path.join(temp,`m${id}`);
- fs.cpSync(repo,root,{recursive:true,filter:p=>!path.relative(repo,p).split(path.sep).some(s=>['.git','node_modules','.canary','pack','.claude'].includes(s))});
+ fs.cpSync(repo,root,{recursive:true,filter:p=>!path.relative(repo,p).split(path.sep).some(s=>['.git','node_modules','.amabie','pack','.claude'].includes(s))});
  fs.symlinkSync(path.join(repo,'node_modules'),path.join(root,'node_modules'),process.platform==='win32'?'junction':'dir');
  // Rebuild from source: another battery may temporarily mutate the source
  // repository's dist. A copied incremental build cache is not proof of bytes.

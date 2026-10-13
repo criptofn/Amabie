@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/normalizers",
+  "name": "@amabie/normalizers",
   "version": "0.0.1",
   "private": true,
   "description": "Collapse known nondeterminism (timestamps, durations, temp/home paths, ids) so structured comparison is possible on real test logs.",

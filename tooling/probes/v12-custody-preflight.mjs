@@ -12,7 +12,7 @@ if (process.platform !== 'win32') {
   try {
     if (r.status !== 0) throw new Error(`preflight failed: ${r.stderr}`);
     const m = JSON.parse(r.stdout.trim());
-    if (m.schema !== 'canary-custody-preflight/1') throw new Error('missing measurement');
+    if (m.schema !== 'amabie-custody-preflight/1') throw new Error('missing measurement');
     console.log(JSON.stringify(m, null, 2));
     for (const name of ['scmConnect', 'scmCreateServiceAccess', 'wfpOpen', 'wfpReadOptions']) {
       const p = m[name];

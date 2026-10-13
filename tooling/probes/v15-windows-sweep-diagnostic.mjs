@@ -41,7 +41,7 @@ if (fs.existsSync(outDir)) {
 fs.mkdirSync(outDir, { recursive: true });
 
 const runMeta = {
-  schema: 'canary-v15-windows-sweep-diagnostic/1',
+  schema: 'amabie-v15-windows-sweep-diagnostic/1',
   probePath: 'tooling/probes/v15-windows-sweep-diagnostic.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
   testFile, testSha256: sha256(fs.readFileSync(testFile)),

@@ -56,7 +56,7 @@ const check = (name, fn) => {
 
 if (!fs.existsSync(CLI)) { console.error(`FAIL no built CLI at ${CLI} — run \`npm run build\` first`); process.exit(1); }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-pathspell-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pathspell-'));
 const canonical = (p) => { try { return fs.realpathSync.native(p); } catch { return path.resolve(p); } };
 
 // ── the two spellings of ONE directory: a real dir, and a junction pointing at it ──
@@ -103,13 +103,13 @@ fs.writeFileSync(path.join(fixture, 'dump.cjs'),
   + `fs.writeFileSync(${JSON.stringify(dumpFile)}, process.env.PATH || '');\nconsole.log('dumped');\n`);
 fs.writeFileSync(path.join(fixture, 'package.json'),
   `${JSON.stringify({ name: 'pathspell-fixture', private: true, scripts: { test: 'node dump.cjs' } }, null, 2)}\n`);
-for (const a of [['init', '-b', 'main'], ['config', 'user.email', 'probe@canary.local'], ['config', 'user.name', 'Path Spell Probe'], ['add', '-A'], ['commit', '-m', 'initial']]) {
+for (const a of [['init', '-b', 'main'], ['config', 'user.email', 'probe@amabie.local'], ['config', 'user.name', 'Path Spell Probe'], ['add', '-A'], ['commit', '-m', 'initial']]) {
   const r = spawnSync(GIT, ['-C', fixture, ...a], { encoding: 'utf8', timeout: 60_000 });
   if (r.status !== 0) { console.error(`FAIL fixture git ${a[0]}: ${r.stdout}${r.stderr}`); process.exit(1); }
 }
 const setup = spawnSync(process.execPath, [CLI, 'setup', '--yes', '--toolchain-dir', spelledDir], {
   cwd: fixture, encoding: 'utf8', timeout: 300_000, windowsHide: true,
-  env: { ...process.env, CANARY_TRUST_STORE: path.join(TMP, 'trust') },
+  env: { ...process.env, AMABIE_TRUST_STORE: path.join(TMP, 'trust') },
 });
 check('setup accepted the authorized directory and its sealed step executed', () => setup.status === 0,
   `setup exited ${setup.status}\n${(setup.stdout ?? '').slice(-400)}`);

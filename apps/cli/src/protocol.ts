@@ -1,11 +1,11 @@
 /**
  * 1.1 §21/§26/§28 — the machine-readable protocol.
  *
- * Canary is used by agents that are not Claude Code, and by CI systems that are
+ * Amabie is used by agents that are not Claude Code, and by CI systems that are
  * not agents at all. Prose is for humans; a stable, versioned, COMPACT JSON
  * envelope is the interface everything else parses. Two rules shape it:
  *
- *   1. `--json` never changes what Canary DECIDES. It changes where the human
+ *   1. `--json` never changes what Amabie DECIDES. It changes where the human
  *      prose goes (stderr) and puts exactly one JSON object on stdout. Exit
  *      codes are identical in both modes — an agent must never get a different
  *      verdict because it asked for JSON.
@@ -17,10 +17,10 @@
  * The schemas are versioned strings so a consumer can detect a change instead
  * of silently misreading a field.
  */
-export const PROTOCOL_STATUS = 'canary-status/1';
-export const PROTOCOL_RESULT = 'canary-result/1';
-export const PROTOCOL_SETUP_CHECK = 'canary-setup-check/1';
-export const PROTOCOL_DOCTOR_PARTIAL = 'canary-doctor-partial/1';
+export const PROTOCOL_STATUS = 'amabie-status/1';
+export const PROTOCOL_RESULT = 'amabie-result/1';
+export const PROTOCOL_SETUP_CHECK = 'amabie-setup-check/1';
+export const PROTOCOL_DOCTOR_PARTIAL = 'amabie-doctor-partial/1';
 
 /** One sealed check, as an agent needs to see it: what it is, which ecosystem
  *  declared it, where it lives, and the exact command that will run. */
@@ -32,7 +32,7 @@ export interface ProtocolCheck {
   argv: string[];
 }
 
-/** How much protection Canary can claim here, and why — never more than was
+/** How much protection Amabie can claim here, and why — never more than was
  *  measured (see trust-store probeTrustLevel). */
 export interface ProtocolSecurity {
   level: 'HARDENED' | 'LOCAL' | 'ADVISORY' | 'UNSUPPORTED';
@@ -43,7 +43,7 @@ export interface ProtocolAgent {
   /** Which harnesses were found, and whether each can actually gate an agent's
    *  completion. `gated: true` and `hooked: true` are DIFFERENT facts: `gated`
    *  is a capability of the integration ("this agent's completions could be
-   *  blocked"), `hooked` is a fact about THIS repository ("Canary's hook is
+   *  blocked"), `hooked` is a fact about THIS repository ("Amabie's hook is
    *  installed here"). `hooked: false` means: do not claim protection from it —
    *  a detected agent is not a protected repository. */
   harnesses: Array<{ id: string; label: string; gated: boolean; reason: string }>;
@@ -129,7 +129,7 @@ export interface ProtocolEnvelope {
     limitations: string[];
   };
   /**
-   * `canary provider status` only (v1.5): the honest, machine-readable answer to
+   * `amabie provider status` only (v1.5): the honest, machine-readable answer to
    * "is HARDENED real HERE, and if not, what exactly is missing?".
    *
    * Every field is a MEASURED fact, never a declaration: `hostPrimitives` is what

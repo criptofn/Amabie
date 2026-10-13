@@ -64,7 +64,7 @@ function assertEq(actual, expected, msg) { assert(actual === expected, `${msg}\n
 
 assert(fs.existsSync(CLI), `missing built CLI (run npm run build): ${CLI}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m10-probe-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m10-probe-'));
 const weakenedRe = /the verification intent was weakened after isolation/;
 const notProvenRe = /CANDIDATE NOT PROVEN/;
 
@@ -73,7 +73,7 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.stdout?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd) {
+function amabie(args, cwd) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 }
 function makeRepo(name, scripts, files = {}) {
@@ -87,18 +87,18 @@ function makeRepo(name, scripts, files = {}) {
   for (const [f, content] of Object.entries(files)) fs.writeFileSync(path.join(root, f), content);
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
 const pkgOf = (root) => path.join(root, 'package.json');
 function reSeal(root, scripts) { // the mechanical "revision" an agent could do alone: edit base scripts + re-run setup
   fs.writeFileSync(pkgOf(root), JSON.stringify({ name: path.basename(root), private: true, scripts }, null, 2) + '\n');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `re-setup failed: ${s.stdout}\n${s.stderr}`);
 }
 // M10.1 (GLM F4 close): the ladder needs TASK-OBLIGATION AUTHORITY — a
@@ -110,13 +110,13 @@ function reSeal(root, scripts) { // the mechanical "revision" an agent could do 
 // 'test' step, coverage-loss via a resolvable diff without deletions) and
 // lifts no floor: intents and violations still block on their own grounds.
 function registerWork(root, text) {
-  const t = canary(['task', text, '--kind', 'refactor'], root);
+  const t = amabie(['task', text, '--kind', 'refactor'], root);
   assertEq(t.status, 0, `task registration failed: ${t.stdout}\n${t.stderr}`);
 }
-const candPath = (root, name) => path.join(root, '.canary', 'candidates', name);
-const recOf = (root, name) => JSON.parse(fs.readFileSync(path.join(root, '.canary', 'candidates', `${name}.json`), 'utf8'));
+const candPath = (root, name) => path.join(root, '.amabie', 'candidates', name);
+const recOf = (root, name) => JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'candidates', `${name}.json`), 'utf8'));
 function isolate(root, name) {
-  const r = canary(['isolate', name, root], root);
+  const r = amabie(['isolate', name, root], root);
   assert(r.status === 0, `isolate ${name} failed: ${r.stdout}\n${r.stderr}`);
 }
 function candCommit(root, name, files, remove = [], proof = false) {
@@ -131,7 +131,7 @@ function candCommit(root, name, files, remove = [], proof = false) {
   git(c, 'commit', '-m', 'candidate work');
 }
 function bundles(root, suffix) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((x) => x.endsWith(suffix)).sort()
     .map((x) => JSON.parse(fs.readFileSync(path.join(d, x, 'verification.json'), 'utf8')));
@@ -153,7 +153,7 @@ function pinBase(root) { repoStatus.push([root, git(root, 'rev-parse', 'HEAD')])
 // obligations ride the bundle, the record froze the intent =================
 check('S1 positive control: bugfix candidate WITH a test change → CANDIDATE PASS, 2/2 obligations MET, intent frozen in the record', () => {
   const root = pinBase(makeRepo('s1', TWO));
-  const t = canary(['task', 'fix the login crash', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the login crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   const rec = recOf(root, 'c');
@@ -162,7 +162,7 @@ check('S1 positive control: bugfix candidate WITH a test change → CANDIDATE PA
   assert(rec.intent.seal && /^[0-9a-f]{64}$/.test(rec.intent.seal.test ?? ''), 'snapshot carries the sealed digest of the test text');
   assertEq(rec.intent.task.kinds.join(','), 'bugfix', 'snapshot froze the registered task kinds');
   candCommit(root, 'c', { 'src/login.js': 'fixed\n', 'tests/login.test.js': '// reproduces the crash\n' }, [], true);
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 0, `S1 verify must PASS: ${r.stdout}`);
   assertMatch(r.stdout, /CANDIDATE PASS/, 'S1-pass: PASS line');
   const b = latest(root);
@@ -177,11 +177,11 @@ check('S1 positive control: bugfix candidate WITH a test change → CANDIDATE PA
 // stays locked, real work recovers =================
 check('S2 green plan + bugfix WITHOUT a test → CANDIDATE NOT PROVEN exit 2, unproven bundle still carries steps; promote refuses; adding the test recovers PASS', () => {
   const root = pinBase(makeRepo('s2', TWO));
-  const t = canary(['task', 'fix the flaky timer', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the flaky timer', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/timer.js': 'changed without a test\n' });
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S2-notproven: exit code');
   assertMatch(r.stdout, notProvenRe, 'S2-notproven: the NOT PROVEN line');
   assertMatch(r.stdout, /NO PROOF, NO DONE/, 'S2-notproven: names the doctrine');
@@ -190,12 +190,12 @@ check('S2 green plan + bugfix WITHOUT a test → CANDIDATE NOT PROVEN exit 2, un
   assertEq(b.status, 'unproven', 'S2-notproven: bundle status is unproven, never pass');
   assertEq(b.steps.length, 2, 'S2-notproven: the steps DID run — the ladder sits on top of them');
   assertEq(obOf(b, 'regression-evidence').status, 'unproven', 'S2-notproven: the gap is named');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S2-notproven: promote must refuse an unproven candidate');
   assert(!/PROMOTED|ALREADY APPLIED/.test(p.stdout), 'S2-notproven: no apply wording');
   assertEq(bundles(root, '-promotion').length, 0, 'S2-notproven: zero promotion bundles');
   candCommit(root, 'c', { 'tests/timer.test.js': '// real regression test\n' }, [], true);
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S2-notproven: closing the obligation with actual work recovers PASS: ${r2.stdout}`);
   assertMatch(r2.stdout, /CANDIDATE PASS/, 'S2-notproven: PASS after real proof');
 });
@@ -204,11 +204,11 @@ check('S2 green plan + bugfix WITHOUT a test → CANDIDATE NOT PROVEN exit 2, un
 // violation, steps included), restore recovers =================
 check('S3 committed test deletion → CANDIDATE BLOCKED exit 2 (steps + coverage-loss UNMET in the bundle); restore + commit → PASS; promote refused the whole time', () => {
   const root = pinBase(makeRepo('s3', TWO));
-  const t = canary(['task', 'restructure the store', '--kind', 'refactor'], root);
+  const t = amabie(['task', 'restructure the store', '--kind', 'refactor'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/store.js': 'refactored\n' }, ['tests/baseline.test.js'], true); // deleted the coverage
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S3-unmet: exit code');
   assertMatch(r.stdout, /CANDIDATE BLOCKED — the sealed plan passed/, 'S3-unmet: BLOCKED-on-obligation line (not NOT PROVEN)');
   assertMatch(r.stdout, /coverage-loss\] UNMET/, 'S3-unmet: names the violated obligation');
@@ -217,14 +217,14 @@ check('S3 committed test deletion → CANDIDATE BLOCKED exit 2 (steps + coverage
   assertEq(b.status, 'blocked', 'S3-unmet: bundle status');
   assertEq(b.steps.length, 2, 'S3-unmet: objective violation still evidences the steps that ran');
   assertEq(obOf(b, 'coverage-loss').status, 'unmet', 'S3-unmet: obligation status unmet in bytes');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S3-unmet: promote refuses');
   assertEq(bundles(root, '-promotion').length, 0, 'S3-unmet: zero promotion bundles');
   const base = recOf(root, 'c').baseHead;
   git(candPath(root, 'c'), 'restore', '--source=' + base, '--staged', '--worktree', 'tests/baseline.test.js');
   git(candPath(root, 'c'), 'add', '-A');
   git(candPath(root, 'c'), 'commit', '-m', 'restore the deleted coverage');
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S3-unmet: restored coverage must PASS: ${r2.stdout}`);
   assertMatch(r2.stdout, /CANDIDATE PASS/, 'S3-unmet: PASS after restore');
   assertEq(obOf(latest(root), 'coverage-loss').status, 'met', 'S3-unmet: coverage-loss flips to met (resolved diff, nothing deleted)');
@@ -237,32 +237,32 @@ check('S4a plan step dropped after isolation (re-setup with a smaller script set
   registerWork(root, 'tidy the module layout'); // M10.1: the PASS legs need task authority (S12 owns the law)
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/tweak.js': 'ready to pass\n' }, [], true);
-  const pre = canary(['isolate', '--verify', 'c', root], root);
+  const pre = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(pre.status, 0, `S4a-drop: pre-condition PASS: ${pre.stdout}`);
   reSeal(root, { test: FPASS }); // the dropped "build" step
-  const recP = path.join(root, '.canary', 'candidates', 'c.json');
+  const recP = path.join(root, '.amabie', 'candidates', 'c.json');
   const recBytesBefore = fs.readFileSync(recP, 'utf8');
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S4a-drop: exit code');
   assertMatch(r.stdout, weakenedRe, 'S4a-drop: the §11 block');
   assertMatch(r.stdout, /"build" present at isolation is no longer in the plan/, 'S4a-drop: names the dropped step');
   assert(!/CANDIDATE PASS|CANDIDATE FAIL|NOT PROVEN|CANDIDATE BLOCKED — the sealed/.test(r.stdout), 'S4a-drop: blocked BEFORE execution — no verdict of any kind');
   assert(!/QUARANTIN|modified by the candidate/.test(r.stdout), 'S4a-drop: grudgeless — this is not a §9 mandate');
-  assert(!fs.existsSync(path.join(root, '.canary', 'authority-quarantine.json')), 'S4a-drop: no quarantine stamp');
+  assert(!fs.existsSync(path.join(root, '.amabie', 'authority-quarantine.json')), 'S4a-drop: no quarantine stamp');
   const b = latest(root);
   assertEq(b.status, 'blocked', 'S4a-drop: blocked bundle');
   assertEq(b.steps.length, 0, 'S4a-drop: zero steps — the block precedes the window');
   assertMatch(JSON.stringify(b.intentEvent), /no longer in the plan/, 'S4a-drop: intentEvent in the bundle bytes');
   assertEq(fs.readFileSync(recP, 'utf8'), recBytesBefore, 'S4a-drop: the frozen snapshot is NOT re-baselined by the block');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S4a-drop: promote re-verifies and is refused too');
   assertEq(bundles(root, '-promotion').length, 0, 'S4a-drop: zero promotion bundles');
   // second refusal run: still blocked, snapshot still the original
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertMatch(r2.stdout, weakenedRe, 'S4a-drop: re-running cannot wear the block down');
   assertEq(fs.readFileSync(recP, 'utf8'), recBytesBefore, 'S4a-drop: snapshot survives repeat refusals unchanged');
   reSeal(root, TWO); // the human restores the promised authority
-  const r3 = canary(['isolate', '--verify', 'c', root], root);
+  const r3 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r3.status, 0, `S4a-drop: restored authority must recover PASS: ${r3.stdout}`);
   assertMatch(r3.stdout, /CANDIDATE PASS/, 'S4a-drop: PASS after human restore');
 });
@@ -273,34 +273,34 @@ check('S4a2 sealed text re-locked to different (green) commands after isolation 
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/tweak.js': 'ready\n' }, [], true);
   reSeal(root, { test: FBUILD, build: FBUILD }); // same step NAMES, different sealed texts (all green — the laundering target)
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S4a-reseal: exit code');
   assertMatch(r.stdout, weakenedRe, 'S4a-reseal: the §11 block');
   assertMatch(r.stdout, /sealed text of "test" changed since isolation/, 'S4a-reseal: names the re-sealed step');
   const b = latest(root);
   assertEq(b.steps.length, 0, 'S4a-reseal: blocked before execution');
-  assert(!fs.existsSync(path.join(root, '.canary', 'authority-quarantine.json')), 'S4a-reseal: grudgeless');
+  assert(!fs.existsSync(path.join(root, '.amabie', 'authority-quarantine.json')), 'S4a-reseal: grudgeless');
   reSeal(root, TWO);
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S4a-reseal: restore must recover: ${r2.stdout}`);
 });
 
 // ================= S4b: the registered task shrunk / grown after isolation ==========
 check('S4b task kinds+requirements shrink after isolation → intent block; growing back (and beyond) is allowed and verifies', () => {
   const root = pinBase(makeRepo('s4b', TWO));
-  const t = canary(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works'], root);
+  const t = amabie(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/auth.js': 'fixed\n', 'tests/auth.test.js': '// proof\n' });
-  const pre = canary(['isolate', '--verify', 'c', root], root);
+  const pre = amabie(['isolate', '--verify', 'c', root], root);
   // Registered requirements can NEVER yield a candidate PASS until M15 lands
   // a way to prove them — the honest pre-state is NOT PROVEN, guard silent.
   assertEq(pre.status, 2, 'S4b-shrink: pre-condition is NOT PROVEN (requirements unproven), never PASS');
   assertMatch(pre.stdout, notProvenRe, 'S4b-shrink: pre-condition NOT PROVEN line');
   assert(!weakenedRe.test(pre.stdout), 'S4b-shrink: guard silent at match');
-  const t2 = canary(['task', 'tidy up'], root); // re-registered smaller: no kind, no requirements
+  const t2 = amabie(['task', 'tidy up'], root); // re-registered smaller: no kind, no requirements
   assertEq(t2.status, 0, `re-task failed: ${t2.stdout}`);
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S4b-shrink: exit code');
   assertMatch(r.stdout, weakenedRe, 'S4b-shrink: the §11 block');
   assertMatch(r.stdout, /task kind "bugfix" registered at isolation is gone/, 'S4b-shrink: names the vanished kind');
@@ -308,13 +308,13 @@ check('S4b task kinds+requirements shrink after isolation → intent block; grow
   const evs = JSON.stringify(latest(root).intentEvent);
   assertMatch(evs, /bugfix/, 'S4b-shrink: both events in the bundle');
   // grow back to exactly the frozen shape: allowed
-  canary(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works'], root);
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  amabie(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works'], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assert(!weakenedRe.test(r2.stdout), `S4b-grow: restoring the frozen task must clear the guard: ${r2.stdout}`);
   assertMatch(r2.stdout, notProvenRe, 'S4b-grow: guard cleared, honest verdict restored (NOT PROVEN — requirements still unprovable pre-M15)');
   // grow BEYOND it (a third requirement) — increases always allowed
-  canary(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works', '--requirement', 'sessions expire'], root);
-  const r3 = canary(['isolate', '--verify', 'c', root], root);
+  amabie(['task', 'fix auth bug', '--kind', 'bugfix', '--requirement', 'login works', '--requirement', 'logout works', '--requirement', 'sessions expire'], root);
+  const r3 = amabie(['isolate', '--verify', 'c', root], root);
   assert(!weakenedRe.test(r3.stdout), 'S4b-grow: an authority that GREW is never a weakening');
   assertMatch(r3.stdout, notProvenRe, 'S4b-grow: the grown task adds obligations honestly → NOT PROVEN (per-requirement)');
   assertEq(obOf(latest(root), 'per-requirement').status, 'unproven', 'S4b-grow: per-requirement rides the bundle');
@@ -331,12 +331,12 @@ check('S4b task kinds+requirements shrink after isolation → intent block; grow
 check('S5 record with the intent hand-stripped → NOT PROVEN naming [task-authority], RE-ISOLATE advice, promote locked — never a legacy PASS', () => {
   const root = pinBase(makeRepo('s5', TWO));
   isolate(root, 'c');
-  const recP = path.join(root, '.canary', 'candidates', 'c.json');
+  const recP = path.join(root, '.amabie', 'candidates', 'c.json');
   const rec = recOf(root, 'c');
   delete rec.intent;
   fs.writeFileSync(recP, JSON.stringify(rec, null, 2) + '\n');
   candCommit(root, 'c', { 'src/tweak.js': 'taskless, snapshot-less\n' });
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, `S5-failsafe: an intent-less record must never PASS:\n${r.stdout}`);
   assertMatch(r.stdout, notProvenRe, 'S5-failsafe: NOT PROVEN verdict');
   assertMatch(r.stdout, /obligation \[task-authority\] UNPROVEN/, 'S5-failsafe: the missing frozen authority is named');
@@ -346,7 +346,7 @@ check('S5 record with the intent hand-stripped → NOT PROVEN naming [task-autho
   assertEq(b.status, 'unproven', 'S5-failsafe: unproven bundle, never pass');
   assertEq(b.intentEvent, undefined, 'S5-failsafe: grudgeless — absence fails safe, it is not a §11 weakening event');
   assertEq(obOf(b, 'task-authority').status, 'unproven', 'S5-failsafe: the duty rides the bundle bytes');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S5-failsafe: promote rides the refusal');
   assertEq(bundles(root, '-promotion').length, 0, 'S5-failsafe: zero promotion bundles');
 });
@@ -356,11 +356,11 @@ check('S6 red plan → CANDIDATE FAIL (exit 2) whose bundle carries the obligati
   const root = pinBase(makeRepo('s6', RED_GREEN, {
     'check.cjs': "const fs = require('node:fs'); const assert = require('node:assert/strict');\nif (fs.existsSync('RED')) process.exit(1);\nconst expected = 'tests/regression.expected.json'; if (fs.existsSync(expected)) assert.equal(require('./src/app.js'), JSON.parse(fs.readFileSync(expected, 'utf8')));\n",
   }));
-  const t = canary(['task', 'fix the crash', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/crash.js': 'fixed\n', 'tests/crash.test.js': '// proof\n', 'RED': '' });
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S6-fail: exit code');
   assertMatch(r.stdout, /CANDIDATE FAIL/, 'S6-fail: FAIL verdict, not NOT PROVEN');
   assert(!notProvenRe.test(r.stdout), 'S6-fail: red is red — the ladder does not dress it up');
@@ -373,7 +373,7 @@ check('S6 red plan → CANDIDATE FAIL (exit 2) whose bundle carries the obligati
   addRegression(candPath(root, 'c'));
   git(candPath(root, 'c'), 'add', '-A');
   git(candPath(root, 'c'), 'commit', '-m', 'drop the cause');
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S6-fail: green + proven must PASS: ${r2.stdout}`);
 });
 
@@ -392,10 +392,10 @@ check('S8 lying index (--assume-unchanged) is seen as dirty: verify reports it, 
   candCommit(root, 'c', { 'src/a.js': 'committed candidate work\n' }, [], true);
   fs.writeFileSync(path.join(c, 'tests', 'baseline.test.js'), '// hollowed — hidden from status by the index flag\n');
   git(c, 'update-index', '--assume-unchanged', 'tests/baseline.test.js');
-  const r = canary(['isolate', '--verify', 'c', root, '--verbose'], root);
+  const r = amabie(['isolate', '--verify', 'c', root, '--verbose'], root);
   // the note is a --verbose detail (Out.detail), like every honesty caveat
   assertMatch(r.stdout, /dirty/, 'S8: the lying index does not hide dirtiness from candidateIdentity');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S8: promote gate 2 refuses while the index lies');
   assertMatch(p.stdout, /UNCOMMITTED/, 'S8: the refusal names the hidden edits at DEFAULT verbosity');
   assert(!/PROMOTED|ALREADY APPLIED/.test(p.stdout), 'S8: no apply wording on hidden edits');
@@ -405,11 +405,11 @@ check('S8 lying index (--assume-unchanged) is seen as dirty: verify reports it, 
   assertEq(pr.length, 0, 'S8: live verification rejects before promotion starts');
   assertEq(bundles(root, '-candidate').at(-1).status, 'blocked', 'S8: candidate evidence records the refusal');
   git(c, 'update-index', '--no-assume-unchanged', 'tests/baseline.test.js');
-  const p2 = canary(['isolate', '--promote', 'c', root], root);
+  const p2 = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p2.status, 2, 'S8: clearing the flag EXPOSES the real edit — still dirty, still refused');
   assert(bundles(root, '-promotion').every((b) => b.status === 'blocked'), 'S8: still zero accepted promotions');
   git(c, 'checkout', '--', 'tests/baseline.test.js');
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S8: honest bytes recover: ${r2.stdout}`);
   assertMatch(r2.stdout, /CANDIDATE PASS/, 'S8: PASS on restored bytes');
 });
@@ -426,18 +426,18 @@ check('S9 committed git mv tests→src keeping the .test.js suffix → CANDIDATE
   const c = candPath(root, 'c');
   git(c, 'mv', 'tests/baseline.test.js', 'src/baseline.test.js');
   git(c, 'commit', '-m', 'relocate — the suffix stays so nobody notices');
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S9: the suffix-surviving escape must block');
   assertMatch(r.stdout, /CANDIDATE BLOCKED — the sealed plan passed/, 'S9: objective violation');
   assertMatch(r.stdout, /coverage-loss\] UNMET/, 'S9: names the violated obligation');
   const b = latest(root);
   assertEq(obOf(b, 'coverage-loss').status, 'unmet', 'S9: unmet in the bundle bytes');
   assertMatch(JSON.stringify(b), /tests[\\/]baseline\.test\.js/, 'S9: the OLD path is named as the loss');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S9: promote locked');
   git(c, 'mv', 'src/baseline.test.js', 'tests/baseline.test.js');
   git(c, 'commit', '-m', 'back where it runs');
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S9: move-back → committed diff is empty → PASS: ${r2.stdout}`);
 });
 
@@ -450,11 +450,11 @@ check('S9 committed git mv tests→src keeping the .test.js suffix → CANDIDATE
 check('S10 a plan step writing a test mid-window cannot mint its own regression evidence → NOT PROVEN even after the later commit', () => {
   const Fghost = `node "${path.join(FX, 'm10-ghost-writer.cjs')}"`;
   const root = pinBase(makeRepo('s10', { test: Fghost, build: FBUILD }));
-  const t = canary(['task', 'fix the timer', '--kind', 'bugfix'], root);
+  const t = amabie(['task', 'fix the timer', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `task failed: ${t.stdout}`);
   isolate(root, 'c');
   candCommit(root, 'c', { 'src/timer.js': 'fixed without a test\n' });
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, 'S10: green-on-self-written-test must NOT PROVEN (the old post-window read said PASS)');
   assertMatch(r.stdout, notProvenRe, 'S10: the NOT PROVEN line');
   const b = latest(root);
@@ -462,12 +462,12 @@ check('S10 a plan step writing a test mid-window cannot mint its own regression 
   assertEq(obOf(b, 'regression-evidence').status, 'unproven', 'S10: pre-window bytes: no test in the candidate diff');
   assert(fs.existsSync(path.join(candPath(root, 'c'), 'tests', 'ghost.test.js')),
     'S10: the ghost landed in the worktree — this proves the write happened INSIDE the window');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S10: promote locked');
   fs.rmSync(path.join(candPath(root, 'c'), 'tests', 'ghost.test.js')); // drop the untracked mint
   candCommit(root, 'c', { 'tests/timer.test.js': '// an honest committed regression test\n' }, [], true);
   candCommit(root, 'c', { 'tests/ghost.test.js': '// ghost — written by the plan step itself\n' }); // every file the step writes now already belongs to the reviewed commit
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 2, `S10: the stronger completion gate remains closed: ${r2.stdout}`);
   assertMatch(r2.stdout, notProvenRe, 'S10: the candidate remains NOT PROVEN');
 });
@@ -486,14 +486,14 @@ check('S11 isolate refuses to register a candidate that is not provably clean (p
   // VACUOUSLY (isolate "clean" because the injection never ran). Windows
   // ignores the exec bit; git runs the hook there either way.
   if (process.platform !== 'win32') fs.chmodSync(hookFile, 0o755);
-  const r = canary(['isolate', 'c', root], root);
+  const r = amabie(['isolate', 'c', root], root);
   assertEq(r.status, 2, 'S11: a dirty-at-birth candidate is refused');
   assertMatch(r.stdout, /not provably clean/, 'S11: the refusal names the premise it protects');
   assert(!fs.existsSync(candPath(root, 'c')), 'S11: the worktree was rolled back — no half-created candidate');
-  assert(!fs.existsSync(path.join(root, '.canary', 'candidates', 'c.json')), 'S11: nothing was registered');
+  assert(!fs.existsSync(path.join(root, '.amabie', 'candidates', 'c.json')), 'S11: nothing was registered');
   fs.rmSync(path.join(root, '.git', 'hooks', 'post-checkout'));
   isolate(root, 'c'); // the helper asserts exit 0 — recovery
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 0, `S11: with the hook gone, isolation verifies clean: ${r2.stdout}`);
 });
 
@@ -515,18 +515,18 @@ check('S12 taskless green candidate → NOT PROVEN naming [task-authority]; prom
   const c = candPath(root, 'c');
   fs.writeFileSync(path.join(c, 'src', 'tweak.js'), 'behavior-preserving\n');
   git(c, 'add', '-A'); git(c, 'commit', '-m', 'tweak');
-  const r = canary(['isolate', '--verify', 'c', root], root);
+  const r = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r.status, 2, `S12: taskless must never PASS:\n${r.stdout}`);
   assertMatch(r.stdout, notProvenRe, 'S12: NOT PROVEN verdict');
   assertMatch(r.stdout, /obligation \[task-authority\] UNPROVEN/, 'S12: names the missing authority');
-  assertMatch(r.stdout, /canary task/, 'S12: the note points at the honest path');
+  assertMatch(r.stdout, /amabie task/, 'S12: the note points at the honest path');
   assertMatch(r.stdout, /RE-ISOLATE/, 'S12: the note names re-isolation, not re-verification');
   const b = latest(root);
   assertEq(b.status, 'unproven', 'S12: unproven bundle');
   const ta = obOf(b, 'task-authority');
   assert(ta && ta.status === 'unproven' && ta.mode === 'objective', 'S12: bundle carries the authority obligation');
   assertEq(b.steps.length, 2, 'S12: the executed green steps still ride the bundle');
-  const p = canary(['isolate', '--promote', 'c', root], root);
+  const p = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p.status, 2, 'S12: promote locked by gate 1');
   assert(!/PROMOTED|ALREADY APPLIED|ACCEPTED/.test(p.stdout), 'S12: no apply wording');
   assertEq(bundles(root, '-promotion').length, 0, 'S12: zero promotion bundles');
@@ -534,11 +534,11 @@ check('S12 taskless green candidate → NOT PROVEN naming [task-authority]; prom
   // adds duties, but the OLD candidate must stay NOT PROVEN. Self-minting
   // the frozen authority from live bytes is dead.
   registerWork(root, 'tidy the module layout');
-  const r2 = canary(['isolate', '--verify', 'c', root], root);
+  const r2 = amabie(['isolate', '--verify', 'c', root], root);
   assertEq(r2.status, 2, `S12-mint: post-isolation registration must NOT mint authority:\n${r2.stdout}`);
   assertMatch(r2.stdout, notProvenRe, 'S12-mint: still NOT PROVEN after the self-mint attempt');
   assertMatch(r2.stdout, /obligation \[task-authority\] UNPROVEN/, 'S12-mint: the authority duty still stands');
-  const p2 = canary(['isolate', '--promote', 'c', root], root);
+  const p2 = amabie(['isolate', '--promote', 'c', root], root);
   assertEq(p2.status, 2, 'S12-mint: promote still locked after the self-mint attempt');
   assertEq(bundles(root, '-promotion').length, 0, 'S12-mint: still zero promotion bundles');
   // the legitimate recovery: the registered task rides into a NEW isolation,
@@ -547,7 +547,7 @@ check('S12 taskless green candidate → NOT PROVEN naming [task-authority]; prom
   candCommit(root, 'c2', { 'src/tweak.js': 'behavior-preserving\n' }, [], true);
   assertEq(recOf(root, 'c2').intent.task.kinds.join(','), 'refactor',
     'S12-reisolate: the fresh snapshot froze the registered authority');
-  const r3 = canary(['isolate', '--verify', 'c2', root], root);
+  const r3 = amabie(['isolate', '--verify', 'c2', root], root);
   assertEq(r3.status, 0, `S12-reisolate: register + re-isolate must recover: ${r3.stdout}`);
   assertMatch(r3.stdout, /CANDIDATE PASS/, 'S12-reisolate: PASS on the frozen authority');
 });
@@ -558,7 +558,7 @@ check('S12 taskless green candidate → NOT PROVEN naming [task-authority]; prom
 // two cross-case invariants it actually checks.
 check('cross-case hygiene: no quarantine stamped anywhere; every base HEAD unchanged', () => {
   for (const [root, head] of repoStatus) {
-    assert(!fs.existsSync(path.join(root, '.canary', 'authority-quarantine.json')), `hygiene: ${path.basename(root)} carries a quarantine marker no scenario stamped`);
+    assert(!fs.existsSync(path.join(root, '.amabie', 'authority-quarantine.json')), `hygiene: ${path.basename(root)} carries a quarantine marker no scenario stamped`);
     assertEq(git(root, 'rev-parse', 'HEAD'), head, `hygiene: ${path.basename(root)} base HEAD moved during a judged run`);
   }
 });

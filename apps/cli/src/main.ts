@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
- * canary — independent verification layer CLI.
+ * amabie — independent verification layer CLI.
  *
- *   canary run   <spec.json>                 execute an experiment, write evidence
- *   canary prove <spec.json> [proof.json]    re-run and assert committed expectations
- *   canary check <spec.json> [proof.json]    prove without re-running (last evidence)
- *   canary report [evidence.json] [out.html] render the human-readable report
+ *   amabie run   <spec.json>                 execute an experiment, write evidence
+ *   amabie prove <spec.json> [proof.json]    re-run and assert committed expectations
+ *   amabie check <spec.json> [proof.json]    prove without re-running (last evidence)
+ *   amabie report [evidence.json] [out.html] render the human-readable report
  *                                          (no args: the latest run's evidence)
  *   --- productization surface (see onboarding.ts for its doctrine) ---
- *   canary setup    [--check] [--yes]        inspect setup or install + smoke-run
+ *   amabie setup    [--check] [--yes]        inspect setup or install + smoke-run
  *                                          (--check is read-only; READY only after proof)
- *   canary doctor                            runs the checks NOW; READY only from this run
- *   canary uninstall                         remove exactly Canary's own changes
- *   canary checkpoint                        harness-internal: verify at completion boundary
- *   canary claim <text>                      record the agent's account as an UNTRUSTED
+ *   amabie doctor                            runs the checks NOW; READY only from this run
+ *   amabie uninstall                         remove exactly Amabie's own changes
+ *   amabie checkpoint                        harness-internal: verify at completion boundary
+ *   amabie claim <text>                      record the agent's account as an UNTRUSTED
  *                                          hint — claims are not evidence, never a verdict
- *   canary task <text> [--kind k] [--requirement "..."]…
- *                                          register the task INTENT so Canary derives
+ *   amabie task <text> [--kind k] [--requirement "..."]…
+ *                                          register the task INTENT so Amabie derives
  *                                          proof obligations for its kind — an
  *                                          AGENT_REPORTED hint that can only ADD
  *                                          obligations, never lift the sealed plan.
@@ -24,9 +24,9 @@
  *                                          freezes at ITS isolation: registering
  *                                          afterwards adds duties but never mints
  *                                          it — that path is RE-ISOLATION
- *   canary bind <script> --requirement "…"   the OPERATOR's act: declare that a stated
+ *   amabie bind <script> --requirement "…"   the OPERATOR's act: declare that a stated
  *                                          requirement is proven by that sealed script.
- *                                          Writes package.json canary.proofs; `setup`
+ *                                          Writes package.json amabie.proofs; `setup`
  *                                          seals it. Without a binding, a registered
  *                                          requirement stays NOT PROVEN (fail closed).
  *
@@ -46,10 +46,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { emitEnvelope, PROTOCOL_STATUS } from './protocol.js';
 
-import { renderHtml } from '@canary-rn/report';
-import { validateBundle, type EvidenceBundle } from '@canary-rn/evidence-schema';
-import { runExperiment, InfraAbort, CANARY_VERSION } from './pipeline.js';
+import { renderHtml } from '@amabie/report';
+import { validateBundle, type EvidenceBundle } from '@amabie/evidence-schema';
+import { runExperiment, InfraAbort, AMABIE_VERSION } from './pipeline.js';
 import {
   assertProof, readLatestEvidence, verifyArtifacts, verifyArtifactSemantics,
   verifyRunIdentity, verifyClassificationDerivation, hostBoundEvidenceChecks,
@@ -67,55 +68,55 @@ import { cmdProvider } from './provider/commands.js'; // 1.1 §E: provider lifec
 const REPO_ROOT_DEFAULT = path.resolve(process.cwd());
 
 function usage(exitCode = 3): never {
-  console.log(`canary ${CANARY_VERSION} — cool diff. prove that it actually made the project better.
+  console.log(`amabie ${AMABIE_VERSION} — cool diff. prove that it actually made the project better.
 
 usage:
-  canary run   <spec.json>
-  canary prove <spec.json> [proof.json]
-  canary check <spec.json> [proof.json]     assert last run's evidence (no re-run)
-  canary report [evidence.json] [out.html]  (defaults: latest run's evidence; sibling report.html)
+  amabie run   <spec.json>
+  amabie prove <spec.json> [proof.json]
+  amabie check <spec.json> [proof.json]     assert last run's evidence (no re-run)
+  amabie report [evidence.json] [out.html]  (defaults: latest run's evidence; sibling report.html)
                                           (SELF-CONSISTENT requires byte + identity + tree +
                                           derivation checks ON THIS MACHINE — NOT a committed-
                                           proof comparison; that is prove/check. exit 0 on
                                           self-consistency, else NOT SELF-CONSISTENT, exit 3)
-  canary setup [--check] [--yes] [--mcp-profile everyday|expert] [--toolchain <name>]... [--toolchain-dir <abs dir>]...
+  amabie setup [--check] [--yes] [--mcp-profile everyday|expert] [--toolchain <name>]... [--toolchain-dir <abs dir>]...
                             inspect setup without changes (--check), or install and smoke-run it.
                             MCP defaults to four everyday tools; expert adds work/finish.
                             --toolchain (repeatable) finds a named tool on your shell PATH
                             and authorizes its executable directory (for example java or python).
                             --toolchain-dir (repeatable) authorizes ONE executable directory
                             for the checks your project runs: build tools a project spawns
-                            itself (java, python, git) are invisible to Canary's restricted
+                            itself (java, python, git) are invisible to Amabie's restricted
                             step environment on purpose, because a program planted earlier on
-                            the calling PATH would run as Canary's own authority. A directory
+                            the calling PATH would run as Amabie's own authority. A directory
                             inside the repository is refused; --clear-toolchain-dirs revokes
-  canary status             lazy reconnect: does Canary already know this repo, and is its
+  amabie status             lazy reconnect: does Amabie already know this repo, and is its
                             wiring sound? READ-ONLY — no project commands executed, zero
                             writes (a few read-only git metadata reads);
                             CONNECTED / NEEDS ATTENTION / NOT CONNECTED. A statement about
                             STATE, never a claim that anything passes
-  canary mcp [--profile everyday|expert]
+  amabie mcp [--profile everyday|expert]
                             MCP server on stdio; manual invocations default to the legacy expert profile
-  canary result             the same state answer as the status command, for PROGRAMS:
+  amabie result             the same state answer as the status command, for PROGRAMS:
                             compact, versioned JSON on stdout (checks, sealed authority,
                             MEASURED custody level, harness capability, recent historical checks)
                             and no log dump — full evidence stays in the files the envelope
                             names. Never runs the plan, so it is free to call
-  canary agents             which agents work in this repo and at what capability:
+  amabie agents             which agents work in this repo and at what capability:
                             GATED (a completion can be blocked — Claude Code, and
                             OpenAI Codex CLI once you trust the hook setup wrote)
                             vs ADVISORY (the agent is told and may ignore it).
-                            "canary agents install generic" adds a marked,
+                            "amabie agents install generic" adds a marked,
                             removable AGENTS.md instruction block; no command ever
                             pretends a hook exists where none does
-  canary doctor             is Canary actually protecting this repo? Runs the checks now;
+  amabie doctor             is Amabie actually protecting this repo? Runs the checks now;
                             READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED
-  canary doctor --check ID  re-runs one sealed check for diagnosis (PARTIAL only;
-                            never a completion result). Run canary doctor for the full gate.
-  canary uninstall          remove Canary's own changes, keep everything else
-  canary claim "<text>"     the agent's account, stored as an UNTRUSTED hint — claims
-                            are not evidence; only Canary's own runs decide verdicts
-  canary task "<intent>"    register task intent (--kind bugfix|refactor|dependency|
+  amabie doctor --check ID  re-runs one sealed check for diagnosis (PARTIAL only;
+                            never a completion result). Run amabie doctor for the full gate.
+  amabie uninstall          remove Amabie's own changes, keep everything else
+  amabie claim "<text>"     the agent's account, stored as an UNTRUSTED hint — claims
+                            are not evidence; only Amabie's own runs decide verdicts
+  amabie task "<intent>"    register task intent (--kind bugfix|refactor|dependency|
                             performance|ui|multi, --requirement per part) so completion
                             checks derive the task's proof obligations — a hint with zero
                             authority: it can only ADD obligations, never weaken the plan.
@@ -124,11 +125,11 @@ usage:
                             judge completion at all — none frozen = NOT PROVEN, never
                             PASS, and registering after the fact cannot mint it:
                             register, then re-isolate (there is no opt-out)
-  canary bind <script> --requirement "<exact stated requirement>" [--requirement …] [--reseal]
+  amabie bind <script> --requirement "<exact stated requirement>" [--requirement …] [--reseal]
                             the OPERATOR's binding act: declare that a stated requirement
                             is proven by a script the SEALED PLAN runs. Writes
-                            package.json canary.proofs (or canary.project.json proofs) and
-                            names the step that seals it ('canary setup'). --reseal does the
+                            package.json amabie.proofs (or amabie.project.json proofs) and
+                            names the step that seals it ('amabie setup'). --reseal does the
                             whole ritual in one act: it commits the declaration FILE alone —
                             refusing if any other path is dirty, so the sealed base is
                             exactly what you reviewed — and then runs the seal. It saves two
@@ -137,17 +138,17 @@ usage:
                             stays NOT PROVEN — acceptance cannot replace measurement for an
                             objective requirement. Task registration only adds duties;
                             LOCAL does not isolate same-UID workers from CLI bind/setup commands
-  canary work <name> "<intent>" [--kind k] [--requirement "…"]…
+  amabie work <name> "<intent>" [--kind k] [--requirement "…"]…
                             the ISOLATED expert path: register the intent and
                             open a separate candidate; work there, then verify
-                            and promote it with canary finish when ready
-  canary finish <name>      verify the candidate from outside it, then promote if
+                            and promote it with amabie finish when ready
+  amabie finish <name>      verify the candidate from outside it, then promote if
                             every objective duty holds. A subjective duty is NOT
-                            closed here — that stays canary accept, in a terminal
-  canary isolate <name>     open an UNTRUSTED candidate: a detached git worktree of the
+                            closed here — that stays amabie accept, in a terminal
+  amabie isolate <name>     open an UNTRUSTED candidate: a detached git worktree of the
                             trusted base (--base <ref>, --path <dir>) for a worker to
                             edit — the base itself is never the workspace
-  canary isolate --verify <name>
+  amabie isolate --verify <name>
                             run the base's sealed plan INSIDE the candidate, from outside
                             it; PASS = ELIGIBLE for promotion (a separate act — nothing
                             is applied), FAIL/BLOCKED/NOT-PROVEN leaves the base untouched;
@@ -155,10 +156,10 @@ usage:
                             frozen at THIS candidate's isolation to carry the duties
                             it derives from the live record (no frozen authority =
                             NOT PROVEN; recovery = register the task and re-isolate)
-  canary isolate --list     live status of registered candidates (+ unregistered worktrees, reported never touched)
-  canary isolate --remove <name> [--discard]
+  amabie isolate --list     live status of registered candidates (+ unregistered worktrees, reported never touched)
+  amabie isolate --remove <name> [--discard]
                             clean up a candidate; refuses a dirty one without --discard
-  canary accept <name>      closes SUBJECTIVE duties (ui/performance/
+  amabie accept <name>      closes SUBJECTIVE duties (ui/performance/
                             dependency/requirements without their own check) by
                             typing the candidate's name in an interactive
                             terminal — the non-interactive agent path is
@@ -170,7 +171,7 @@ usage:
                             makes it STALE and the duties reopen. Objective
                             proofs are never acceptance-material; mixed tasks
                             need BOTH
-  canary version [--verbose]                runtime, entry file and its SHA-256 for a bug report`);
+  amabie version [--verbose]                runtime, entry file and its SHA-256 for a bug report`);
   if (exitCode !== 0) {
     // Lazy-Connect: an unknown command also answers the state question read-only.
     cmdStatus([]);
@@ -312,13 +313,13 @@ async function cmdProve(specPath: string, proofPath: string, rerun: boolean): Pr
   }
   console.log('='.repeat(60));
   if (v.status === 'FAIL') {
-    console.log(`CANARY REGRESSION PROOF: FAIL — ${v.failed.length}/${checks.length} assertions diverged`);
+    console.log(`AMABIE REGRESSION PROOF: FAIL — ${v.failed.length}/${checks.length} assertions diverged`);
   } else if (v.status === 'INCOMPLETE') {
-    console.log(`CANARY REGRESSION PROOF: INCOMPLETE — ${checks.length - v.skipped.length} assertion(s) held, ` +
+    console.log(`AMABIE REGRESSION PROOF: INCOMPLETE — ${checks.length - v.skipped.length} assertion(s) held, ` +
       `but ${v.skipped.length} host-exact assertion(s) could not be verified: this runtime is NOT the committed proof host. ` +
       `PASS is not claimed (exit 2).`);
   } else {
-    console.log(`CANARY REGRESSION PROOF: PASS — ${checks.length} assertion(s) held (all of them, host-exact included, ON the proof host)`);
+    console.log(`AMABIE REGRESSION PROOF: PASS — ${checks.length} assertion(s) held (all of them, host-exact included, ON the proof host)`);
   }
   console.log('='.repeat(60));
   return v.exitCode;
@@ -335,7 +336,7 @@ function cmdReport(evidencePath: string | undefined, outPath?: string): number {
     // most recent recorded run's evidence bundle.
     const latest = findLatestEvidencePath(REPO_ROOT_DEFAULT);
     if (!latest) {
-      console.error('no runs recorded under .canary-runs — run an experiment first, or pass an explicit evidence.json');
+      console.error('no runs recorded under .amabie-runs — run an experiment first, or pass an explicit evidence.json');
       return 3;
     }
     resolved = latest.evidencePath;
@@ -387,7 +388,7 @@ function cmdReport(evidencePath: string | undefined, outPath?: string): number {
   // post-sol F1: report verifies AGAINST THE LOCAL ARTIFACTS ONLY; the
   // committed-proof comparison belongs to prove/check and is never implied.
   console.log(`report: ${target} (${selfConsistent
-    ? 'SELF-CONSISTENT on local artifacts — committed proof NOT compared (use canary check)'
+    ? 'SELF-CONSISTENT on local artifacts — committed proof NOT compared (use amabie check)'
     : 'NOT SELF-CONSISTENT — see banner'})`);
   return selfConsistent ? 0 : 3;
 }
@@ -396,7 +397,7 @@ async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   if (cmd !== 'mcp' && (argv.includes('--help') || argv.includes('-h'))) return usage(0);
   if (cmd === 'version' || argv.includes('--version')) {
-    console.log(`canary ${CANARY_VERSION}`);
+    console.log(`amabie ${AMABIE_VERSION}`);
     if (argv.includes('--verbose')) {
       console.log(`Node: ${process.version} (${process.platform}/${process.arch})`);
       console.log(`Runtime: ${JSON.stringify(process.execPath)}`);
@@ -407,7 +408,7 @@ async function main(argv: string[]): Promise<number> {
   }
   if (argv.length === 0) {
     cmdStatus([], true);
-    console.log('usage: canary <command>. Verification result: canary result. All commands: canary --help.');
+    console.log('usage: amabie <command>. Verification result: amabie result. All commands: amabie --help.');
     return 3; // Preserve the no-command exit contract; the state answer is read-only.
   }
   if (cmd === '--help' || cmd === '-h') return usage(0);
@@ -429,7 +430,7 @@ async function main(argv: string[]): Promise<number> {
   if (cmd === 'task') return cmdTask(rest);
   // 1.1 Update 5 — the OPERATOR's binding act: attach a stated requirement to a sealed check, so
   // "every objective requirement has a frozen proof obligation" is reachable without hand-editing
-  // package.json. It writes the declaration; `canary setup` seals it.
+  // package.json. It writes the declaration; `amabie setup` seals it.
   if (cmd === 'bind') return cmdBind(rest);
   if (cmd === 'isolate') return cmdIsolate(rest);
   if (cmd === 'work') return cmdWork(rest); // 1.1 §22: register + open, in one step
@@ -446,16 +447,26 @@ async function main(argv: string[]): Promise<number> {
   return usage();
 }
 
-// 1.1 §35 — one metrics record per invocation, and only when CANARY_METRICS
+// 1.1 §35 — one metrics record per invocation, and only when AMABIE_METRICS
 // names a file. The recording is fail-OPEN on purpose: a measurement must never
 // be able to change a verdict, so a write problem is reported in verbose mode
-// and otherwise ignored, and the exit code is exactly the one Canary decided.
+// and otherwise ignored, and the exit code is exactly the one Amabie decided.
+if (Number(process.versions.node.split('.')[0]) < 22) {
+  const problem = `Amabie requires Node.js 22 or later; this runtime is Node.js ${process.versions.node}. No command ran and nothing was verified.`;
+  const next = 'Install Node.js 22 or later, then retry the command.';
+  console.error(`UNSUPPORTED — ${problem}\nnext: ${next}`);
+  if (process.argv.includes('--json')) {
+    emitEnvelope({ schema: PROTOCOL_STATUS, command: process.argv[2] ?? '(none)', status: 'UNSUPPORTED', exitCode: 2, problems: [problem], next });
+  }
+  process.exit(2);
+}
+
 const METRICS_START = Date.now();
 const METRICS_BYTES = streamSnapshot();
 const METRICS_TARGET = metricsTarget();
 function finish(code: number): never {
-  const problem = appendMetric(metricFor(process.argv.slice(2), code, Date.now() - METRICS_START, METRICS_BYTES, CANARY_VERSION), METRICS_TARGET);
-  if (problem !== null && process.env.CANARY_VERBOSE) console.error(problem);
+  const problem = appendMetric(metricFor(process.argv.slice(2), code, Date.now() - METRICS_START, METRICS_BYTES, AMABIE_VERSION), METRICS_TARGET);
+  if (problem !== null && (process.env.AMABIE_VERBOSE || process.env.CANARY_VERBOSE)) console.error(problem);
   process.exit(code);
 }
 
@@ -464,13 +475,13 @@ main(process.argv.slice(2))
   .catch((e: unknown) => {
     if (e instanceof InfraAbort) { console.error(String(e.message)); finish(2); }
     // v1.4 §E — the last-resort handler. This fires on an UNEXPECTED error, which is a defect in
-    // Canary rather than something wrong with the user's project, and it now says so instead of
+    // Amabie rather than something wrong with the user's project, and it now says so instead of
     // printing a bare `ERROR: <internal text>` that a person cannot act on. The exit code is
     // unchanged (3, per the contract at the top of this file) and the internal text is still shown,
     // because an unreportable bug is worse than a noisy one.
-    console.error('Canary hit an internal error and stopped. That is a defect in Canary, not a statement about your project.');
+    console.error('Amabie hit an internal error and stopped. That is a defect in Amabie, not a statement about your project.');
     console.error(`  what happened: ${e instanceof Error ? e.message : String(e)}`);
     console.error('  what it means: this run verified NOTHING — do not read it as a pass, and not as a failure of your code either.');
-    console.error('  what to do: if the message above names a path you can fix (a FILE where Canary needs a directory, or a location this account cannot write), fix that first and re-run; otherwise re-run with CANARY_VERBOSE=1 for the full detail, then report it with `canary --version --verbose`, `canary status --json` and `canary doctor --json`.');
+    console.error('  what to do: if the message above names a path you can fix (a FILE where Amabie needs a directory, or a location this account cannot write), fix that first and re-run; otherwise re-run with AMABIE_VERBOSE=1 for the full detail, then report it with `amabie --version --verbose`, `amabie status --json` and `amabie doctor --json`.');
     finish(3);
   });

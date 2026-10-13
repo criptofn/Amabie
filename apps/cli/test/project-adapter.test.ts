@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
 import * as project from '../src/project.js';
 import * as onboarding from '../src/onboarding.js';
@@ -24,7 +24,7 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-adapter-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-adapter-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
@@ -120,14 +120,14 @@ describe('seal/drift stay byte-compatible', () => {
     fs.writeFileSync(path.join(root, 'package.json'), '{ not json');
     assert.equal(project.nodeAdapter.drift(root, carrier(PLAN, authority)), 'package.json cannot be read to compare the sealed scripts');
     assert.equal(project.nodeAdapter.drift(root, carrier(PLAN, { at: 'x', planDigest: 'nope', scriptDigests: {} })),
-      'the sealed verification authority in .canary/canary.local.json is malformed (hand-edited?)');
+      'the sealed verification authority in .amabie/amabie.local.json is malformed (hand-edited?)');
   });
 });
 
 describe('fail-closed: the seam cannot create READY or PASS', () => {
   it('an unregistered adapter throws rather than guess', () => {
     assert.throws(() => project.adapterFor({ project: 'cobol' }),
-      /project adapter "cobol" is not registered in this Canary build/);
+      /project adapter "cobol" is not registered in this Amabie build/);
   });
   it('a config naming an unregistered project is corrupt — status refuses it', () => {
     const root = dir('wired', { '.git/HEAD': 'ref: refs/heads/main\n', '.claude/keep.json': '{}', 'package.json': pkg({ test: fx('f-pass.js') }) });
@@ -148,7 +148,7 @@ describe('fail-closed: the seam cannot create READY or PASS', () => {
   it('adapter questions report, they do not certify', () => {
     assert.equal(project.nodeAdapter.validateEnvironment('npm'), null);
     assert.equal(project.nodeAdapter.validateEnvironment('pip'),
-      'package manager "pip" is not one Canary can run (npm, pnpm, yarn or bun)');
+      'package manager "pip" is not one Amabie can run (npm, pnpm, yarn or bun)');
     assert.deepEqual([...project.nodeAdapter.dependencyPaths], ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb']);
     const root = dir('plan-problems', { 'package.json': pkg({ build: 'tsc -b' }) });
     assert.deepEqual(project.nodeAdapter.planProblems(root, PLAN),
@@ -306,7 +306,7 @@ describe('1.1 ecosystems declare checks, they never invent them', () => {
 
   it('a tool named in PROSE is not a declaration (comments never add a check)', () => {
     // The examples smoke probe found this the hard way: a pyproject.toml whose
-    // COMMENT said "no pytest declaration" made Canary run pytest, then fail the
+    // COMMENT said "no pytest declaration" made Amabie run pytest, then fail the
     // project for not having pytest installed. Discovery must declare, not read.
     const commented = dir('py-prose', {
       'pyproject.toml': '[project]\nname = "x"\ndescription = "no pytest here, and no ruff either"\n# we deliberately do not declare pytest\n[tool.black]\nline-length = 100\n',

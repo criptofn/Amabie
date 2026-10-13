@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * ARE AUTHORIZED REQUIREMENTS COVERED BY PROOF — or does canary say READY anyway?
+ * ARE AUTHORIZED REQUIREMENTS COVERED BY PROOF — or does amabie say READY anyway?
  *
- * The invariant, in the owner's words: *Canary must never issue PASS/READY merely because the
+ * The invariant, in the owner's words: *Amabie must never issue PASS/READY merely because the
  * configured tests are green if authorized user requirements are not independently covered by
  * adequate proof. Every objective requirement must have a frozen proof obligation or remain NOT
  * PROVEN. Subjective requirements require explicit human acceptance.*
@@ -57,7 +57,7 @@ const RUNNER = [
 ].join('\n');
 
 function makeRepo(name, withTask) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-reqcov-${name}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-reqcov-${name}-`));
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
   // `<root>/.claude` or the operator's `~/.claude`, so without this the fixture passed only on a
   // machine that has Claude Code installed and failed on every CI runner.
@@ -75,7 +75,7 @@ function makeRepo(name, withTask) {
   ].join('\n'));
   const git = (args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 60_000, windowsHide: true });
   git(['init', '-b', 'main']);
-  git(['config', 'user.email', 'reqcov@canary.local']);
+  git(['config', 'user.email', 'reqcov@amabie.local']);
   git(['config', 'user.name', 'Requirement Coverage Probe']);
   git(['add', '-A']);
   git(['commit', '-m', 'initial']);
@@ -145,21 +145,21 @@ const tasked = makeRepo('tasked', true);
   check('4. the closing path printed is one that can actually be taken here', () => {
     // An acceptance command is only a path if there IS a candidate to accept; in the base-repo
     // (non-candidate) path the honest path is binding a sealed check or the operator's acceptance
-    // of the base. A message that only says "canary accept <candidate>" would be a dead end.
-    const candidates = fs.existsSync(path.join(tasked, '.canary', 'candidates'))
-      ? fs.readdirSync(path.join(tasked, '.canary', 'candidates')).filter((n) => n !== 'README.md')
+    // of the base. A message that only says "amabie accept <candidate>" would be a dead end.
+    const candidates = fs.existsSync(path.join(tasked, '.amabie', 'candidates'))
+      ? fs.readdirSync(path.join(tasked, '.amabie', 'candidates')).filter((n) => n !== 'README.md')
       : [];
     const next = /next: ([^\n]*)/.exec(d.out)?.[1] ?? '';
     console.log(`   candidates registered: ${candidates.length}; next: ${next.slice(0, 160)}`);
-    if (candidates.length === 0 && /canary accept/.test(next)) {
+    if (candidates.length === 0 && /amabie accept/.test(next)) {
       assert(/sealed|proofs|setup|human/i.test(next),
-        `the printed next step offers only "canary accept <candidate>" while no candidate exists: ${next}`);
+        `the printed next step offers only "amabie accept <candidate>" while no candidate exists: ${next}`);
     }
   });
 
   /**
-   * THE POSITIVE HALF: the invariant must be SATISFIABLE, not only fail-closed. `canary task` prints
-   * each requirement and the actionable `canary bind <script> --requirement "<text>" --reseal`
+   * THE POSITIVE HALF: the invariant must be SATISFIABLE, not only fail-closed. `amabie task` prints
+   * each requirement and the actionable `amabie bind <script> --requirement "<text>" --reseal`
    * command beside it; the operator's command must turn the duty MET inside the sealed plan.
    */
   const taskOut = spawnSync(process.execPath, [CLI, 'task', 'add a greeting that trims whitespace',
@@ -174,14 +174,14 @@ const tasked = makeRepo('tasked', true);
     for (const digest of digests) {
       const index = lines.findIndex((line) => line.includes(`: ${digest} —`));
       assert(index >= 0, `requirement digest ${digest} is missing from the task output`);
-      assert(/trusted operator action .*canary bind <sealed plan script> --requirement "<exact registered text>" --reseal/.test(lines[index + 1] ?? ''),
+      assert(/trusted operator action .*amabie bind <sealed plan script> --requirement "<exact registered text>" --reseal/.test(lines[index + 1] ?? ''),
         `the executable binding recipe must follow digest ${digest}`);
     }
   });
   if (digests.length === 2) {
     /**
-     * THE OPERATOR ACT, not a hand-edit: `canary bind <script> --requirement "<text>"` writes the
-     * declaration into package.json, and `canary setup` seals it. MEASURED reason this command exists:
+     * THE OPERATOR ACT, not a hand-edit: `amabie bind <script> --requirement "<text>"` writes the
+     * declaration into package.json, and `amabie setup` seals it. MEASURED reason this command exists:
      * declaring requirements without a binding cost a worker 1.5–1.7M tokens over 41–48 turns trying
      * to discharge a duty only an operator can close (`bench-r9`).
      */
@@ -189,12 +189,12 @@ const tasked = makeRepo('tasked', true);
       '--requirement', 'the greeting trims leading and trailing whitespace',
       '--requirement', 'an empty name still produces the word hello',
     ], { cwd: tasked, encoding: 'utf8', timeout: 120_000, windowsHide: true });
-    console.log(`   canary bind: exit ${bind.status}`);
-    check('6. `canary bind` writes the declaration and names the sealing step', () => {
+    console.log(`   amabie bind: exit ${bind.status}`);
+    check('6. `amabie bind` writes the declaration and names the sealing step', () => {
       assert(bind.status === 0, `bind must accept a script the plan runs:\n${bind.stdout}${bind.stderr}`);
-      assert(/canary setup/.test(String(bind.stdout ?? '')), 'bind must name the step that seals it');
+      assert(/amabie setup/.test(String(bind.stdout ?? '')), 'bind must name the step that seals it');
       const pkg = JSON.parse(fs.readFileSync(path.join(tasked, 'package.json'), 'utf8'));
-      const proofs = pkg.canary?.proofs ?? {};
+      const proofs = pkg.amabie?.proofs ?? {};
       assert(Object.keys(proofs).length === 2, `both digests must be recorded: ${JSON.stringify(proofs)}`);
       assert(Object.values(proofs).every((v) => v === 'test'), 'each digest maps to the named script');
     });

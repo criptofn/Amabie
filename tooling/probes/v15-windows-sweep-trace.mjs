@@ -40,7 +40,7 @@ const support = await import(pathToFileURL(modulePath).href);
 if (typeof support.sweepDescendants !== 'function') throw new Error('release dist does not export sweepDescendants');
 const testPath = path.join(root, 'packages/support/dist/test/lifecycle.test.js');
 const metadata = {
-  schema: 'canary-v15-windows-sweep-trace/1',
+  schema: 'amabie-v15-windows-sweep-trace/1',
   probe: 'tooling/probes/v15-windows-sweep-trace.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
   modulePath, moduleSha256: sha256(fs.readFileSync(modulePath)),

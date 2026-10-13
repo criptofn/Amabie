@@ -8,7 +8,7 @@
  * decision lives: no CLI run, no git, no filesystem. The end-to-end behaviour (doctor's verdict, the
  * Stop hook's block) is proven by `tooling/probes/requirement-coverage-gate.mjs`.
  *
- * MEASURED gap these pin: the binding map (`package.json` `canary.proofs`) accepted any
+ * MEASURED gap these pin: the binding map (`package.json` `amabie.proofs`) accepted any
  * requirement digest, but the obligation engine only credited digests that happened to be numeric
  * objective targets — so a plain stated requirement could never be covered by measurement, and the
  * only reachable end state was human acceptance.
@@ -51,28 +51,29 @@ test('a registered requirement with NO sealed proof is UNPROVEN and names the wa
   // measured 1.5-1.85M-token loops. A declared requirement is a requirement.
   assert.equal(per.mode, 'objective', 'an unmeasured requirement is a MEASUREMENT duty, not a signature');
   assert.match(per.note, /NO sealed proof/);
-  assert.match(per.note, /canary bind <sealed script>/, 'the note must name the operator binding command');
+  assert.match(per.note, /amabie bind <sealed script>/, 'the note must name the operator binding command');
 });
 
 test('a SUBJECTIVE registration keeps the human-acceptance path (it is not a measurement duty)', () => {
   // The other half of the rule above, and the reason it is not a blanket reclassification: when
   // the registration itself carries a subjective marker, acceptance IS the honest closure, so the
-  // duty stays non-objective and can be closed by `canary accept`.
+  // duty stays non-objective and can be closed by `amabie accept`.
   const task = declaredTask('make the dialog prettier', ['ui'] as TaskKind[], ['the dialog looks nicer']);
   const obs = obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 1, 'setup', task, authorityWith());
   const per = find(obs, 'per-requirement');
   assert.ok(per);
   assert.equal(per.mode, 'non-objective', 'a subjective registration is closed by human judgment');
-  assert.match(per.note, /canary accept/);
+  assert.match(per.note, /amabie accept/);
   assert.deepEqual(task.subjectiveRequirementDigests, [materialDigest('the dialog looks nicer')]);
 });
 
 test('calmer UI wording can be accepted subjectively without making a numeric target subjective', () => {
-  const subjective = ['the menu animation feels calmer', 'the spacing on the dialog is calmer'];
+  const subjective = ['the menu animation feels calmer', 'the spacing on the dialog is calmer',
+    'make the interface calm', 'the visual style is calm', 'use a calm palette'];
   const objective = 'the animation completes within 200 ms';
   const task = declaredTask('refine the menu animation', ['ui'] as TaskKind[], [...subjective, objective]);
 
-  assert.deepEqual(task.subjectiveRequirementDigests, subjective.map(materialDigest));
+  assert.deepEqual(task.subjectiveRequirementDigests, subjective.map(materialDigest).sort());
   assert.deepEqual(task.objectiveTargets, [{ digest: materialDigest(objective), kind: 'bench' }]);
 });
 
@@ -103,7 +104,7 @@ test('one subjective requirement cannot make a separate objective requirement ac
     authorityWith({ [materialDigest(objective)]: 'test' }));
   const subjectiveOnly = find(objectiveBound, 'per-requirement');
   assert.equal(subjectiveOnly?.mode, 'non-objective', 'once objective criteria are measured, human judgment may close the remaining subjective criterion');
-  assert.match(String(subjectiveOnly?.note), /canary accept/);
+  assert.match(String(subjectiveOnly?.note), /amabie accept/);
 
   const maliciousReclassification = { ...task, subjectiveRequirementDigests: [...task.subjectiveRequirementDigests, materialDigest(objective)] };
   assert.match(taskWeakening(task, maliciousReclassification).join(' '), /subjective requirement classification changed/);

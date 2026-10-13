@@ -16,7 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ntevents-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ntevents-'));
 const LOG = path.join(TMP, 'events.jsonl');
 const REPORTER = path.join(TMP, 'measure-reporter.cjs');
 
@@ -184,4 +184,4 @@ for (const rel of ['test/', 'test']) {
 }
 
 console.log(`\nscratch: ${TMP}`);
-if (process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });

@@ -2,7 +2,7 @@
 /**
  * v1.2 outcome-instrument self-check.
  *
- * WHY A PROBE AND NOT ONLY A SUITE TEST: the rules here decide whether Canary beat a plain
+ * WHY A PROBE AND NOT ONLY A SUITE TEST: the rules here decide whether Amabie beat a plain
  * agent on a false-done benchmark, so they must be checkable on any host — including one whose
  * sandbox refuses the `node --test` runner's child-process stdio (measured on this host:
  * `spawn EPERM`). `outcome.test.mjs` runs the same cases inside the repository suite; this

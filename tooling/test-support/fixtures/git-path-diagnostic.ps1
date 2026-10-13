@@ -1,8 +1,8 @@
 param([string]$Work,[string]$Side,[string]$Identity,[string]$Node)
 $ErrorActionPreference = 'Stop'
-Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/CanaryConfinedLauncher.cs')
-$profileName = 'Canary.Confined.GitDiagnostic.' + [guid]::NewGuid().ToString('N')
-$enrolled = [CanaryConfined]::Identity($false, $profileName) | ConvertFrom-Json
+Add-Type -Path (Join-Path $PSScriptRoot '../../../tools/windows-boundary/AmabieConfinedLauncher.cs')
+$profileName = 'Amabie.Confined.GitDiagnostic.' + [guid]::NewGuid().ToString('N')
+$enrolled = [AmabieConfined]::Identity($false, $profileName) | ConvertFrom-Json
 [IO.File]::WriteAllText($Identity, ($enrolled | ConvertTo-Json -Compress))
 $exe = Join-Path $Work 'git-path-diagnostic.exe'
 $aliasName = $null
@@ -18,7 +18,7 @@ try {
   & 'C:\Program Files\Git\cmd\git.exe' -C $Work reset --quiet HEAD -- implementation.txt
   if ($LASTEXITCODE -ne 0) { throw 'index restoration failed' }
   $command = '"' + $exe + '" "' + (Join-Path $Work 'restricted.json') + '" "' + $Work + '" "' + $aliasName + '"'
-  $code = [CanaryConfined]::Run($command,$Work,$Side,$enrolled.package,$false)
+  $code = [AmabieConfined]::Run($command,$Work,$Side,$enrolled.package,$false)
   if ($code -ne 0) { throw "restricted diagnostic exit $code" }
   $script = Join-Path $Work 'git-command-diagnostic.cjs'
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'git-command-diagnostic.cjs') -Destination $script
@@ -26,9 +26,9 @@ try {
   try { & $Node --preserve-symlinks-main $script (Join-Path $Work 'git-control.json'); if ($LASTEXITCODE -ne 0) { throw 'Git control runner failed' } }
   finally { Pop-Location }
   $command = '"' + $Node + '" --preserve-symlinks-main "' + $script + '" "' + (Join-Path $Work 'git-restricted.json') + '"'
-  $code = [CanaryConfined]::Run($command,$Work,($Side + '.git'),$enrolled.package,$false)
+  $code = [AmabieConfined]::Run($command,$Work,($Side + '.git'),$enrolled.package,$false)
   if ($code -ne 0) { throw "restricted Git runner exit $code" }
 } finally {
   if ($aliasName) { [GitPathDiagnostic]::RemoveAlias($aliasName,$Work) }
-  [void][CanaryConfined]::Identity($true, $profileName)
+  [void][AmabieConfined]::Identity($true, $profileName)
 }

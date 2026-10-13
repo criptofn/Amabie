@@ -92,7 +92,7 @@ export function validateNetworkAuthority(value: unknown): asserts value is Netwo
  * A worker-delivered object with these fields is NOT sufficient authorization.
  * All handles are supervisor-owned IDs, never worker-provided host paths. */
 export interface VerificationJob {
-  schema: 'canary-verification-job/1';
+  schema: 'amabie-verification-job/1';
   projectId: string;
   ticket: RunTicket;
   snapshot: { commit: string; tree: string; handle: string };

@@ -48,7 +48,7 @@ for (const record of summary.sessions) {
 }
 const table = ['| Sitzung | Korrektheit | Normal beendet | Abrechnung vollständig | Hook | Checkpoint | Input | Output | Turns | Abweisungen | MCP Antworten ohne Werkzeugfehler |',
   '|---|---|---|---|---|---|---:|---:|---:|---:|---:|', ...rows.map((r) => `| ${r.name} | ${r.correctness} | ${r.complete} | ${r.captured} | ${r.hook} | ${r.checkpoint} | ${r.input ?? 'missing'} | ${r.output ?? 'missing'} | ${r.turns ?? 'missing'} | ${r.permissionDenials ?? 'missing'} | ${r.successfulMcp} |`)];
-const arms = ['plain', 'canary'].map((arm) => {
+const arms = ['plain', 'amabie'].map((arm) => {
   const matches = rows.filter((r) => r.name.endsWith(`-${arm}`));
   return { arm, attempted: matches.length, correct: matches.filter((r) => r.correctness === 'pass').length,
     complete: matches.filter((r) => r.complete).length, captured: matches.filter((r) => r.captured).length,
@@ -66,8 +66,8 @@ if (compareEvidence) {
   }
   for (const key of ['modelDigest', 'contextLength', 'maxOutputTokens', 'maxTurns']) assert.equal(summary[key], previous[key]);
   const attempts = (record) => record.toolCalls.filter((call) =>
-    (call.name === 'Bash' && /(?:\bcanary(?:\.cmd|\.exe)?|\bmain\.js)["']?\s+(?:setup|bind|accept)\b/i.test(call.input?.command ?? ''))
-    || (['Edit', 'Write'].includes(call.name) && /(?:^|[\\/])(?:\.(?:canary|claude)[\\/]|\.mcp\.json$)/.test(call.input?.file_path ?? ''))).length;
+    (call.name === 'Bash' && /(?:\bamabie(?:\.cmd|\.exe)?|\bmain\.js)["']?\s+(?:setup|bind|accept)\b/i.test(call.input?.command ?? ''))
+    || (['Edit', 'Write'].includes(call.name) && /(?:^|[\\/])(?:\.(?:amabie|claude)[\\/]|\.mcp\.json$)/.test(call.input?.file_path ?? ''))).length;
   const compared = [];
   for (const current of summary.sessions) {
     const old = previous.sessions.find((record) => record.name === current.name);
@@ -79,7 +79,7 @@ if (compareEvidence) {
     }
   }
   comparison = '\n## Separater Vorher-/Nachher-Vergleich\n\n' +
-    '| Sitzung | Native Tokens | Turns | Abweisungen | Versuche setup/bind/accept oder Canary-Konfiguration zu ändern | Stop PASS |\n' +
+    '| Sitzung | Native Tokens | Turns | Abweisungen | Versuche setup/bind/accept oder Amabie-Konfiguration zu ändern | Stop PASS |\n' +
     '|---|---:|---:|---:|---:|---|\n' + compared.join('\n') + '\n\n' +
     `Vorher: \`${compareEvidence}\`, CLI SHA-256 \`${previous.cliSha256}\`. Danach: CLI SHA-256 \`${summary.cliSha256}\`. ` +
     'Gleiches Modell und gleiche Grenzwerte, frische Ausgangskopien. Je eine Beobachtung pro Zelle; keine allgemeine Tokenersparnis oder kausale Effektgröße. ' +
@@ -119,7 +119,7 @@ const text = `# Native Claude: ${summary.preparedRoot ? 'gepaarter lokaler Pilot
   table.join('\n') + '\n\n' +
   (summary.preparedRoot ? arms.map((a) => `- ${a.arm}: ${a.correct}/${a.attempted} externe Korrektheitsprüfungen bestanden; ${a.complete} normal beendet; ${a.captured} vollständig abgerechnet; ${a.passedCheckpoints} tatsächliche bestandene Stop-Checkpoints; native Tokens ${a.nativeTokens ?? 'unvollständig'}.`).join('\n') + '\n\n' : '') +
   `Anbieterrechnung: **0 USD**, ausschließlich lokales Modell. Claude-interne USD-Schätzung mit unbekannter Preisbasis ist keine Rechnung. Native Input/Output umfassen den tatsächlich übertragenen Werkzeug- und MCP-Kontext; geschätzte thinking_tokens werden nicht addiert.\n\n` +
-  `Grenzen: gleicher Benutzer im LOCAL-Modus; keine Betriebssystem-Isolation. Kontrollreparaturen sind künstlich eingebracht. Dieser begrenzte Pilot beweist keine allgemeine Tokenersparnis oder breite 9/10-Alltagstauglichkeit. Korrektheit, Canary-Nachweis und Sitzungsende sind getrennt.\n\n` +
+  `Grenzen: gleicher Benutzer im LOCAL-Modus; keine Betriebssystem-Isolation. Kontrollreparaturen sind künstlich eingebracht. Dieser begrenzte Pilot beweist keine allgemeine Tokenersparnis oder breite 9/10-Alltagstauglichkeit. Korrektheit, Amabie-Nachweis und Sitzungsende sind getrennt.\n\n` +
   `Bereinigung: \`${JSON.stringify(summary.cleanup)}\`. Fehler: \`${summary.failure ?? 'none'}\`.\n` + comparison + verification;
 fs.writeFileSync(out, text, { flag: 'wx' });
 console.log(`PASS evidence integrity: ${lines.length} files; ${rows.length} sessions; ${out}`);

@@ -41,7 +41,7 @@ function load(root) {
     assert.equal(record.status, 'complete'); assert.equal(record.source.clean, true);
     assert.deepEqual(record.source.visibleHistory, [record.source.baseCommit]);
     assert.deepEqual(record.source.remotes, []); assert.equal(record.source.shallow, true);
-    if (record.arm === 'canary') assert.equal(record.canaryVerdict, 'READY');
+    if (record.arm === 'amabie') assert.equal(record.amabieVerdict, 'READY');
   }
   assert.equal(hash(fs.readFileSync(summary.cli)), summary.cliSha256);
   assert.equal(hash(fs.readFileSync(summary.package)), summary.packageSha256);
@@ -61,9 +61,9 @@ const rows = labels.map((label) => {
   const base = before.preparation.records.find((record) => record.label === label).source.baseCommit;
   return `| ${label} | \`${base}\` | pass / fail, Fehler blockiert | pass / fail, Fehler blockiert |`;
 });
-const text = `# Direkter Vergleich: ${baselinePackageSha ? 'Arbeitsstand vor dem Plan' : 'veröffentlichtes Canary 1.5.0'} und Verbesserungsstand\n\n` +
+const text = `# Direkter Vergleich: ${baselinePackageSha ? 'Arbeitsstand vor dem Plan' : 'veröffentlichtes Amabie 1.5.0'} und Verbesserungsstand\n\n` +
   'Sechs unabhängige Aufgaben auf Hermes, Refactron und Schniedelsmp, jeweils korrekte historische Lösung und bewusst wiederhergestellte fehlerhafte Implementierung. ' +
-  'Beide Pakete bestehen **12/12 Kontrollen** und alle zwölf Einrichtungsprüfungen (sechs regulär, sechs mit Canary).\n\n' +
+  'Beide Pakete bestehen **12/12 Kontrollen** und alle zwölf Einrichtungsprüfungen (sechs regulär, sechs mit Amabie).\n\n' +
   `| Aufgabe | Ausgangscommit | ${beforeLabel}: korrekt / alter Fehler | Verbesserung: korrekt / alter Fehler |\n|---|---|---|---|\n` + rows.join('\n') + '\n\n' +
   [before, after].map((run, index) => `- ${index ? 'Verbesserung' : beforeLabel}: Paket SHA-256 \`${run.summary.packageSha256}\`; CLI \`${run.summary.cliSha256}\`; ${run.files} archivierte Dateien erneut bytegenau geprüft. Rohbelege: \`${index ? afterRoot : beforeRoot}\`.`).join('\n') + '\n\n' +
   'Instrumente, historische Lösungspatches, Ausgangscommits, Toolchain-Verzeichnisse und Zeitgrenzen stimmen zwischen den Varianten überein. ' +

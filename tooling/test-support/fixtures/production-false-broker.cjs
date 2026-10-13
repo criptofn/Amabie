@@ -11,7 +11,7 @@ const server = net.createServer(socket => {
     data += bytes;
     if (!data.includes('\n')) return;
     const request = JSON.parse(data.split('\n')[0]);
-    const payload = { schema: 'canary-production-heartbeat/2', deployment: config.deployment,
+    const payload = { schema: 'amabie-production-heartbeat/2', deployment: config.deployment,
       nonce: request.nonce, generation: config.generation, measurement: config.measurement };
     if (config.mode === 'deployment') payload.deployment = 'wrong-deployment';
     if (config.mode === 'generation') payload.generation = 'old-generation';

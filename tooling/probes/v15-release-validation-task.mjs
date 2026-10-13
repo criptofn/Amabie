@@ -3,7 +3,7 @@
  * Reproducible no-model checks for one frozen real-project task copy.
  *
  * `baseline` measures the recorded project state, runs the ordinary checks,
- * runs `canary setup` against the published CLI, then commits only setup files.
+ * runs `amabie setup` against the explicitly supplied CLI artifact, then commits only setup files.
  * `remediate` re-runs operator setup on a clean pre-candidate tree after an
  * environment correction; `plain` runs only the ordinary project checks;
  * `candidate` tests the prepared solution and drives the real checkpoint.
@@ -65,8 +65,8 @@ if (label === 'S1' && (!gradle || !fs.statSync(path.resolve(gradle), { throwIfNo
 }
 
 const version = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8', timeout: 10_000, windowsHide: true });
-if (version.status !== 0 || !/^canary 1\.5\.0\s*$/m.test(version.stdout ?? '')) {
-  console.error(`usage error: the explicit CLI must report canary 1.5.0: ${(version.stdout ?? '').trim()}`);
+if (version.status !== 0 || !/^amabie 1\.5\.0\s*$/m.test(version.stdout ?? '')) {
+  console.error(`usage error: the explicit CLI must report amabie 1.5.0: ${(version.stdout ?? '').trim()}`);
   process.exit(2);
 }
 const cliSha256 = sha256(fs.readFileSync(cli));
@@ -77,11 +77,11 @@ if (fs.existsSync(outDir)) {
 fs.mkdirSync(path.dirname(outDir), { recursive: true });
 fs.mkdirSync(outDir);
 
-const trustStore = path.join(os.tmpdir(), 'canary-v15-validation-trust', sha256(repo));
+const trustStore = path.join(os.tmpdir(), 'amabie-v15-validation-trust', sha256(repo));
 fs.mkdirSync(trustStore, { recursive: true });
 const sensitiveKey = /(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|AUTH|CLAUDE|OPENAI|ANTHROPIC|CODEX)/i;
 const safeEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !sensitiveKey.test(key)));
-safeEnv.CANARY_TRUST_STORE = trustStore;
+safeEnv.AMABIE_TRUST_STORE = trustStore;
 safeEnv.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1';
 if (process.platform === 'win32') {
   for (const key of Object.keys(safeEnv)) if (key.toLowerCase() === 'path') delete safeEnv[key];
@@ -157,11 +157,11 @@ function step(name, exe, args, options = {}) {
 }
 
 const startRecord = {
-  schema: 'canary-release-validation/1', label, phase,
+  schema: 'amabie-release-validation/1', label, phase,
   probe: 'tooling/probes/v15-release-validation-task.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
   cliPath: cli, cliVersion: (version.stdout ?? '').trim(), cliBinarySha256: cliSha256,
-  publishedArtifactSha256: artifactSha256, taskPath: taskFile,
+  artifactSha256, taskPath: taskFile,
   expectedHead, baselineHead,
   taskSha256: sha256(fs.readFileSync(taskFile)), repo, trustStore,
   toolchainDirectories: toolchainDirs,
@@ -183,20 +183,20 @@ if (phase === 'baseline' || phase === 'remediate') {
   const setupArgs = ['setup', '--yes'];
   if (phase === 'remediate') setupArgs.push('--clear-toolchain-dirs');
   for (const dir of toolchainDirs) setupArgs.push('--toolchain-dir', dir);
-  const setup = step('canary-setup', process.execPath, [cli, ...setupArgs]);
+  const setup = step('amabie-setup', process.execPath, [cli, ...setupArgs]);
   const configPaths = gitOut('status', '--porcelain').split('\n').filter(Boolean);
-  const allowedSetupPath = /(?:^|\s)(?:\.mcp\.json|\.claude\/|\.codex\/|canary\.project\.json|CLAUDE\.md|AGENTS\.md)/i;
+  const allowedSetupPath = /(?:^|\s)(?:\.mcp\.json|\.claude\/|\.codex\/|amabie\.project\.json|CLAUDE\.md|AGENTS\.md)/i;
   const unexpected = configPaths.filter((line) => !allowedSetupPath.test(line.replace(/\\/g, '/')));
   if (unexpected.length) {
     failures++;
     console.log(`FAIL setup wrote unexpected project paths: ${unexpected.join(', ')}`);
   }
-  step('git-config-user', 'git', ['config', 'user.name', 'Canary Validation']);
-  step('git-config-email', 'git', ['config', 'user.email', 'canary-validation@localhost']);
+  step('git-config-user', 'git', ['config', 'user.name', 'Amabie Validation']);
+  step('git-config-email', 'git', ['config', 'user.email', 'amabie-validation@localhost']);
   step('git-add-setup', 'git', ['add', '-A']);
-  const commit = step('git-commit-setup', 'git', ['commit', '--allow-empty', '-m', `Canary validation setup baseline ${label}`]);
+  const commit = step('git-commit-setup', 'git', ['commit', '--allow-empty', '-m', `Amabie validation setup baseline ${label}`]);
   const afterSetup = identity();
-  step('canary-doctor-baseline', process.execPath, [cli, 'doctor', '--json']);
+  step('amabie-doctor-baseline', process.execPath, [cli, 'doctor', '--json']);
   startRecord.setupExitCode = setup.outcome.exitCode;
   startRecord.setupCommitExitCode = commit.outcome.exitCode;
   startRecord.sealedBaselineHead = afterSetup.head;
@@ -207,7 +207,7 @@ if (phase === 'baseline' || phase === 'remediate') {
     session_id: `post-v15-${label}`, cwd: repo,
     hook_event_name: 'Stop', stop_hook_active: false,
   });
-  step('canary-checkpoint-candidate', process.execPath, [cli, 'checkpoint'], { input: hookInput });
+  step('amabie-checkpoint-candidate', process.execPath, [cli, 'checkpoint'], { input: hookInput });
 }
 
 const finalIdentity = identity();
@@ -218,12 +218,12 @@ const result = {
   finalRepoIdentity: finalIdentity,
   status: failures === 0 ? 'complete' : 'incomplete',
   infrastructureFailures: failures,
-  canaryVerdict: (() => {
-    const canaryCommand = commands.find((c) => c.name === 'canary-checkpoint-candidate')
-      ? 'canary-checkpoint-candidate'
-      : commands.find((c) => c.name === 'canary-doctor-baseline') ? 'canary-doctor-baseline' : null;
-      if (canaryCommand === null) return null;
-      const out = fs.readFileSync(path.join(outDir, `${canaryCommand}.stdout.txt`), 'utf8');
+  amabieVerdict: (() => {
+    const amabieCommand = commands.find((c) => c.name === 'amabie-checkpoint-candidate')
+      ? 'amabie-checkpoint-candidate'
+      : commands.find((c) => c.name === 'amabie-doctor-baseline') ? 'amabie-doctor-baseline' : null;
+      if (amabieCommand === null) return null;
+      const out = fs.readFileSync(path.join(outDir, `${amabieCommand}.stdout.txt`), 'utf8');
       // Only the envelope decides; nested proof duties have their own status.
       try {
         const envelope = JSON.parse(out);
@@ -243,5 +243,5 @@ fs.writeFileSync(path.join(outDir, 'attempt-result.json'), `${JSON.stringify(res
 const sums = fs.readdirSync(outDir).filter((name) => name !== 'SHA256SUMS').sort()
   .map((name) => `${sha256(fs.readFileSync(path.join(outDir, name)))}  ${name}`);
 fs.writeFileSync(path.join(outDir, 'SHA256SUMS'), `${sums.join('\n')}\n`, { flag: 'wx' });
-console.log(`--- ${label}/${phase}: ${result.status}; Canary verdict ${String(result.canaryVerdict)}; record ${outDir}`);
+console.log(`--- ${label}/${phase}: ${result.status}; Amabie verdict ${String(result.amabieVerdict)}; record ${outDir}`);
 process.exit(failures === 0 ? 0 : 1);

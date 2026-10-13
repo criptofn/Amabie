@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 
 const TARGET = path.resolve('apps/cli/dist/src/onboarding.js');
 const TEST = path.resolve('apps/cli/dist/test/onboarding.test.js');
-const backup = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'canary-mut-')), 'onboarding.orig.js');
+const backup = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mut-')), 'onboarding.orig.js');
 fs.copyFileSync(TARGET, backup);
 const original = fs.readFileSync(backup, 'utf8');
 
@@ -18,7 +18,7 @@ const MUTATIONS = [
     name: 'A revert-F1 (corrupt config goes silent again)',
     pattern: 'S7|F-1',
     apply: (s) => s.replace(
-      "return emit({ systemMessage: 'Canary could not verify this task because its local config (.canary/canary.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: canary setup' });",
+      "return emit({ systemMessage: 'Amabie could not verify this task because its local config (.amabie/amabie.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: amabie setup' });",
       'return 0;'),
   },
   {

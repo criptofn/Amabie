@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 test('binding rejects incomplete intake before writing, while preserving dash-prefixed requirements', () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-bind-intake-test-'));
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-bind-intake-test-'));
   try {
     const cli = path.resolve(import.meta.dirname, '../../apps/cli/dist/src/main.js');
     const r = spawnSync(process.execPath, [path.join(import.meta.dirname, 'v15-bind-intake-regression.mjs'),

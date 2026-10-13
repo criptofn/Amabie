@@ -4,7 +4,7 @@
  * repository copy and capture the completion gate's verdict, unfaked.
  *
  * WHY THIS IS A PROBE AND NOT A SHELL ONE-LINER: the measurement is a long chain of
- * observations (agent stream → usage ledger → whether Canary's own Stop hook fired
+ * observations (agent stream → usage ledger → whether Amabie's own Stop hook fired
  * *during* the run → the raw hook JSON → the raw decision JSON → the diff), and a
  * chain like that must be one reviewable artefact with an explicit exit code. It is
  * also the rule this repository writes down in AGENTS.md: no inline interpreter
@@ -52,7 +52,7 @@
  *   node tooling/probes/v15-realworld-run-task.mjs \
  *     --repo <abs path> --task-file <file> --label <id> --out <run root for that task> \
  *     --cli <installed main.js> --artifact-sha256 <published tgz SHA-256> \
- *     [--attempt <id>] [--new-attempt] [--arm canary|plain] [--timeout-min 20]
+ *     [--attempt <id>] [--new-attempt] [--arm amabie|plain] [--timeout-min 20]
  *     [--extra-path <dir>[;<dir>...]] [--agent-cmd <exe>] [--agent-arg <arg> ...]
  *
  * `--agent-cmd`/`--agent-arg` exist so the provenance layer is testable end to end with a
@@ -70,7 +70,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseCodexJsonl } from './v15-codex-jsonl.mjs';
-import { canaryEvidenceStatus, hasOllamaNativeUsageEvidence } from './v15-ollama-native-agent.mjs';
+import { amabieEvidenceStatus, hasOllamaNativeUsageEvidence } from './v15-ollama-native-agent.mjs';
 
 const PROBE = 'tooling/probes/v15-realworld-run-task.mjs';
 const LAYOUT_VERSION = 1;
@@ -96,7 +96,7 @@ const attemptArg = arg('attempt');
 const cliArg = arg('cli');
 const artifactSha256 = arg('artifact-sha256');
 const newAttempt = process.argv.includes('--new-attempt');
-const arm = arg('arm', 'canary');
+const arm = arg('arm', 'amabie');
 const timeoutMin = Number(arg('timeout-min', '20'));
 const maxBudgetArg = arg('max-budget-usd');
 const pilotBudgetUsd = maxBudgetArg === null ? null : Number(maxBudgetArg);
@@ -108,7 +108,7 @@ const agentModel = arg('model');
 const agentEntryArg = arg('agent-entry');
 const agentEntry = agentEntryArg ? path.resolve(agentEntryArg) : null;
 if (!repo || !taskFile || !label || !outDir) {
-  console.error('usage: --repo <dir> --task-file <file> --label <id> --out <run root> --cli <installed main.js> --artifact-sha256 <package tgz SHA-256> [--attempt <id>] [--new-attempt] [--arm canary|plain] [--agent-protocol claude|codex-local|ollama-native] [--model <model>] [--agent-entry <local runner>] [--timeout-min N] [--extra-path <dirs>] [--agent-cmd <exe>] [--agent-arg <arg> ...]');
+  console.error('usage: --repo <dir> --task-file <file> --label <id> --out <run root> --cli <installed main.js> --artifact-sha256 <package tgz SHA-256> [--attempt <id>] [--new-attempt] [--arm amabie|plain] [--agent-protocol claude|codex-local|ollama-native] [--model <model>] [--agent-entry <local runner>] [--timeout-min N] [--extra-path <dirs>] [--agent-cmd <exe>] [--agent-arg <arg> ...]');
   process.exit(2);
 }
 if (!Number.isFinite(timeoutMin) || timeoutMin <= 0 || timeoutMin > 30) {
@@ -150,8 +150,9 @@ if (!fs.statSync(CLI, { throwIfNoEntry: false })?.isFile()) {
 }
 const cliSha256 = sha256(fs.readFileSync(CLI));
 const versionRun = spawnSync(process.execPath, [CLI, '--version'], { encoding: 'utf8', timeout: 10_000, windowsHide: true });
-if (versionRun.status !== 0 || !/^canary 1\.5\.0\s*$/m.test(versionRun.stdout ?? '')) {
-  console.error(`usage error: --cli must report canary 1.5.0 (exit ${String(versionRun.status)}): ${(versionRun.stdout ?? '').trim()}`);
+const expectedCliVersion = `amabie ${JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version}`;
+if (versionRun.status !== 0 || (versionRun.stdout ?? '').trim() !== expectedCliVersion) {
+  console.error(`usage error: --cli must report ${expectedCliVersion} (exit ${String(versionRun.status)}): ${(versionRun.stdout ?? '').trim()}`);
   process.exit(2);
 }
 const cliVersion = (versionRun.stdout ?? '').trim();
@@ -378,7 +379,7 @@ const redact = (s) => {
 
 // ---------------------------------------------------------------- prompt
 const taskText = fs.readFileSync(taskFile, 'utf8').trim();
-const armSuffix = arm === 'canary'
+const armSuffix = arm === 'amabie'
   ? ['', 'Verification in this repository is AUTOMATIC: when you believe the work is complete, simply finish.',
     'The project\'s checks are run for you, and if anything fails you will be told exactly what to fix,']
   : [''];
@@ -387,7 +388,7 @@ const promptPath = path.join(attemptDir, 'agent-prompt.txt');
 if (agentProtocol === 'ollama-native') writeArtifact('agent-prompt.txt', `${prompt}\n`);
 
 // ---------------------------------------------------------------- checkpoint state BEFORE
-const checkpointPath = path.join(repo, '.canary', 'last-checkpoint.json');
+const checkpointPath = path.join(repo, '.amabie', 'last-checkpoint.json');
 const readCheckpointRaw = () => { try { return fs.readFileSync(checkpointPath, 'utf8'); } catch { return null; } };
 const checkpointBefore = readCheckpointRaw();
 const checkpointMtimeBefore = (() => { try { return fs.statSync(checkpointPath).mtimeMs; } catch { return null; } })();
@@ -426,8 +427,8 @@ const args = agentProtocol === 'codex-local'
         '--max-requests', '24',
         ...agentExtraArgs,
         ...(agentExtraArgs.includes('--checks-file') ? ['--tool-output-dir', attemptDir] : []),
-        ...(arm === 'canary' ? [
-          '--canary-cli', CLI,
+        ...(arm === 'amabie' ? [
+          '--amabie-cli', CLI,
           '--session-id', `ws5-${label}-${attemptId}`,
           '--transcript-path', path.join(attemptDir, 'agent.session.jsonl'),
         ] : []),
@@ -443,7 +444,7 @@ const args = agentProtocol === 'codex-local'
       '--allowedTools', 'Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep',
     ];
 if (agentProtocol === 'claude' && fs.existsSync(mcpConfig)) args.push('--mcp-config', mcpConfig);
-if (agentProtocol === 'ollama-native' && arm === 'canary') writeArtifact('agent.session.jsonl', '');
+if (agentProtocol === 'ollama-native' && arm === 'amabie') writeArtifact('agent.session.jsonl', '');
 
 /**
  * PIPES → WRITE STREAMS, NOT INHERITED FILE DESCRIPTORS.
@@ -512,8 +513,8 @@ const model = parsedCodex ? (localModelRuntimeAfter?.match?.name ?? null) : (() 
 const agentWarnings = parsedCodex?.warnings ?? [];
 const streamText = rawStream;
 const sawStopHookFeedback = /Stop hook feedback/i.test(streamText);
-const sawCanaryBlockText = /Canary blocked completion/i.test(streamText);
-const sawCanarySystemMessage = /Canary (could not|found|:)/i.test(streamText);
+const sawAmabieBlockText = /Amabie blocked completion/i.test(streamText);
+const sawAmabieSystemMessage = /Amabie (could not|found|:)/i.test(streamText);
 const sawStopGuardMessage = /after one repair attempt|stopping anyway/i.test(streamText);
 /**
  * The `result` event's `usage` is the CLI's own provider-native session total.
@@ -528,15 +529,15 @@ const agentSessionOutcome = (() => {
   if (run.timedOut) return 'timed_out';
   if (result === null) return 'missing_terminal_result';
   if (result.is_error === true || result.subtype !== 'success' || run.code !== 0) return 'ended_with_error';
-  if (sawStopGuardMessage) return 'completed_after_canary_stop_guard';
-  if (sawCanaryBlockText) return 'completed_after_block_and_repair';
+  if (sawStopGuardMessage) return 'completed_after_amabie_stop_guard';
+  if (sawAmabieBlockText) return 'completed_after_block_and_repair';
   return 'completed';
 })();
 const ledger = {
   layout: LAYOUT_VERSION, attemptId, runRoot, attemptDir,
   label, arm, repo, agentCommand, agentProtocol, agentModel, agentWarnings, startedAt, wallSeconds,
   localModelRuntime: usesOllama ? { before: localModelRuntimeBefore, after: localModelRuntimeAfter } : null,
-  canary: { path: CLI, version: cliVersion, binarySha256: cliSha256, artifactSha256: artifactSha256.toLowerCase() },
+  amabie: { path: CLI, version: cliVersion, binarySha256: cliSha256, artifactSha256: artifactSha256.toLowerCase() },
   agentExitCode: run.code ?? null, spawnError: run.spawnError ?? null, timedOut: run.timedOut === true,
   agentSessionOutcome,
   streamLines: rawStream.split(/\r?\n/).filter((l) => l.trim()).length,
@@ -552,7 +553,7 @@ const ledger = {
   totalCostUsdProvider: nativeCostUsd,
   perSessionBudgetUsd: pilotBudgetUsd,
   costWithinSessionBudget: pilotBudgetUsd === null ? null : (Number.isFinite(nativeCostUsd) && nativeCostUsd <= pilotBudgetUsd),
-  sawStopHookFeedback, sawCanaryBlockText, sawCanarySystemMessage, sawStopGuardMessage,
+  sawStopHookFeedback, sawAmabieBlockText, sawAmabieSystemMessage, sawStopGuardMessage,
   forwardedEnvKeys: forwardedKeys,
   assistantEvents: assistantEvents.length,
   agentWarnings,
@@ -577,7 +578,7 @@ if (agentProtocol === 'ollama-native' && localCheckpointEvents.length > 0) {
   writeArtifact('checkpoint-manual.stdout.txt', `${driven.stdout}\n`);
   writeArtifact('checkpoint-manual.stderr.txt', `${driven.stderr}\n`);
 }
-if (!hookFiredDuringRun && arm === 'canary' && driven === null) {
+if (!hookFiredDuringRun && arm === 'amabie' && driven === null) {
   // MANUALLY DRIVEN: the seeded hook JSON is byte-for-byte the contract in
   // apps/cli/src/onboarding.ts:3195-3234 — {cwd, stop_hook_active, task} on stdin,
   // decision JSON on stdout, exit 0. This is NOT the harness firing the hook and the
@@ -610,17 +611,17 @@ function classifyVerification(manual, finalCheckpoint) {
   const decision = response?.decision ?? null;
   const checkpointStatus = checkpoint?.status ?? null;
   // Earlier blocks remain historical observations, never the final proof status.
-  const evidenceStatus = canaryEvidenceStatus(response, checkpoint);
+  const evidenceStatus = amabieEvidenceStatus(response, checkpoint);
   return {
     checkpointStatus,
-    blockDecisionObserved: decision === 'block' || sawCanaryBlockText,
+    blockDecisionObserved: decision === 'block' || sawAmabieBlockText,
     finalCheckpointDecision: decision,
     stopGuardMessageObserved: sawStopGuardMessage,
     evidenceStatus,
     message: responseText || null,
   };
 }
-const verification = arm === 'canary' ? classifyVerification(driven, checkpointFinal) : {
+const verification = arm === 'amabie' ? classifyVerification(driven, checkpointFinal) : {
   checkpointStatus: null,
   blockDecisionObserved: false,
   finalCheckpointDecision: null,
@@ -674,7 +675,7 @@ const record = {
   checkpointAfter,
   checkpointFinal,
   hookFiredDuringRun,
-  seenByModel: { sawStopHookFeedback, sawCanaryBlockText, sawCanarySystemMessage },
+  seenByModel: { sawStopHookFeedback, sawAmabieBlockText, sawAmabieSystemMessage },
   checkpointDrivenManually: driven !== null,
   manuallyDriven: driven,
   verification,
@@ -703,19 +704,19 @@ if (agentProtocol === 'codex-local') {
     'requested ' + agentModel + '; runtime observation ' + JSON.stringify(localModelRuntimeAfter)));
   check('local Codex session ended successfully within its time limit', () => assert(agentSessionOutcome === 'completed' || agentSessionOutcome === 'completed_after_block_and_repair',
     'agent session outcome is ' + agentSessionOutcome));
-  if (arm === 'canary') check('Canary Stop hook fired during the local Codex session', () => assert(hookFiredDuringRun, 'Canary Stop hook did not fire during the model session'));
+  if (arm === 'amabie') check('Amabie Stop hook fired during the local Codex session', () => assert(hookFiredDuringRun, 'Amabie Stop hook did not fire during the model session'));
 }
 if (agentProtocol === 'ollama-native') {
   check('native local token usage and model digest are present', () => assert(hasOllamaNativeUsageEvidence(usage, localModelRuntimeAfter),
     'Ollama local runtime or native token usage evidence is missing'));
   check('Ollama served the requested local model', () => assert(localModelRuntimeAfter?.match?.name === agentModel,
     'requested ' + agentModel + '; runtime observation ' + JSON.stringify(localModelRuntimeAfter)));
-  check('local native tool session ended successfully within its time limit', () => assert(agentSessionOutcome === 'completed' || agentSessionOutcome === 'completed_after_block_and_repair' || agentSessionOutcome === 'completed_after_canary_stop_guard',
+  check('local native tool session ended successfully within its time limit', () => assert(agentSessionOutcome === 'completed' || agentSessionOutcome === 'completed_after_block_and_repair' || agentSessionOutcome === 'completed_after_amabie_stop_guard',
     'agent session outcome is ' + agentSessionOutcome));
-  if (arm === 'canary') check('local session recorded a Canary completion decision', () => assert(localCheckpointEvents.length > 0,
+  if (arm === 'amabie') check('local session recorded a Amabie completion decision', () => assert(localCheckpointEvents.length > 0,
     'native local agent did not drive a completion checkpoint'));
 }
-if (arm === 'canary') check('a Canary checkpoint decision was obtained (hook or manually driven)', () => {
+if (arm === 'amabie') check('a Amabie checkpoint decision was obtained (hook or manually driven)', () => {
   if (hookFiredDuringRun) return assert(checkpointAfter != null, 'hook fired but no checkpoint file');
   assert(driven != null, 'checkpoint was never driven');
   assert(driven.exitCode === 0, `checkpoint exit ${driven.exitCode}`);
@@ -762,7 +763,7 @@ console.log(`--- ${label}/${attemptId}: ${hookFiredDuringRun ? 'HOOK FIRED durin
 console.log(`--- wall ${wallSeconds}s, turns ${ledger.numTurns}, usage ${JSON.stringify(usage)}`);
 console.log(`--- attempt directory: ${attemptDir}`);
 if (agentProtocol === 'codex-local') console.log('--- local Codex/Ollama inference; provider USD charge is not applicable');
-else if (agentProtocol === 'ollama-native') console.log(`--- local Ollama native tool loop; provider USD charge is not applicable; Canary checks ${arm === 'canary' ? 'were driven by the harness' : 'not applicable in plain arm'}`);
+else if (agentProtocol === 'ollama-native') console.log(`--- local Ollama native tool loop; provider USD charge is not applicable; Amabie checks ${arm === 'amabie' ? 'were driven by the harness' : 'not applicable in plain arm'}`);
 else if (agentCmd !== 'claude') console.log('--- STUB AGENT: this attempt is a provenance/harness measurement, NOT real-world evidence.');
 console.log(`--- ${failures === 0 ? 'RUN COMPLETE' : `RUN INCOMPLETE (${failures} failure(s))`}`);
 process.exit(probeExitCode);

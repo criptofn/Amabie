@@ -7,7 +7,7 @@
  * language plan/seal/drift path — the shared helpers in project.ts own those, so
  * a new ecosystem is a table entry plus a discovery function, never a fork.
  *
- * The rule that shapes all of it (master directive, and Canary's own doctrine):
+ * The rule that shapes all of it (master directive, and Amabie's own doctrine):
  * **discovery invents nothing.** A check appears only when the project actually
  * declares it — a config section, a declared tool, or a conventional test
  * directory the tooling would itself discover. "Python files exist" is not a
@@ -65,14 +65,14 @@ interface Ecosystem {
    */
   trustedProgramDirs?: readonly string[];
   /**
-   * Environment this ecosystem's programs need under Canary's SANITIZED env, or
+   * Environment this ecosystem's programs need under Amabie's SANITIZED env, or
    * undefined when they need none (see `ProjectAdapter.toolchainEnv`).
    *
    * Measured, not speculative: under the sanitized env Go aborts with
    * `build cache is required, but could not be located: GOCACHE is not defined
    * and %LocalAppData% is not defined`, and declaring a workspace-scoped
    * GOCACHE/GOPATH was VERIFIED to make `go test` and `go test -json` run inside
-   * a Canary step (tooling/probes/runner-channels-rust-go.mjs).
+   * a Amabie step (tooling/probes/runner-channels-rust-go.mjs).
    */
   toolchainEnv?(ctx: { dir: string; workspace: string }): Record<string, string>;
 }
@@ -80,7 +80,7 @@ interface Ecosystem {
 /** Comment and prose lines removed. A tool named in a sentence is not a
  *  declaration, and getting this wrong fails in the worst direction: the
  *  examples smoke probe caught a project whose pyproject.toml SAID "no pytest
- *  declaration" in a comment, and Canary then ran pytest on it and failed the
+ *  declaration" in a comment, and Amabie then ran pytest on it and failed the
  *  project for not having pytest installed. */
 function declarationText(raw: string): string {
   return raw
@@ -115,7 +115,7 @@ function declaresTool(text: string, tool: string): boolean {
 // Tool-config files count as manifests too: a repository whose only Python
 // declaration is `pytest.ini` (or a ruff/mypy config) plus .py sources IS a
 // Python project, and refusing to see it would report UNSUPPORTED on a project
-// Canary can verify perfectly well. Note `declares()` below still requires a
+// Amabie can verify perfectly well. Note `declares()` below still requires a
 // real declaration — this list only decides whether the ecosystem is present.
 const PY_MANIFESTS = ['pyproject.toml', 'setup.py', 'setup.cfg', 'tox.ini', 'Pipfile', 'requirements.txt',
   'pytest.ini', 'mypy.ini', 'ruff.toml', '.ruff.toml', 'pyrightconfig.json'] as const;
@@ -170,7 +170,7 @@ const rustEcosystem: Ecosystem = {
   programs: ['cargo'],
   /**
    * Rust's toolchain lives OUTSIDE the OS-managed dirs, and the PATH entry rustup
-   * installs is a PROXY that cannot run under Canary's sanitized environment
+   * installs is a PROXY that cannot run under Amabie's sanitized environment
    * (measured: "rustup could not choose a version of cargo to run" once
    * RUSTUP_HOME/HOME are redirected), while the REAL toolchain binary needs no
    * environment and runs fine. So the adapter declares the literal locations a
@@ -226,13 +226,13 @@ const goEcosystem: Ecosystem = {
   manifests: ['go.mod', 'go.work'],
   dependencyPaths: ['go.mod', 'go.sum', 'go.work', 'go.work.sum'],
   programs: ['go'],
-  // The one ecosystem whose toolchain cannot run under Canary's sanitized env
+  // The one ecosystem whose toolchain cannot run under Amabie's sanitized env
   // without a declaration: Go derives its build cache from HOME/%LocalAppData%,
   // and both are redirected. Workspace-scoped, so `sanitizedEnv` accepts it and a
   // project cannot steer it.
   toolchainEnv: ({ workspace }) => ({
-    GOCACHE: path.join(workspace, 'canary-toolchain', 'go-build'),
-    GOPATH: path.join(workspace, 'canary-toolchain', 'go-path'),
+    GOCACHE: path.join(workspace, 'amabie-toolchain', 'go-build'),
+    GOPATH: path.join(workspace, 'amabie-toolchain', 'go-path'),
     // Never let a step silently download a different toolchain mid-verification.
     GOTOOLCHAIN: 'local',
   }),
@@ -336,14 +336,14 @@ export const pythonAdapter = commandAdapter(pythonEcosystem);
 export const rustAdapter = commandAdapter(rustEcosystem);
 export const goAdapter = commandAdapter(goEcosystem);
 
-/** The NATIVE ecosystems: the ones Canary has ecosystem-specific discovery for. */
+/** The NATIVE ecosystems: the ones Amabie has ecosystem-specific discovery for. */
 export const NATIVE_ADAPTERS: readonly ProjectAdapter[] = [pythonAdapter, rustAdapter, goAdapter];
 
 /**
  * Registered in this order when several ecosystems share a repository root.
  *
  * `universal` is appended LAST and claims only a directory no native adapter
- * claimed, so a project Canary has native discovery for always keeps its native
+ * claimed, so a project Amabie has native discovery for always keeps its native
  * path. It is what makes an unknown ecosystem a SUPPORTED project rather than an
  * unsupported one — with an honest observation ceiling (an unknown runner can
  * never earn a strong label; see the runner registry).

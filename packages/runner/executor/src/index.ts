@@ -1,8 +1,8 @@
 /**
- * Executor — the ONLY path through which Canary runs external commands.
+ * Executor — the ONLY path through which Amabie runs external commands.
  *
  * Responsibilities (ported from the proven m0/experiment harness):
- *  - sanitized-env spawn via @canary-rn/support (allowlist, no shell, timeout kill)
+ *  - sanitized-env spawn via @amabie/support (allowlist, no shell, timeout kill)
  *  - per-round artifact logging (raw + normalized streams)
  *  - production of both classification RoundFacts and evidence RoundEvidence
  *  - token expansion of spec argv ($npm/$yarn/$tsc/$bin:/placeholders) with
@@ -13,24 +13,24 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 // v1.4 — canonical filesystem identity (expands Windows 8.3 short names).
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 
 import {
-  runCommand, CanaryError, locateRunnerPackage, findRunnerPin,
+  runCommand, AmabieError, locateRunnerPackage, findRunnerPin,
   type RunOptions, type RunOutcome, type WorkspaceLayout, type ObserverInjection,
-} from '@canary-rn/support';
-import { normalize, type Normalizer } from '@canary-rn/normalizers';
-import { sha256hex } from '@canary-rn/hashing';
+} from '@amabie/support';
+import { normalize, type Normalizer } from '@amabie/normalizers';
+import { sha256hex } from '@amabie/hashing';
 import { ensurePythonObserver, observerNonce } from './observers/python-observer.js';
 import {
   PYTEST_RUNNER_ID, ensurePytestObserver, isPytestObserverSuppressionToken, pytestRunnerIdentity,
 } from './observers/pytest-observer.js';
 import {
-  NODE_TEST_RUNNER_ID, ensureNodeTestObserver, isCanaryOwnRuntime, nodeRunnerIdentity,
+  NODE_TEST_RUNNER_ID, ensureNodeTestObserver, isAmabieOwnRuntime, nodeRunnerIdentity,
   nodeTestReporterUrl,
 } from './observers/node-test-reporter.js';
-import { extractFailingTestNamesFor, hasRunnerSummaryFor, parseSummaryCounts, parseSummaryCountsFor, runnerView } from '@canary-rn/comparator';
-import type { AbsentKind, ExecutionObservation, RoundFact } from '@canary-rn/classification';
+import { extractFailingTestNamesFor, hasRunnerSummaryFor, parseSummaryCounts, parseSummaryCountsFor, runnerView } from '@amabie/comparator';
+import type { AbsentKind, ExecutionObservation, RoundFact } from '@amabie/classification';
 import { validateObservation } from './observation.js';
 import {
   OBSERVER_MOCHA_ANCHOR_REL, ensureObserverPreload, observerPreloadPath,
@@ -46,7 +46,7 @@ export {
 export {
   NODE_TEST_REPORTER_BASENAME, NODE_TEST_REPORTER_SOURCE, NODE_TEST_RUNNER_ID,
   NODE_TEST_OBSERVER_DIRNAME, ensureNodeTestObserver, nodeTestReporterPath,
-  nodeTestReporterUrl, nodeRunnerIdentity, isCanaryOwnRuntime,
+  nodeTestReporterUrl, nodeRunnerIdentity, isAmabieOwnRuntime,
 } from './observers/node-test-reporter.js';
 export {
   OBSERVER_PRELOAD_BASENAME, OBSERVER_PRELOAD_SOURCE, OBSERVER_MOCHA_ANCHOR_REL,
@@ -80,7 +80,7 @@ export interface ExecutorDeps {
    * the production CLI constructs Recorder without it, so an untrusted
    * spec staging double bytes at the canonical anchor earns NO injection.
    */
-  allowCanaryDoubleOrigin?: boolean;
+  allowAmabieDoubleOrigin?: boolean;
   /**
    * IN-PROCESS AUTHORITY for a NON-PACKAGE runner's identity (v1.1 Phase 2).
    *
@@ -88,7 +88,7 @@ export interface ExecutorDeps {
    * system interpreter cannot be pinned that way — its bytes differ per host — so
    * the authority is an explicit grant: the caller states which interpreter it has
    * authorized, by version and by a digest of the interpreter's own bytes. Same
-   * trust channel as `allowCanaryDoubleOrigin` (in-process deps, constructed by
+   * trust channel as `allowAmabieDoubleOrigin` (in-process deps, constructed by
    * the CLI or a test harness), NOT reachable from a spec file, env or argv.
    *
    * No grant ⇒ NO injection ⇒ the round is ABSENT with
@@ -221,7 +221,7 @@ export function hasCrashSignature(out: string): boolean {
 }
 
 /**
- * Audit B5 (supersedes the F8 blacklist posture) — CANARY OWNS the
+ * Audit B5 (supersedes the F8 blacklist posture) — AMABIE OWNS the
  * package-manager command surface. Blacklisting npm aliases is a treadmill
  * (`ins`, `ii`, `add`, `it`, `ait`, `dedupe`, … — any alias not enumerated is
  * a silent no-injection hole, and the pre-F8 code only knew four). The policy
@@ -235,7 +235,7 @@ export function hasCrashSignature(out: string): boolean {
  *     (including vetted-looking but unlisted aliases, `exec`, `publish`,
  *     `link`, `rebuild`) is REJECTED as unsupported rather than run without
  *     policy;
- *  3. install/update family → Canary's isolation controls are APPENDED AS
+ *  3. install/update family → Amabie's isolation controls are APPENDED AS
  *     THE ARGV SUFFIX (post-sol RB-1: npm's CLI config layer is last-wins,
  *     so the final canonical occurrence is the EFFECTIVE one), and a `--`
  *     separator is rejected in these families so nothing can follow the
@@ -273,10 +273,10 @@ export function hasCrashSignature(out: string): boolean {
  *         prefix-DISJOINT from the protected key universe: no accepted
  *         spelling can abbreviate or negate INTO a protected key.
  *
- *     (b) CANARY'S PROTECTED FLAGS ARE APPENDED LAST (argv suffix). npm's
+ *     (b) AMABIE'S PROTECTED FLAGS ARE APPENDED LAST (argv suffix). npm's
  *         CLI layer is last-wins (probe-verified), so even a hypothetical
  *         future leak of a same-key spelling cannot change the EFFECTIVE
- *         configuration: Canary's canonical occurrence is the final one.
+ *         configuration: Amabie's canonical occurrence is the final one.
  *         `--` and short options remain rejected in this family, so nothing
  *         user-supplied can follow the block.
  *
@@ -292,7 +292,7 @@ export function hasCrashSignature(out: string): boolean {
  * the executed argv ENDS with exactly one canonical occurrence of each of
  * --ignore-scripts, --userconfig, --cache, --registry (and the hygiene
  * pair), after every user-controlled token — so the EFFECTIVE package-
- * manager configuration of those keys is Canary's by npm's own semantics.
+ * manager configuration of those keys is Amabie's by npm's own semantics.
  */
 const NPM_INSTALL_SUBS = new Set([
   'install', 'i', 'ii', 'ins', 'add', 'ci', 'cit', 'clean-install', 'ic',
@@ -303,7 +303,7 @@ const NPM_INFO_SUBS = new Set(['ls', 'll', 'view', 'show', 'info', 'help']);
 const YARN_INSTALL_SUBS = new Set(['install', 'add', 'i', 'a']);
 const YARN_SCRIPT_SUBS = new Set(['run', 'test']);
 
-/** The public registry Canary pins installs to (defeats host-global npmrc
+/** The public registry Amabie pins installs to (defeats host-global npmrc
  *  registry overrides; --userconfig alone does not cover globalconfig). */
 export const NPM_REGISTRY_PIN = 'https://registry.npmjs.org/';
 
@@ -312,7 +312,7 @@ export const INSTALL_FAMILY: readonly string[] = [...NPM_INSTALL_SUBS];
 
 /**
  * Post-sol RB-1 — the PROTECTED CONFIG UNIVERSE: npm/yarn config keys whose
- * effective value must be Canary's (or Canary-determined) for the isolation
+ * effective value must be Amabie's (or Amabie-determined) for the isolation
  * contract to hold: scripts execution, config-file sources, cache/registry
  * resolution, and everything that changes WHERE or HOW the package manager
  * installs (target root, cwd, global-ness, workspace selection, script
@@ -478,8 +478,8 @@ export function assertSupportedSpecExecutable(cmd: readonly string[]): void {
     for (let k = 1; k < cmd.length; k++) {
       const arg = basenameLower(cmd[k]!);
       if (RAW_PM_BASENAMES.has(arg) || NPM_SCRIPT_BASENAMES.has(arg)) {
-        throw new CanaryError(
-          `spec command '${cmd.join(' ')}' executes node with a package-manager file argument ('${cmd[k]}'): use the $npm token so Canary can enforce its isolation policy`,
+        throw new AmabieError(
+          `spec command '${cmd.join(' ')}' executes node with a package-manager file argument ('${cmd[k]}'): use the $npm token so Amabie can enforce its isolation policy`,
           'wrapper-mediated-package-manager',
         );
       }
@@ -487,19 +487,19 @@ export function assertSupportedSpecExecutable(cmd: readonly string[]): void {
     return;
   }
   if (base && WRAPPER_BASENAMES.has(base)) {
-    throw new CanaryError(
-      `spec command starts with the wrapper/interpreter '${first}': wrappers re-parse and execute their arguments OUTSIDE Canary's package-manager policy ('${first} … npm install …' was the round-3 B5 bypass) — spec commands may only start with $npm/$yarn/$tsc/$bin: tokens or node`,
+    throw new AmabieError(
+      `spec command starts with the wrapper/interpreter '${first}': wrappers re-parse and execute their arguments OUTSIDE Amabie's package-manager policy ('${first} … npm install …' was the round-3 B5 bypass) — spec commands may only start with $npm/$yarn/$tsc/$bin: tokens or node`,
       'wrapper-mediated-package-manager',
     );
   }
   if (base && PM_FRONTEND_BASENAMES.has(base)) {
-    throw new CanaryError(
+    throw new AmabieError(
       `spec command starts with a package-manager frontend ('${first}'): pnpm/bun/corepack/volta-style frontends resolve and run installs with their own tooling, invisible to the $npm/$yarn isolation policy — not supported in v0.1`,
       'package-manager-frontend',
     );
   }
-  throw new CanaryError(
-    `spec command starts with '${first}', which is not on Canary's explicit allowlist of literal spec executables (node; token forms $npm/$yarn/$tsc/$bin:) — unenumerated executables cannot be policed for package-manager or isolation behavior (round-3 B5 fail-closed)`,
+  throw new AmabieError(
+    `spec command starts with '${first}', which is not on Amabie's explicit allowlist of literal spec executables (node; token forms $npm/$yarn/$tsc/$bin:) — unenumerated executables cannot be policed for package-manager or isolation behavior (round-3 B5 fail-closed)`,
     'spec-executable-not-allowlisted',
   );
 }
@@ -509,14 +509,14 @@ export function assertCanonicalPmForm(cmd: readonly string[]): void {
   if (cmd.length === 0) return;
   const base = basenameLower(cmd[0]!);
   if (base && RAW_PM_BASENAMES.has(base)) {
-    throw new CanaryError(
-      `spec command starts with a raw package-manager executable ('${cmd[0]}'): only the $npm/$yarn tokens may invoke package managers — raw forms bypass Canary's isolation-flag policy entirely`,
+    throw new AmabieError(
+      `spec command starts with a raw package-manager executable ('${cmd[0]}'): only the $npm/$yarn tokens may invoke package managers — raw forms bypass Amabie's isolation-flag policy entirely`,
       'raw-package-manager',
     );
   }
   if (base && NODE_BASENAMES.has(base) && cmd.length > 1 && basenameLower(cmd[1]!) && NPM_SCRIPT_BASENAMES.has(basenameLower(cmd[1]!))) {
-    throw new CanaryError(
-      `spec command runs '${cmd[1]}' directly through node: use the $npm token so Canary can enforce its isolation policy`,
+    throw new AmabieError(
+      `spec command runs '${cmd[1]}' directly through node: use the $npm token so Amabie can enforce its isolation policy`,
       'raw-package-manager',
     );
   }
@@ -537,7 +537,7 @@ export interface PmPolicy {
  * against the closed exact-spelling allowlist (protected-key spellings get
  * their own isolation-conflicting diagnosis), non-install tokens against the
  * resolved-key protected universe.
- * Throws CanaryError on any shape Canary refuses to police; returns the
+ * Throws AmabieError on any shape Amabie refuses to police; returns the
  * pinned subcommand + its family otherwise.
  */
 export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
@@ -557,11 +557,11 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
     const tok = cmd[k]!;
     if (tok === '--') {
       if (policy === undefined) {
-        throw new CanaryError(`spec command '${cmd.join(' ')}': '--' before the subcommand is not supported`, 'spec-dashdash-position');
+        throw new AmabieError(`spec command '${cmd.join(' ')}': '--' before the subcommand is not supported`, 'spec-dashdash-position');
       }
       if (policy.family === 'install') {
-        throw new CanaryError(
-          `spec command '${cmd.join(' ')}': '--' is not allowed for install-family commands — Canary's appended isolation flags would land in the positionals (B5 bypass shape)`,
+        throw new AmabieError(
+          `spec command '${cmd.join(' ')}': '--' is not allowed for install-family commands — Amabie's appended isolation flags would land in the positionals (B5 bypass shape)`,
           'spec-dashdash-install',
         );
       }
@@ -574,8 +574,8 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
         const fam: PmPolicy['family'] | undefined =
           installSubs.has(norm) ? 'install' : scriptSubs.has(norm) ? 'script' : infoSubs.has(norm) ? 'info' : undefined;
         if (!fam) {
-          throw new CanaryError(
-            `subcommand '${tok}' is not allowed for ${cmd[0]}: Canary executes only its closed allowlist (npm: install-family, run/run-script/test, ls/view/show/info/help; yarn: install/add, run/test) — unknown or unvetted aliases are rejected rather than run without isolation policy`,
+          throw new AmabieError(
+            `subcommand '${tok}' is not allowed for ${cmd[0]}: Amabie executes only its closed allowlist (npm: install-family, run/run-script/test, ls/view/show/info/help; yarn: install/add, run/test) — unknown or unvetted aliases are rejected rather than run without isolation policy`,
             'unsupported-subcommand',
           );
         }
@@ -584,8 +584,8 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
       continue;
     }
     if (!tok.startsWith('--')) {
-      throw new CanaryError(
-        `spec command contains short option '${tok}': Canary specs must use long-form flags (short value-taking options like -u shift subcommand detection past the install and silently skip isolation-flag injection)`,
+      throw new AmabieError(
+        `spec command contains short option '${tok}': Amabie specs must use long-form flags (short value-taking options like -u shift subcommand detection past the install and silently skip isolation-flag injection)`,
         'spec-short-option',
       );
     }
@@ -599,14 +599,14 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
     if (touchedEarly !== undefined) {
       const eqE = early.indexOf('=');
       const fullNameE = (eqE === -1 ? early : early.slice(0, eqE)).toLowerCase();
-      throw new CanaryError(
-        `spec command contains isolation-conflicting flag '${fullNameE}'${touchedEarly === earlyName ? '' : ` (resolves to protected config '${touchedEarly}')`}: Canary pins userconfig/cache/scripts/registry policy and prefix/workspace/location resolution itself`,
+      throw new AmabieError(
+        `spec command contains isolation-conflicting flag '${fullNameE}'${touchedEarly === earlyName ? '' : ` (resolves to protected config '${touchedEarly}')`}: Amabie pins userconfig/cache/scripts/registry policy and prefix/workspace/location resolution itself`,
         'spec-config-conflict',
       );
     }
   }
   if (policy === undefined) {
-    throw new CanaryError(
+    throw new AmabieError(
       `spec command '${cmd.join(' ')}' has no recognizable ${cmd[0]} subcommand`,
       'unsupported-subcommand',
     );
@@ -624,19 +624,19 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
     if (policy.family === 'install') {
       const known = allow.has(fullName) || valueRequired.has(fullName);
       if (!known) {
-        throw new CanaryError(
-          `install-family option '${fullName}' is not on Canary's closed option allowlist: only vetted exact spellings may accompany an install (abbreviations, negations and unvetted config keys are rejected because npm applies semantically equivalent forms — post-sol RB-1)`,
+        throw new AmabieError(
+          `install-family option '${fullName}' is not on Amabie's closed option allowlist: only vetted exact spellings may accompany an install (abbreviations, negations and unvetted config keys are rejected because npm applies semantically equivalent forms — post-sol RB-1)`,
           'spec-install-option-not-allowed',
         );
       }
       if (valueRequired.has(fullName) && eq === -1) {
-        throw new CanaryError(
+        throw new AmabieError(
           `install-family option '${fullName}' takes a value and must use the '--${fullName.slice(2)}=value' form: a bare value-taking option can swallow the following argv slot (npm probe: '--before --json' consumed the flag)`,
           'spec-install-option-valueless',
         );
       }
       if (allow.has(fullName) && eq !== -1 && tok.slice(eq + 1) !== 'true' && tok.slice(eq + 1) !== 'false') {
-        throw new CanaryError(
+        throw new AmabieError(
           `install-family boolean option '${fullName}' only accepts '=true'/'=false' values, got '${tok}'`,
           'spec-install-option-valueless',
         );
@@ -646,7 +646,7 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
     // (c) non-install families keep the pre-subcommand bare-option ambiguity
     // rule (value-taking options before the subcommand shift detection).
     if (eq === -1 && k < policy.subIdx && !bareOk.has(fullName)) {
-      throw new CanaryError(
+      throw new AmabieError(
         `bare option '${fullName}' before the subcommand cannot be verified valueless — value-taking options before the subcommand skip isolation-flag injection; use '--flag=value' form or move options after the subcommand`,
         'spec-ambiguous-option',
       );
@@ -658,7 +658,7 @@ export function pmArgvPolicy(cmd: readonly string[]): PmPolicy {
 /**
  * The injection decision for one expanded command (panel I). `absentKind`
  * explains an ABSENT round when injection was NOT attempted — every field
- * here is Canary-derived (pin-table values + bytes Canary hashed), and the
+ * here is Amabie-derived (pin-table values + bytes Amabie hashed), and the
  * bundle records it verbatim per round; prove re-derives it through the same
  * expandArgvWithPlan over the retained fixture.
  */
@@ -688,7 +688,7 @@ const PYTHON_PROGRAMS = new Set(['python', 'python3', 'python.exe', 'python3.exe
  * Resolve a bare interpreter name from the caller's PATH.
  *
  * This is the SAME posture `pinPlanPrograms` takes for a plan's programs: PATH is
- * consulted at the one authorized moment (here, expansion for a spec Canary is
+ * consulted at the one authorized moment (here, expansion for a spec Amabie is
  * about to run), and what is kept is an ABSOLUTE path. Verification and spawning
  * never consult PATH again.
  */
@@ -738,7 +738,7 @@ export function pythonRunnerIdentity(pythonExe: string): { version: string; iden
  * Recognize a Python test-runner invocation in an EXPANDED argv.
  *
  * Deliberately narrow: the interpreter must be the EXECUTED program (argv[0]) and
- * the module must be a test runner Canary has a channel for. A python invocation
+ * the module must be a test runner Amabie has a channel for. A python invocation
  * that merely mentions unittest in an argument is not a runner, and a runner in a
  * non-executed position earns nothing — the same refusal the mocha path makes for
  * a token that is not in the runner position.
@@ -778,15 +778,15 @@ export function detectNodeTestRunner(argv: readonly string[]): { runner: string;
 }
 
 /**
- * Tokens that would open the reporter set beyond Canary's own reporter.
+ * Tokens that would open the reporter set beyond Amabie's own reporter.
  *
  * The mocha channel refuses a subject's `--require` for exactly this reason
  * (`subject-require-refused`): the set of modules/reporters a runner loads at
- * startup MUST stay closed to Canary's injection, or "Canary injected exactly one
+ * startup MUST stay closed to Amabie's injection, or "Amabie injected exactly one
  * observer" is false. Node pairs `--test-reporter` with
  * `--test-reporter-destination` POSITIONALLY, so a subject-supplied pair could
- * shift the pairing under Canary's pair and send the ordinary TAP summary
- * somewhere Canary is not reading — the agreement channel would then be missing
+ * shift the pairing under Amabie's pair and send the ordinary TAP summary
+ * somewhere Amabie is not reading — the agreement channel would then be missing
  * (a fail-closed INVALID, not a false pass) or, worse, silently replaced by a file
  * the subject owns. Refused, never parsed.
  */
@@ -847,19 +847,19 @@ export class Recorder {
    *    execPath, argv[1] == the mocha bin — post-GLM F1: an off-position token
    *    is inert script argv and is REFUSED, never credited);
    *  - injection proceeds ONLY if (name, version, treeHash) hits a
-   *    Canary-repo pin AND the package sits at the canonical fixture path
+   *    Amabie-repo pin AND the package sits at the canonical fixture path
    *    (the same anchor the preload uses — a hoisted install is not
    *    injectable, "SUPPORTED TRUSTED MOCHA ADAPTER" honesty) AND the pin's
    *    ORIGIN may serve as an execution authority (post-GLM F5: the public
    *    'canary-double' bytes require the explicit in-process
-   *    deps.allowCanaryDoubleOrigin grant — an untrusted spec that stages
+   *    deps.allowAmabieDoubleOrigin grant — an untrusted spec that stages
    *    them at the anchor earns the same 'runner-identity-unpinned' ABSENT
    *    path, with observedRunnerTreeSha256 still recorded);
    *  - miss ⇒ natural argv, `absentKind: 'runner-identity-unpinned'`;
    *  - the subject's own `--require`/`-r` token (or unambiguous abbreviation)
-   *    in a mocha command ⇒ CanaryError → InfraAbort → INFRASTRUCTURE_
+   *    in a mocha command ⇒ AmabieError → InfraAbort → INFRASTRUCTURE_
    *    FAILURE: the set of modules mocha loads at start MUST stay closed to
-   *    Canary's injection, or "Canary injected exactly one observer" is false;
+   *    Amabie's injection, or "Amabie injected exactly one observer" is false;
    *  - hit ⇒ `['--require', <preload>]` appended LAST (RB-1's last-wins
    *    spirit; mocha's --require is repeatable, position cannot override a
    *    loaded module, so refusal above is what keeps this sound).
@@ -893,7 +893,7 @@ export class Recorder {
     // Expand every token. The install-family flags are APPENDED LAST (RB-1):
     // npm's CLI config layer is last-wins (probe-verified on 11.16/11.19),
     // so a suffix position makes the EFFECTIVE protected configuration
-    // structurally Canary's no matter how an accepted user token was
+    // structurally Amabie's no matter how an accepted user token was
     // spelled or positioned.
     const out: string[] = [];
     let mochaBin: string | undefined;
@@ -919,8 +919,8 @@ export class Recorder {
         // and would run WITHOUT the install-family injection — reject so the
         // only pm path is the policed $npm/$yarn tokens.
         if (RAW_PM_PACKAGES.has(pkg)) {
-          throw new CanaryError(
-            `spec command uses '$bin:${s}': resolving the package manager's own binary bypasses Canary's isolation policy — use the $npm/$yarn token`,
+          throw new AmabieError(
+            `spec command uses '$bin:${s}': resolving the package manager's own binary bypasses Amabie's isolation policy — use the $npm/$yarn token`,
             'raw-package-manager',
           );
         }
@@ -953,7 +953,7 @@ export class Recorder {
     // ── Execution-observation injection decision (panel AM-1/I) ─────────
     // Unpinned bytes ⇒ NO injection at all ⇒ the round is ABSENT evidence
     // with the reason recorded — strong labels become structurally
-    // unreachable without Canary ever attempting an observation (the honest
+    // unreachable without Amabie ever attempting an observation (the honest
     // failure mode of a double / an unpinned mocha / a hoisted install).
     const plan: ExpansionPlan = { injected: false, absentKind: 'not-mocha-bin' };
     if (mochaBin !== undefined) {
@@ -966,14 +966,14 @@ export class Recorder {
       // Same posture as 'subject-require-refused': subject-controlled argv that
       // misrepresents what executes is refused, not parsed.
       if (mochaBinAt !== 0) {
-        throw new CanaryError(
+        throw new AmabieError(
           `spec command's $bin:mocha token is not in the executed runner position (it sits behind other argv, so the spawned process is not mocha): crediting it would let a spec-controlled process earn the observer verdict without the pinned runner ever executing — refusing the round fail-closed`,
           'mocha-bin-not-executed',
         );
       }
       if (requireClaims.length > 0) {
-        throw new CanaryError(
-          `mocha spec argv carries Canary's protected preload flag (${requireClaims.join(', ')}): --require/-r in a $bin:mocha command would open the preload set beyond Canary's own observer — refusing the round fail-closed`,
+        throw new AmabieError(
+          `mocha spec argv carries Amabie's protected preload flag (${requireClaims.join(', ')}): --require/-r in a $bin:mocha command would open the preload set beyond Amabie's own observer — refusing the round fail-closed`,
           'subject-require-refused',
         );
       }
@@ -982,7 +982,7 @@ export class Recorder {
       const canonical = path.resolve(d.ws.fixture, ...OBSERVER_MOCHA_ANCHOR_REL);
       // F5: origin-gated lookup — the public canary-double needs the explicit
       // in-process grant; npm pins are selectable in both postures.
-      const pin = located ? findRunnerPin(located, { allowCanaryDoubleOrigin: d.allowCanaryDoubleOrigin === true }) : null;
+      const pin = located ? findRunnerPin(located, { allowAmabieDoubleOrigin: d.allowAmabieDoubleOrigin === true }) : null;
       if (located && pin && located.dir === canonical && isPhysicalAnchor(d.ws.fixture, located.dir)) {
         out.push('--require', observerPreloadPath(d.ws));
         plan.injected = true;
@@ -991,7 +991,7 @@ export class Recorder {
         // subject's package.json string was used to LOCATE the entry, and a
         // miss records nothing from it (panel E: expected* ⇒ injection
         // attempted; a subject-claimed version may never ride into a bundle
-        // on an ABSENT round as if Canary had trusted it).
+        // on an ABSENT round as if Amabie had trusted it).
         plan.expectedMochaVersion = pin.version;
         plan.expectedRunnerTreeSha256 = pin.treeSha256;
       } else {
@@ -1009,7 +1009,7 @@ export class Recorder {
     if (mochaBin === undefined) {
       // ── The Node runtime's OWN runner (v1.1 Phase 2) ────────────────────
       // `node --test` needs no grant, and that is a TRUST argument rather than a
-      // convenience: the runner is the very binary Canary is executing on. The
+      // convenience: the runner is the very binary Amabie is executing on. The
       // sanitized PATH resolves `node` to `dirname(process.execPath)`, and this
       // branch additionally REFUSES any program whose realpath is not that file,
       // so "the observed runner" and "the verifying runtime" are the same bytes
@@ -1017,19 +1017,19 @@ export class Recorder {
       const nodeDetected = detectNodeTestRunner(out);
       if (nodeDetected !== null) {
         // A subject-supplied reporter pair could shift Node's positional
-        // reporter→destination pairing out from under Canary's own pair; refused
+        // reporter→destination pairing out from under Amabie's own pair; refused
         // exactly like a subject `--require` in a mocha command.
         const claim = out.find((t) => isNodeReporterToken(t));
         if (claim !== undefined) {
-          throw new CanaryError(
-            `node --test spec argv carries a test-reporter option ('${claim}'): Node pairs reporters with destinations positionally, so a subject-supplied pair could displace the TAP summary Canary checks the frames against — refusing the round fail-closed`,
+          throw new AmabieError(
+            `node --test spec argv carries a test-reporter option ('${claim}'): Node pairs reporters with destinations positionally, so a subject-supplied pair could displace the TAP summary Amabie checks the frames against — refusing the round fail-closed`,
             'subject-reporter-refused',
           );
         }
         const resolvedNode = path.isAbsolute(nodeDetected.node)
           ? nodeDetected.node
           : resolveOnTrustedPath(nodeDetected.node);
-        if (resolvedNode === null || !isCanaryOwnRuntime(resolvedNode)) {
+        if (resolvedNode === null || !isAmabieOwnRuntime(resolvedNode)) {
           plan.absentKind = 'runner-identity-unpinned';
         } else {
           out[0] = resolvedNode;
@@ -1042,8 +1042,8 @@ export class Recorder {
           plan.observedRunnerIdentitySha256 = identity.identitySha256;
           // The TAP reporter is pinned explicitly rather than left to Node's
           // default (spec on a TTY, tap otherwise): the agreement channel must be
-          // the same text on every host, and Canary's own reporter is added as a
-          // SECOND one so stdout stays output Canary did not produce. The
+          // the same text on every host, and Amabie's own reporter is added as a
+          // SECOND one so stdout stays output Amabie did not produce. The
           // specifier is a file URL — measured: a bare Windows path dies with
           // ERR_UNSUPPORTED_ESM_URL_SCHEME.
           //
@@ -1052,7 +1052,7 @@ export class Recorder {
           // after the spec's test path (`node --test test/ --test-reporter=…`)
           // silently loads no reporter at all — the round then fails closed as
           // `empty-stream` rather than observing anything. Inserting directly
-          // after the runtime puts every one of Canary's options in the option
+          // after the runtime puts every one of Amabie's options in the option
           // region, ahead of any path the spec supplies.
           out.splice(1, 0,
             '--test-reporter=tap', '--test-reporter-destination=stdout',
@@ -1082,12 +1082,12 @@ export class Recorder {
             // `addopts`/argv could suppress it by name. The round still fails closed
             // without it (no frames ⇒ INVALID), but an EXPLICIT suppression token is
             // refused outright rather than left to that: a subject that names
-            // Canary's observer is stating an intent to disable it.
+            // Amabie's observer is stating an intent to disable it.
             if (detected.runner === PYTEST_RUNNER_ID) {
               const suppress = out.find((t) => isPytestObserverSuppressionToken(t));
               if (suppress !== undefined) {
-                throw new CanaryError(
-                  `python -m pytest spec argv disables Canary's observer plugin ('${suppress}'): the injection point must stay closed to the subject — refusing the round fail-closed`,
+                throw new AmabieError(
+                  `python -m pytest spec argv disables Amabie's observer plugin ('${suppress}'): the injection point must stay closed to the subject — refusing the round fail-closed`,
                   'subject-observer-suppression',
                 );
               }
@@ -1114,7 +1114,7 @@ export class Recorder {
   }
 
   /**
-   * Expand spec tokens to concrete argv and ENFORCE Canary's isolation policy
+   * Expand spec tokens to concrete argv and ENFORCE Amabie's isolation policy
    * on any package-manager command (audit B5, post-sol RB-1). For install/-
    * update-family subcommands the isolation flags are APPENDED LAST (npm's
    * CLI layer is last-wins, probe-verified), the option surface is a closed
@@ -1157,7 +1157,7 @@ export class Recorder {
     return { label: uniq, run, combined, normOut, normErr };
   }
 
-  /** Execute and record a measurement round of one arm, including Canary's
+  /** Execute and record a measurement round of one arm, including Amabie's
    *  OWN execution observation (post-GLM Finding A). The fd-3 pipe is opened
    *  on EVERY round (panel A tripwire: bytes on an un-injected round are
    *  recorded as an emulation attempt, never credited); the plan handed in
@@ -1168,7 +1168,7 @@ export class Recorder {
     arm: 'baseline' | 'candidate', index: number, argv: string[], timeoutSecs = 600,
     plan?: ExpansionPlan,
   ): Promise<ExecResult & { fact: RoundFact }> {
-    if (plan?.injected) ensureObserverPreload(this.deps.ws); // rewrite-on-tamper; throws CanaryError on persistent mismatch
+    if (plan?.injected) ensureObserverPreload(this.deps.ws); // rewrite-on-tamper; throws AmabieError on persistent mismatch
     // A provider-neutral round needs its observer loaded through the environment
     // (Python's `sitecustomize`) rather than through argv, so the channel the plan
     // decided on is materialised here — same write-then-byte-verify discipline as

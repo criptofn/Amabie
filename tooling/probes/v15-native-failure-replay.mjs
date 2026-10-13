@@ -10,7 +10,7 @@ const [root, out] = process.argv.slice(2);
 assert.ok([root, out].every((value) => value && path.isAbsolute(value)) && !fs.existsSync(out));
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const summary = JSON.parse(fs.readFileSync(path.join(root, 'summary.json'), 'utf8'));
-const session = summary.sessions.find((record) => record.name === 'R1-canary'); assert.ok(session);
+const session = summary.sessions.find((record) => record.name === 'R1-amabie'); assert.ok(session);
 const response = session.hookEvents.map((event) => {
   try { return JSON.parse(event.stdout); } catch { return null; }
 }).find((value) => value?.decision === 'block' && value.reason.includes('1-tests.log'));

@@ -1,4 +1,4 @@
-// Canary authenticated native transport: production controller plus legacy blob harness.
+// Amabie authenticated native transport: production controller plus legacy blob harness.
 //
 // Runs OUTSIDE the confinement, under the normal user identity. Owns the custody key,
 // the trusted store, the review verdict and the promotion target. It authenticates
@@ -22,7 +22,7 @@ using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 
-namespace CanaryBroker {
+namespace AmabieBroker {
   /// <summary>Minimal, dependency-free JSON strings and field reader for the audit path.</summary>
   internal static class MiniJson {
     public static string Str(string value) {

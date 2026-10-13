@@ -7,7 +7,7 @@ import {
   validateBundle, integrityFor, EVIDENCE_SCHEMA_VERSION,
   buildPublishedSchema, structuralIssues, BUNDLE_CONTRACT, STRONG_MIRROR_LABELS,
 } from '../src/index.js';
-import { STRONG_EXECUTION_LABELS } from '@canary-rn/classification';
+import { STRONG_EXECUTION_LABELS } from '@amabie/classification';
 
 const H = 'a'.repeat(64);
 const SHA40 = 'b8804442837556a2c7673caeb2925688991b610c';
@@ -43,9 +43,9 @@ function goodBundle(): Record<string, unknown> {
       ? { reportedPassing: 2, reportedFailing: 3, failingTestNames: ['a test', 'b test', 'c test'] }
       : { reportedPassing: 5 }),
     // Post-GLM panel E/H mirror: the classifier's gate (and this validator's
-    // independent mirror of it) refuse a strong label without a VALID Canary
+    // independent mirror of it) refuse a strong label without a VALID Amabie
     // observation on every round — counts/identities agreeing with the text
-    // channel, runner identity equal to a Canary-pinned release, retained
+    // channel, runner identity equal to a Amabie-pinned release, retained
     // frame bytes. goodBundle is the canonical HONEST strong bundle, so its
     // observation is what a real double/golden run records.
     executionObservation: arm === 'candidate'

@@ -3,7 +3,7 @@
  * M9 real-git authority-guard probe — directive §9: the worker candidate must
  * never control its verifier. The candidate's SEALED plan step is a fixture
  * that reaches out of the worktree and mutates BASE authority while
- * Canary is watching (config / harness settings / registry record / task
+ * Amabie is watching (config / harness settings / registry record / task
  * intent / settings deletion / evidence plant / evidence edit / evidence
  * wipe / the verifier's own dist bytes / a still-queued step's sealed text /
  * the base HEAD ref). This probe proves, on real git, that:
@@ -32,7 +32,7 @@
  * window is invisible (same limit as M8's identity sandwich); S13 witnesses
  * the base ref moving but does NOT stop it (detection, not prevention);
  * same-UID code can delete the quarantine marker by hand — what it cannot
- * do is the AUTOMATED re-run laundering (S10); @canary-rn workspace imports
+ * do is the AUTOMATED re-run laundering (S10); @amabie workspace imports
  * resolve outside dist/src — the dep-tree slice stays the stated ceiling.
  * NO PROOF, NO DONE.
  */
@@ -48,7 +48,7 @@ const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 // where (see its candidate-location guard); quoting survives spaces.
 // argv[2] carries the MAIN repo's dist path for the 'verifier' mode (S11).
 // argv[3] carries the CALLER's absolute git for the 'basemove' mode (S13): the
-// sealed step runs in Canary's sanitized environment, which has no git on PATH
+// sealed step runs in Amabie's sanitized environment, which has no git on PATH
 // (see the fixture's header for the full diagnosis).
 const GIT_ON_PATH = (() => {
   const p = process.platform === 'win32'
@@ -74,18 +74,18 @@ assert(fs.existsSync(path.join(REPO, 'tooling', 'test-support', 'fixtures', 'm9-
   assert(gv.status === 0, `git not runnable: ${gv.error?.message ?? gv.status}`);
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m9-probe-'));
-const mandate = /CANARY BLOCKED COMPLETION — Verification authority was modified by the candidate\./;
-const mandate3 = /Do not allow candidate-modified Canary to judge its own mutation\./;
-const quarantineRe = /CANARY QUARANTINED/;
-const qp = (root) => path.join(root, '.canary', 'authority-quarantine.json');
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m9-probe-'));
+const mandate = /AMABIE BLOCKED COMPLETION — Verification authority was modified by the candidate\./;
+const mandate3 = /Do not allow candidate-modified Amabie to judge its own mutation\./;
+const quarantineRe = /AMABIE QUARANTINED/;
+const qp = (root) => path.join(root, '.amabie', 'authority-quarantine.json');
 
 function git(dir, ...args) {
   const r = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', timeout: 60_000 });
   assert(r.status === 0, `git ${args.join(' ')} failed: ${r.stderr?.trim() || r.stdout?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd) {
+function amabie(args, cwd) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 }
 function makeRepo(name, extra = {}) {
@@ -95,26 +95,26 @@ function makeRepo(name, extra = {}) {
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: FIXTURE, ...(extra.scripts ?? {}) } }, null, 2) + '\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
   return root;
 }
-const candPath = (root, name) => path.join(root, '.canary', 'candidates', name);
+const candPath = (root, name) => path.join(root, '.amabie', 'candidates', name);
 // isolate + commit the mode file INSIDE the candidate (a committed
 // advancement; the fixture replays under any later live re-verify)
 function isolateWithMode(root, name, mode) {
-  assertEq(canary(['isolate', name, root], root).status, 0, `isolate ${name} failed`);
+  assertEq(amabie(['isolate', name, root], root).status, 0, `isolate ${name} failed`);
   fs.writeFileSync(path.join(candPath(root, name), '.m9mode'), mode + '\n');
   git(candPath(root, name), 'add', '-A');
   git(candPath(root, name), 'commit', '-m', `mode ${mode}`);
   return candPath(root, name);
 }
 function bundles(root, suffix) {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((x) => x.endsWith(suffix)).sort()
     .map((x) => JSON.parse(fs.readFileSync(path.join(d, x, 'verification.json'), 'utf8')));
@@ -128,13 +128,13 @@ const latestCandidate = (root) => { const bs = bundles(root, '-candidate'); asse
 // deliberately stay taskless: their verdicts die at the §9 mandate BEFORE
 // the ladder, and the mode='task' drift asserts the task file is ABSENT
 // before the window — a registration would break that premise, proving
-// precisely that this file is authority Canary fingerprints.
+// precisely that this file is authority Amabie fingerprints.
 function registerRefactor(root) {
-  const t = canary(['task', 'behavior-preserving probe change', '--kind', 'refactor'], root);
+  const t = amabie(['task', 'behavior-preserving probe change', '--kind', 'refactor'], root);
   assertEq(t.status, 0, `task registration failed: ${t.stdout}\n${t.stderr}`);
 }
 function verifyExpectingMandate(root, name, ownFile, whenRe) {
-  const r = canary(['isolate', '--verify', name, root], root);
+  const r = amabie(['isolate', '--verify', name, root], root);
   assertEq(r.status, 2, `${ownFile}: authority write must exit 2 — got ${r.status}:\n${r.stdout}`);
   assertMatch(r.stdout, mandate, `${ownFile}: mandated line 1`);
   assertMatch(r.stdout, mandate3, `${ownFile}: mandated line 3`);
@@ -142,7 +142,7 @@ function verifyExpectingMandate(root, name, ownFile, whenRe) {
   const b = latestCandidate(root);
   assertEq(b.status, 'blocked', `${ownFile}: bundle status`);
   assertEq(b.steps.length, 0, `${ownFile}: mandate bundle carries zero steps`);
-  assertEq(b.trustClass, 'CANARY_OBSERVED', `${ownFile}: M3 class intact on the §9 path`);
+  assertEq(b.trustClass, 'AMABIE_OBSERVED', `${ownFile}: M3 class intact on the §9 path`);
   const ev = b.authorityEvent;
   assert(ev && typeof ev === 'object', `${ownFile}: bundle carries authorityEvent`);
   assertMatch(ev.when, whenRe, `${ownFile}: authorityEvent.when`);
@@ -158,8 +158,8 @@ try {
   check('positive control: untouched authority verifies CANDIDATE PASS, zero §9 lines', () => {
     // No candidate bytes change in the control, so the discrimination duty
     // legitimately does not apply.
-    assertEq(canary(['isolate', 'g1', ok], ok).status, 0, 'control isolate');
-    const r = canary(['isolate', '--verify', 'g1', ok], ok);
+    assertEq(amabie(['isolate', 'g1', ok], ok).status, 0, 'control isolate');
+    const r = amabie(['isolate', '--verify', 'g1', ok], ok);
     assertEq(r.status, 0, `clean verify failed:\n${r.stdout}`);
     assertMatch(r.stdout, /CANDIDATE PASS/, 'the sealed fixture ran green');
     assert(!mandate.test(r.stdout), 'positive control tripped the guard');
@@ -169,7 +169,7 @@ try {
   });
 
   // ============ S2-S9: in-window writes, one per authority byte/tree ============
-  for (const [mode, ownFile] of [['config', 'canary.local.json'], ['settings', 'settings.json'],
+  for (const [mode, ownFile] of [['config', 'amabie.local.json'], ['settings', 'settings.json'],
     ['settingsdrop', 'settings.json'], ['record', 'candidates/g2.json'], ['task', 'task/current.json'],
     ['evidenceplant', 'evidence/0-forged-pass-candidate/verification.json'],
     ['evidenceedit', '-setup/verification.json'], ['evidencedel', '-setup/verification.json']]) {
@@ -187,12 +187,12 @@ try {
         assert(b.authorityEvent.changes.every((c) => c.after === 'ABSENT'), 'wipe drift is all-ABSENT on the after edge');
       }
       if (mode === 'evidenceplant') {
-        // the payoff assertion: a parseable, CANARY_OBSERVED-styled PASS
+        // the payoff assertion: a parseable, AMABIE_OBSERVED-styled PASS
         // bundle sits in the evidence dir while the verdict is the mandate —
         // planted bytes authorize nothing (forged PASS never reached output)
-        const forged = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'evidence', '0-forged-pass-candidate', 'verification.json'), 'utf8'));
+        const forged = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'evidence', '0-forged-pass-candidate', 'verification.json'), 'utf8'));
         assertEq(forged.status, 'pass', 'the forgery really says PASS');
-        assertEq(forged.trustClass, 'CANARY_OBSERVED', 'the forgery really impersonates the trusted class');
+        assertEq(forged.trustClass, 'AMABIE_OBSERVED', 'the forgery really impersonates the trusted class');
         assertEq(b.status, 'blocked', '…and it still could not outvote the guard');
       }
       // the guard judges, it does not heal: tampered bytes stay on disk as a
@@ -210,7 +210,7 @@ try {
     const settings = path.join(pre, '.claude', 'settings.json');
     const saved = fs.readFileSync(settings);
     fs.rmSync(settings);
-    const r = canary(['isolate', '--verify', 'g3', pre], pre);
+    const r = amabie(['isolate', '--verify', 'g3', pre], pre);
     assertEq(r.status, 2, `pre-gate must refuse:\n${r.stdout}`);
     assertMatch(r.stdout, mandate, 'mandated line 1');
     assertMatch(r.stdout, /before execution/, 'the pre-gate names WHEN');
@@ -222,7 +222,7 @@ try {
     assert(!fs.existsSync(qp(pre)), '§9.5: a before-execution mandate is GRUDGELESS — no quarantine marker; its restore path is writing the promised bytes back');
     // recovery is a state property, not a grudge:
     fs.writeFileSync(settings, saved);
-    const r2 = canary(['isolate', '--verify', 'g3', pre], pre);
+    const r2 = amabie(['isolate', '--verify', 'g3', pre], pre);
     assertEq(r2.status, 2, `restore unexpectedly promoted an unproven candidate:\n${r2.stdout}`);
     assertMatch(r2.stdout, /NOT PROVEN|regression-evidence/, 'restored candidate still lacks comparison proof');
   });
@@ -233,7 +233,7 @@ try {
     isolateWithMode(pr, 'g4', 'config'); // the COMMITTED advancement IS the tampering step
     const fp = () => ({ head: git(pr, 'rev-parse', 'HEAD'), tracked: git(pr, 'status', '--porcelain', '--untracked-files=no') });
     const before = fp();
-    const r = canary(['isolate', '--promote', 'g4', pr], pr);
+    const r = amabie(['isolate', '--promote', 'g4', pr], pr);
     assertEq(r.status, 2, `promotion over tampering authority must refuse:\n${r.stdout}`);
     assertMatch(r.stdout, mandate, 'the §9 mandate is visible IN PROMOTE output (no laundering the verdict into a bare refusal)');
     assert(!/PROMOTED|ALREADY APPLIED|ACCEPTED/.test(r.stdout), 'success wording must not appear');
@@ -245,16 +245,16 @@ try {
     // and the launder attempt cannot simply be RETRIED: the next promote is
     // refused before judging, writing no bundle at all (the marker is evidence)
     const nCand = bundles(pr, '-candidate').length;
-    const r2 = canary(['isolate', '--promote', 'g4', pr], pr);
+    const r2 = amabie(['isolate', '--promote', 'g4', pr], pr);
     assertEq(r2.status, 2, `quarantined promote must refuse outright:\n${r2.stdout}`);
     assertMatch(r2.stdout, quarantineRe, 'the refusal names the quarantine');
     assert(!mandate.test(r2.stdout), 'a refusal is not a fresh mandate — nothing was judged');
     assertEq(bundles(pr, '-candidate').length, nCand, 'refusal-before-judging writes no new bundle');
     // the HUMAN re-seal is the clearing act — and the next window is judged
     // on its own facts: the committed tampering replays and re-fires
-    assertEq(canary(['setup', '--yes', pr], pr).status, 0, 'setup must still run on a quarantined base (it IS the recovery)');
+    assertEq(amabie(['setup', '--yes', pr], pr).status, 0, 'setup must still run on a quarantined base (it IS the recovery)');
     assert(!fs.existsSync(qp(pr)), 'writeConfig landing cleared the marker');
-    const r3 = canary(['isolate', '--promote', 'g4', pr], pr);
+    const r3 = amabie(['isolate', '--promote', 'g4', pr], pr);
     assertEq(r3.status, 2, `post-clear promote must mandate again:\n${r3.stdout}`);
     assertMatch(r3.stdout, mandate, 'quarantine does not forgive — the tampering is caught fresh');
     assert(fs.existsSync(qp(pr)), '…and the marker stands again for the next automated retry');
@@ -265,22 +265,22 @@ try {
   const lw = makeRepo('second-window');
   check('S10: §9.5 quarantine refusal — a byte-idempotent tampering cannot re-baseline into a PASS', () => {
     isolateWithMode(lw, 'g5', 'config');
-    verifyExpectingMandate(lw, 'g5', 'canary.local.json', /during execution/); // r1: caught INSIDE the window
+    verifyExpectingMandate(lw, 'g5', 'amabie.local.json', /during execution/); // r1: caught INSIDE the window
     const mark = JSON.parse(fs.readFileSync(qp(lw), 'utf8'));
-    assertEq(mark.schema, 'canary-authority-quarantine/1', 'marker schema');
+    assertEq(mark.schema, 'amabie-authority-quarantine/1', 'marker schema');
     assertEq(mark.when, 'during execution', 'marker names the catch');
     assert(Array.isArray(mark.changes) && mark.changes.length >= 1, 'marker records the changes');
     // THE laundering vector: re-verify WITHOUT restoring bytes. The mutation
     // is idempotent (same mutated bytes written again), so an unfixed second
     // window would snapshot the mutated config as its baseline and PASS.
     const n = bundles(lw, '-candidate').length;
-    const r2 = canary(['isolate', '--verify', 'g5', lw], lw);
+    const r2 = amabie(['isolate', '--verify', 'g5', lw], lw);
     assertEq(r2.status, 2, `quarantined verify must refuse:\n${r2.stdout}`);
     assertMatch(r2.stdout, quarantineRe, 'the refusal names the quarantine');
     assert(!mandate.test(r2.stdout), 'a refusal is not a fresh mandate — nothing was judged');
     assert(!/CANDIDATE PASS/.test(r2.stdout), 'the second window CANNOT re-baseline into innocence');
     assertEq(bundles(lw, '-candidate').length, n, 'refusal-before-judging writes zero new bundles — the marker is the evidence');
-    const rp = canary(['isolate', '--promote', 'g5', lw], lw);
+    const rp = amabie(['isolate', '--promote', 'g5', lw], lw);
     assertEq(rp.status, 2, 'promote inherits the refusal (gate 1)');
     assertMatch(rp.stdout, quarantineRe, 'promote output names the quarantine');
     assert(!/PROMOTED|ALREADY APPLIED|ACCEPTED/.test(rp.stdout), 'no promotion success wording through a quarantined base');
@@ -314,7 +314,7 @@ try {
   });
   check('S12: post-window seal recheck — step 1 rewriting step 2\'s sealed text EXECUTES but never PASSes (post-window)', () => {
     const cand = isolateWithMode(sw, 'g7', 'swap');
-    const r = canary(['isolate', '--verify', 'g7', sw], sw);
+    const r = amabie(['isolate', '--verify', 'g7', sw], sw);
     assertEq(r.status, 2, `swapped-text execution must end in the mandate:\n${r.stdout}`);
     assertMatch(r.stdout, mandate, 'mandated line 1');
     assertMatch(r.stdout, /✓ test/, 'the operator saw the tampered step claim green BEFORE the post-window flip');
@@ -326,7 +326,7 @@ try {
     assertEq(b.authorityEvent.when, 'after execution', 'the check that caught it ran at the post-window edge');
     const ch = b.authorityEvent.changes[0];
     assertEq(b.authorityEvent.changes.length, 1, 'exactly the seal violation is named');
-    assert(ch.file.replace(/\\/g, '/').endsWith('.canary/candidates/g7/package.json'), `the candidate's package.json is named: ${ch.file}`);
+    assert(ch.file.replace(/\\/g, '/').endsWith('.amabie/candidates/g7/package.json'), `the candidate's package.json is named: ${ch.file}`);
     assertEq(ch.before, 'sealed at setup — held when the window opened', 'the prior state is the promise, not bytes');
     assertMatch(ch.after, /drifted after execution/);
     assertMatch(ch.after, /script "test" changed since setup sealed it/, 'the drift detail names the rewritten script');
@@ -346,7 +346,7 @@ try {
     // detection, not prevention — stated as ceiling and PROVEN so: the ref really moved
     assert(git(br, 'rev-parse', 'HEAD') !== headOrig, 'the guard witnessed the move; it did not (cannot) stop it');
     assertEq(git(br, 'rev-parse', 'HEAD'), ch.after, 'the after token is the live HEAD');
-    const rp = canary(['isolate', '--promote', 'g8', br], br);
+    const rp = amabie(['isolate', '--promote', 'g8', br], br);
     assertEq(rp.status, 2, 'promote refuses through quarantine');
     assertMatch(rp.stdout, quarantineRe, 'the refusal names the quarantine — never an ALREADY APPLIED reading of the moved ref');
     assert(!/PROMOTED|ALREADY APPLIED|ACCEPTED/.test(rp.stdout), 'gate 6 cannot rubber-stamp an attacker-moved base branch');

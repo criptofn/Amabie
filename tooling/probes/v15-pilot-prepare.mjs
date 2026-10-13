@@ -10,7 +10,7 @@ const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex'
 const arg = (name, fallback = null) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? fallback : process.argv[i + 1]; };
 const outRoot = path.resolve(arg('out') ?? '.');
 const worktree = path.resolve(arg('worktree') ?? path.resolve(import.meta.dirname, '../..'));
-const scratchRoot = path.resolve(arg('scratch-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927');
+const scratchRoot = path.resolve(arg('scratch-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927');
 const cli = path.resolve(arg('cli') ?? '');
 const artifact = arg('artifact-sha256', 'cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386');
 const timeoutMs = Number(arg('timeout-ms', '1800000'));
@@ -32,7 +32,7 @@ const scratchSources = {
   H1: 'hermes-agent', H2: 'hermes-agent', H3: 'hermes-agent', H5: 'hermes-agent',
   R1: 'refactron', S1: 'schniedelsmp',
 };
-const python = 'C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311';
+const python = 'C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311';
 const gradleBin = 'C:\\Users\\Johannes\\.gradle\\wrapper\\dists\\gradle-8.13-bin\\5xuhj0ry160q40clulazy9h7d\\gradle-8.13\\bin';
 const javaBin = 'C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot\\bin';
 const gitCmd = 'C:\\Program Files\\Git\\cmd';
@@ -66,7 +66,7 @@ function makeShallowRepo(label, arm) {
   if (r.status !== 0) throw new Error(`git fetch exact baseline ${label}: ${r.stdout}${r.stderr}`);
   r = git(target, 'reset', '--hard', 'FETCH_HEAD');
   if (r.status !== 0) throw new Error(`checkout exact baseline ${label}: ${r.stdout}${r.stderr}`);
-  for (const [key, value] of [['user.name', 'Canary Pilot'], ['user.email', 'canary-pilot@localhost']]) {
+  for (const [key, value] of [['user.name', 'Amabie Pilot'], ['user.email', 'amabie-pilot@localhost']]) {
     r = git(target, 'config', key, value);
     if (r.status !== 0) throw new Error(`git config ${key} ${label}/${arm}: ${r.stderr}`);
   }
@@ -83,7 +83,7 @@ function makeShallowRepo(label, arm) {
   return { repo: target, baseCommit: baseline, clean: true, shallow: true, remotes: [], visibleHistory: [baseline] };
 }
 function runPhase(label, arm, repo) {
-  const phase = arm === 'canary' ? 'baseline' : 'plain';
+  const phase = arm === 'amabie' ? 'baseline' : 'plain';
   const out = path.join(outRoot, 'preflight', arm, label);
   const args = [taskRunner, '--label', label, '--phase', phase, '--repo', repo,
     '--expected-head', labels[label].base,
@@ -96,18 +96,18 @@ function runPhase(label, arm, repo) {
   const attempt = fs.existsSync(resultPath) ? JSON.parse(fs.readFileSync(resultPath, 'utf8')) : null;
   const baselineGreen = attempt && attempt.commands.some((c) => c.name === 'plain-tests')
     && attempt.commands.every((c) => c.exitCode === 0 && !c.signal && !c.timedOut && !c.spawnError)
-    && (arm !== 'canary' || attempt.canaryVerdict === 'READY');
+    && (arm !== 'amabie' || attempt.amabieVerdict === 'READY');
   if (r.status !== 0 || !attempt || attempt.status !== 'complete' || !baselineGreen) {
     throw new Error(`${label}/${arm} preflight failed (exit ${String(r.status)}):\n${r.stdout ?? ''}\n${r.stderr ?? ''}`);
   }
   return {
     label, arm, phase, repo, output: out, status: attempt.status,
     setupCommit: attempt.sealedBaselineHead ?? null,
-    canaryVerdict: attempt.canaryVerdict ?? null,
+    amabieVerdict: attempt.amabieVerdict ?? null,
     toolchainDirectories: toolchains(label),
     stdout: (r.stdout ?? '').trim(),
-    setupLocalConfigSha256: fs.existsSync(path.join(repo, '.canary/canary.local.json'))
-      ? sha256(fs.readFileSync(path.join(repo, '.canary/canary.local.json')))
+    setupLocalConfigSha256: fs.existsSync(path.join(repo, '.amabie/amabie.local.json'))
+      ? sha256(fs.readFileSync(path.join(repo, '.amabie/amabie.local.json')))
       : null,
   };
 }
@@ -119,25 +119,25 @@ if (!fs.statSync(taskRunner, { throwIfNoEntry: false })?.isFile()
   process.exit(2);
 }
 const v = run(process.execPath, [cli, '--version'], worktree, 10_000);
-if (v.status !== 0 || !/^canary 1\.5\.0\s*$/m.test(v.stdout ?? '')) throw new Error(`explicit package is not 1.5.0: ${v.stdout ?? ''}`);
+if (v.status !== 0 || !/^amabie 1\.5\.0\s*$/m.test(v.stdout ?? '')) throw new Error(`explicit package is not 1.5.0: ${v.stdout ?? ''}`);
 fs.mkdirSync(outRoot, { recursive: true });
 const records = [];
 for (const label of requestedLabels) {
   const plainRepo = makeShallowRepo(label, 'plain');
-  const canaryRepo = makeShallowRepo(label, 'canary');
+  const amabieRepo = makeShallowRepo(label, 'amabie');
   const plain = runPhase(label, 'plain', plainRepo.repo);
   records.push({ source: plainRepo, ...plain });
-  const canary = runPhase(label, 'canary', canaryRepo.repo);
-  records.push({ source: canaryRepo, ...canary });
+  const amabie = runPhase(label, 'amabie', amabieRepo.repo);
+  records.push({ source: amabieRepo, ...amabie });
   const candidateCommit = labels[label].candidate;
-  for (const record of [plain, canary]) {
+  for (const record of [plain, amabie]) {
     const candidateObject = git(record.repo, 'cat-file', '-e', `${candidateCommit}^{commit}`);
     if (candidateObject.status === 0) throw new Error(`${label}/${record.arm}: historical task candidate object is visible to the worker workspace`);
   }
   console.log(`PASS ${label}: both independent, solution-blind pilot baselines prepared`);
 }
 const summary = {
-  schema: 'canary-post-v15-pilot-preparation/1',
+  schema: 'amabie-post-v15-pilot-preparation/1',
   probe: 'tooling/probes/v15-pilot-prepare.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
   taskRunnerSha256: sha256(fs.readFileSync(taskRunner)),

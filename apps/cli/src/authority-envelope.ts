@@ -2,6 +2,7 @@
  * Signatures establish issuer/integrity, NOT freshness or human identity. */
 import crypto from 'node:crypto';
 
+// The signed record format stays stable across the product rename.
 export const RECORD_SCHEMA = 'canary-authority/1';
 export interface RecordEnvelope {
   schema: string; projectId: string; kind: string; seq: number;

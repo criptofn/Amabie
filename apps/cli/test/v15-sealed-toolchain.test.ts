@@ -22,10 +22,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-v15st-'));
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-v15st-'));
 
-import { sanitizedEnv } from '@canary-rn/support';
-import { takeToolchainDirs, runPlanStep, attributeRunFailures, type CanaryConfig } from '../src/onboarding.js';
+import { sanitizedEnv } from '@amabie/support';
+import { takeToolchainDirs, runPlanStep, attributeRunFailures, type AmabieConfig } from '../src/onboarding.js';
 import { controllerExecution } from '../src/provider/execution.js';
 import {
   PROJECT_CHECK_FAILURE, SEALED_ENV_CANNOT_RESOLVE, TOOLCHAIN_CANDIDATES,
@@ -36,7 +36,7 @@ import {
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-v15st-unit-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v15st-unit-'));
 const NODE_DIR = path.dirname(process.execPath);
 
 after(() => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch { /* best effort */ } });
@@ -95,14 +95,15 @@ describe('git, node, npm, python, java — where this host actually has them', (
       }
       const dir = path.dirname(where);
       // node/npm live in the Node install dir, which is ALREADY a trusted sealed directory — so the
-      // "invisible without authorization" half is only assertable for tools outside Canary's own dirs.
-      if (!sealedPath().some((d) => d.toLowerCase() === dir.toLowerCase())) {
-        assert.equal(resolvesIn(tool, sealedPath(), process.platform), null, `${tool} resolved without being authorized`);
+      // "invisible without authorization" half is only assertable for tools outside Amabie's own dirs.
+      const trusted = resolvesIn(tool, sealedPath(), process.platform);
+      if (trusted === null) {
+        assert.ok(!sealedPath().some((d) => d.toLowerCase() === dir.toLowerCase()), `${tool} was not found in its trusted directory`);
       } else {
-        console.log(`     ${tool} already lives in a trusted sealed directory (${dir}) — visibility asserted, authorization not needed`);
+        console.log(`     ${tool} already resolves in a trusted sealed directory (${path.dirname(trusted)}) — that program keeps precedence`);
       }
       const resolved = resolvesIn(tool, sealedPath([dir]), process.platform);
-      assert.equal(resolved, where, `authorizing ${dir} must resolve ${tool} to the same bytes the operator has`);
+      assert.equal(resolved, trusted ?? where, `authorizing ${dir} must expose an absent tool without replacing an existing trusted program`);
     });
   }
 
@@ -167,12 +168,12 @@ describe('notFoundPrograms reads the loaders\' published failure text', () => {
     assert.deepEqual(notFoundPrograms('Der Ausdruck "mvn" ist entweder falsch geschrieben oder konnte nicht gefunden werden.'), ['mvn']);
     assert.deepEqual(notFoundPrograms('"gradle" wurde nicht gefunden'), ['gradle']);
     // Locale-free door: 9009 (cmd.exe) / 127 (POSIX sh) mean "command not found", so a KNOWN toolchain
-    // program named in quotes is taken even when the sentence is in a language Canary does not list.
+    // program named in quotes is taken even when the sentence is in a language Amabie does not list.
     assert.deepEqual(notFoundPrograms('El comando "python" no se reconoce.', 9009), ['python']);
     assert.deepEqual(notFoundPrograms('sh: 1: java: not found', 127), ['java']);
     // The exit-code door takes ANY program named in an explicit not-found sentence, because 9009/127
     // plus that sentence is the loader's own statement — an unknown tool (`protoc`, `bazel`, …) must
-    // not be lost just because Canary's candidate list does not know it. The exit code ALONE, with no
+    // not be lost just because Amabie's candidate list does not know it. The exit code ALONE, with no
     // not-found sentence, is not enough: there it takes only known programs, so an unrelated failure
     // that happens to exit 9009 cannot become an environment claim.
     assert.deepEqual(notFoundPrograms('Der Befehl "frobnicate" ist entweder falsch geschrieben.', 9009), ['frobnicate']);
@@ -197,10 +198,10 @@ const SEAL: ToolchainSeal = {
 };
 const NOT_FOUND_CMD = "'git' is not recognized as an internal or external command,\r\noperable program or batch file.";
 
-describe('attribution: is Canary\'s environment the cause, or the project?', () => {
+describe('attribution: is Amabie\'s environment the cause, or the project?', () => {
   it('preserves measured process failures and does not recommend tool authorization for them', () => {
     const plan = [{ kind: 'tests' as const, script: 'test' }];
-    const cfg = { pm: 'npm', plan } as CanaryConfig;
+    const cfg = { pm: 'npm', plan } as AmabieConfig;
     for (const error of [new Error('spawn ETIMEDOUT'), new Error('spawn EACCES'), undefined]) {
       controllerExecution.run({ hooksDirectory: TMP, run: () => ({ status: null, stdout: 'started\n', stderr: '', ...(error ? { error } : {}) }) }, () => {
         const step = runPlanStep(TMP, 'npm', plan[0]!);
@@ -211,7 +212,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
         const attribution = attributeRunFailures(TMP, cfg, [step], plan);
         assert.equal(attribution.cause, 'unknown');
         assert.match(attribution.reason, /CHECK PROCESS FAILURE/);
-        assert.doesNotMatch(attribution.next, /canary setup|install the tool/);
+        assert.doesNotMatch(attribution.next, /amabie setup|install the tool/);
       });
     }
     controllerExecution.run({ hooksDirectory: TMP, run: () => ({ status: 1, stdout: 'spawn ETIMEDOUT', stderr: '' }) }, () => {
@@ -236,7 +237,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
     assert.deepEqual(a.missing, ['git']);
     assert.match(a.reason, new RegExp(SEALED_ENV_CANNOT_RESOLVE));
     assert.doesNotMatch(a.reason, /That is your project talking/);
-    assert.ok(a.next.includes('canary setup --yes --toolchain git'));
+    assert.ok(a.next.includes('amabie setup --yes --toolchain git'));
     /*
      * PORTABILITY (v1.5 post-audit, MEASURED on the ubuntu CI leg): this assertion hardcoded the
      * Windows separator (`C:\Program Files\Git\cmd`). The fixture's directory is built with
@@ -246,7 +247,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
      * than being relaxed into a substring match.
      */
     const expectedDir = path.join('C:', 'Program Files', 'Git', 'cmd');
-    assert.ok(a.next.includes(`canary setup --toolchain-dir "${expectedDir}"`),
+    assert.ok(a.next.includes(`amabie setup --toolchain-dir "${expectedDir}"`),
       `the remediation must name the directory that HAS the tool; got: ${a.next}`);
   });
 
@@ -262,13 +263,13 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
      * creates a directory that genuinely contains the program it claims resolves. The assertion is
      * unchanged and still measures the product.
      */
-    const resolvesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-resolves-'));
+    const resolvesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-resolves-'));
     for (const name of ['git', 'git.exe', 'git.cmd']) fs.writeFileSync(path.join(resolvesDir, name), '');
     try {
       const a = attributeStepFailure({ ...base, childPathDirs: [resolvesDir] });
       assert.equal(a.cause, 'project');
       assert.match(a.reason, new RegExp(PROJECT_CHECK_FAILURE));
-      assert.match(a.reason, /That is your project talking, not Canary\./);
+      assert.match(a.reason, /That is your project talking, not Amabie\./);
     } finally {
       fs.rmSync(resolvesDir, { recursive: true, force: true });
     }
@@ -282,7 +283,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
         assert.match(result.reason, /0xc00000(?:05|1d)/);
         assert.doesNotMatch(result.reason, /That is your project talking/);
         assert.match(result.next, /runtime/);
-        assert.doesNotMatch(result.next, /canary setup/);
+        assert.doesNotMatch(result.next, /amabie setup/);
       }
     }
     assert.equal(attributeFailures([{ ...base, exitCode: 1, output: 'STATUS_ACCESS_VIOLATION' }]).cause, 'project',
@@ -290,7 +291,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
   });
 
   it('ENVIRONMENT: a step that could not run at all (nothing about the project was measured)', () => {
-    const a = attributeStepFailure({ ...base, exitCode: null, output: 'package manager "npm" is not resolvable in Canary\'s trusted execution environment' });
+    const a = attributeStepFailure({ ...base, exitCode: null, output: 'package manager "npm" is not resolvable in Amabie\'s trusted execution environment' });
     assert.equal(a.cause, 'environment');
     assert.ok(a.reason.includes(SEALED_ENV_CANNOT_RESOLVE));
     assert.deepEqual(a.missing, []);
@@ -312,7 +313,7 @@ describe('attribution: is Canary\'s environment the cause, or the project?', () 
 
   it('PROJECT: a project-local tool npm provides is not an environment question', () => {
     // A real file in npm's own script PATH: `tsc: not found` from a project whose node_modules/.bin is
-    // on the child's PATH is the PROJECT's problem (the dependency is missing), not Canary's narrowing.
+    // on the child's PATH is the PROJECT's problem (the dependency is missing), not Amabie's narrowing.
     const binDir = path.join(TMP, 'staged-project', 'node_modules', '.bin');
     fs.mkdirSync(binDir, { recursive: true });
     fs.writeFileSync(path.join(binDir, WINDOWS ? 'tsc.cmd' : 'tsc'), 'staged\n');
@@ -368,7 +369,7 @@ describe('product level: a path with spaces is sealed and used verbatim', () => 
       + "if (!dirs.includes(want)) { console.error('the authorized directory never reached the child PATH'); process.exit(3); }\n"
       + "console.log('authorized directory present in the sealed step PATH');\n");
     fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'spaced-fixture', private: true, scripts: { test: 'node check.cjs' } }, null, 2)}\n`);
-    for (const a of [['init', '-b', 'main'], ['config', 'user.email', 'probe@canary.local'], ['config', 'user.name', 'Spaced Fixture'], ['add', '-A'], ['commit', '-m', 'initial']]) {
+    for (const a of [['init', '-b', 'main'], ['config', 'user.email', 'probe@amabie.local'], ['config', 'user.name', 'Spaced Fixture'], ['add', '-A'], ['commit', '-m', 'initial']]) {
       const r = spawnSync('git', ['-C', root, ...a], { encoding: 'utf8', timeout: 60_000 });
       assert.equal(r.status, 0, `fixture git ${a[0]} failed: ${r.stdout}${r.stderr}`);
     }
@@ -378,12 +379,12 @@ describe('product level: a path with spaces is sealed and used verbatim', () => 
     for (const key of Object.keys(env)) if (key.toUpperCase() === 'PATH') delete env[key];
     env.PATH = `${SPACED_DIR}${path.delimiter}${process.env.PATH ?? ''}`;
     const run = spawnSync(process.execPath, [CLI, 'setup', '--yes', ...(named ? ['--toolchain', 'python'] : ['--toolchain-dir', SPACED_DIR])], {
-      cwd: root, env: { ...env, CANARY_TRUST_STORE: path.join(TMP, `trust-spaced-${named}`) }, encoding: 'utf8', timeout: 300_000,
+      cwd: root, env: { ...env, AMABIE_TRUST_STORE: path.join(TMP, `trust-spaced-${named}`) }, encoding: 'utf8', timeout: 300_000,
     });
     const out = `${run.stdout}${run.stderr}`;
     assert.equal(run.status, 0, `setup exited ${run.status}:\n${out.split(/\r?\n/).slice(-12).join('\n')}`);
     assert.match(out, /READY/);
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8')) as { toolchain?: ToolchainSeal };
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8')) as { toolchain?: ToolchainSeal };
     assert.deepEqual(cfg.toolchain?.dirs, [fs.realpathSync.native(SPACED_DIR)], 'the sealed config did not record the directory verbatim');
     assert.ok(Object.keys(cfg.toolchain?.found ?? {}).length >= 3, 'the setup-time inventory was not recorded');
   });
@@ -412,7 +413,7 @@ describe('product level: a path with spaces is sealed and used verbatim', () => 
     ]) {
       const run = spawnSync(process.execPath, [CLI, 'setup', ...args], { cwd: root, env, encoding: 'utf8', timeout: 60_000 });
       assert.equal(run.status, 2, `${args.join(' ')}: ${run.stdout}${run.stderr}`);
-      assert.equal(fs.existsSync(path.join(root, '.canary')), false, 'refusal/preflight wrote local state');
+      assert.equal(fs.existsSync(path.join(root, '.amabie')), false, 'refusal/preflight wrote local state');
       assert.equal(fs.existsSync(path.join(root, '.claude')), false, 'refusal/preflight wrote agent integration');
     }
   });

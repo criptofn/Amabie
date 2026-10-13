@@ -7,7 +7,7 @@
  * credentials forwarded, so the hang is in the guarded arm's agent invocation specifically.
  *
  * This probe runs the SAME minimal prompt twice on the same project — once with a trivial prompt on
- * a bare git repo, once with the Canary-wired project — so the difference is the wiring and nothing
+ * a bare git repo, once with the Amabie-wired project — so the difference is the wiring and nothing
  * else. It uses file-descriptor capture and a hard timeout, and it reports time-to-first-byte, which
  * is the fact that distinguishes "slow" from "hung".
  *
@@ -98,36 +98,36 @@ function probe(label, projectDir, prompt) {
   });
 }
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-hang-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-hang-'));
 
 try {
-  // --- bare repo, no Canary wiring
+  // --- bare repo, no Amabie wiring
   const bare = path.join(root, 'bare');
   copyDir(path.join(FIX, 'project'), bare);
   runSync('git', ['init', '-b', 'main'], bare);
   runSync('git', ['-c', 'user.email=b@c.d', '-c', 'user.name=B', 'add', '-A'], bare);
   runSync('git', ['-c', 'user.email=b@c.d', '-c', 'user.name=B', 'commit', '-m', 'init'], bare);
 
-  // --- same project, wired by canary setup
+  // --- same project, wired by amabie setup
   const wired = path.join(root, 'wired');
   copyDir(path.join(FIX, 'project'), wired);
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
-  // `<root>/.claude` or the operator's `~/.claude`, so without this the "Canary-wired" repository
+  // `<root>/.claude` or the operator's `~/.claude`, so without this the "Amabie-wired" repository
   // of this probe was wired only on a machine that has Claude Code installed.
   fs.mkdirSync(path.join(wired, '.claude'), { recursive: true });
   runSync('git', ['init', '-b', 'main'], wired);
   runSync('git', ['-c', 'user.email=b@c.d', '-c', 'user.name=B', 'add', '-A'], wired);
   runSync('git', ['-c', 'user.email=b@c.d', '-c', 'user.name=B', 'commit', '-m', 'init'], wired);
   const setup = runSync(process.execPath, [CLI, 'setup', '--yes', wired], wired);
-  console.log(`canary setup: exit ${String(setup.status)}, hook installed: ${fs.existsSync(path.join(wired, '.claude', 'settings.json'))}`);
+  console.log(`amabie setup: exit ${String(setup.status)}, hook installed: ${fs.existsSync(path.join(wired, '.claude', 'settings.json'))}`);
   console.log('');
 
   const PROMPT = 'Reply with exactly: PROBE-OK. Do not read or modify any file.';
-  await probe('bare repo (no Canary)', bare, PROMPT);
-  await probe('Canary-wired repo', wired, PROMPT);
+  await probe('bare repo (no Amabie)', bare, PROMPT);
+  await probe('Amabie-wired repo', wired, PROMPT);
 
   if (fs.existsSync(path.join(wired, '.claude', 'settings.json'))) {
-    console.log('\n--- the settings Canary installed (project scope) ---');
+    console.log('\n--- the settings Amabie installed (project scope) ---');
     console.log(fs.readFileSync(path.join(wired, '.claude', 'settings.json'), 'utf8').slice(0, 900));
   }
 } finally {

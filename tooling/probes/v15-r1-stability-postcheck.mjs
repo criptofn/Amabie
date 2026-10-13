@@ -11,7 +11,7 @@ assert.ok([prepared, out].every(p => p && path.isAbsolute(p)) && !fs.existsSync(
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 fs.mkdirSync(out);
 const rows = [];
-for (const arm of ['plain', 'canary']) {
+for (const arm of ['plain', 'amabie']) {
   const repo = path.join(prepared, 'projects/R1', arm), dir = path.join(out, arm);
   fs.mkdirSync(dir);
   const source = path.join(repo, 'src/verify/failure-ids.ts');

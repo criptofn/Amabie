@@ -9,7 +9,7 @@
  *
  * It also measures the thing the product is supposed to remove: the model running the project's
  * checks itself, and the bytes of runner output that enter its context as a result. That number is
- * the floor for what Canary can save the model.
+ * the floor for what Amabie can save the model.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ const check = (name, fn) => {
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ledger-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ledger-'));
 fs.writeFileSync(path.join(TMP, 'package.json'), `${JSON.stringify({
   name: 'ledger-fixture', private: true, scripts: { test: 'node run-tests.js' },
 }, null, 2)}\n`);
@@ -64,8 +64,8 @@ console.log(`  session total:      ${ledger.sessionUsage === null ? 'not reporte
 console.log(`  per-message figure: ${ledger.streamedUsage.total} usable=${ledger.streamedUsageUsable}`);
 console.log(`  tool calls:         ${ledger.toolCalls.length} (${[...new Set(ledger.toolCalls.map((c) => c.name))].join(', ') || 'none'})`);
 console.log(`  agent-visible bytes:${ledger.bytes.toolResultTotal} (largest single ${ledger.bytes.largestToolResult})`);
-console.log(`  checks run by model:${ledger.commands.checks}   canary commands: ${ledger.commands.canary}`);
-console.log(`  commands:           ${JSON.stringify(ledger.commands.canaryCommands)}`);
+console.log(`  checks run by model:${ledger.commands.checks}   amabie commands: ${ledger.commands.amabie}`);
+console.log(`  commands:           ${JSON.stringify(ledger.commands.amabieCommands)}`);
 console.log(`  result event:       ${ledger.sawResult ? `subtype=${ledger.result?.subtype} num_turns=${ledger.result?.numTurns}` : 'MISSING'}`);
 console.log(`  unknown event types:${JSON.stringify(ledger.unknownTypes)}`);
 console.log(`  parse errors:       ${ledger.parseErrors}`);
@@ -105,12 +105,12 @@ check('3. it measured the model running the project checks, and paying for the o
   assert(ledger.commands.checks >= 1,
     `the model was asked to run the checks and the ledger must see it: ${JSON.stringify(ledger.toolCalls.map((c) => c.command))}`);
   assert(ledger.bytes.toolResultTotal > 0, 'the model read something, so visible bytes must be > 0');
-  console.log(`      → this is what Canary can remove: ${ledger.bytes.toolResultTotal} bytes of tool output and ${ledger.commands.total} model-run command(s)`);
+  console.log(`      → this is what Amabie can remove: ${ledger.bytes.toolResultTotal} bytes of tool output and ${ledger.commands.total} model-run command(s)`);
 });
 
-check('4. Canary-visible bytes are attributable (and are zero when Canary was not used)', () => {
-  assert(ledger.bytes.canaryVisible === 0,
-    `this run never invoked Canary, so its share must be 0 (got ${ledger.bytes.canaryVisible})`);
+check('4. Amabie-visible bytes are attributable (and are zero when Amabie was not used)', () => {
+  assert(ledger.bytes.amabieVisible === 0,
+    `this run never invoked Amabie, so its share must be 0 (got ${ledger.bytes.amabieVisible})`);
 });
 
 check('5. the tail is reported honestly when no file was edited', () => {

@@ -1,6 +1,6 @@
 /**
  * Sanitized process execution — the security contract of docs/SECURITY.md
- * implemented as the ONLY way Canary spawns external processes.
+ * implemented as the ONLY way Amabie spawns external processes.
  *
  * Allowlist by construction: anything not listed is invisible to untrusted
  * fixture code — Anthropic / GitHub / cloud credentials, SSH agents,
@@ -32,12 +32,12 @@ export interface EnvOptions {
   /** Metadata-only callers need an isolated environment without creating dirs. */
   materialize?: boolean;
   /**
-   * CANARY-OWNED observer injection (v1.1 Phase 2).
+   * AMABIE-OWNED observer injection (v1.1 Phase 2).
    *
    * This is deliberately NOT an env-merge and NOT a general `envExtra`: audit F9
    * removed that vector, and the master-pass M7 mutant ("merge the CALLER
    * environment under the sanitized one") must stay dead. Every value here is a
-   * path or token CANARY computed — the directory must live inside Canary's own
+   * path or token AMABIE computed — the directory must live inside Amabie's own
    * workspace root, and the variable NAMES are fixed by `kind`, so no
    * caller/subject-supplied string can reach the child's environment through this
    * door.
@@ -56,11 +56,11 @@ export interface EnvOptions {
    * HOME/USERPROFILE are redirected and Go derives its cache from them. Verified
    * fix (tooling/probes/runner-channels-rust-go.mjs): declaring a
    * workspace-scoped GOCACHE/GOPATH makes `go test` — and `go test -json` — run
-   * inside a Canary step.
+   * inside a Amabie step.
    *
    * Containment is the same as the observer door and for the same reason (audit
    * F9 / master-pass M7 must stay dead): the KEYS come from a fixed allowlist and
-   * every PATH-shaped value must resolve inside Canary's own workspace, so an
+   * every PATH-shaped value must resolve inside Amabie's own workspace, so an
    * adapter — which is product code, never project input — still cannot point a
    * toolchain at a subject-chosen directory.
    */
@@ -70,17 +70,17 @@ export interface EnvOptions {
    *
    * WHY THIS EXISTS, with the measurement that forced it: the step PATH is
    * `${nodeDir};System32;%SystemRoot%`, so a project whose own check spawns a tool
-   * transitively — `npm test` → `java`, `python`, `git` — fails INSIDE Canary on a
+   * transitively — `npm test` → `java`, `python`, `git` — fails INSIDE Amabie on a
    * host where the same command passes outside it, and the failure was reported as
    * the project's fault (docs/CLAIM-EVIDENCE-MATRIX-1.5.md, probe
    * tooling/probes/v15-realworld-gate-env.mjs: 12 PATH entries against the shell's 41,
    * `java`/`python`/`git` invisible).
    *
    * WHAT THIS IS NOT: it is never `process.env.PATH`. The calling PATH stays ignored,
-   * because a worker could plant `python.cmd` earlier on it and have Canary execute
+   * because a worker could plant `python.cmd` earlier on it and have Amabie execute
    * that as sealed authority. These directories are ABSOLUTE, must exist, and are
-   * named by the OPERATOR at `canary setup` time (`--toolchain-dir`) and sealed into
-   * the local config, so a later ambient PATH edit changes nothing. Canary's own
+   * named by the OPERATOR at `amabie setup` time (`--toolchain-dir`) and sealed into
+   * the local config, so a later ambient PATH edit changes nothing. Amabie's own
    * resolution of the plan's program still never consults PATH at all
    * (`resolveProgram`), and these directories are appended AFTER the Node install dir
    * and the OS-managed dirs, so nothing here can shadow them.
@@ -93,19 +93,19 @@ export interface ObserverInjection {
    * `python` = PYTHONPATH=<dir> + a nonce + no user site-packages (the
    *            `sitecustomize` door).
    * `pytest` = the same PYTHONPATH door PLUS `PYTEST_PLUGINS`, whose value is the
-   *            fixed module name Canary writes — pytest imports it before any test.
+   *            fixed module name Amabie writes — pytest imports it before any test.
    * `node`   = the per-round nonce only: Node's own `--test-reporter` mechanism
-   *            loads Canary's bytes from an argv specifier, so the environment's
+   *            loads Amabie's bytes from an argv specifier, so the environment's
    *            single job is to bind the frames to THIS spawn.
    */
   kind: 'python' | 'pytest' | 'node';
-  /** Directory holding Canary's observer bytes. Must resolve inside ws.root. */
+  /** Directory holding Amabie's observer bytes. Must resolve inside ws.root. */
   dir: string;
   /** Per-round binding token the observer echoes in its `hello` frame. */
   nonce: string;
 }
 
-/** The plugin name Canary asks pytest to load. Fixed by the channel, never a
+/** The plugin name Amabie asks pytest to load. Fixed by the channel, never a
  *  caller-supplied string — this door accepts no module name from outside. */
 export const PYTEST_PLUGIN_MODULE_NAME = 'canary_pytest_observer';
 
@@ -116,7 +116,7 @@ export const TOOLCHAIN_ENV_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 export interface ToolchainInjection {
-  /** Allowlisted keys, values computed by Canary-side adapter code. */
+  /** Allowlisted keys, values computed by Amabie-side adapter code. */
   env: Record<string, string>;
 }
 
@@ -137,7 +137,7 @@ export interface ToolchainInjection {
  * on Windows, `realpath(3)` elsewhere) and DOES return the canonical long form.
  * MEASURED: short `...\CAA02B~1\A-LONG~1` -> long `...\canary-shortname-iZPuS2\a-long-directory-name`.
  *
- * WHAT WENT WRONG WITHOUT IT: Canary compared a canonical root against a
+ * WHAT WENT WRONG WITHOUT IT: Amabie compared a canonical root against a
  * git-reported long path, or a stored identity against a freshly read one, saw two
  * different strings for one object, and refused. That direction is fail-closed —
  * no boundary was ever crossed — but it is a FALSE REFUSAL, and in the worst case
@@ -201,8 +201,8 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     fs.mkdirSync(home, { recursive: true });
     fs.mkdirSync(tmp, { recursive: true });
   }
-  // Canary-owned observer variables. Fail closed on anything that is not a real
-  // directory inside Canary's own workspace: this door must never become a way to
+  // Amabie-owned observer variables. Fail closed on anything that is not a real
+  // directory inside Amabie's own workspace: this door must never become a way to
   // put a subject-chosen path (or value) into a verification child's environment.
   const observed: NodeJS.ProcessEnv = {};
   if (observer !== undefined) {
@@ -213,7 +213,7 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     }
     const rel = path.relative(rootReal, dirReal);
     if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-      throw new Error(`observer injection directory must live inside Canary's workspace root (got ${dirReal}, root ${rootReal})`);
+      throw new Error(`observer injection directory must live inside Amabie's workspace root (got ${dirReal}, root ${rootReal})`);
     }
     if (observer.kind === 'python' || observer.kind === 'pytest') {
       observed.PYTHONPATH = dirReal;
@@ -223,22 +223,22 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     // The nonce is the binding for EVERY channel: it is what binds a frame to
     // THIS spawn (see the python observer's note on why pid equality alone is not
     // sufficient on Windows, and why the node reporter needs it too).
-    observed.CANARY_OBSERVER_NONCE = observer.nonce;
+    observed.AMABIE_OBSERVER_NONCE = observer.nonce;
   }
   // Adapter-declared toolchain variables, under the same containment rule.
   if (toolchain !== undefined) {
     const wsReal = (() => { try { return canonicalPath(ws.root); } catch { return path.resolve(ws.root); } })();
     for (const [key, value] of Object.entries(toolchain.env)) {
       if (!TOOLCHAIN_ENV_KEYS.has(key)) {
-        throw new Error(`adapter declared toolchain variable "${key}", which is not in Canary's toolchain allowlist`);
+        throw new Error(`adapter declared toolchain variable "${key}", which is not in Amabie's toolchain allowlist`);
       }
-      // Any value that LOOKS like a path must live inside Canary's workspace; a
+      // Any value that LOOKS like a path must live inside Amabie's workspace; a
       // plain token (GOTOOLCHAIN=local, GOFLAGS=-mod=mod) is taken as declared.
       if (path.isAbsolute(value)) {
         const resolved = (() => { try { return canonicalPath(value); } catch { return path.resolve(value); } })();
         const rel = path.relative(wsReal, resolved);
         if (rel !== '' && (rel.startsWith('..') || path.isAbsolute(rel))) {
-          throw new Error(`adapter declared ${key}=${value}, which is outside Canary's workspace (${wsReal})`);
+          throw new Error(`adapter declared ${key}=${value}, which is outside Amabie's workspace (${wsReal})`);
         }
       }
       observed[key] = value;
@@ -287,8 +287,8 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
       // Neutralized session identity (loader would otherwise inject the real
       // account identity into every fixture-visible environment):
       USERNAME: 'canary',
-      USERDOMAIN: 'CANARY',
-      LOGONSERVER: '\\\\CANARY',
+      USERDOMAIN: 'AMABIE',
+      LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: homeDrive,
       HOMEPATH: homeRelative,
       SYSTEMDRIVE: homeDrive,
@@ -314,7 +314,7 @@ export function sanitizedEnvKeys(env: NodeJS.ProcessEnv): string[] {
 /**
  * Audit F-6 (GLM minor closure): the containment helpers (taskkill / ps /
  * powershell) ran with the FULL caller environment — an inconsistency with
- * the hygiene every other Canary child gets. These paths are and remain
+ * the hygiene every other Amabie child gets. These paths are and remain
  * NON-verdict-authoritative: no classification or promotion decision reads
  * their success (a failed sweep is reported `failed: true`, never as
  * "nothing survived"), so this closes env-inheritance hygiene, not a claimed
@@ -326,7 +326,7 @@ export function sanitizedEnvKeys(env: NodeJS.ProcessEnv): string[] {
  * host temp because these tools may scratch there; temp contents are not a
  * code path for `taskkill`, bare `ps`, or `-NoProfile` `powershell -Command`.
  * `SystemRoot` itself is still honored as-is — same-UID actors able to set
- * the caller environment can equally overwrite Canary's own state, which is
+ * the caller environment can equally overwrite Amabie's own state, which is
  * the documented local-forgery ceiling, not what this narrows.
  */
 export function containmentEnv(): NodeJS.ProcessEnv {
@@ -345,8 +345,8 @@ export function containmentEnv(): NodeJS.ProcessEnv {
       TEMP: tmp,
       TMP: tmp,
       USERNAME: 'canary',
-      USERDOMAIN: 'CANARY',
-      LOGONSERVER: '\\\\CANARY',
+      USERDOMAIN: 'AMABIE',
+      LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: tmpDrive,
       HOMEPATH: tmp.slice(tmpParsed.root.length - 1),
       SYSTEMDRIVE: tmpDrive,
@@ -386,7 +386,7 @@ export function resolvePsBinary(): string {
  * <prefix>, whose npm lives at <prefix>/lib/node_modules/npm). Probing order
  * is legacy-first, so hosts that already resolved the old way keep resolving
  * to the SAME byte-for-byte path. PATH and env are never consulted: an
- * untrusted shell must not be able to steer which npm Canary samples.
+ * untrusted shell must not be able to steer which npm Amabie samples.
  * Returns null when NO bundled npm exists — callers must fail or skip
  * explicitly, never record an empty sample as if it were a measurement.
  */
@@ -409,16 +409,16 @@ export interface RunOptions {
   /**
    * Observation hardening: open a FOURTH stdio slot (child fd 3) as a pipe
    * and return its bytes in `observation`. Used ONLY for measurement rounds
-   * where Canary injected its own observer into the child — the channel is
+   * where Amabie injected its own observer into the child — the channel is
    * inherited by the spawned process, never by the subject's own tools.
    * 'close' waits for every stdio stream, so no post-exit race exists.
    */
   observeChildFd3?: boolean;
   /**
-   * Canary-owned observer environment injection for a round that injects its own
+   * Amabie-owned observer environment injection for a round that injects its own
    * observer bytes (v1.1 Phase 2). Passed straight through to `sanitizedEnv`,
    * where the variable names are fixed by `kind` and the directory must live
-   * inside Canary's workspace root — see `ObserverInjection`.
+   * inside Amabie's workspace root — see `ObserverInjection`.
    */
   observer?: ObserverInjection;
   /** Adapter-declared toolchain variables (see EnvOptions.toolchain). */
@@ -434,7 +434,7 @@ export interface RunOutcome {
   durationMs: number;
   argv: readonly string[];
   envKeys: readonly string[];
-  /** PID Canary spawned (absent on spawn-error paths). */
+  /** PID Amabie spawned (absent on spawn-error paths). */
   childPid?: number | undefined;
   /**
    * Audit F5: descendant PIDs still alive when the child exited, swept after
@@ -866,12 +866,12 @@ export const ExitCode = {
 
 export * from './knownRunners.js';
 
-export class CanaryError extends Error {
+export class AmabieError extends Error {
   constructor(
     message: string,
     readonly reasonCode: string,
   ) {
     super(message);
-    this.name = 'CanaryError';
+    this.name = 'AmabieError';
   }
 }

@@ -1,38 +1,38 @@
 /**
- * Execution observation — Canary's OWN record of what a test-runner child did.
+ * Execution observation — Amabie's OWN record of what a test-runner child did.
  *
  * WHY THIS EXISTS (post-GLM observation hardening, Finding A):
- * Every classification fact Canary used to consume about test execution —
+ * Every classification fact Amabie used to consume about test execution —
  * "a runner summary appeared", "N tests passed", "these M tests failed" — was
  * PARSED FROM THE SUBJECT'S OWN STDOUT/STDERR. A subject that merely prints
  * mocha-shaped prose certifies its own execution, and that is how a GLM
  * auditor obtained a false PASS (`node -e console.log('128 passing (1s)')`)
  * from an unmodified CLI. Printed text is a CLAIM, not evidence.
  *
- * The channel: for the one runner family Canary can observe from inside the
+ * The channel: for the one runner family Amabie can observe from inside the
  * process it spawns — a mocha whose package directory BYTE-FOR-BYTE matches a
- * Canary-repo-pinned release (KNOWN_RUNNER_RELEASES, panel AM-1) — Recorder
- * expands the test argv with `--require <preload>` (Canary's own bytes) and
+ * Amabie-repo-pinned release (KNOWN_RUNNER_RELEASES, panel AM-1) — Recorder
+ * expands the test argv with `--require <preload>` (Amabie's own bytes) and
  * reads back NDJSON lifecycle frames from a dedicated fd the observer writes.
- * Canary counts what it WATCHED happen.
+ * Amabie counts what it WATCHED happen.
  *
  * STATUS SEMANTICS (panel decision A — keep the vocabulary honest):
- *  - ABSENT  Canary attempted no observation (no injection): 'not-mocha-bin',
+ *  - ABSENT  Amabie attempted no observation (no injection): 'not-mocha-bin',
  *            'runner-identity-unpinned', or the tripwire 'no-injection' (fd 3
  *            piped but argv carries no injected preload — stray bytes on that
  *            pipe are recorded (strayFd3Bytes/Sha256) as an EMULATION ATTEMPT,
  *            never credited as an observation).
- *  - INVALID Canary attempted an observation and the channel failed to
+ *  - INVALID Amabie attempted an observation and the channel failed to
  *            produce a trustworthy one: malformed/truncated stream, rejected
  *            event, adapter error, boundary/count/version/exit/text
  *            contradictions.
- *  - VALID   a pinned-bytes mocha, launched with Canary-injected argv, ran a
- *            lifecycle Canary watched end-to-end, agreeing with its own text.
+ *  - VALID   a pinned-bytes mocha, launched with Amabie-injected argv, ran a
+ *            lifecycle Amabie watched end-to-end, agreeing with its own text.
  *
  * TRUST TIER (docs/exec-authority.md keeps the canonical list): VALID frames
- * are a CANARY-CONTROLLED OBSERVATION bound to (a) argv re-derivable as
- * Canary's injection, (b) runner bytes matching a pin, (c) hello.pid equal to
- * the PID Canary spawned, (d) the preload's own version marker. They are NOT
+ * are a AMABIE-CONTROLLED OBSERVATION bound to (a) argv re-derivable as
+ * Amabie's injection, (b) runner bytes matching a pin, (c) hello.pid equal to
+ * the PID Amabie spawned, (d) the preload's own version marker. They are NOT
  * authenticated provenance: there is no cryptographic trust root, and code
  * running INSIDE the injected genuine process can neutralize the hooks and
  * emulate the protocol, or execute trivially-real tests under renamed titles
@@ -46,8 +46,8 @@
  * together are still not a signature — stated, not oversold.
  */
 
-import { sha256hex } from '@canary-rn/hashing';
-import type { ExecutionObservation, AbsentKind } from '@canary-rn/classification';
+import { sha256hex } from '@amabie/hashing';
+import type { ExecutionObservation, AbsentKind } from '@amabie/classification';
 
 /** Bumped ONLY if the frame protocol changes incompatibly; prove compares the
  * retained preload bytes against the current source, so drift is caught twice. */
@@ -59,7 +59,7 @@ const KNOWN_KINDS = ['hello', 'pass', 'pending', 'fail', 'retry', 'reject', 'bye
 export interface ValidateInput {
   /** Raw fd-3 text captured for this round ('' when the pipe carried nothing). */
   raw: string;
-  /** True when the round's (re-derived) argv contains Canary's injected --require. */
+  /** True when the round's (re-derived) argv contains Amabie's injected --require. */
   injected: boolean;
   /** Set when injection was NOT attempted: why (never on injected rounds). */
   absentKind: AbsentKind;
@@ -74,7 +74,7 @@ export interface ValidateInput {
   expectedRunnerTreeSha256?: string | undefined;
   /** Hash of the located mocha directory, present iff a mocha package was found. */
   observedRunnerTreeSha256?: string | undefined;
-  /** sha256 of the NON-package runner's own bytes as Canary hashed them on disk
+  /** sha256 of the NON-package runner's own bytes as Amabie hashed them on disk
    *  (a stdlib test package, a toolchain binary). Present iff this round carries
    *  a provider-neutral identity pin. */
   observedRunnerIdentitySha256?: string | undefined;
@@ -93,12 +93,12 @@ export interface ValidateInput {
   expectedRunner?: {
     /** Must equal `runner` — a mismatch is a caller bug, refused loudly. */
     id: string;
-    /** Version Canary requires, from its own pin or sealed identity. */
+    /** Version Amabie requires, from its own pin or sealed identity. */
     version?: string | undefined;
-    /** sha256 of the runner's own bytes Canary requires. */
+    /** sha256 of the runner's own bytes Amabie requires. */
     identitySha256?: string | undefined;
   } | undefined;
-  /** The per-round nonce Canary placed in the child's observer environment.
+  /** The per-round nonce Amabie placed in the child's observer environment.
    *  Binds the frames to THIS spawn; see the python observer's note on why pid
    *  equality alone is not sufficient on Windows. */
   expectedNonce?: string | undefined;
@@ -135,7 +135,7 @@ export function validateObservation(v: ValidateInput): ExecutionObservation {
   const versioned = v.expectedMochaVersion !== undefined
     ? { expectedMochaVersion: v.expectedMochaVersion } : {};
 
-  // ── Not injected: Canary attempted nothing. Stray bytes on the tripwire
+  // ── Not injected: Amabie attempted nothing. Stray bytes on the tripwire
   // pipe are forensic (protocol-emulation attempt) but corrupt nothing that
   // was being measured — ABSENT with an anomaly note (panel decision A).
   if (!v.injected) {
@@ -168,7 +168,7 @@ export function validateObservation(v: ValidateInput): ExecutionObservation {
   if (frames.some((f, i) => f.k === 'hello' && i !== 0)) return bad('duplicate-hello');
   if (frames.some((f, i) => f.k === 'bye' && i !== frames.length - 1)) return bad('duplicate-bye');
   // reject frames: the adapter caught a forged event LIVE (a pass whose Test
-  // object Canary never watched run, or a dup) — the round is evidence of an
+  // object Amabie never watched run, or a dup) — the round is evidence of an
   // ATTACK, not of execution. Fail closed.
   if (frames.some((f) => f.k === 'reject')) return bad('rejected-event');
   if (frames.some((f) => f.k === 'adapter-error')) return bad('adapter-error'); // our hook broke: never trust
@@ -201,7 +201,7 @@ export function validateObservation(v: ValidateInput): ExecutionObservation {
     observedRunnerVersion = rv;
     const nv = typeof hello.node === 'string' ? hello.node : '';
     if (!/^[A-Za-z]/.test(nv)) return bad('hello-host');
-    // Process binding: the NONCE Canary put in THIS spawn's observer environment
+    // Process binding: the NONCE Amabie put in THIS spawn's observer environment
     // must round-trip, and the reporting process must be the spawned one or its
     // direct child (a Windows virtualenv's python.exe re-executes the base
     // interpreter, so pid equality alone would reject every legitimate venv).
@@ -213,13 +213,13 @@ export function validateObservation(v: ValidateInput): ExecutionObservation {
     const ppid = typeof hello.ppid === 'number' ? hello.ppid : NaN;
     if (v.childPid === undefined || (!Number.isInteger(pid) && !Number.isInteger(ppid))) return bad('pid-mismatch');
     if (pid !== v.childPid && ppid !== v.childPid) return bad('pid-mismatch');
-    // The runner's own bytes, required vs as hashed on disk by Canary.
+    // The runner's own bytes, required vs as hashed on disk by Amabie.
     if (er.identitySha256 !== undefined && v.observedRunnerIdentitySha256 !== er.identitySha256) {
       return bad('runner-identity-drift');
     }
   }
 
-  // ── Canary's own replay of the lifecycle stream — the authority for counts
+  // ── Amabie's own replay of the lifecycle stream — the authority for counts
   // and identities. bye.counts must agree with it, never replace it.
   let passing = 0; let failing = 0; let pending = 0;
   const failIds: string[] = [];

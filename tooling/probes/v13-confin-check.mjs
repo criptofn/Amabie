@@ -20,7 +20,7 @@ import { spawnSync } from 'node:child_process';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const toolSrc = path.join(repo, 'tools/windows-boundary/production-tool.cjs');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-confin-check-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confin-check-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -72,7 +72,7 @@ try {
 
   check('A2-the-check-result-says-out-loud-that-it-is-not-a-verdict', () => {
     const c = a.result?.check ?? {};
-    assert(typeof c.note === 'string' && /not a Canary verdict/i.test(c.note),
+    assert(typeof c.note === 'string' && /not an Amabie verdict/i.test(c.note),
       'the check result carries no note saying it is not a verdict. It is the worker\'s own project output, '
       + 'and a worker that mistook it for proof would be trusting the wrong thing');
   });

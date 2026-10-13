@@ -7,7 +7,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const repo = path.resolve(import.meta.dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-closure-mutants-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-closure-mutants-'));
 const mutants = [
  ['M1','A1',[['candidate',' || cid.dirty !== false','']]],
  ['M2','A6-head',[['candidate',"typeof after === 'string' || headToken(root) !== baseToken || subjectDigest(after.subject) !== subjectDigest(subject)",'false']]],
@@ -55,7 +55,7 @@ try {
     fs.writeFileSync(file,source.replace(from,to));
     const syntax=run(['--check',file]);assert.equal(syntax.status,0,syntax.stderr);
    }
-   const r=run(['tooling/probes/architecture-closure.mjs',test],{...process.env,CANARY_TEST_CLI:path.join(scratch,'main.js')});
+   const r=run(['tooling/probes/architecture-closure.mjs',test],{...process.env,AMABIE_TEST_CLI:path.join(scratch,'main.js')});
    assert.equal(r.status,1,`SURVIVED ${id}: ${r.stdout}${r.stderr}`);
    assert.match(r.stdout,/AssertionError/,`non-behavioral failure: ${r.stdout}${r.stderr}`);
    assert.doesNotMatch(r.stdout+r.stderr,/SyntaxError|ReferenceError|TypeError|ERR_MODULE_NOT_FOUND/);

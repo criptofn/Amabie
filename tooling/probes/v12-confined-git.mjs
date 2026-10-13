@@ -33,7 +33,7 @@ const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.e
 const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
 const controlsOnly = process.argv.includes('--controls');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-confined-git-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confined-git-'));
 const base = path.join(root, 'base'), work = path.join(root, 'work'), template = path.join(root, 'template');
 const outside = path.join(root, 'outside'), helpers = path.join(outside, 'helpers'), store = path.join(root, 'store');
 const slash = p => p.replaceAll('\\', '/');
@@ -45,7 +45,7 @@ const readSignal = id => ctx => ctx.row?.kind === 'read' ? ctx.row.allowed === t
 const helperSignal = id => ctx => ctx.row?.escaped === true || ctx.markers.has(id);
 // A work-tree listing is proof of an outside read only when it names a file that
 // exists OUTSIDE the sandbox and nowhere inside it.
-const listingSignal = ctx => ctx.row?.status === 0 && /ESCAPE_CANARY_UNTRACKED/.test(ctx.row.stdout ?? '');
+const listingSignal = ctx => ctx.row?.status === 0 && /ESCAPE_AMABIE_UNTRACKED/.test(ctx.row.stdout ?? '');
 const mapSignal = (letter, expect) => ctx => {
   const now = ctx.devices[letter], before = ctx.before[letter];
   if (now === undefined) return false;
@@ -124,7 +124,7 @@ let aliasRemovals = [];
 
 let enrolled;
 let baselineDevices = {};
-const report = { schema: 'canary-confined-git-escape/2', host: {}, environment: {}, vectors: [], positives: [], reconnaissance: {} };
+const report = { schema: 'amabie-confined-git-escape/2', host: {}, environment: {}, vectors: [], positives: [], reconnaissance: {} };
 let CFG_REPORT, cfgObject;
 
 const run = (exe, args, cwd = base, timeout = 300000) => {
@@ -251,9 +251,9 @@ try {
   }
   run(git, ['add', '.'], base); run(git, ['commit', '-m', 'base'], base);
   run(git, ['add', '.'], outside); run(git, ['commit', '-m', 'outside base'], outside);
-  fs.writeFileSync(path.join(outside, 'secret.config'), '[canary]\nprobe = ESCAPE_CANARY\n');
+  fs.writeFileSync(path.join(outside, 'secret.config'), '[amabie]\nprobe = ESCAPE_CANARY\n');
   fs.writeFileSync(path.join(outside, 'ESCAPE_CANARY'), 'ESCAPE_CANARY\n');
-  run(git, ['config', 'canary.probe', 'ESCAPE_CANARY'], outside);
+  run(git, ['config', 'amabie.probe', 'ESCAPE_CANARY'], outside);
   run(git, ['add', 'ESCAPE_CANARY'], outside);
   run(git, ['commit', '-m', 'outside secret'], outside);
   for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'editor', 'sshCommand']) {
@@ -262,7 +262,7 @@ try {
   fs.writeFileSync(path.join(helpers, 'pre-commit'), helperText('hooksPath'));
   // A file that exists only OUTSIDE, so a work-tree listing naming it is proof of an
   // outside read even when the outside repo's tracked content is also named.
-  fs.writeFileSync(path.join(outside, 'ESCAPE_CANARY_UNTRACKED'), 'ESCAPE_CANARY\n');
+  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE_UNTRACKED'), 'ESCAPE_CANARY\n');
   buildTemplate();
 
   // ── trusted-side path forms a confined worker could not compute for itself ──
@@ -292,7 +292,7 @@ try {
       'absolute-checkout': path.join(base, 'package.json'),
       'parent-traversal': path.join(work, '..', 'base', 'package.json'),
       junction: path.join(work, 'outside-junction', 'secret.config'),
-      'proof-authority': path.join(base, '.canary', 'canary.local.json'),
+      'proof-authority': path.join(base, '.amabie', 'amabie.local.json'),
       'broker-key': path.join(store, 'producer.key'),
       'extended-path': '\\\\?\\' + path.join(base, 'package.json'),
       'outside-secret': path.join(outside, 'secret.config'),
@@ -319,7 +319,7 @@ try {
   CFG_REPORT = cfg.report;
   report.environment.readTargets = cfg.reads;
   freshWork();
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-confined-git-escape.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-confined-git-escape.json'), JSON.stringify(report, null, 2));
 
   run(process.execPath, [cli, 'setup', '--yes', base]);
   run(process.execPath, [cli, 'task', 'confined Git escape audit'], base);
@@ -418,9 +418,9 @@ try {
   const stillMapped = Object.keys(report.reconnaissance.devicesAfterCleanup).filter(k => baseline[k] === undefined);
   assert.deepEqual(stillMapped, [], `device namespace left dirty: ${JSON.stringify(stillMapped)}`);
 
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-confined-git-escape.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-confined-git-escape.json'), JSON.stringify(report, null, 2));
   if (controlsOnly) {
-    console.log(`CONTROLS-ONLY mode: no security verdict is reported. Evidence: ${path.join(os.tmpdir(), 'canary-confined-git-escape.json')}`);
+    console.log(`CONTROLS-ONLY mode: no security verdict is reported. Evidence: ${path.join(os.tmpdir(), 'amabie-confined-git-escape.json')}`);
   } else {
     const counts = report.vectors.reduce((a, v) => (a[v.verdict] = (a[v.verdict] ?? 0) + 1, a), {});
     console.log(`Confined Git escape battery: ${JSON.stringify(counts)}`);

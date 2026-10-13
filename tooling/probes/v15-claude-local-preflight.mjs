@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Native Claude + installed Canary + local Ollama, with captured native API usage. */
+/** Native Claude + installed Amabie + local Ollama, with captured native API usage. */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -17,11 +17,13 @@ const withTools = process.argv.includes('--with-tools');
 const preparedRoot = arg('prepared-root');
 const taskSelection = arg('tasks')?.split(',') ?? null;
 const sessionSelection = arg('sessions')?.split(',') ?? null;
+const maxTurns = Number(arg('max-turns') ?? 50);
+assert.ok(Number.isInteger(maxTurns) && maxTurns >= 1 && maxTurns <= 50, '--max-turns must be an integer from 1 to 50');
 assert.ok(!taskSelection || (preparedRoot && taskSelection.length && new Set(taskSelection).size === taskSelection.length
   && taskSelection.every((label) => ['H1', 'H2', 'H3', 'H5', 'R1', 'S1'].includes(label))), 'unique supported --tasks requires --prepared-root');
 assert.ok(!sessionSelection || (preparedRoot && sessionSelection.length
   && new Set(sessionSelection).size === sessionSelection.length
-  && sessionSelection.every((name) => /^(H1|H2|H3|H5|R1|S1)-(plain|canary)$/.test(name)
+  && sessionSelection.every((name) => /^(H1|H2|H3|H5|R1|S1)-(plain|amabie)$/.test(name)
     && (!taskSelection || taskSelection.includes(name.split('-')[0])))),
   'unique supported --sessions requires --prepared-root and matching --tasks');
 const expectedSessions = preparedRoot ? sessionSelection?.length ?? (taskSelection?.length ?? 6) * 2 : withTools ? 6 : 3;
@@ -35,7 +37,7 @@ if (preparation) {
     assert.ok(attempt.commands.some((c) => c.name === 'plain-tests')
       && attempt.commands.every((c) => c.exitCode === 0 && !c.signal && !c.timedOut && !c.spawnError),
     `${record.label}/${record.arm}: baseline checks must pass before model calls`);
-    if (record.arm === 'canary') assert.equal(record.canaryVerdict, 'READY');
+    if (record.arm === 'amabie') assert.equal(record.amabieVerdict, 'READY');
   }
 }
 for (const [name, value] of Object.entries({ cli, claude, ollama, out })) assert.ok(value && path.isAbsolute(value), `absolute --${name} required`);
@@ -44,16 +46,18 @@ assert.ok(!fs.existsSync(out), 'new evidence directory required');
 const model = 'qwen3.5:9b';
 const digest = '6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7';
 const backend = 'http://127.0.0.1:11437';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-native-claude-local-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-native-claude-local-'));
 const workspace = path.join(temp, 'project');
 const profile = path.join(temp, 'claude-profile');
-fs.mkdirSync(workspace); fs.mkdirSync(profile); fs.mkdirSync(out, { recursive: true });
+const agentHome = path.join(temp, 'agent-home');
+const agentTemp = path.join(temp, 'agent-temp');
+fs.mkdirSync(workspace); fs.mkdirSync(profile); fs.mkdirSync(agentHome); fs.mkdirSync(agentTemp); fs.mkdirSync(out, { recursive: true });
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const save = (name, data) => fs.writeFileSync(path.join(out, name), typeof data === 'string' ? data : `${JSON.stringify(data, null, 2)}\n`, { flag: 'wx' });
 const safeEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/(ANTHROPIC|CLAUDE|OPENAI|BEDROCK|AZURE|AWS|TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL|AUTH|PROXY)/i.test(key)));
 Object.assign(safeEnv, {
   CLAUDE_CONFIG_DIR: profile, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-  CANARY_TRUST_STORE: path.join(temp, 'trust'), NO_PROXY: '127.0.0.1,localhost',
+  AMABIE_TRUST_STORE: path.join(temp, 'trust'), NO_PROXY: '127.0.0.1,localhost',
   HTTP_PROXY: '', HTTPS_PROXY: '', ALL_PROXY: '',
   ENABLE_TOOL_SEARCH: 'false', ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
   CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS: '1', MCP_TOOL_TIMEOUT: '120000',
@@ -61,9 +65,9 @@ Object.assign(safeEnv, {
 });
 const metadata = { startedAt: new Date().toISOString(), node: process.version, model, modelDigest: digest,
   cli, cliSha256: sha(fs.readFileSync(cli)), claude, claudeSha256: sha(fs.readFileSync(claude)),
-  ollama, ollamaSha256: sha(fs.readFileSync(ollama)), backend, contextLength: 65536, maxOutputTokens: 4096, maxTurns: 50,
+  ollama, ollamaSha256: sha(fs.readFileSync(ollama)), backend, contextLength: 65536, maxOutputTokens: 4096, maxTurns,
   instrumentSha256: sha(fs.readFileSync(fileURLToPath(import.meta.url))), workspace, profile, withTools, preparedRoot, taskSelection,
-  sessionSelection, fullScopePlannedSessions: preparedRoot ? 12 : expectedSessions };
+  agentHome, agentTemp, sessionSelection, fullScopePlannedSessions: preparedRoot ? 12 : expectedSessions };
 save('instrument.mjs', fs.readFileSync(fileURLToPath(import.meta.url), 'utf8'));
 save('v15-anthropic-usage.mjs', fs.readFileSync(new URL('./v15-anthropic-usage.mjs', import.meta.url), 'utf8'));
 metadata.usageParserSha256 = sha(fs.readFileSync(new URL('./v15-anthropic-usage.mjs', import.meta.url)));
@@ -71,7 +75,7 @@ save('v15-installed-cli-env.mjs', fs.readFileSync(new URL('./v15-installed-cli-e
 metadata.cliEnvironmentSha256 = sha(fs.readFileSync(new URL('./v15-installed-cli-env.mjs', import.meta.url)));
 if (preparation) {
   metadata.cliAliasDirectory = installedCliEnvironment(cli, safeEnv).PATH.split(path.delimiter)[0];
-  metadata.cliAliases = Object.fromEntries(['canary', 'canary.cmd', 'canary.ps1'].map(name =>
+  metadata.cliAliases = Object.fromEntries(['amabie', 'amabie.cmd', 'amabie.ps1'].map(name =>
     [name, sha(fs.readFileSync(path.join(metadata.cliAliasDirectory, name)))]));
 }
 save('manifest.json', metadata);
@@ -95,7 +99,7 @@ function run(name, executable, args, cwd = workspace) {
 async function session(name, prompt, hooks, tools = false, options = {}) {
   const cwd = options.repo ?? workspace;
   const dir = path.join(out, name); fs.mkdirSync(dir);
-  const checkpointFile = path.join(cwd, '.canary/last-checkpoint.json');
+  const checkpointFile = path.join(cwd, '.amabie/last-checkpoint.json');
   const before = fs.existsSync(checkpointFile) ? fs.readFileSync(checkpointFile, 'utf8') : null;
   const start = requests.length;
   const args = ['-p', prompt, '--model', model, '--settings', path.join(out, 'local-settings.json'),
@@ -103,17 +107,26 @@ async function session(name, prompt, hooks, tools = false, options = {}) {
     '--mcp-config', tools && hooks ? path.join(cwd, '.mcp.json') : path.join(out, 'empty-mcp.json'),
     '--output-format', 'stream-json', '--verbose', '--include-hook-events',
     '--system-prompt', options.pilot
-      ? 'Implement the requested task using the available tools. Add meaningful regression tests, keep existing checks intact, and do not change Canary configuration or reseal the baseline. Do not delegate. Finish with a short factual summary.'
+      ? 'Implement the requested task using the available tools. Add meaningful regression tests, keep existing checks intact, and do not change Amabie configuration or reseal the baseline. Do not delegate. Finish with a short factual summary.'
       : tools
-      ? 'Repair the requested source file using the available tools. Keep checks and Canary configuration unchanged. Do not delegate. Finish with a short factual summary.'
+      ? 'Repair the requested source file using the available tools. Keep checks and Amabie configuration unchanged. Do not delegate. Finish with a short factual summary.'
       : 'Reply with one short sentence. This is a local completion-hook control. No tools are available.'];
   if (tools) args.push('--permission-mode', 'acceptEdits', '--allowedTools',
-    'Read,Write,Edit,Glob,Grep,Bash,mcp__canary__canary_result,mcp__canary__canary_status,mcp__canary__canary_agents,mcp__canary__canary_doctor,mcp__canary__canary_task',
+    'Read,Write,Edit,Glob,Grep,Bash,mcp__amabie__amabie_result,mcp__amabie__amabie_status,mcp__amabie__amabie_agents,mcp__amabie__amabie_doctor,mcp__amabie__amabie_task',
     '--effort', 'low', '--max-turns', String(options.maxTurns ?? 50), '--disallowedTools',
-    'Bash(*setup*),Bash(*bind*),Bash(*accept*),Edit(**/.canary/**),Write(**/.canary/**),Edit(**/.claude/**),Write(**/.claude/**),Edit(**/.mcp.json),Write(**/.mcp.json),Edit(**/package.json),Write(**/package.json),Edit(**/build.gradle.kts),Write(**/build.gradle.kts)');
+    'Bash(*setup*),Bash(*bind*),Bash(*accept*),Edit(**/.amabie/**),Write(**/.amabie/**),Edit(**/.claude/**),Write(**/.claude/**),Edit(**/.mcp.json),Write(**/.mcp.json),Edit(**/package.json),Write(**/package.json),Edit(**/build.gradle.kts),Write(**/build.gradle.kts)');
   let stdout = '', stderr = '', timedOut = false;
   const startedAt = new Date().toISOString();
-  const child = spawn(claude, args, { cwd, env: { ...safeEnv, ...localEnv, ...options.env }, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const agentEnv = { ...safeEnv, ...localEnv, ...options.env,
+    HOME: agentHome, USERPROFILE: agentHome,
+    HOMEDRIVE: path.parse(agentHome).root.replace(/[\\/]+$/, ''),
+    HOMEPATH: `\\${path.relative(path.parse(agentHome).root, agentHome).replaceAll('/', '\\')}`,
+    TEMP: agentTemp, TMP: agentTemp };
+  const homeProbe = spawnSync(process.execPath, ['-e', 'process.stdout.write(require("node:os").homedir())'],
+    { cwd, env: agentEnv, encoding: 'utf8', windowsHide: true });
+  assert.equal(homeProbe.status, 0, 'isolated agent home probe must run');
+  assert.equal(path.resolve(homeProbe.stdout), agentHome, 'agent and its child tools must resolve their home inside the disposable run directory');
+  const child = spawn(claude, args, { cwd, env: agentEnv, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const finished = new Promise((resolve, reject) => {
     child.once('error', reject); child.once('close', (exitCode, signal) => resolve({ exitCode, signal }));
   });
@@ -127,6 +140,13 @@ async function session(name, prompt, hooks, tools = false, options = {}) {
   const terminal = events.findLast((event) => event.type === 'result');
   const blocks = events.flatMap((event) => Array.isArray(event.message?.content) ? event.message.content : []);
   const hookEvents = events.filter((event) => event.type === 'system' && event.subtype === 'hook_response' && event.hook_event === 'Stop');
+  const preToolEvents = events.filter((event) => event.type === 'system' && event.subtype === 'hook_response' && event.hook_event === 'PreToolUse');
+  const preToolDenials = preToolEvents.flatMap((event) => {
+    try {
+      const decision = JSON.parse(event.output).hookSpecificOutput;
+      return decision?.permissionDecision === 'deny' ? [{ hookName: event.hook_name, reason: decision.permissionDecisionReason }] : [];
+    } catch { return []; }
+  });
   const toolCalls = blocks.filter((block) => block.type === 'tool_use').map((block) => ({ ...block,
     result: blocks.find((result) => result.type === 'tool_result' && result.tool_use_id === block.id) ?? null }));
   const after = fs.existsSync(checkpointFile) ? fs.readFileSync(checkpointFile, 'utf8') : null;
@@ -144,9 +164,10 @@ async function session(name, prompt, hooks, tools = false, options = {}) {
   const record = { name, args, startedAt, finishedAt: new Date().toISOString(), ...result, timedOut,
     terminal: terminal ?? null, nativeUsage, accountingMatches, mainAccountingMatches, captureComplete, calls: calls.map((r) => r.number), toolCalls, hookEvents, cwd,
     checkpoint, checkpointChanged: after !== before, hookFired: after !== before && checkpoint?.source === 'checkpoint' && hookEvents.length > 0,
+    preToolEvents, preToolDenials,
     modelRuntime: await api('/api/ps') };
   fs.writeFileSync(path.join(dir, 'record.json'), `${JSON.stringify(record, null, 2)}\n`, { flag: 'wx' });
-  const evidence = path.join(cwd, '.canary/evidence');
+  const evidence = path.join(cwd, '.amabie/evidence');
   if (hooks && fs.existsSync(evidence)) fs.cpSync(evidence, path.join(dir, 'product-evidence'), { recursive: true });
   sessions.push(record);
   console.log(`OBSERVED ${name}: exit=${result.exitCode}, nativeUsage=${JSON.stringify(nativeUsage)}, accountingMatches=${accountingMatches}, hook=${record.hookFired}, status=${checkpoint?.status ?? 'none'}`);
@@ -167,7 +188,7 @@ async function pilot() {
   const taskTexts = Object.fromEntries(Object.entries(taskFiles).map(([label, file]) => [label, fs.readFileSync(path.join(taskRoot, file), 'utf8')]));
   const oracleBytes = fs.readFileSync(oracle);
   const oracleSha256 = sha(oracleBytes);
-  const schedule = Object.keys(taskFiles).flatMap((label, index) => (index % 2 ? ['canary', 'plain'] : ['plain', 'canary']).map((arm) => ({ label, arm })))
+  const schedule = Object.keys(taskFiles).flatMap((label, index) => (index % 2 ? ['amabie', 'plain'] : ['plain', 'amabie']).map((arm) => ({ label, arm })))
     .filter(({ label, arm }) => (!taskSelection || taskSelection.includes(label))
       && (!sessionSelection || sessionSelection.includes(`${label}-${arm}`)));
   assert.equal(schedule.length, expectedSessions, 'selected sessions must be scheduled exactly once');
@@ -175,8 +196,9 @@ async function pilot() {
   save('preparation-summary.json', preparation); save('oracle-instrument.mjs', oracleBytes.toString('utf8'));
   save('pilot-protocol.json', { schedule, cliSha256: metadata.cliSha256, artifactSha256: preparation.artifactSha256,
     tasks: Object.entries(taskFiles).map(([label, file]) => ({ label, file, sha256: sha(taskTexts[label]) })),
-    oracleSha256, oracleOptions: { H1: { strictAge: true } }, timeoutMs: 1_800_000, effort: 'low', maxTurns: 50, maxOutputTokens: 4096,
-    providerUsdCharge: 0, limitation: 'Local same-user model and independent operator oracles; no OS isolation or general token savings claim.' });
+    oracleSha256, oracleOptions: { H1: { strictAge: true } }, timeoutMs: 1_800_000, effort: 'low', maxTurns, maxOutputTokens: 4096,
+    providerUsdCharge: 0, workflowControl: 'H1-amabie must register its criteria, make project changes without a PreToolUse denial, complete the Stop hook, and retain NOT PROVEN while its objective proof remains unbound.',
+    limitation: 'Local same-user model and independent operator oracles; no OS isolation or general token savings claim.' });
   const git = (repo, ...args) => {
     const r = spawnSync('git', ['-C', repo, ...args], { env: safeEnv, encoding: 'utf8', windowsHide: true, timeout: 60000, maxBuffer: 32 * 1024 * 1024 });
     assert.equal(r.status, 0, `git ${args[0]} failed`); return (r.stdout ?? '').trim();
@@ -192,16 +214,18 @@ async function pilot() {
     return fs.existsSync(path.join(resultDir, 'oracle-result.json')) ? JSON.parse(fs.readFileSync(path.join(resultDir, 'oracle-result.json'), 'utf8')) : null;
   };
   // Pilot copies are independent: activate their foreign settings equally, and remove only
-  // explicitly recorded Canary handlers from the comparison. Synthetic same-repo controls
-  // still disable settings in their plain arm so the installed Canary hook cannot run there.
+  // explicitly recorded Amabie handlers from the comparison. Synthetic same-repo controls
+  // still disable settings in their plain arm so the installed Amabie hook cannot run there.
   const readSettings = (repo, file) => fs.existsSync(path.join(repo, file)) ? JSON.parse(fs.readFileSync(path.join(repo, file), 'utf8')) : {};
   for (const label of new Set(schedule.map((record) => record.label))) {
     const repoFor = (arm) => preparation.records.find((record) => record.label === label && record.arm === arm).repo;
-    const plain = repoFor('plain'), canary = repoFor('canary');
-    assert.equal(fs.existsSync(path.join(plain, '.canary/canary.local.json')), false, `${label}: plain copy already has Canary installed`);
-    const config = readSettings(canary, '.canary/canary.local.json');
-    const doc = readSettings(canary, '.claude/settings.json');
-    for (const [event, commands] of [['Stop', config.hookCommands ?? []], ['SessionStart', config.sessionStartCommands ?? []]]) {
+    const plain = repoFor('plain'), amabie = repoFor('amabie');
+    assert.equal(fs.existsSync(path.join(plain, '.amabie/amabie.local.json')), false, `${label}: plain copy already has Amabie installed`);
+    const config = readSettings(amabie, '.amabie/amabie.local.json');
+    const doc = readSettings(amabie, '.claude/settings.json');
+    for (const [event, commands] of [['Stop', config.hookCommands ?? []], ['PreToolUse', config.hookCommands ?? []],
+      ['UserPromptSubmit', config.hookCommands ?? []], ['PostToolUse', config.hookCommands ?? []],
+      ['SessionEnd', config.hookCommands ?? []], ['SessionStart', config.sessionStartCommands ?? []]]) {
       if (!doc.hooks?.[event]) continue;
       const owned = new Set(commands);
       doc.hooks[event] = doc.hooks[event].map((group) => ({ ...group, hooks: group.hooks.filter((hook) => !owned.has(hook.command)) }))
@@ -210,7 +234,7 @@ async function pilot() {
     }
     if (doc.hooks && !Object.keys(doc.hooks).length) delete doc.hooks;
     assert.deepEqual(doc, readSettings(plain, '.claude/settings.json'), `${label}: foreign project settings differ`);
-    assert.deepEqual(readSettings(canary, '.claude/settings.local.json'), readSettings(plain, '.claude/settings.local.json'), `${label}: foreign local settings differ`);
+    assert.deepEqual(readSettings(amabie, '.claude/settings.local.json'), readSettings(plain, '.claude/settings.local.json'), `${label}: foreign local settings differ`);
     save(`${label}-foreign-settings-check.json`, { settingsSources: 'project,local', foreignSettingsMatched: true });
   }
   // Validate ALL untouched copies and their hidden failure controls before the first model call.
@@ -225,16 +249,16 @@ async function pilot() {
   for (const { label, arm } of schedule) {
     const record = preparation.records.find((r) => r.label === label && r.arm === arm);
     const repo = record.repo, name = `${label}-${arm}`;
-    const protectedFiles = ['package.json', 'build.gradle.kts', '.canary/canary.local.json', '.claude/settings.json', '.mcp.json'];
+    const protectedFiles = ['package.json', 'build.gradle.kts', '.amabie/amabie.local.json', '.claude/settings.json', '.mcp.json'];
     const protectedHashes = () => Object.fromEntries(protectedFiles.map((file) => [file, fs.existsSync(path.join(repo, file)) ? sha(fs.readFileSync(path.join(repo, file))) : null]));
     const before = { head: git(repo, 'rev-parse', 'HEAD'), status: git(repo, 'status', '--porcelain'), protected: protectedHashes() };
     save(`${name}-before.json`, before);
     const profileDir = path.join(temp, name); fs.mkdirSync(profileDir);
     const prompt = taskTexts[label]; save(`${name}-task.md`, prompt);
     console.log(`START ${outcomes.length + 1}/${schedule.length} ${name}`);
-    const measured = await session(name, prompt, arm === 'canary', true, { pilot: true, repo,
+    const measured = await session(name, prompt, arm === 'amabie', true, { pilot: true, repo, maxTurns,
       env: { ...installedCliEnvironment(cli, safeEnv, record.toolchainDirectories), CLAUDE_CONFIG_DIR: profileDir,
-        CANARY_TRUST_STORE: path.join(os.tmpdir(), 'canary-v15-validation-trust', sha(repo)) } });
+        AMABIE_TRUST_STORE: path.join(os.tmpdir(), 'amabie-v15-validation-trust', sha(repo)) } });
     assert.equal(sha(fs.readFileSync(cli)), metadata.cliSha256, 'frozen CLI changed during the pilot');
     for (const [alias, expected] of Object.entries(metadata.cliAliases)) {
       assert.equal(sha(fs.readFileSync(path.join(metadata.cliAliasDirectory, alias))), expected, 'installed CLI alias changed during the pilot');
@@ -248,10 +272,15 @@ async function pilot() {
       const source = path.join(repo, relative); if (!fs.statSync(source, { throwIfNoEntry: false })?.isFile()) continue;
       const target = path.join(out, name, 'changed-files', relative); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
     }
+    const taskIntake = measured.toolCalls.find((call) => call.name === 'mcp__amabie__amabie_task');
+    const registeredRequirements = Array.isArray(taskIntake?.input?.requirements) ? taskIntake.input.requirements.length : 0;
+    const projectWorkCalls = measured.toolCalls.filter((call) => ['Bash', 'Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(call.name)).length;
     const outcome = { name, label, arm, correctness: correctness?.testPassed === true ? 'pass' : correctness?.testPassed === false ? 'fail' : 'incomplete',
       sessionComplete: measured.exitCode === 0 && !measured.timedOut && measured.terminal?.is_error === false && measured.accountingMatches,
       sessionCaptured: measured.captureComplete, resultSubtype: measured.terminal?.subtype ?? null,
-      hookFired: measured.hookFired, checkpointStatus: measured.checkpoint?.status ?? null,
+      hookFired: measured.hookFired, checkpointStatus: measured.checkpointChanged ? measured.checkpoint?.status ?? null : null,
+      registeredRequirements, projectWorkCalls, preToolDenials: measured.preToolDenials, preToolBlocked: measured.preToolDenials.length > 0,
+      workspaceClean: before.head === after.head && before.status === '' && after.status === '',
       nativeUsage: measured.nativeUsage, protectedUnchanged: JSON.stringify(before.protected) === JSON.stringify(after.protected),
       baselinePreserved: spawnSync('git', ['-C', repo, 'merge-base', '--is-ancestor', before.head, after.head], { env: safeEnv, windowsHide: true, timeout: 60000 }).status === 0,
       manualInterventions: 0, providerUsdCharge: 0 };
@@ -263,13 +292,21 @@ async function pilot() {
     if (measured.terminal?.modelUsage?.[model]?.contextWindow !== metadata.contextLength)
       console.error(`${name}: incorrect or missing declared context; retained`);
     assert.ok(outcome.protectedUnchanged && outcome.baselinePreserved, `${name}: protected setup or baseline ancestry changed; retained and stopped`);
-    if (arm === 'canary' && outcome.sessionComplete && !outcome.hookFired)
+    if (arm === 'amabie' && outcome.sessionComplete && !outcome.hookFired)
       console.error(`${name}: real Stop checkpoint missing; retained`);
+    if (label === 'H1' && arm === 'amabie') {
+      assert.ok(outcome.registeredRequirements > 0, `${name}: user criteria were not registered`);
+      assert.ok(outcome.projectWorkCalls > 0, `${name}: registered objective work did not proceed`);
+      assert.equal(outcome.preToolBlocked, false, `${name}: registered objective work was blocked before completion`);
+      assert.ok(outcome.sessionComplete && outcome.hookFired, `${name}: the task must complete through the native Stop hook`);
+      assert.equal(outcome.correctness, 'pass', `${name}: independent H1 oracle did not pass`);
+      assert.equal(outcome.checkpointStatus, 'unproven', `${name}: an unbound objective criterion must not be reported as proven`);
+    }
   }
   save('pilot-outcomes.json', outcomes);
   assert.ok(outcomes.every((outcome) => outcome.sessionCaptured
     && sessions.find((record) => record.name === outcome.name)?.terminal?.modelUsage?.[model]?.contextWindow === metadata.contextLength
-    && (outcome.arm !== 'canary' || !outcome.sessionComplete || outcome.hookFired)),
+    && (outcome.arm !== 'amabie' || !outcome.sessionComplete || outcome.hookFired)),
   'pilot contains incomplete captures, incorrect contexts or missing Stop checkpoints; see retained outcomes');
 }
 let localEnv;
@@ -326,7 +363,7 @@ try {
   save('local-settings.json', { env: localEnv }); save('empty-mcp.json', { mcpServers: {} });
   metadata.gateway = localEnv.ANTHROPIC_BASE_URL;
   metadata.claudeVersion = run('claude-version', claude, ['--version']);
-  metadata.cliVersion = run('canary-version', process.execPath, [cli, '--version']);
+  metadata.cliVersion = run('amabie-version', process.execPath, [cli, '--version']);
   if (preparation) { await pilot(); }
   else {
   await session('connection', 'Reply PROBE_OK.', false);
@@ -334,8 +371,8 @@ try {
   fs.writeFileSync(path.join(workspace, 'package.json'), JSON.stringify({ name: 'native-hook-control', scripts: { test: 'node check.cjs' } }));
   fs.writeFileSync(path.join(workspace, 'value.cjs'), 'module.exports = 1;\n');
   fs.writeFileSync(path.join(workspace, 'check.cjs'), 'require("node:assert/strict").equal(require("./value.cjs"), 1);\n');
-  for (const args of [['init'], ['config', 'user.name', 'Canary control'], ['config', 'user.email', 'control@localhost'], ['add', '-A'], ['commit', '-m', 'base']]) run(`git-${commands.length}`, 'git', args);
-  run('canary-setup', process.execPath, [cli, 'setup', '--yes']);
+  for (const args of [['init'], ['config', 'user.name', 'Amabie control'], ['config', 'user.email', 'control@localhost'], ['add', '-A'], ['commit', '-m', 'base']]) run(`git-${commands.length}`, 'git', args);
+  run('amabie-setup', process.execPath, [cli, 'setup', '--yes']);
   save('project-mcp.json', fs.readFileSync(path.join(workspace, '.mcp.json'), 'utf8'));
   save('project-hooks.json', fs.readFileSync(path.join(workspace, '.claude/settings.json'), 'utf8'));
   run('git-add-setup', 'git', ['add', '-A']); run('git-commit-setup', 'git', ['commit', '-m', 'setup']);
@@ -349,10 +386,10 @@ try {
     const protectedHashes = Object.fromEntries(protectedFiles.map((file) => [file, sha(fs.readFileSync(path.join(workspace, file)))]));
     save('repair-before.json', { protectedHashes, value: fs.readFileSync(path.join(workspace, 'value.cjs'), 'utf8') });
     const repair = await session('tools-repair',
-      'First call mcp__canary__canary_result to inspect the recorded failure. Read value.cjs and check.cjs. Repair value.cjs so the existing check passes. Run node check.cjs. Do not change checks, configuration, or the sealed baseline. Then finish normally.', true, true);
+      'First call mcp__amabie__amabie_result to inspect the recorded failure. Read value.cjs and check.cjs. Repair value.cjs so the existing check passes. Run node check.cjs. Do not change checks, configuration, or the sealed baseline. Then finish normally.', true, true);
     save('repair-after.json', { protectedHashes: Object.fromEntries(protectedFiles.map((file) => [file, sha(fs.readFileSync(path.join(workspace, file)))])),
       value: fs.readFileSync(path.join(workspace, 'value.cjs'), 'utf8') });
-    assert.ok(repair.toolCalls.some((call) => call.name === 'mcp__canary__canary_result' && call.result && !call.result.is_error), 'no successful Canary MCP result');
+    assert.ok(repair.toolCalls.some((call) => call.name === 'mcp__amabie__amabie_result' && call.result && !call.result.is_error), 'no successful Amabie MCP result');
     assert.ok(repair.toolCalls.some((call) => ['Edit', 'Write'].includes(call.name) && call.result && !call.result.is_error), 'no successful agent source edit');
     assert.ok(repair.toolCalls.some((call) => call.name === 'Bash' && call.result && call.result.is_error === false), 'no successful agent shell check');
     for (const [file, hash] of Object.entries(protectedHashes)) assert.equal(sha(fs.readFileSync(path.join(workspace, file))), hash, `${file} changed`);

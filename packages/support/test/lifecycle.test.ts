@@ -13,7 +13,7 @@
  *     PPID BFS, with a group-kill backstop.
  *  2. containment: after runCommand resolves — normal exit or timeout — no
  *     descendant of the spawned child may still be alive. Which layer won the
- *     race (Canary's post-exit sweep vs an OS job-object container wrapping
+ *     race (Amabie's post-exit sweep vs an OS job-object container wrapping
  *     the test session) is environment-dependent and NOT asserted; on plain
  *     hosts only layer 1 exists, which is why layer 1 is proven directly.
  */
@@ -388,7 +388,7 @@ describe('audit F5 — containment through runCommand', () => {
     assert.ok(out.childPid);
     assert.ok(!out.sweptPids?.includes(out.childPid!),
       'sweep must target descendants, not the already-exited child');
-    // Canary itself must never appear in a sweep result.
+    // Amabie itself must never appear in a sweep result.
     assert.ok(!out.sweptPids?.includes(process.pid));
     for (const p of out.sweptPids ?? []) killIfAlive(p);
   });

@@ -78,7 +78,7 @@ describe('neutral channel: a well-formed round is VALID and carries the identity
   });
 
   it('accepts a child process (Windows virtualenv re-exec) via ppid', () => {
-    // pid is the re-executed interpreter; ppid is what Canary spawned.
+    // pid is the re-executed interpreter; ppid is what Amabie spawned.
     const o = validateObservation(input({ raw: pythonFrames({ pid: 9999, ppid: 1234 }) }));
     assert.equal(o.status, 'VALID', `ppid binding must be accepted: ${o.invalidReason ?? ''}`);
   });
@@ -103,7 +103,7 @@ describe('neutral channel: every required property is enforced', () => {
     assert.equal(o.invalidReason, 'runnerVersion-vs-seal');
   });
 
-  it('3. bye.counts may not replace what Canary re-counted', () => {
+  it('3. bye.counts may not replace what Amabie re-counted', () => {
     const raw = pythonFrames({}, [{ k: 'pass', id: 't.A.test_one' }])
       // bye claims 3 passes for one watched pass
       .replace(/"counts":\{[^}]*\}/, '"counts":{"pass":3,"fail":0,"pending":0,"rejected":0}');
@@ -145,7 +145,7 @@ describe('neutral channel: every required property is enforced', () => {
     assert.equal(o.invalidReason, 'no-summary');
   });
 
-  it('identity drift between what Canary hashed and what is required is refused', () => {
+  it('identity drift between what Amabie hashed and what is required is refused', () => {
     const o = validateObservation(input({ observedRunnerIdentitySha256: 'b'.repeat(64) }));
     assert.equal(o.status, 'INVALID');
     assert.equal(o.invalidReason, 'runner-identity-drift');

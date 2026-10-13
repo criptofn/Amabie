@@ -158,7 +158,7 @@ const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const eq = (a, b, what) => assert(a === b, `${what}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
 const run = (args, opts = {}) => spawnSync(NODE, args, { encoding: 'utf8', timeout: opts.timeoutMs ?? 600_000, cwd: opts.cwd ?? REPO, input: opts.input });
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-v15-attempt-prov-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v15-attempt-prov-'));
 console.log(`TEMP: ${temp}\n`);
 const fixtureRepo = path.join(temp, 'fixture-repo');
 const stub = path.join(temp, 'stub-harness.mjs');
@@ -264,7 +264,7 @@ try {
     assert(meta !== null, 'no attempt.json');
     eq(meta.attemptId, 'attempt-1', 'attempt.json attemptId');
     eq(meta.taskId, 'T1-stub-task', 'attempt.json taskId');
-    eq(meta.cliVersion, 'canary 1.5.0', 'attempt.json CLI version');
+    eq(meta.cliVersion, `amabie ${readJson(path.join(REPO, 'package.json')).version}`, 'attempt.json CLI version');
     eq(meta.cliPath, CLI, 'attempt.json CLI path');
     eq(meta.cliSha256, sha256(fs.readFileSync(CLI)), 'attempt.json CLI bytes');
     eq(meta.artifactSha256, ARTIFACT_SHA256, 'attempt.json artifact digest');

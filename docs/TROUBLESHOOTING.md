@@ -1,25 +1,25 @@
 # Troubleshooting
 
 Every entry below is a failure that has actually been observed, with the exact
-message Canary prints and the smallest thing to do about it. If your problem is
+message Amabie prints and the smallest thing to do about it. If your problem is
 not here, the [issue template](../.github/ISSUE_TEMPLATE/bug_report.md) asks for
 the four commands that make a report diagnosable in one round-trip.
 
-**First, always:** `canary doctor`. It runs your project's own checks and prints
-the verdict. `canary doctor --json` gives the same answer as one machine-readable
+**First, always:** `amabie doctor`. It runs your project's own checks and prints
+the verdict. `amabie doctor --json` gives the same answer as one machine-readable
 envelope; `--verbose` adds the detail behind any message.
 
 For a failed check, doctor and the completion hook print a focused recheck command.
-Run `canary doctor --check <id>` after repairing that check to get a quick diagnostic.
+Run `amabie doctor --check <id>` after repairing that check to get a quick diagnostic.
 It reports `PARTIAL`, leaves the full completion checkpoint unchanged, and does not
-evaluate other checks or task obligations. Run `canary doctor` for the full gate.
+evaluate other checks or task obligations. Run `amabie doctor` for the full gate.
 Scoped failures get separate output logs. Commands containing spaces or shell
 characters are quoted for PowerShell on Windows and a POSIX shell elsewhere.
 If a failure message cannot fit all checks, it lists the remaining count and
-points to `canary result --json` for the complete evidence bundle.
+points to `amabie result --json` for the complete evidence bundle.
 
 If a nested Node project was set up with an older package and immediately reports
-that its script was never sealed, run `canary setup --yes` with the updated
+that its script was never sealed, run `amabie setup --yes` with the updated
 package. Setup now records each declared scope's own `package.json` script;
 changing either scope's command still blocks verification before it can run.
 
@@ -35,9 +35,9 @@ next: install Claude Code or OpenAI Codex CLI (or open the project inside one),
 then run setup again
 ```
 
-**Why it matters.** Canary verifies completions by running when your agent says
-it is done. That requires a harness with a completion hook Canary can install
-into. Without one, there is nothing to hook, and Canary refuses rather than
+**Why it matters.** Amabie verifies completions by running when your agent says
+it is done. That requires a harness with a completion hook Amabie can install
+into. Without one, there is nothing to hook, and Amabie refuses rather than
 pretending it wired something.
 
 **How it is detected.** The presence of a harness directory — `.claude/` or
@@ -47,37 +47,37 @@ reproduced its documented hook import on a real install; see
 [supported agents](../README.md#supported-agents).
 
 **What to do.** Install Claude Code or OpenAI Codex CLI, or open the project
-inside one once, then run `canary setup --yes` again. Canary never fakes this
-integration: a repository with no harness stays unwired, and `canary doctor`
+inside one once, then run `amabie setup --yes` again. Amabie never fakes this
+integration: a repository with no harness stays unwired, and `amabie doctor`
 keeps saying so. Codex adds one step of its own — the hook it writes is not run
 until you review and trust it (`/hooks` in a Codex session) — and `setup` prints
 that in plain words rather than letting a written file read as protection.
 
 ---
 
-## "this project declares no check Canary recognizes"
+## "this project declares no check Amabie recognizes"
 
 ```
-NEEDS ATTENTION — this project declares no check Canary recognizes — a statement
-about what is DECLARED here, not about your stack. Canary reads: Node
+NEEDS ATTENTION — this project declares no check Amabie recognizes — a statement
+about what is DECLARED here, not about your stack. Amabie reads: Node
 package.json scripts (...) ... and the universal contract — a Makefile, Taskfile
 or Justfile target, a shipped gradlew or mvnw wrapper, a configured CMake,
 Meson, Zig, Swift, Elixir, Crystal, Rake, Composer or PHPUnit project, or a check
 your CI configuration already runs.
 ```
 
-**Why it matters.** Canary runs **your** checks. It does not invent checks, and it
+**Why it matters.** Amabie runs **your** checks. It does not invent checks, and it
 will not authorise proof for a requirement it cannot measure. A project with no
-recognizable check has no evidence to offer, so Canary refuses at setup rather
+recognizable check has no evidence to offer, so Amabie refuses at setup rather
 than wiring a gate that can never verify anything.
 
-**What to do.** Point Canary at a check you already have. If you have one and
-Canary did not find it, that is a bug worth reporting — the message above lists
-everything Canary reads, so if your check is in that list and was missed, say so.
+**What to do.** Point Amabie at a check you already have. If you have one and
+Amabie did not find it, that is a bug worth reporting — the message above lists
+everything Amabie reads, so if your check is in that list and was missed, say so.
 
-**If the message above it says the check is *ambiguous*:** Canary found two
+**If the message above it says the check is *ambiguous*:** Amabie found two
 equally-authoritative candidates and **refused to choose between them** —
-choosing would be Canary deciding what your project means. It prints both, with
+choosing would be Amabie deciding what your project means. It prints both, with
 the evidence for each. Declare the intended one and run setup again.
 
 ---
@@ -85,16 +85,16 @@ the evidence for each. Declare the intended one and run setup again.
 ## "your project's own checks did not pass"
 
 ```
-NEEDS ATTENTION — Canary is wired here, but your project's own checks did not
-pass (test, build). That is your project talking, not Canary.
+NEEDS ATTENTION — Amabie is wired here, but your project's own checks did not
+pass (test, build). That is your project talking, not Amabie.
 ```
 
-**Why it matters.** This is not a Canary failure. The checks you declared are
+**Why it matters.** This is not a Amabie failure. The checks you declared are
 already failing on the current working tree, which means the gate would block
-every completion until they pass. Canary says so at setup instead of letting you
+every completion until they pass. Amabie says so at setup instead of letting you
 discover it mid-task.
 
-**What to do.** Fix the failing checks (or ask your agent to), then `canary
+**What to do.** Fix the failing checks (or ask your agent to), then `amabie
 doctor`. The full runner output is written to disk and its path is printed — read
 that file, not the summary.
 
@@ -108,15 +108,15 @@ obligation(s) have no adequate proof — a green plan is not a proven deliverabl
 (NO PROOF, NO DONE).
 ```
 
-**Why it matters.** This is the single most important thing Canary does, and it is
-not an error. Canary runs your sealed checks against the **base commit** as well
+**Why it matters.** This is the single most important thing Amabie does, and it is
+not an error. Amabie runs your sealed checks against the **base commit** as well
 as your working tree. If they pass on **both** sides, they cannot distinguish your
 change from no change at all — so a green suite is not evidence *about your
 change*. The verdict is `NOT PROVEN` and the completion is blocked.
 
 **What to do.** Add or point a check at the behaviour you changed, so it **fails
 without your change and passes with it**. A pure refactor needs a check that pins
-the behaviour you preserved. The repair is the worker's job, and Canary names what
+the behaviour you preserved. The repair is the worker's job, and Amabie names what
 is missing.
 
 When the repair message links `baseline output` or `comparison output`, open
@@ -131,11 +131,11 @@ the same inputs used for the baseline comparison, read the two printed output
 bundles. A runtime crash caused by example files that exist only in your working
 directory is not regression proof. Create the input fixtures inside the executed
 test, or place them in its checked test surface, so both comparison runs have
-them. Then rerun `canary doctor`. Worker-authored checks keep their provenance
+them. Then rerun `amabie doctor`. Worker-authored checks keep their provenance
 warning even when the comparison succeeds.
 
 A change touching only checks, prose, licences or generated files is exempt.
-`canary accept` closes only subjective candidate duties from a real terminal;
+`amabie accept` closes only subjective candidate duties from a real terminal;
 it cannot waive this objective regression-evidence duty. Add a distinguishing
 check, then rerun the full gate.
 
@@ -143,7 +143,7 @@ check, then rerun the full gate.
 
 ## The hook never runs — nothing is ever blocked
 
-**Check the wiring first:** `canary agents`. It reports whether a hook is actually
+**Check the wiring first:** `amabie agents`. It reports whether a hook is actually
 installed here, and it refuses to call detection "protection":
 
 ```
@@ -154,13 +154,13 @@ Claude Code — detected, hook NOT installed here
 *gated*. If `.claude/` exists but holds no hook, nothing will run at the end of a
 turn, and no completion will ever be blocked.
 
-**What to do.** `canary setup --yes`. Then `canary doctor` — "Canary is installed
+**What to do.** `amabie setup --yes`. Then `amabie doctor` — "Amabie is installed
 here but was never executed — protection is wired, NOT yet verified" means setup
-wrote the wiring but the smoke run did not happen; `canary doctor` runs it.
+wrote the wiring but the smoke run did not happen; `amabie doctor` runs it.
 
 **If your harness prompts you to review or trust a hook,** that prompt is real and
-you should read it: an untrusted hook does not execute. Canary's hook runs
-`canary checkpoint`, which only ever runs your own declared checks and reports.
+you should read it: an untrusted hook does not execute. Amabie's hook runs
+`amabie checkpoint`, which only ever runs your own declared checks and reports.
 
 ---
 
@@ -169,7 +169,7 @@ you should read it: an untrusted hook does not execute. Canary's hook runs
 This is a documented class of failure in this project, not a mystery. Fixtures and
 tests can accidentally encode properties of the **developer's** machine — most
 commonly a home directory that has Claude Code installed, which makes
-`<root>/.claude` unnecessary. Canary's own CI had exactly this defect, and v1.4
+`<root>/.claude` unnecessary. Amabie's own CI had exactly this defect, and v1.4
 fixed it by making fixtures declare their own harness.
 
 **What to do.** If a test passes locally and fails on a clean runner, check
@@ -192,13 +192,13 @@ cancelled. No assertion is skipped to make it green.
 
 ## A requirement binding is refused before writing
 
-`canary bind` requires one sealed script and nonblank text after **each**
+`amabie bind` requires one sealed script and nonblank text after **each**
 `--requirement`. Unknown options, extra positional arguments, missing text, and
 an option token in place of text are refused with exit 3 before any declaration,
 commit, or seal changes. Check spelling and quote each complete requirement:
 
 ```sh
-canary bind test --requirement "Keep IDs stable across runs" --requirement "Keep parameter cases distinct"
+amabie bind test --requirement "Keep IDs stable across runs" --requirement "Keep parameter cases distinct"
 ```
 
 Text beginning with a dash, such as `"--strict preserves warnings as errors"`,
@@ -208,7 +208,7 @@ performs the existing operator workflow. Invalid JSON-mode requests return one
 
 ## Reading verification evidence in JSON
 
-After a full `canary doctor --json` evaluates proof obligations, its optional
+After a full `amabie doctor --json` evaluates proof obligations, its optional
 `proof` field reports `registeredRequirements` and the observed obligations
 (`id`, `mode`, `status`, and any `caveat`). A count of zero means no separate
 task requirements were registered. It does not mean all requested behavior was
@@ -216,14 +216,14 @@ covered. A `met` obligation may still carry the caveat that an agent-authored
 regression test is **not independent authority**; JSON consumers should display
 that caveat alongside the status.
 
-Completion checkpoints retain the same information. `canary result --json`
+Completion checkpoints retain the same information. `amabie result --json`
 returns it under `lastVerification.proof`, with `historical: true`: it describes
 the recorded run and cannot certify the current files. Missing `proof` means
 this information is unavailable or invalid, rather than an empty set of proven duties.
 These fields are additive; schema names, status words, exit codes, and block
 decisions are unchanged. Saved summaries never determine a new verdict.
 
-For the MCP `canary_doctor` tool, omit `check` entirely to run the full gate.
+For the MCP `amabie_doctor` tool, omit `check` entirely to run the full gate.
 Supply an exact sealed check id for a focused `PARTIAL` diagnostic. Empty or
 whitespace-only values are refused and are now marked invalid in `tools/list`.
 
@@ -232,10 +232,10 @@ whitespace-only values are refused and are now marked invalid in `tools/list`.
 Four commands, and nothing that contains your source code:
 
 ```sh
-canary --version
-canary status --json
-canary doctor --json
-canary agents
+amabie --version
+amabie status --json
+amabie doctor --json
+amabie agents
 ```
 
 The JSON envelopes name the files that hold the full evidence, so the report

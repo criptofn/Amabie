@@ -7,8 +7,8 @@
  * Measures, on a real copy of the fixture:
  *   1. the fixture's own visible suite;
  *   2. the hidden oracle;
- *   3. `canary setup --yes`;
- *   4. `canary task` with the fixture's declared requirements.
+ *   3. `amabie setup --yes`;
+ *   4. `amabie task` with the fixture's declared requirements.
  *
  * Usage: node tooling/probes/v12-setup-timing.mjs [task]
  */
@@ -34,7 +34,7 @@ function copyDir(from, to) {
   }
 }
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-timing-${TASK}-`));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-timing-${TASK}-`));
 const project = path.join(root, 'project');
 copyDir(path.join(FIX, 'project'), project);
 // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
@@ -60,13 +60,13 @@ try {
 
   time('fixture visible suite (node run-tests.js)', () => runCaptured(process.execPath, ['run-tests.js'], { cwd: project, timeout: 300_000 }));
   time('hidden oracle', () => runCaptured(process.execPath, [path.join(FIX, 'hidden', 'check.cjs'), project], { timeout: 300_000 }));
-  time('canary setup --yes', () => runCaptured(process.execPath, [CLI, 'setup', '--yes', project], { cwd: project, timeout: 900_000 }));
+  time('amabie setup --yes', () => runCaptured(process.execPath, [CLI, 'setup', '--yes', project], { cwd: project, timeout: 900_000 }));
 
   const meta = JSON.parse(fs.readFileSync(path.join(FIX, 'fixture.json'), 'utf8'));
   const reqs = Array.isArray(meta.requirements) ? meta.requirements : [];
   if (reqs.length > 0) {
     const intent = typeof meta.intent === 'string' && meta.intent !== '' ? meta.intent : 'the stated task';
-    time(`canary task (${reqs.length} requirements)`, () =>
+    time(`amabie task (${reqs.length} requirements)`, () =>
       runCaptured(process.execPath, [CLI, 'task', intent, ...reqs.flatMap((r) => ['--requirement', r])], { cwd: project, timeout: 300_000 }));
   }
 

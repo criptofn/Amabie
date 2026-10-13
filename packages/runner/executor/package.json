@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/executor",
+  "name": "@amabie/executor",
   "version": "0.0.1",
   "private": true,
   "description": "Records executed rounds: sanitized spawn, artifact logging, normalized stream hashing, classification facts.",
@@ -8,10 +8,10 @@
   "types": "./dist/src/index.d.ts",
   "exports": { ".": { "types": "./dist/src/index.d.ts", "default": "./dist/src/index.js" } },
   "dependencies": {
-    "@canary-rn/support": "*",
-    "@canary-rn/normalizers": "*",
-    "@canary-rn/hashing": "*",
-    "@canary-rn/classification": "*",
-    "@canary-rn/comparator": "*"
+    "@amabie/support": "*",
+    "@amabie/normalizers": "*",
+    "@amabie/hashing": "*",
+    "@amabie/classification": "*",
+    "@amabie/comparator": "*"
   }
 }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { canaryEvidenceStatus, pilotSessionComplete } from './v15-ollama-native-agent.mjs';
+import { amabieEvidenceStatus, pilotSessionComplete } from './v15-ollama-native-agent.mjs';
 
 const [pilot, output] = process.argv.slice(2);
 assert.ok(pilot && output && !fs.existsSync(output), 'usage: <pilot directory> <new report.json>');
@@ -30,7 +30,7 @@ const rows = summary.sessions.map(session => {
     checkpoints: record.agentManualCheckpoints?.length ?? 0, nativeHookFired: record.hookFiredDuringRun,
     sessionOutcome: ledger.agentSessionOutcome, checkpointStatus: checkpoint?.status ?? null,
     originalEvidenceLabel: record.verification.evidenceStatus,
-    finalEvidenceLabel: session.arm === 'plain' ? 'not_applicable_plain_arm' : canaryEvidenceStatus(response, checkpoint),
+    finalEvidenceLabel: session.arm === 'plain' ? 'not_applicable_plain_arm' : amabieEvidenceStatus(response, checkpoint),
     sourceRecord: path.join(session.attemptDir, 'record.json') };
 });
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');

@@ -11,7 +11,7 @@ import { hasOllamaNativeUsageEvidence, pilotSessionComplete } from './v15-ollama
 const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const arg = (name, fallback = null) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? fallback : process.argv[i + 1]; };
 const worktree = path.resolve(arg('worktree') ?? path.resolve(import.meta.dirname, '../..'));
-const preparedRoot = path.resolve(arg('prepared-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-20260927');
+const preparedRoot = path.resolve(arg('prepared-root') ?? 'C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-20260927');
 const outRoot = path.resolve(arg('out') ?? '.');
 const cli = path.resolve(arg('cli') ?? '');
 const protocol = arg('agent-protocol', 'claude');
@@ -42,8 +42,8 @@ const taskFiles = {
 const toolchains = {
   H1: [], H2: [], H3: [], H5: [],
   R1: [
-    'C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311',
-    'C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311\\Scripts',
+    'C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311',
+    'C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311\\Scripts',
     'C:\\Program Files\\Git\\cmd', 'C:\\Program Files\\Git\\usr\\bin',
   ],
   S1: [
@@ -52,12 +52,12 @@ const toolchains = {
   ],
 };
 const allSessions = [
-  ['H1', 'plain'], ['H1', 'canary'],
-  ['H2', 'canary'], ['H2', 'plain'],
-  ['H3', 'plain'], ['H3', 'canary'],
-  ['H5', 'canary'], ['H5', 'plain'],
-  ['R1', 'plain'], ['R1', 'canary'],
-  ['S1', 'canary'], ['S1', 'plain'],
+  ['H1', 'plain'], ['H1', 'amabie'],
+  ['H2', 'amabie'], ['H2', 'plain'],
+  ['H3', 'plain'], ['H3', 'amabie'],
+  ['H5', 'amabie'], ['H5', 'plain'],
+  ['R1', 'plain'], ['R1', 'amabie'],
+  ['S1', 'amabie'], ['S1', 'plain'],
 ];
 const requestedLabels = arg('tasks')?.split(',') ?? Object.keys(taskFiles);
 if (!requestedLabels.length || new Set(requestedLabels).size !== requestedLabels.length || requestedLabels.some((label) => !taskFiles[label])) {
@@ -84,7 +84,7 @@ if (!fs.statSync(preparedRoot, { throwIfNoEntry: false })?.isDirectory()
   || !fs.statSync(oracle, { throwIfNoEntry: false })?.isFile()
   || !fs.statSync(runProbe, { throwIfNoEntry: false })?.isFile()
   || (protocol === 'codex-local' && !fs.statSync(codexJsonlParser, { throwIfNoEntry: false })?.isFile())
-  || npmVersion.status !== 0 || !/^canary 1\.5\.0\s*$/m.test(npmVersion.stdout ?? '')
+  || npmVersion.status !== 0 || !/^amabie 1\.5\.0\s*$/m.test(npmVersion.stdout ?? '')
   || agentVersionRun.status !== 0 || !/\d+\.\d+\.\d+/.test(agentVersionRun.stdout ?? '')
   || !Number.isFinite(perSessionMax) || perSessionMax <= 0 || perSessionMax > 2.5
   || !Number.isFinite(totalMax) || totalMax <= 0 || totalMax > 30
@@ -100,12 +100,12 @@ for (const [label, arm] of schedule) {
   if (!fs.statSync(repo, { throwIfNoEntry: false })?.isDirectory()) throw new Error(`missing prepared workspace ${label}/${arm}`);
   const preflightPath = path.join(preparedRoot, 'preflight', arm, label, 'attempt-result.json');
   const preflight = JSON.parse(fs.readFileSync(preflightPath, 'utf8'));
-  if (preflight.status !== 'complete' || (arm === 'canary' && !preflight.sealedBaselineHead)) throw new Error(`preflight is incomplete for ${label}/${arm}`);
+  if (preflight.status !== 'complete' || (arm === 'amabie' && !preflight.sealedBaselineHead)) throw new Error(`preflight is incomplete for ${label}/${arm}`);
 }
 fs.mkdirSync(outRoot, { recursive: true });
 const startedAt = new Date().toISOString();
 const manifest = {
-  schema: 'canary-v15-paired-agent-pilot/2',
+  schema: 'amabie-v15-paired-agent-pilot/2',
   probe: 'tooling/probes/v15-pilot-run.mjs',
   probeSha256: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
   runProbeSha256: sha256(fs.readFileSync(runProbe)), oracleSha256: sha256(fs.readFileSync(oracle)),
@@ -207,7 +207,7 @@ for (let i = 0; i < schedule.length; i++) {
   if (protocol === 'codex-local' && !hasCodexLocalUsageEvidence(ledger?.usage, outcome.localModelRuntime)) { stopReason = 'local model runtime or native usage evidence is missing'; break; }
   if (protocol === 'ollama-native' && !hasOllamaNativeUsageEvidence(ledger?.usage, outcome.localModelRuntime)) { stopReason = 'Ollama local model runtime or native token usage evidence is missing'; break; }
   if (protocol === 'ollama-native' && modelUnload?.status !== 0) { stopReason = 'local Ollama model could not be unloaded after the session'; break; }
-  if (protocol === 'codex-local' && arm === 'canary' && outcome.hookFiredDuringRun !== true) { stopReason = 'Canary Stop hook did not fire in the model session'; break; }
+  if (protocol === 'codex-local' && arm === 'amabie' && outcome.hookFiredDuringRun !== true) { stopReason = 'Amabie Stop hook did not fire in the model session'; break; }
 
   if (!correctness || correctnessRun.status !== 0) console.log(`OBSERVED correctness oracle outcome for ${label}/${arm}; raw oracle report saved`);
 }
@@ -221,7 +221,7 @@ const summary = {
   status: stopReason === null && outcomes.length === schedule.length && outcomes.every(pilotSessionComplete)
     ? 'complete' : 'incomplete',
   statement: outcomes.length === schedule.length
-    ? `${schedule.length} sessions and independent oracle outcomes were recorded; correctness and Canary proof status are reported separately.`
+    ? `${schedule.length} sessions and independent oracle outcomes were recorded; correctness and Amabie proof status are reported separately.`
     : `Stopped after ${outcomes.length} session(s): ${stopReason}`,
 };
 fs.writeFileSync(path.join(outRoot, 'pilot-summary.json'), `${JSON.stringify(summary, null, 2)}\n`, { flag: 'wx' });

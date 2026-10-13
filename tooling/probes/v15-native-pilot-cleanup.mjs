@@ -14,7 +14,7 @@ const contained = (root, file) => {
   assert.ok(relative && !relative.startsWith('..') && !path.isAbsolute(relative), 'path must stay within its owner');
 };
 for (const value of [source, evidence, archive]) assert.ok(value && path.isAbsolute(value), 'absolute source/evidence/archive required');
-assert.match(path.basename(source), /^canary-native-(?:final-(?:H[1235]|R1|S1)-\d{8}|build-order-\d{8}-six|validation-[a-f0-9]{12})$/);
+assert.match(path.basename(source), /^amabie-native-(?:final-(?:H[1235]|R1|S1)-\d{8}|build-order-\d{8}-six|validation-[a-f0-9]{12})$/);
 const temp = fs.realpathSync.native(os.tmpdir());
 assert.equal(fs.realpathSync.native(source), path.join(temp, path.basename(source)), 'only a direct owned OS-temp directory may be removed');
 for (const directory of [evidence, archive]) {
@@ -50,9 +50,9 @@ for (const record of preparation.records) {
   const session = summary.sessions.find((item) => item.cwd === record.repo);
   assert.ok(session?.captureComplete, 'every workspace must have a complete captured session');
   assert.ok(fs.statSync(path.join(archive, session.name, 'baseline-to-worker.diff')).isFile());
-  const store = path.join(os.tmpdir(), 'canary-v15-validation-trust', hash(record.repo));
+  const store = path.join(os.tmpdir(), 'amabie-v15-validation-trust', hash(record.repo));
   if (fs.existsSync(store)) {
-    const parent = path.join(temp, 'canary-v15-validation-trust');
+    const parent = path.join(temp, 'amabie-v15-validation-trust');
     assert.equal(fs.realpathSync.native(path.dirname(store)), parent);
     assert.equal(fs.realpathSync.native(store), path.join(parent, path.basename(store)));
     stores.add(store);

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Canary are documented here.
+All notable changes to Amabie (formerly Canary) are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -12,6 +12,18 @@ changed*; the evidence ledgers record *what was observed*.
 
 ### Changed
 
+- Renamed the product, CLI, workspace packages, project files and local state paths to Amabie 2.0. Existing
+  `.canary` state and Canary project records are migrated or read compatibly; the `canary` executable remains
+  an alias so installed v1.5 hooks keep working during the upgrade.
+- MCP now reports a completed Canary verdict such as `NOT PROVEN` as a normal tool result while preserving
+  its nonzero CLI exit code; process launch failures remain MCP errors.
+- Agent intake now requires task registration before edits. Objective criteria without sealed proofs stay
+  `NOT PROVEN` at completion, while implementation and regression-test work can proceed.
+- Claude Code setup now installs a `PreToolUse` hook that blocks shell, write, delegation and MCP calls
+  until task registration succeeds; objective proof gaps no longer block implementation. It preserves
+  foreign hooks and reports missing guard wiring.
+- Pre-bound workflow probe now clears its transport timeout when the worker exits, so the probe process
+  exits after the assertions finish.
 - Top-level `canary --help` and `canary -h` now exit successfully and show help without appending
   a repository-status answer; bare invocation and unknown commands keep their misuse exit code.
 - Everyday MCP descriptions and instructions remove repeated wording; the initialized four-tool payload

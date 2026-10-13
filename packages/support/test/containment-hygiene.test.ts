@@ -78,17 +78,17 @@ describe('S1 — a caller-PATH "ps" liar cannot control the sweep', () => {
     // psTableRows spawn (audit F-6 mutation M6) flips this to red.
     const dir = fresh('leak-canary');
     const bin = path.join(dir, 'ps');
-    fs.writeFileSync(bin, '#!/bin/sh\nif [ -n "$CANARY_ENV_LEAK_CHECK" ]; then echo "999999 1 999999 999999"; fi\n');
+    fs.writeFileSync(bin, '#!/bin/sh\nif [ -n "$AMABIE_ENV_LEAK_CHECK" ]; then echo "999999 1 999999 999999"; fi\n');
     fs.chmodSync(bin, 0o755);
-    const saved = process.env.CANARY_ENV_LEAK_CHECK;
-    process.env.CANARY_ENV_LEAK_CHECK = `leaked-${process.pid}`;
+    const saved = process.env.AMABIE_ENV_LEAK_CHECK;
+    process.env.AMABIE_ENV_LEAK_CHECK = `leaked-${process.pid}`;
     try {
       const rows = psTableRows(bin);
       assert.ok(rows === null || rows.every((r) => r.sid !== 999999),
-        'caller env reached the containment spawn — the sweep child saw CANARY_ENV_LEAK_CHECK');
+        'caller env reached the containment spawn — the sweep child saw AMABIE_ENV_LEAK_CHECK');
     } finally {
-      if (saved === undefined) delete process.env.CANARY_ENV_LEAK_CHECK;
-      else process.env.CANARY_ENV_LEAK_CHECK = saved;
+      if (saved === undefined) delete process.env.AMABIE_ENV_LEAK_CHECK;
+      else process.env.AMABIE_ENV_LEAK_CHECK = saved;
     }
   });
 
@@ -137,7 +137,7 @@ describe('S2 — trusted resolution for Windows tools (injected SystemRoot, any 
     const env = containmentEnv();
     assert.equal(env.PATH, `${path.join(systemRoot, 'System32')};${systemRoot}`);
     assert.equal(env.USERNAME, 'canary');
-    assert.equal(env.USERDOMAIN, 'CANARY');
+    assert.equal(env.USERDOMAIN, 'AMABIE');
     assert.equal(env.ComSpec, path.join(systemRoot, 'System32', 'cmd.exe'));
     // a lying taskkill earlier on the CALLER path is invisible to the sweep:
     const callerPath = process.env.PATH ?? '';

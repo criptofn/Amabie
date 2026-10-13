@@ -18,7 +18,7 @@ const hash = (file) => crypto.createHash('sha256').update(fs.readFileSync(file))
 const evidence = path.resolve(args[2]);
 fs.mkdirSync(evidence, { recursive: true });
 const report = {
-  schema: 'canary-repair-comparison/1',
+  schema: 'amabie-repair-comparison/1',
   at: new Date().toISOString(),
   orchestrator: { path: import.meta.filename, sha256: hash(import.meta.filename) },
   instrument: { path: instrument, sha256: hash(instrument) },
@@ -34,7 +34,7 @@ for (const [index, file] of args.slice(0, 2).entries()) {
   const started = Date.now();
   const result = spawnSync(process.execPath, argv, {
     cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 120_000,
-    env: { ...process.env, CANARY_TEST_CLI: cli },
+    env: { ...process.env, AMABIE_TEST_CLI: cli },
   });
   const label = index === 0 ? 'before' : 'after';
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;

@@ -26,11 +26,11 @@ function files(root, relative = '') {
     return entry.isDirectory() ? files(root, next) : [next];
   });
 }
-const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-v15-evidence-export-'));
+const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v15-evidence-export-'));
 const stageRelative = path.relative(os.tmpdir(), stage);
 if (!stageRelative || stageRelative.startsWith('..') || path.isAbsolute(stageRelative)) throw new Error('temporary export is outside the OS temp directory');
 try {
-  const manifest = { schema: 'canary-v15-local-evidence-export/1', exportedAt: new Date().toISOString(), files: [] };
+  const manifest = { schema: 'amabie-v15-local-evidence-export/1', exportedAt: new Date().toISOString(), files: [] };
   for (const [name, sourceArg] of sources) {
     const source = path.resolve(sourceArg);
     const destination = path.join(stage, name);

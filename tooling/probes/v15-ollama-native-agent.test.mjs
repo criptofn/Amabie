@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { canaryEvidenceStatus, canaryHookDecision, createVerificationTools, executeWorkspaceTool, hasOllamaNativeUsageEvidence, isCanaryStopGuard, ollamaResponseUsage, pilotSessionComplete, resolveWorkspacePath } from './v15-ollama-native-agent.mjs';
+import { amabieEvidenceStatus, amabieHookDecision, createVerificationTools, executeWorkspaceTool, hasOllamaNativeUsageEvidence, isAmabieStopGuard, ollamaResponseUsage, pilotSessionComplete, resolveWorkspacePath } from './v15-ollama-native-agent.mjs';
 
 test('native local agent reads and writes only files below its workspace', (t) => {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ollama-agent-'));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ollama-agent-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
   fs.writeFileSync(path.join(workspace, 'target.txt'), 'OLD');
 
@@ -16,15 +16,15 @@ test('native local agent reads and writes only files below its workspace', (t) =
   assert.equal(written.bytes, 3);
   assert.equal(fs.readFileSync(path.join(workspace, 'src', 'target.txt'), 'utf8'), 'NEW');
   assert.throws(() => resolveWorkspacePath(workspace, '../outside.txt'), /stay below/);
-  assert.throws(() => resolveWorkspacePath(workspace, '.canary/plan.json'), /protected/);
+  assert.throws(() => resolveWorkspacePath(workspace, '.amabie/plan.json'), /protected/);
 });
 
 test('native local agent file listing excludes private and generated project state', (t) => {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ollama-list-'));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ollama-list-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  for (const directory of ['src', '.canary', '.git', 'node_modules', 'build']) fs.mkdirSync(path.join(workspace, directory));
+  for (const directory of ['src', '.amabie', '.git', 'node_modules', 'build']) fs.mkdirSync(path.join(workspace, directory));
   fs.writeFileSync(path.join(workspace, 'src', 'main.js'), 'export {};');
-  for (const directory of ['.canary', '.git', 'node_modules', 'build']) fs.writeFileSync(path.join(workspace, directory, 'hidden.txt'), 'private');
+  for (const directory of ['.amabie', '.git', 'node_modules', 'build']) fs.writeFileSync(path.join(workspace, directory, 'hidden.txt'), 'private');
 
   const { files } = executeWorkspaceTool(workspace, 'list_files', {});
   assert.deepEqual(files, ['src/main.js']);
@@ -41,25 +41,25 @@ test('native Ollama usage needs actual token counts and a model digest', () => {
   assert.throws(() => ollamaResponseUsage({ prompt_eval_count: NaN, eval_count: 4 }), /incomplete/);
 });
 
-test('a Canary one-repair stop guard ends the agent session without claiming a pass', () => {
-  assert.equal(isCanaryStopGuard({ systemMessage: 'Canary: NOT PROVEN — after one repair attempt. Stopping anyway.' }), true);
-  assert.equal(isCanaryStopGuard({ decision: 'allow', systemMessage: 'Checks passed.' }), false);
+test('a Amabie one-repair stop guard ends the agent session without claiming a pass', () => {
+  assert.equal(isAmabieStopGuard({ systemMessage: 'Amabie: NOT PROVEN — after one repair attempt. Stopping anyway.' }), true);
+  assert.equal(isAmabieStopGuard({ decision: 'allow', systemMessage: 'Checks passed.' }), false);
 });
 
-test('silent Canary hook output allows only a recorded pass', () => {
-  assert.equal(canaryHookDecision({ exitCode: 0, stdout: '', response: null }, { source: 'checkpoint', status: 'pass' }), 'allow');
-  assert.throws(() => canaryHookDecision({ exitCode: 0, stdout: '', response: null }, { source: 'checkpoint', status: 'fail' }), /without a passing checkpoint/);
-  assert.throws(() => canaryHookDecision({ exitCode: 0, stdout: '', response: null }, null), /without a passing checkpoint/);
-  assert.equal(canaryHookDecision({ exitCode: 0, stdout: '{"decision":"block"}', response: { decision: 'block' } }, null), 'block');
+test('silent Amabie hook output allows only a recorded pass', () => {
+  assert.equal(amabieHookDecision({ exitCode: 0, stdout: '', response: null }, { source: 'checkpoint', status: 'pass' }), 'allow');
+  assert.throws(() => amabieHookDecision({ exitCode: 0, stdout: '', response: null }, { source: 'checkpoint', status: 'fail' }), /without a passing checkpoint/);
+  assert.throws(() => amabieHookDecision({ exitCode: 0, stdout: '', response: null }, null), /without a passing checkpoint/);
+  assert.equal(amabieHookDecision({ exitCode: 0, stdout: '{"decision":"block"}', response: { decision: 'block' } }, null), 'block');
 });
 
-test('final Canary evidence follows its current record and response, independently of earlier blocks', () => {
+test('final Amabie evidence follows its current record and response, independently of earlier blocks', () => {
   const record = { source: 'checkpoint', status: 'pass' };
-  assert.equal(canaryEvidenceStatus({ systemMessage: 'Canary: the sealed checks passed — with a caveat.' }, record), 'passed_with_evidence_caveat');
-  assert.equal(canaryEvidenceStatus(null, record), 'passed');
-  assert.equal(canaryEvidenceStatus({ reason: 'NOT PROVEN' }, record), 'unverified_or_unproven');
-  assert.equal(canaryEvidenceStatus({ systemMessage: 'after one repair attempt. Stopping anyway.' }, { ...record, status: 'fail' }), 'stopped_after_repair_attempt');
-  assert.equal(canaryEvidenceStatus(null, { source: 'doctor', status: 'pass' }), 'unknown');
+  assert.equal(amabieEvidenceStatus({ systemMessage: 'Amabie: the sealed checks passed — with a caveat.' }, record), 'passed_with_evidence_caveat');
+  assert.equal(amabieEvidenceStatus(null, record), 'passed');
+  assert.equal(amabieEvidenceStatus({ reason: 'NOT PROVEN' }, record), 'unverified_or_unproven');
+  assert.equal(amabieEvidenceStatus({ systemMessage: 'after one repair attempt. Stopping anyway.' }, { ...record, status: 'fail' }), 'stopped_after_repair_attempt');
+  assert.equal(amabieEvidenceStatus(null, { source: 'doctor', status: 'pass' }), 'unknown');
 });
 
 const capturedSession = { protocol: 'ollama-native', runExitCode: 0, runTimeout: false,
@@ -79,7 +79,7 @@ test('a captured incorrect solution remains a complete measurement; missing orac
 });
 
 test('local agent executes only operator-listed checks and reads their complete saved output', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ollama-checks-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ollama-checks-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const workspace = path.join(root, 'project');
   fs.mkdirSync(workspace);
@@ -101,24 +101,24 @@ test('local agent executes only operator-listed checks and reads their complete 
   assert.throws(() => tools.execute('read_check_output', { path: result.stdoutPath, offset: -1 }), /offset/);
 });
 
-test('Canary output is readable while authority and external linked files remain inaccessible', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ollama-evidence-'));
+test('Amabie output is readable while authority and external linked files remain inaccessible', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ollama-evidence-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const workspace = path.join(root, 'project');
-  const bundle = path.join(workspace, '.canary', 'evidence', 'checkpoint');
+  const bundle = path.join(workspace, '.amabie', 'evidence', 'checkpoint');
   fs.mkdirSync(bundle, { recursive: true });
   fs.writeFileSync(path.join(bundle, '1-tests.log'), 'assertion detail');
-  fs.writeFileSync(path.join(workspace, '.canary', 'canary.local.json'), 'sealed authority');
+  fs.writeFileSync(path.join(workspace, '.amabie', 'amabie.local.json'), 'sealed authority');
   const checksFile = path.join(root, 'checks.json');
   fs.writeFileSync(checksFile, JSON.stringify({ checks: [{ id: 'test', executable: process.execPath, args: ['--version'] }] }));
   const fakeCli = path.join(root, 'cli.mjs');
   fs.writeFileSync(fakeCli, 'console.log(JSON.stringify(process.argv.slice(2)));');
-  const tools = createVerificationTools(workspace, checksFile, path.join(root, 'output'), { canaryCli: fakeCli });
-  assert.deepEqual(JSON.parse(tools.execute('canary_doctor', { id: 'front end::test' }).stdout), ['doctor', '--json', '--check', 'front end::test']);
-  assert.deepEqual(JSON.parse(tools.execute('canary_doctor', {}).stdout), ['doctor', '--json']);
+  const tools = createVerificationTools(workspace, checksFile, path.join(root, 'output'), { amabieCli: fakeCli });
+  assert.deepEqual(JSON.parse(tools.execute('amabie_doctor', { id: 'front end::test' }).stdout), ['doctor', '--json', '--check', 'front end::test']);
+  assert.deepEqual(JSON.parse(tools.execute('amabie_doctor', {}).stdout), ['doctor', '--json']);
   assert.equal(tools.execute('read_check_output', { path: path.join(bundle, '1-tests.log') }).content, 'assertion detail');
-  assert.throws(() => tools.execute('read_check_output', { path: '.canary/canary.local.json' }), /output/);
-  assert.throws(() => executeWorkspaceTool(workspace, 'write_file', { path: '.canary/evidence/checkpoint/1-tests.log', content: 'fake' }), /protected/);
+  assert.throws(() => tools.execute('read_check_output', { path: '.amabie/amabie.local.json' }), /output/);
+  assert.throws(() => executeWorkspaceTool(workspace, 'write_file', { path: '.amabie/evidence/checkpoint/1-tests.log', content: 'fake' }), /protected/);
   const outside = path.join(root, 'outside');
   fs.mkdirSync(outside);
   fs.writeFileSync(path.join(outside, 'secret.log'), 'not evidence');
@@ -126,11 +126,11 @@ test('Canary output is readable while authority and external linked files remain
   assert.throws(() => tools.execute('read_check_output', { path: path.join(bundle, 'linked', 'secret.log') }), /symbolic/);
   const plain = createVerificationTools(workspace, checksFile, path.join(root, 'plain-output'));
   assert.throws(() => plain.execute('read_check_output', { path: path.join(bundle, '1-tests.log') }), /output/);
-  assert.throws(() => plain.execute('canary_doctor', {}), /unknown tool/);
+  assert.throws(() => plain.execute('amabie_doctor', {}), /unknown tool/);
 });
 
 test('local checks configuration and output directories must be outside the measured workspace', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ollama-config-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ollama-config-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const workspace = path.join(root, 'project');
   fs.mkdirSync(workspace);
