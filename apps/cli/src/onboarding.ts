@@ -76,6 +76,8 @@ import { ADAPTERS, adapterFor, adapterForStep, assertStepArgv, composePlan, LOCK
 // MEASURED decision of whether a failing check is the project's fault or Amabie's own environment.
 import { attributeFailures, inventoryOperatorToolchain, npmScriptDirs, pathEntries, TOOLCHAIN_CANDIDATES, validateToolchainDir, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
 import { emitEnvelope, PROTOCOL_DOCTOR_PARTIAL, PROTOCOL_RESULT, PROTOCOL_SETUP_CHECK, PROTOCOL_STATUS, type ProtocolEnvelope, type ProtocolIntegration, type ProtocolProof } from './protocol.js';
+import { validatePromptEvidenceRequest, verifyPromptEvidence, type ValidatedPromptEvidenceRequest, type VerificationReport } from '@amabie/prompt-evidence';
+import { createCodingSealedPlanAdapter } from './prompt-evidence.js';
 import { decideFastPath } from './fastpath.js';
 import { AGENT_INTEGRATIONS, hasAdvisory, installAdvisory, removeAdvisory } from './agents.js';
 import type { PlanAuthority, PlanStep } from './project.js';
@@ -3133,6 +3135,15 @@ function readAgentClaim(root: string): { at: string; text: string } | null {
 
 function rel(root: string, p: string): string { return path.relative(root, p) || '.'; }
 
+function promptEvidenceBundleSummary(report: VerificationReport): Record<string, unknown> {
+  const { requirements, ...summary } = report;
+  return {
+    ...summary,
+    // User-authored requirement text stays out of the durable evidence bundle.
+    requirements: requirements.map(({ id, status, criteria }) => ({ id, status, criteria })),
+  };
+}
+
 // ---------- friendly output ----------
 
 export class Out {
@@ -3182,10 +3193,11 @@ export function parseGlobals(args: string[]): { opts: GlobalOpts; rest: string[]
   return { opts, rest: args.filter((a) => a !== '--verbose' && a !== '--yes' && a !== '--json' && a !== '--fast') };
 }
 
-function takeDoctorOptions(args: string[]): { rest: string[]; check?: string; problems: string[] } {
+function takeDoctorOptions(args: string[]): { rest: string[]; check?: string; promptEvidence?: string; problems: string[] } {
   const rest: string[] = [];
   const problems: string[] = [];
   let check: string | undefined;
+  let promptEvidence: string | undefined;
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]!;
     if (arg === '--check') {
@@ -3202,9 +3214,23 @@ function takeDoctorOptions(args: string[]): { rest: string[]; check?: string; pr
       else check = value;
       continue;
     }
+    if (arg === '--prompt-evidence') {
+      const value = args[i + 1];
+      if (!value || value.startsWith('--')) problems.push('--prompt-evidence needs a request file path');
+      else if (promptEvidence !== undefined) problems.push('--prompt-evidence may be provided once');
+      else { promptEvidence = value; i += 1; }
+      continue;
+    }
+    if (arg.startsWith('--prompt-evidence=')) {
+      const value = arg.slice('--prompt-evidence='.length);
+      if (!value) problems.push('--prompt-evidence needs a request file path');
+      else if (promptEvidence !== undefined) problems.push('--prompt-evidence may be provided once');
+      else promptEvidence = value;
+      continue;
+    }
     rest.push(arg);
   }
-  return { rest, ...(check === undefined ? {} : { check }), problems };
+  return { rest, ...(check === undefined ? {} : { check }), ...(promptEvidence === undefined ? {} : { promptEvidence }), problems };
 }
 
 function takeSetupOptions(args: string[]): { rest: string[]; check: boolean; profile?: McpProfile; problems: string[] } {
@@ -4227,13 +4253,13 @@ export function cmdStatus(rawArgs: string[], compact = false): number {
   return 0;
 }
 
-export function cmdDoctor(rawArgs: string[]): number {
+export async function cmdDoctor(rawArgs: string[]): Promise<number> {
   const doctorArgs = takeDoctorOptions(rawArgs);
   const { opts, rest } = parseGlobals(doctorArgs.rest);
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'doctor' });
-  if (doctorArgs.problems.length > 0 || (doctorArgs.check !== undefined && opts.fast)) {
-    const reason = doctorArgs.problems.join('; ') || '--check cannot be combined with --fast';
+  if (doctorArgs.problems.length > 0 || (doctorArgs.check !== undefined && opts.fast) || (doctorArgs.promptEvidence !== undefined && (doctorArgs.check !== undefined || opts.fast))) {
+    const reason = doctorArgs.problems.join('; ') || (doctorArgs.promptEvidence !== undefined && doctorArgs.check !== undefined ? '--prompt-evidence requires the full plan and cannot be combined with --check' : doctorArgs.promptEvidence !== undefined && opts.fast ? '--prompt-evidence requires the full plan and cannot be combined with --fast' : '--check cannot be combined with --fast');
     o.context({ exitCode: 3, problems: [reason] });
     o.verdict('NEEDS ATTENTION', `invalid doctor options: ${reason}.`, `use \`${installedDoctorCommand('<sealed-check-id>')}\` for one diagnostic check, or \`${installedDoctorCommand()}\` for the full gate`);
     return 3;
@@ -4276,6 +4302,32 @@ export function cmdDoctor(rawArgs: string[]): number {
   }
   // Facts every later verdict in this command needs: the sealed checks, the
   // MEASURED custody level, and which harnesses can actually gate an agent.
+  let promptEvidenceRequest: ValidatedPromptEvidenceRequest | null = null;
+  if (doctorArgs.promptEvidence !== undefined) {
+    const task = readTaskRecord(root);
+    if (!task) {
+      o.context({ exitCode: 3, problems: ['no registered Amabie task is available for this experimental request'] });
+      o.verdict('NEEDS ATTENTION', 'Prompt-to-Evidence needs the original task and every exact requirement registered first.', 'run amabie task with the original intent and each exact --requirement, bind each requirement to a sealed script, then retry');
+      return 3;
+    }
+    const requestPath = path.resolve(root, doctorArgs.promptEvidence);
+    const realPath = containedRealPath(root, requestPath);
+    if (realPath === null) {
+      o.context({ exitCode: 3, problems: ['request file must be a regular file inside the project'] });
+      o.verdict('NEEDS ATTENTION', 'the Prompt-to-Evidence request is missing, linked, or outside this project.', 'place the request in the project and pass its relative path');
+      return 3;
+    }
+    try {
+      const stat = fs.statSync(realPath);
+      if (!stat.isFile() || stat.size > 256 * 1024) throw new Error('request file must be a regular file no larger than 256 KiB');
+      promptEvidenceRequest = validatePromptEvidenceRequest(JSON.parse(fs.readFileSync(realPath, 'utf8')) as unknown, { ...task, taskType: 'coding' });
+    } catch (error) {
+      const reason = String(error instanceof Error ? error.message : error).replace(/[\r\n\t]+/g, ' ').slice(0, 240);
+      o.context({ exitCode: 3, problems: [`invalid Prompt-to-Evidence request: ${reason}`] });
+      o.verdict('NEEDS ATTENTION', `the experimental request is invalid: ${reason}.`, 'correct the request so its goal and requirement set exactly match the registered task');
+      return 3;
+    }
+  }
   const doctorSecurity = securityCapability();
   o.context({ checks: protocolChecks(cfg), security: doctorSecurity, agent: agentCapability(root) });
   o.say(proofLevelLine(doctorSecurity.level));
@@ -4343,26 +4395,68 @@ export function cmdDoctor(rawArgs: string[]): number {
   const failed: StepResult[] = [];
   const ran: StepResult[] = [];
   const refused: string[] = [];
+  const refusedScripts = new Set<string>();
+  const ranByScript = new Map<string, StepResult[]>();
   for (const s of executionPlan) {
     let r: StepResult;
     try { r = runPlanStep(root, cfg.pm, s); }
-    catch (e) { refused.push(`plan step "${s.script}" refused: ${(e as Error).message}`); continue; }
-    ran.push(r); o.step(r); if (!r.ok) failed.push(r);
+    catch (e) { refused.push(`plan step "${s.script}" refused: ${(e as Error).message}`); refusedScripts.add(s.script); continue; }
+    ran.push(r);
+    const scriptRuns = ranByScript.get(s.script) ?? [];
+    scriptRuns.push(r);
+    ranByScript.set(s.script, scriptRuns);
+    o.step(r); if (!r.ok) failed.push(r);
+  }
+  let promptEvidenceReport: VerificationReport | undefined;
+  if (promptEvidenceRequest !== null) {
+    const resultsByScript = new Map([...ranByScript.entries()].map(([script, results]) => [script, results.map(result => ({
+      ok: result.ok,
+      exitCode: result.exitCode,
+      startedAt: result.startedAt,
+      endedAt: result.endedAt,
+      execDigest: result.exec.digest,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    }))]));
+    const adapter = createCodingSealedPlanAdapter({
+      plan: cfg.plan,
+      proofBindings: cfg.planAuthority?.proofBindings ?? {},
+      resultsByScript,
+      refusedScripts,
+      planDigest: planDigest(cfg.plan),
+      baselineDigest: cfg.baseline?.head ?? null,
+    });
+    promptEvidenceReport = await verifyPromptEvidence(promptEvidenceRequest, [adapter], { runId: crypto.randomUUID(), attempt: 0 });
+    o.context({ promptEvidence: promptEvidenceReport });
+    o.say(`Prompt-to-Evidence (EXPERIMENTAL): ${promptEvidenceReport.verdict} — ${promptEvidenceReport.coverage.met}/${promptEvidenceReport.coverage.total} requirements verified.`);
+    o.say(`  Original-goal source coverage: ${promptEvidenceReport.sourceCoverage.mappedNonWhitespaceCharacters}/${promptEvidenceReport.sourceCoverage.nonWhitespaceCharacters} non-whitespace characters${promptEvidenceReport.sourceCoverage.complete ? '' : ' — incomplete, so PASS is unavailable'}.`);
+    for (const issue of promptEvidenceReport.issues) o.say(`  Scope issue: ${issue}`);
+    for (const requirement of promptEvidenceReport.requirements) {
+      o.say(`  ${requirement.id} ${requirement.status.toUpperCase()}: ${requirement.text}`);
+      for (const criterion of requirement.criteria) o.say(`    ${criterion.status.toUpperCase()} — ${criterion.note}`);
+    }
   }
   if (refused.length) {
     // a script name Amabie will not execute is a config problem, not a test
     // result — honest NEEDS ATTENTION, no checkpoint, no fake run.
-    writeVerificationBundle(root, 'doctor', ran, 'blocked', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
+    writeVerificationBundle(root, 'doctor', ran, 'blocked', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null }, { ...(promptEvidenceReport === undefined ? {} : { extra: { promptEvidence: promptEvidenceBundleSummary(promptEvidenceReport) } }) });
     o.context({ problems: refused });
     o.verdict('NEEDS ATTENTION', 'the config names a script Amabie will not execute — doctor cannot certify this plan:', '');
     for (const p of refused) o.say(`  - ${p}`);
     o.say('next: amabie setup --yes reseals from the package.json scripts');
     return 2;
   }
-  const evidenceDir = writeVerificationBundle(root, 'doctor', ran, failed.length ? 'fail' : 'pass', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
+  const evidenceDir = writeVerificationBundle(root, 'doctor', ran, failed.length ? 'fail' : 'pass', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null }, { ...(promptEvidenceReport === undefined ? {} : { extra: { promptEvidence: promptEvidenceBundleSummary(promptEvidenceReport) } }) });
   writeCheckpoint(root, failed.length ? 'fail' : 'pass', failed.map((f) => f.kind), 'doctor', {
     checks: ran, hookResponse: 'not-applicable', evidencePath: evidenceDir ?? undefined,
   });
+  if (promptEvidenceReport !== undefined) {
+    if (evidenceDir === null) o.say('Prompt-to-Evidence artifact: could not be written; the result remains in this command output only.');
+    else {
+      o.context({ evidencePath: evidenceDir });
+      o.say(`Prompt-to-Evidence artifact: ${evidenceDir} — verification.json stores evidence digests and statuses; free-form requirement text is omitted.`);
+    }
+  }
   if (failed.length) {
     o.context({ problems: failed.map((f) => `${f.kind} failed: ${f.display}`) });
     // v1.5 blocker 6: the same MEASURED attribution setup prints. Doctor is the gate a worker meets
@@ -4400,6 +4494,16 @@ export function cmdDoctor(rawArgs: string[]): number {
       if (obligations[i]!.id === regression.id) obligations.splice(i, 1);
     }
     obligations.push(regression);
+  }
+  if (promptEvidenceReport !== undefined && promptEvidenceReport.verdict !== 'PASS') {
+    const failedRequirements = promptEvidenceReport.coverage.unmet;
+    const pendingRequirements = promptEvidenceReport.coverage.unproven + promptEvidenceReport.coverage.blocked;
+    obligations.push({
+      id: 'prompt-evidence',
+      mode: 'objective',
+      status: promptEvidenceReport.verdict === 'FAIL' ? 'unmet' : 'unproven',
+      note: `experimental per-requirement evaluation is ${promptEvidenceReport.verdict}: ${failedRequirements} requirement(s) have contradictory evidence, ${pendingRequirements} remain unproven or blocked — see promptEvidence for the criteria and gaps`,
+    });
   }
   const proof = proofSummary(task?.requirementCount ?? 0, obligations);
   o.context({ proof });

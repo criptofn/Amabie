@@ -64,6 +64,7 @@ import { appendMetric, metricFor, metricsTarget, streamSnapshot } from './metric
 import { cmdWork, cmdFinish } from './orchestrate.js';
 import { cmdMcp } from './mcp.js'; // 1.1 §D: MCP transport — no authority of its own
 import { cmdProvider } from './provider/commands.js'; // 1.1 §E: provider lifecycle
+import { cmdPromptEvidence } from './prompt-evidence-intake.js';
 
 const REPO_ROOT_DEFAULT = path.resolve(process.cwd());
 
@@ -111,8 +112,16 @@ usage:
                             pretends a hook exists where none does
   amabie doctor             is Amabie actually protecting this repo? Runs the checks now;
                             READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED
+  amabie prompt-evidence draft "<original task>" [--json]
+                            EXPERIMENTAL: create source-linked, UNCLEAR candidates for
+                            manual review; structural draft only, never a verification result.
   amabie doctor --check ID  re-runs one sealed check for diagnosis (PARTIAL only;
                             never a completion result). Run amabie doctor for the full gate.
+  amabie doctor --prompt-evidence FILE
+                            EXPERIMENTAL: evaluate each registered requirement using the
+                            current full sealed-plan run; requires exact task registration,
+                            complete source mapping, and sealed proof bindings; never accepts
+                            an agent's success claim.
   amabie uninstall          remove Amabie's own changes, keep everything else
   amabie claim "<text>"     the agent's account, stored as an UNTRUSTED hint — claims
                             are not evidence; only Amabie's own runs decide verdicts
@@ -424,6 +433,7 @@ async function main(argv: string[]): Promise<number> {
   if (cmd === 'result') return cmdResult(rest); // 1.1 §21: the machine-readable state answer for agents
   if (cmd === 'agents') return cmdAgents(rest); // 1.1 §18-21: which agents work here, and at what capability
   if (cmd === 'doctor') return cmdDoctor(rest);
+  if (cmd === 'prompt-evidence') return cmdPromptEvidence(rest);
   if (cmd === 'uninstall') return cmdUninstall(rest);
   if (cmd === 'checkpoint') return rest.length === 1 && rest[0] === '--session-start' ? cmdSessionStart() : cmdCheckpoint();
   if (cmd === 'claim') return cmdClaim(rest);

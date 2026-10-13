@@ -1,0 +1,10 @@
+{
+  "name": "@amabie/prompt-evidence",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Experimental task-neutral requirement-to-evidence verification core.",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": { ".": { "types": "./dist/src/index.d.ts", "default": "./dist/src/index.js" } }
+}

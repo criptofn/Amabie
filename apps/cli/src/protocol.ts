@@ -1,3 +1,5 @@
+import type { VerificationReport } from '@amabie/prompt-evidence';
+
 /**
  * 1.1 §21/§26/§28 — the machine-readable protocol.
  *
@@ -103,6 +105,8 @@ export interface ProtocolEnvelope {
   /** A selected-check diagnostic. Its PARTIAL status can never certify the full plan. */
   partialCheck?: { id: string; passed: boolean; ran: boolean; exitCode: number | null };
   proof?: ProtocolProof;
+  /** Experimental per-requirement result; populated only by doctor --prompt-evidence. */
+  promptEvidence?: VerificationReport;
   /** The one thing to do next, when there is one. */
   next?: string;
   /** Where the full evidence lives — context stays out of the model's window. */

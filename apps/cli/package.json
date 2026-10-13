@@ -12,6 +12,7 @@
   "dependencies": {
     "@amabie/support": "*",
     "@amabie/planner": "*",
+    "@amabie/prompt-evidence": "*",
     "@amabie/comparator": "*",
     "@amabie/classification": "*",
     "@amabie/executor": "*",
