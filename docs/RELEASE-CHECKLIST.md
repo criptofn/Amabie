@@ -8,7 +8,7 @@ This isolated worktree snapshots the existing renamed source; it does not replac
 - [x] Source-backed architecture/security/reliability audit complete within documented LOCAL scope.
 - [x] Confirmed release defects fixed with meaningful regression checks, including final actual Node20 refusal.
 - [x] Windows full test suite and separate productization battery complete on the current local source; see the limitations below.
-- [x] Full native Ubuntu 24.04 verification on the post-patch release snapshot: 1,358 passed, 7 explicit host-only skips, 0 failed (1,365 tests; Node 22.23.3). The skips remain unverified, not passes.
+- [x] Full native Ubuntu 24.04 verification on the post-patch release snapshot: 1,358 passed, 7 skipped test cases, 0 failed (1,365 cases; Node 22.23.3). Five Windows-native suites are also skipped at suite level and excluded from TAP case totals; all five passed in the native Windows full suite. The seven counted skips and their Windows/host-specific reasons are itemized in `docs/RELEASE-2.0.0.md`; none count as a pass.
 - [x] CLI help, setup recovery, installed stdio MCP and literal integration contracts verified; hosted consent/trust remains unverified.
 - [x] Final local tarball name/version, exact21files, aliases, license and checksum verified.
 - [x] Windows cleanroom 7/7 and fresh native Linux cleanroom plus verification rehearsal passed on the exact local release tarball.
