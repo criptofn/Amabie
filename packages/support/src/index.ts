@@ -809,10 +809,12 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `Add-Descendants $all;` +
     `$before=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($before.Count -le 0){ throw 'empty pre-kill process snapshot' }; Add-Descendants $before;` +
+    // Index exact identities once. Filtering the entire WMI snapshot for every
+    // descendant made cleanup quadratic on large Windows test process trees.
+    `$beforeIds=@{}; foreach($row in $before){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $beforeIds[$key]=$true } };` +
     `$k=New-Object System.Collections.Generic.List[int];` +
     `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
-    `$live=$before | Where-Object { [int]$_.ProcessId -eq $id -and $_.CreationDate -and $_.CreationDate.ToUniversalTime().Ticks -eq $created } | Select-Object -First 1;` +
-    `if($null -ne $live){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id) }catch{} } };` +
+    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key)){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id) }catch{} } };` +
     `$after=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
     `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +
