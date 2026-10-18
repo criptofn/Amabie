@@ -296,6 +296,41 @@ describe('Windows sweep snapshot refresh', () => {
     return parseWin32SweepOutput(result.stdout ?? '');
   };
 
+  it('indexes the pre-kill process identities once for a large snapshot', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 53001;
+    const spawnedAtMs = Date.now();
+    const created = new Date(spawnedAtMs - 1_000).toISOString();
+    const trackedRow = (pid: number, parentPid: number): string =>
+      `(New-TestProcess -Id ${pid} -Parent ${parentPid} -Created '${created}')`;
+    const root = trackedRow(rootPid, 100);
+    const candidates = Array.from({ length: 64 }, (_, index) => trackedRow(53100 + index, rootPid));
+    // Put unrelated rows first so a per-descendant linear lookup reads most of
+    // the table repeatedly. A one-pass identity index stays below the bound.
+    const unrelated = Array.from({ length: 96 }, (_, index) => trackedRow(54000 + index, 99999));
+    const setup = [
+      '$script:enumerations=0; $script:processIdReads=0',
+      'function New-TestProcess { param([int]$Id,[int]$Parent,[string]$Created); $row=[pscustomobject]@{_ProcessId=$Id;_ParentProcessId=$Parent;_CreationDate=[DateTime]::Parse($Created)}; Add-Member -InputObject $row -MemberType ScriptProperty -Name ProcessId -Value {$script:processIdReads++;$this._ProcessId}; Add-Member -InputObject $row -MemberType ScriptProperty -Name ParentProcessId -Value {$this._ParentProcessId}; Add-Member -InputObject $row -MemberType ScriptProperty -Name CreationDate -Value {$this._CreationDate}; $row }',
+      `$script:first=@(${root})`,
+      `$script:before=@(${[root, ...unrelated, ...candidates].join(',')})`,
+      `$script:after=@(${[root, ...unrelated].join(',')})`,
+      'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} else {$script:after} }',
+      'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
+    ].join(';');
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; [Console]::Error.WriteLine('processIdReads=' + $script:processIdReads)`], {
+      encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const processIdReads = Number(/processIdReads=(\d+)/.exec(result.stderr ?? '')?.[1]);
+    assert.ok(Number.isFinite(processIdReads), `missing process identity read count: ${result.stderr}`);
+    const sweep = parseWin32SweepOutput(result.stdout ?? '');
+    assert.equal(sweep.failed, false);
+    assert.equal(sweep.killed.length, candidates.length);
+    assert.ok(processIdReads < 5_000,
+      `pre-kill lookup should index process identities once; observed ${processIdReads} ProcessId reads`);
+  });
+
   it('finds a descendant omitted by the first snapshot and ignores an older reused-PID child', {
     skip: process.platform !== 'win32',
   }, () => {
