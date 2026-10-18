@@ -1,18 +1,18 @@
-# Canary
+# Amabie
 
-**Canary is an independent verification layer for coding agents.**
+**Amabie is an independent verification layer for coding agents.**
 
-The agent builds. Canary verifies.
+The agent builds. Amabie verifies.
 
 > **NO PROOF, NO DONE.**
 
 A coding agent saying "done" is not evidence. A green test suite is useful
 evidence — but if those checks **cannot tell your change from the code that was
-already there**, they prove nothing about it, and Canary says `NOT PROVEN`.
+already there**, they prove nothing about it, and Amabie says `NOT PROVEN`.
 
 > *"Cool diff. Prove that it actually made the project better."*
 
-## What Canary does
+## What Amabie does
 
 Install it once in a repository. Then use your coding agent exactly as you
 already do.
@@ -20,7 +20,7 @@ already do.
 - It **finds your project's own checks** — the `test` / `typecheck` / `build`
   scripts you already declare, or your ecosystem's own test command — and writes
   nothing you have to maintain.
-- When the agent says it is finished, Canary **runs those checks itself**, outside
+- When the agent says it is finished, Amabie **runs those checks itself**, outside
   the agent's context.
 - If they fail — **or if they are green for a reason that has nothing to do with
   the change** — it **blocks the completion** and hands back one short, actionable
@@ -29,8 +29,8 @@ already do.
   agent wants to know whether it is done, so it does not have to re-run your suite
   to find out.
 
-There is no Canary command in the ordinary loop, and you do not have to learn
-Canary's vocabulary to use it.
+There is no Amabie command in the ordinary loop, and you do not have to learn
+Amabie's vocabulary to use it.
 
 > **Why you may see one approval prompt — and how to skip it.** Canary registers its
 > agent tools at *project* scope, i.e. a `.mcp.json` in this repository. That is what
