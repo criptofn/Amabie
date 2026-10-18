@@ -24,7 +24,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
-import { runCommand, sweepDescendants, buildWin32SweepScript, parseWin32SweepOutput, posixSessionMember, type RunOutcome, type WorkspaceLayout } from '../src/index.js';
+import { runCommand, sweepDescendants, buildWin32SweepScript, parseWin32SweepOutput, posixSessionMember, windowsPowerShellCandidates, runWin32SweepWithFallback, type RunOutcome, type WorkspaceLayout } from '../src/index.js';
 
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
@@ -40,6 +40,10 @@ function workspace(): WorkspaceLayout {
   const ws = { root, fixture: path.join(root, 'fixture') };
   fs.mkdirSync(ws.fixture, { recursive: true });
   return ws;
+}
+
+function testPowerShellHost(): string {
+  return windowsPowerShellCandidates().find((candidate) => path.basename(candidate).toLowerCase() === 'pwsh.exe') ?? 'powershell.exe';
 }
 
 /** Child script: spawn ONE plain node helper on a long timer, unref it so
@@ -135,7 +139,7 @@ function cimObservation(pids: number[]): string[] {
     `$cdText=if($null -eq $cd){'null'}else{([DateTime]$cd).ToUniversalTime().ToString('o')};` +
     `Write-Output ('row=' + $want + ';present=true;ppid=' + [int]$hit.ParentProcessId + ';creationDate=' + $cdText) } }`;
   try {
-    const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script],
+    const r = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', script],
       { timeout: 30_000, encoding: 'utf8', windowsHide: true });
     if (r.error) return [`cimObservation: unavailable (${r.error.message})`];
     if (r.status !== 0) return [`cimObservation: unavailable (powershell exit ${String(r.status)})`];
@@ -277,23 +281,114 @@ describe('Windows sweep output contract', () => {
   });
 });
 
+describe('Windows PowerShell host fallback', () => {
+  it('uses an explicit trusted pwsh.exe override first and otherwise defaults to the system host', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const original = new Map<string, string | undefined>();
+    const keys = ['SystemRoot', 'ProgramW6432', 'ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA', 'AMABIE_POWERSHELL_CORE_PATH'];
+    for (const key of keys) original.set(key, process.env[key]);
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pwsh-candidate-'));
+    const configured = path.join(root, 'operator', 'pwsh.exe');
+    const localAppDataHost = path.join(root, 'local', 'Programs', 'PowerShell', '7', 'pwsh.exe');
+    fs.mkdirSync(path.dirname(configured), { recursive: true });
+    fs.mkdirSync(path.dirname(localAppDataHost), { recursive: true });
+    fs.writeFileSync(configured, 'test fixture');
+    fs.writeFileSync(localAppDataHost, 'test fixture');
+    try {
+      process.env.SystemRoot = 'C:\\WINDOWS';
+      process.env.ProgramW6432 = path.join(root, 'program64');
+      process.env.ProgramFiles = path.join(root, 'program');
+      process.env['ProgramFiles(x86)'] = path.join(root, 'program32');
+      process.env.LOCALAPPDATA = path.join(root, 'local');
+      delete process.env.AMABIE_POWERSHELL_CORE_PATH;
+      assert.equal(windowsPowerShellCandidates()[0], 'C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe');
+      process.env.AMABIE_POWERSHELL_CORE_PATH = configured;
+      const candidates = windowsPowerShellCandidates();
+      assert.equal(candidates[0], configured, 'an explicit override is the operator-selected host');
+      assert.ok(!candidates.includes(localAppDataHost), 'user-writable LocalAppData hosts are not discovered implicitly');
+
+      process.env.AMABIE_POWERSHELL_CORE_PATH = path.join(root, 'operator', 'not-pwsh.exe');
+      assert.ok(!windowsPowerShellCandidates().includes(process.env.AMABIE_POWERSHELL_CORE_PATH),
+        'the override must name an existing PowerShell Core executable');
+    } finally {
+      for (const [key, value] of original) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('retries only after a process-host access violation and keeps successful scan semantics authoritative', () => {
+    const calls: string[] = [];
+    const fallbackEvents: Array<[string, string, string]> = [];
+    const clean = 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=\n';
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable) => {
+      calls.push(executable);
+      return executable === 'powershell.exe'
+        ? { status: 3221225477, stdout: '', stderr: '' }
+        : { status: 0, stdout: clean, stderr: '' };
+    }, (previous, next, reason) => fallbackEvents.push([previous, next, reason]));
+    assert.deepEqual(result, { killed: [], failed: false });
+    assert.deepEqual(calls, ['powershell.exe', 'pwsh.exe']);
+    assert.deepEqual(fallbackEvents, [['powershell.exe', 'pwsh.exe', 'engine access violation 0xC0000005']]);
+  });
+
+  it('does not retry a valid scan that reports surviving descendants', () => {
+    const calls: string[] = [];
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable) => {
+      calls.push(executable);
+      return { status: 0, stdout: 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=53002\n', stderr: '' };
+    });
+    assert.deepEqual(result, { killed: [], failed: true, reason: 'surviving process ids: 53002' });
+    assert.deepEqual(calls, ['powershell.exe']);
+  });
+
+  it('fails closed after non-crash errors or when no fallback runtime succeeds', () => {
+    const ordinaryFailure: string[] = [];
+    const failedScan = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable) => {
+      ordinaryFailure.push(executable);
+      return { status: executable === 'powershell.exe' ? 1 : 0, stdout: '', stderr: 'query failed' };
+    });
+    assert.equal(failedScan.failed, true);
+    assert.deepEqual(ordinaryFailure, ['powershell.exe'], 'ordinary command errors are not retried');
+
+    const noHost = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe'], () => ({
+      status: 3221225477, stdout: '', stderr: '',
+    }));
+    assert.equal(noHost.failed, true);
+  });
+});
+
 describe('Windows sweep snapshot refresh', () => {
   const processRow = (pid: number, parentPid: number, created: string): string =>
     `[pscustomobject]@{ProcessId=${pid};ParentProcessId=${parentPid};CreationDate=[DateTime]::Parse('${created}')}`;
-  const runWithSnapshots = (rootPid: number, spawnedAtMs: number, first: string[], before: string[], after: string[]) => {
+  const runWithSnapshots = (rootPid: number, spawnedAtMs: number, first: string[], before: string[], after: string[],
+    afterWait = after, onWaitCalls?: (count: number) => void) => {
     const setup = [
       '$script:enumerations=0',
+      '$script:waitCalls=0',
       `$script:first=@(${first.join(',')})`,
       `$script:before=@(${before.join(',')})`,
       `$script:after=@(${after.join(',')})`,
+      `$script:afterWait=@(${afterWait.join(',')})`,
       'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} else {$script:after} }',
       'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
+      'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout); if($Timeout -ne 2 -or $Id.Count -le 0){throw "invalid bounded wait"}; $script:waitCalls++; $script:after=$script:afterWait }',
     ].join(';');
-    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}`], {
+    // These tests exercise generated-script semantics with mocked process
+    // snapshots, not Windows PowerShell 5.1 itself. Prefer installed PowerShell
+    // Core when the inbox host is unavailable or crashes on CIM enumeration.
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; Write-Output ('test-waits=' + $script:waitCalls)`], {
       encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
     });
     assert.equal(result.status, 0, result.stderr);
-    return parseWin32SweepOutput(result.stdout ?? '');
+    const lines = (result.stdout ?? '').split(/\r?\n/u);
+    const waitLine = lines.find(line => line.startsWith('test-waits='));
+    assert.ok(waitLine, 'mocked wait-call observation missing');
+    onWaitCalls?.(Number(waitLine.slice('test-waits='.length)));
+    return parseWin32SweepOutput(lines.filter(line => !line.startsWith('test-waits=')).join('\n'));
   };
 
   it('indexes the pre-kill process identities once for a large snapshot', {
@@ -318,7 +413,7 @@ describe('Windows sweep snapshot refresh', () => {
       'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} else {$script:after} }',
       'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
     ].join(';');
-    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; [Console]::Error.WriteLine('processIdReads=' + $script:processIdReads)`], {
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; [Console]::Error.WriteLine('processIdReads=' + $script:processIdReads)`], {
       encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
     });
     assert.equal(result.status, 0, result.stderr);
@@ -344,6 +439,23 @@ describe('Windows sweep snapshot refresh', () => {
     const oldChild = processRow(51003, rootPid, olderCreated);
     assert.deepEqual(runWithSnapshots(rootPid, spawnedAtMs,
       [root, oldChild], [root, child, oldChild], [root, oldChild]), { killed: [childPid], failed: false });
+  });
+
+  it('waits briefly for an asynchronous termination before classifying the post-kill snapshot', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 51501;
+    const childPid = 51502;
+    const spawnedAtMs = Date.now();
+    const created = new Date(spawnedAtMs - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const child = processRow(childPid, rootPid, created);
+    let waitCalls = 0;
+    const sweep = runWithSnapshots(rootPid, spawnedAtMs,
+      [root, child], [root, child], [root, child], [root], count => { waitCalls = count; });
+    assert.deepEqual(sweep, { killed: [childPid], failed: false },
+      'the post-kill snapshot must reflect the bounded wait');
+    assert.equal(waitCalls, 1, 'one bounded wait is made for a killed descendant');
   });
 
   it('fails closed when a descendant appears in the final snapshot and remains alive', {

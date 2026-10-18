@@ -48,6 +48,9 @@ export interface RequirementDeclaration {
     start: number;
     end: number;
     excerpt: string;
+    /** Exact candidate text span inside a broader source span partition. */
+    focusStart?: number;
+    focusEnd?: number;
   };
   clarity: 'clear' | 'unclear';
   criteria: CriterionDeclaration[];
@@ -67,6 +70,16 @@ function sourceCandidateText(sourceRef: RequirementDeclaration['sourceRef']): st
 }
 
 function sourceMatchesRequirement(requirement: Pick<RequirementDeclaration, 'text' | 'sourceRef'>): boolean {
+  const { focusStart, focusEnd } = requirement.sourceRef;
+  if (focusStart !== undefined || focusEnd !== undefined) {
+    if (focusStart === undefined || focusEnd === undefined
+      || !Number.isSafeInteger(focusStart) || !Number.isSafeInteger(focusEnd)
+      || focusStart < requirement.sourceRef.start || focusEnd < focusStart || focusEnd > requirement.sourceRef.end) return false;
+    return requirement.sourceRef.excerpt.slice(
+      focusStart - requirement.sourceRef.start,
+      focusEnd - requirement.sourceRef.start,
+    ) === requirement.text;
+  }
   if (requirement.sourceRef.kind === 'declared-requirement') return requirement.sourceRef.excerpt === requirement.text;
   return sourceCandidateText(requirement.sourceRef) === requirement.text;
 }
@@ -199,7 +212,7 @@ export interface VerificationReport {
 }
 
 export interface CorrectionReport {
-  schema: 'amabie-correction-report/2';
+  schema: 'amabie-correction-report/3';
   goalDigest: string;
   scopeDigest: string;
   attempt: number;
@@ -209,7 +222,15 @@ export interface CorrectionReport {
     requirement: string;
     status: RequirementStatus;
     gaps: string[];
-    criteria: Array<{ criterionId: string; status: RequirementStatus; gap: string }>;
+    criteria: Array<{
+      criterionId: string;
+      statement: string;
+      adapterId: string;
+      evidenceType: string;
+      predicate: { path: string; equals: JsonPrimitive };
+      status: RequirementStatus;
+      gap: string;
+    }>;
   }>;
   instruction: 'Address only the listed gaps within the original authorized task; do not broaden scope.';
 }
@@ -227,6 +248,8 @@ export interface CorrectionLoopOptions {
   adapters: readonly VerifierAdapter[];
   /** This must only be true after the caller has authorized workspace changes. */
   authorized: boolean;
+  /** A per-run cap that can lower, but never raise, the hard three-cycle maximum. */
+  maxAttempts?: number;
   correct?: (input: { report: CorrectionReport; cycle: number }) => Promise<{
     outcome: 'applied' | 'no-change' | 'blocked';
     /** The executor reports the unchanged, request-derived scope fingerprint. */
@@ -244,49 +267,33 @@ export function materialDigest(text: string): string {
   return createHash('sha256').update(normalizeTaskText(text), 'utf8').digest('hex');
 }
 
-/**
- * Produce a review-only structural draft from the exact goal text. Line and list
- * boundaries are preserved as source-linked candidates; no semantic requirements,
- * criteria, clarity decisions, or verification verdicts are inferred.
- */
-export function draftPromptEvidence(goalText: string, taskType = 'coding'): PromptEvidenceDraft {
+function validateDraftInput(goalText: string, taskType: string): void {
   if (typeof goalText !== 'string' || goalText.trim() === '' || goalText.length > MAX_GOAL_CHARS) {
     throw new Error('the original goal must be non-empty and no longer than 64,000 characters');
   }
   if (!/^[a-z][a-z0-9._-]{0,63}$/u.test(taskType)) {
     throw new Error('taskType must be a short, lowercase task-domain identifier');
   }
+}
 
-  const requirements: RequirementDeclaration[] = [];
-  let lineStart = 0;
-  while (lineStart <= goalText.length) {
-    const newline = goalText.indexOf('\n', lineStart);
-    const rawLineEnd = newline < 0 ? goalText.length : newline;
-    const lineEnd = rawLineEnd > lineStart && goalText[rawLineEnd - 1] === '\r' ? rawLineEnd - 1 : rawLineEnd;
-    const line = goalText.slice(lineStart, lineEnd);
-    const first = line.search(/\S/u);
-    if (first >= 0) {
-      let last = line.length;
-      while (last > first && /\s/u.test(line[last - 1]!)) last -= 1;
-      const start = lineStart + first;
-      const end = lineStart + last;
-      const excerpt = goalText.slice(start, end);
-      const listItem = /^(?:[-*+•]|\d+[.)])\s+(.+)$/u.exec(excerpt);
-      const text = (listItem?.[1] ?? excerpt).trim();
-      requirements.push({
-        text,
-        sourceRef: { kind: 'goal', start, end, excerpt },
-        clarity: 'unclear',
-        criteria: [],
-      });
-      if (requirements.length > MAX_REQUIREMENTS) {
-        throw new Error(`the draft contains more than ${MAX_REQUIREMENTS} line candidates; review and split the task before drafting`);
-      }
-    }
-    if (newline < 0) break;
-    lineStart = newline + 1;
-  }
+function conditionalComma(goalText: string, contentStart: number, commaIndex: number): boolean {
+  const beforeComma = goalText.slice(contentStart, commaIndex);
+  const sentenceStart = Math.max(
+    beforeComma.lastIndexOf('.'),
+    beforeComma.lastIndexOf('!'),
+    beforeComma.lastIndexOf('?'),
+    beforeComma.lastIndexOf(';'),
+  ) + 1;
+  const clause = beforeComma.slice(sentenceStart);
+  return /(?:^|,\s*(?:and\s+)?)(?:if|when|unless|provided(?: that)?|assuming|as long as|in case|once|after|before)\b/iu.test(clause.trim());
+}
 
+function makePromptEvidenceDraft(
+  goalText: string,
+  taskType: string,
+  requirements: RequirementDeclaration[],
+  notes: string[],
+): PromptEvidenceDraft {
   const request: PromptEvidenceRequest = {
     schema: PROMPT_EVIDENCE_SCHEMA,
     goal: { taskType, text: goalText },
@@ -305,12 +312,258 @@ export function draftPromptEvidence(goalText: string, taskType = 'coding'): Prom
     reviewRequired: true,
     verdict: 'NOT PROVEN',
     sourceCoverage: validated.sourceCoverage,
-    notes: [
-      'This draft segments source lines and explicit list items; it does not determine semantic completeness.',
-      'Review, split compound requests, resolve unclear wording, and add independently verifiable criteria for every requirement.',
-      'Every candidate starts unclear with no criteria, so this draft cannot produce PASS.',
-    ],
+    notes,
   };
+}
+
+const ACTION_CLAUSE_VERBS = [
+  'implement', 'add', 'build', 'create', 'ensure', 'validate', 'verify', 'reject', 'store', 'hash', 'encrypt',
+  'preserve', 'maintain', 'support', 'update', 'remove', 'write', 'generate', 'run', 'document', 'include', 'use',
+  'prevent', 'return', 'expose', 'handle', 'log', 'measure', 'compare', 'detect', 'report', 'keep', 'provide',
+  'check', 'test', 'parse', 'render', 'display', 'allow', 'require', 'configure', 'install', 'record', 'list', 'total',
+  'show', 'send', 'accept', 'attach', 'deny', 'sanitize', 'escape', 'encode', 'decode', 'restore', 'delete',
+  'refuse', 'export', 'neutralize',
+] as const;
+
+function thirdPersonAction(verb: string): string {
+  if (/[^aeiou]y$/u.test(verb)) return `${verb.slice(0, -1)}ies`;
+  if (/(?:s|x|z|ch|sh|o)$/u.test(verb)) return `${verb}es`;
+  return `${verb}s`;
+}
+
+function actionGerund(verb: string): string {
+  if (verb.endsWith('ie')) return `${verb.slice(0, -2)}ying`;
+  if (verb.endsWith('e') && !verb.endsWith('ee')) return `${verb.slice(0, -1)}ing`;
+  if (/^[^aeiou]*[aeiou][^aeiouwxy]$/u.test(verb) && !/(.)\1$/u.test(verb)) {
+    return `${verb}${verb.at(-1)}ing`;
+  }
+  return `${verb}ing`;
+}
+
+const ACTION_CLAUSE_PATTERN = [...new Set(ACTION_CLAUSE_VERBS.flatMap(verb => [
+  verb,
+  // In prompts, "tests" is commonly a noun in lists such as "validation, tests, and storage".
+  ...(verb === 'test' ? [] : [thirdPersonAction(verb)]),
+]))].join('|');
+const ACTION_GERUND_PATTERN = [...new Set(ACTION_CLAUSE_VERBS.map(actionGerund))].join('|');
+const SUBJECT_MODAL_ACTION_PATTERN = '(?:(?!if\\b|when\\b|unless\\b|provided\\b|assuming\\b|once\\b|before\\b|after\\b|while\\b|because\\b)[\\p{L}\\p{N}_-]+[ \\t]+){1,6}(?:must|should|can|cannot|will|shall|may|might)(?:[ \\t]+(?:not|never))?[ \\t]+(?:' + ACTION_CLAUSE_PATTERN + ')\\b';
+const ACTION_CLAUSE_START_PATTERN = '(?:' + ACTION_CLAUSE_PATTERN + '|' + SUBJECT_MODAL_ACTION_PATTERN + ')';
+
+/**
+ * Produce review-only source-linked candidates from the exact goal text. The
+ * deterministic splitter recognizes line/list, sentence, semicolon, and
+ * conservative action-clause boundaries. Commas inside coordinated lists and
+ * conditional clauses are preserved. Subject-modal coordinated actions are split conservatively. Candidates remain unclear: segmentation
+ * is a traceable proposal, not proof of semantic completeness.
+ */
+export function draftPromptEvidence(goalText: string, taskType = 'coding'): PromptEvidenceDraft {
+  validateDraftInput(goalText, taskType);
+
+  const requirements: RequirementDeclaration[] = [];
+  const separator = new RegExp(String.raw`,\s*(?:(?:and|but|then|also)\s+)?(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|;\s*(?:(?:and|but|then|also)\s+)?|\s+(?:and|but|then|also)\s+(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|\s+while\s+(?=(?:${ACTION_GERUND_PATTERN})\b)|(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bvs\.)(?<=\.)\s+(?=[A-Z0-9])|(?<=[!?])\s+(?=[A-Z0-9])`, 'giu');
+  let lineStart = 0;
+  while (lineStart <= goalText.length) {
+    const newline = goalText.indexOf('\n', lineStart);
+    const rawLineEnd = newline < 0 ? goalText.length : newline;
+    const lineEnd = rawLineEnd > lineStart && goalText[rawLineEnd - 1] === '\r' ? rawLineEnd - 1 : rawLineEnd;
+    const line = goalText.slice(lineStart, lineEnd);
+    const first = line.search(/\S/u);
+    if (first >= 0) {
+      let last = line.length;
+      while (last > first && /\s/u.test(line[last - 1]!)) last -= 1;
+      const start = lineStart + first;
+      const end = lineStart + last;
+      const excerpt = goalText.slice(start, end);
+      const listItem = /^(?:[-*+•]|\d+[.)])\s+/u.exec(excerpt);
+      const contentStart = start + (listItem?.[0].length ?? 0);
+      const focusRanges: Array<{ start: number; end: number }> = [];
+      let focusStart = contentStart;
+      separator.lastIndex = contentStart;
+      for (let boundary = separator.exec(goalText); boundary !== null && boundary.index < end; boundary = separator.exec(goalText)) {
+        if (goalText[boundary.index] === ',' && conditionalComma(goalText, contentStart, boundary.index)) continue;
+        let focusEnd = boundary.index;
+        while (focusEnd > focusStart && /\s/u.test(goalText[focusEnd - 1]!)) focusEnd -= 1;
+        while (focusStart < focusEnd && /\s/u.test(goalText[focusStart]!)) focusStart += 1;
+        if (focusEnd > focusStart) focusRanges.push({ start: focusStart, end: focusEnd });
+        focusStart = boundary.index + boundary[0].length;
+      }
+      let focusEnd = end;
+      while (focusEnd > focusStart && /\s/u.test(goalText[focusEnd - 1]!)) focusEnd -= 1;
+      while (focusStart < focusEnd && /\s/u.test(goalText[focusStart]!)) focusStart += 1;
+      if (focusEnd > focusStart) focusRanges.push({ start: focusStart, end: focusEnd });
+
+      for (let index = 0; index < focusRanges.length; index += 1) {
+        const focus = focusRanges[index]!;
+        const sourceStart = index === 0 ? start : focus.start;
+        const sourceEnd = focusRanges[index + 1]?.start ?? end;
+        const text = goalText.slice(focus.start, focus.end);
+        requirements.push({
+          text,
+          sourceRef: {
+            kind: 'goal', start: sourceStart, end: sourceEnd,
+            excerpt: goalText.slice(sourceStart, sourceEnd),
+            focusStart: focus.start,
+            focusEnd: focus.end,
+          },
+          clarity: 'unclear',
+          criteria: [],
+        });
+        if (requirements.length > MAX_REQUIREMENTS) {
+          throw new Error(`the draft contains more than ${MAX_REQUIREMENTS} candidates; review and reduce the task before drafting`);
+        }
+      }
+    }
+    if (newline < 0) break;
+    lineStart = newline + 1;
+  }
+
+  return makePromptEvidenceDraft(goalText, taskType, requirements, [
+      'Candidates are split with deterministic line, sentence, semicolon, and conservative action-clause boundaries; commas inside coordinated lists and conditional clauses are preserved. Exact focus offsets link every candidate back to the original prompt.',
+      'This heuristic does not establish semantic completeness. Review every candidate, split any remaining compound request, resolve unclear wording, and add independently verifiable criteria.',
+      'Every candidate starts unclear with no criteria, so this draft cannot produce PASS.',
+  ]);
+}
+
+function unquotedSourceFragments(
+  goalText: string,
+  ranges: readonly { start: number; end: number }[],
+): Array<{ start: number; end: number; text: string; candidateStart: number; candidateEnd: number }> {
+  const connectiveWords = new Set(['and', 'or', 'then', 'also', 'but', 'that', 'while', 'please']);
+  const fragments: Array<{ start: number; end: number; text: string; candidateStart: number; candidateEnd: number }> = [];
+  let cursor = 0;
+  const inspectGap = (start: number, end: number) => {
+    const text = goalText.slice(start, end);
+    const words = [...text.matchAll(/[\p{L}\p{N}]+/gu)];
+    const substantive = words.filter(word => {
+      const value = word[0]!.toLowerCase();
+      if (connectiveWords.has(value)) return false;
+      if (!/^\d+$/u.test(value)) return true;
+      const lineStart = text.lastIndexOf('\n', word.index! - 1) + 1;
+      const lineEndIndex = text.indexOf('\n', word.index!);
+      const lineEnd = lineEndIndex < 0 ? text.length : lineEndIndex;
+      const before = text.slice(lineStart, word.index);
+      const after = text.slice(word.index! + word[0]!.length, lineEnd);
+      return !/^\s*$/u.test(before) || !/^\s*[.)]\s*$/u.test(after);
+    });
+    if (substantive.length === 0) return;
+    const candidateStart = start + substantive[0]!.index!;
+    const last = substantive.at(-1)!;
+    const candidateEnd = start + last.index! + last[0]!.length;
+    fragments.push({ start, end, text: text.trim(), candidateStart, candidateEnd });
+  };
+
+  for (const range of ranges) {
+    inspectGap(cursor, range.start);
+    cursor = range.end;
+  }
+  inspectGap(cursor, goalText.length);
+  return fragments;
+}
+
+/**
+ * Build review-only requirements from exact, model-proposed source quotes. The
+ * model chooses candidate boundaries; this core maps each quote to one distinct
+ * source occurrence, rejects incomplete repeated-quote mappings, overlaps and
+ * paraphrases, and recomputes complete lexical coverage.
+ * It never accepts model-proposed clarity, criteria, evidence, or verdicts.
+ */
+export function draftPromptEvidenceFromQuotes(
+  goalText: string,
+  quotes: readonly string[],
+  taskType = 'coding',
+): PromptEvidenceDraft {
+  validateDraftInput(goalText, taskType);
+  if (!Array.isArray(quotes) || quotes.length === 0) throw new Error('at least one exact source quote is required');
+  if (quotes.length > MAX_REQUIREMENTS) throw new Error(`the extractor returned more than ${MAX_REQUIREMENTS} candidates`);
+
+  const validatedQuotes = quotes.map((quote, index) => {
+    if (typeof quote !== 'string' || quote.length === 0 || quote.trim() !== quote || quote.length > 8_000) {
+      throw new Error(`candidate ${index + 1} must be a non-empty exact source quote without outer whitespace and no longer than 8,000 characters`);
+    }
+    return quote;
+  });
+  const candidateCounts = new Map<string, number>();
+  for (const quote of validatedQuotes) candidateCounts.set(quote, (candidateCounts.get(quote) ?? 0) + 1);
+
+  const sourceOccurrences = new Map<string, number[]>();
+  for (const [quote, candidateCount] of candidateCounts) {
+    const occurrences: number[] = [];
+    let offset = 0;
+    while (offset <= goalText.length - quote.length) {
+      const start = goalText.indexOf(quote, offset);
+      if (start < 0) break;
+      occurrences.push(start);
+      offset = start + 1;
+    }
+    const candidateIndex = validatedQuotes.indexOf(quote) + 1;
+    if (occurrences.length === 0) throw new Error(`candidate ${candidateIndex} is not an exact source quote`);
+    if (occurrences.length > candidateCount) {
+      throw new Error(`candidate ${candidateIndex} is ambiguous because it occurs more than once in the original prompt and not every occurrence has a candidate`);
+    }
+    if (occurrences.length < candidateCount) {
+      throw new Error(`candidate ${candidateIndex} occurrence count does not match the exact source occurrences in the original prompt`);
+    }
+    sourceOccurrences.set(quote, occurrences);
+  }
+
+  const nextOccurrence = new Map<string, number>();
+  const ranges = validatedQuotes.map(quote => {
+    const occurrenceIndex = nextOccurrence.get(quote) ?? 0;
+    const start = sourceOccurrences.get(quote)![occurrenceIndex]!;
+    nextOccurrence.set(quote, occurrenceIndex + 1);
+    return { start, end: start + quote.length, text: quote };
+  }).sort((left, right) => left.start - right.start);
+
+  for (let index = 1; index < ranges.length; index += 1) {
+    if (ranges[index]!.start < ranges[index - 1]!.end) throw new Error('extractor candidate source quotes overlap');
+  }
+
+  const unquotedFragments = unquotedSourceFragments(goalText, ranges);
+  const candidateRanges = [
+    ...ranges,
+    ...unquotedFragments.map(fragment => ({ start: fragment.candidateStart, end: fragment.candidateEnd })),
+  ].sort((left, right) => left.start - right.start);
+  for (let index = 1; index < candidateRanges.length; index += 1) {
+    if (candidateRanges[index]!.start < candidateRanges[index - 1]!.end) {
+      throw new Error('the extractor produced overlapping source candidates after omitted text recovery');
+    }
+  }
+
+  const reviewNotes: string[] = [];
+  if (unquotedFragments.length > 0) {
+    const shownFragments = unquotedFragments.slice(0, 4).map(fragment => {
+      const excerpt = fragment.text.length > 160 ? `${fragment.text.slice(0, 157)}…` : fragment.text;
+      return `“${excerpt}”`;
+    });
+    const remaining = unquotedFragments.length - shownFragments.length;
+    reviewNotes.push(`Unquoted prompt text was not covered by the extractor's exact quotes and has been preserved as additional unresolved candidates: ${shownFragments.join(', ')}${remaining > 0 ? `, and ${remaining} more fragment(s)` : ''}. Review each candidate and split any compound obligations before registering.`);
+  }
+
+  const requirements: RequirementDeclaration[] = candidateRanges.map((focus, index) => {
+    const sourceStart = index === 0 ? 0 : focus.start;
+    const sourceEnd = candidateRanges[index + 1]?.start ?? goalText.length;
+    const text = goalText.slice(focus.start, focus.end);
+    if (text.length > 8_000) throw new Error(`candidate ${index + 1} exceeds 8,000 characters after omitted prompt text recovery; shorten the prompt and review it in smaller parts`);
+    return {
+      text,
+      sourceRef: {
+        kind: 'goal',
+        start: sourceStart,
+        end: sourceEnd,
+        excerpt: goalText.slice(sourceStart, sourceEnd),
+        focusStart: focus.start,
+        focusEnd: focus.end,
+      },
+      clarity: 'unclear',
+      criteria: [],
+    };
+  });
+
+  return makePromptEvidenceDraft(goalText, taskType, requirements, [...reviewNotes,
+    'An extractor proposed exact source quotes. The core matched each candidate to a distinct exact source occurrence, rejected incomplete repeated-quote coverage and overlaps, and mapped every prompt character to a source span.',
+    'Source coverage is lexical, not semantic completeness. Review every candidate, split remaining compound requirements, resolve unclear wording, and add independently verifiable criteria.',
+    'The model cannot set clarity, criteria, evidence, or verdicts. Every candidate remains unclear with no criteria, so this draft cannot produce PASS.',
+  ]);
 }
 
 function stableJson(value: unknown): string {
@@ -394,6 +647,12 @@ export function validatePromptEvidenceRequest(
       || !Number.isSafeInteger(value.sourceRef.start) || !Number.isSafeInteger(value.sourceRef.end)
       || typeof value.sourceRef.excerpt !== 'string') throw new Error(`requirements[${index}].sourceRef is invalid`);
     const sourceRef = value.sourceRef as unknown as RequirementDeclaration['sourceRef'];
+    const hasFocusStart = sourceRef.focusStart !== undefined;
+    const hasFocusEnd = sourceRef.focusEnd !== undefined;
+    if (hasFocusStart !== hasFocusEnd
+      || (hasFocusStart && (!Number.isSafeInteger(sourceRef.focusStart) || !Number.isSafeInteger(sourceRef.focusEnd)))) {
+      throw new Error(`requirements[${index}].sourceRef focus offsets are invalid`);
+    }
     if (sourceRef.start < 0 || sourceRef.end < sourceRef.start || sourceRef.end - sourceRef.start !== sourceRef.excerpt.length) {
       throw new Error(`requirements[${index}].sourceRef offsets do not match the excerpt`);
     }
@@ -401,8 +660,14 @@ export function validatePromptEvidenceRequest(
       if ((sourceRef.end > (goal.text as string).length) || (goal.text as string).slice(sourceRef.start, sourceRef.end) !== sourceRef.excerpt) {
         throw new Error(`requirements[${index}].sourceRef does not quote the original goal at its stated offsets`);
       }
+      if (hasFocusStart && (sourceRef.focusStart! < sourceRef.start || sourceRef.focusEnd! < sourceRef.focusStart!
+        || sourceRef.focusEnd! > sourceRef.end || (goal.text as string).slice(sourceRef.focusStart, sourceRef.focusEnd) !== value.text)) {
+        throw new Error(`requirements[${index}].sourceRef focus offsets do not quote the exact candidate text`);
+      }
     } else if (sourceRef.start !== 0 || sourceRef.end !== value.text.length || sourceRef.excerpt !== value.text) {
       throw new Error(`requirements[${index}].sourceRef for a declared requirement must quote that exact requirement`);
+    } else if (hasFocusStart) {
+      throw new Error(`requirements[${index}].sourceRef focus offsets are only supported for goal-linked requirements`);
     }
     if (value.clarity !== 'clear' && value.clarity !== 'unclear') throw new Error(`requirements[${index}].clarity must be clear or unclear`);
     if (!Array.isArray(value.criteria) || value.criteria.length > MAX_CRITERIA_PER_REQUIREMENT) {
@@ -734,41 +999,90 @@ function isAdapterStatus(value: unknown): value is { criterionId: string; reason
   return isRecord(value) && typeof value.criterionId === 'string' && typeof value.reason === 'string';
 }
 
-export function correctionReportFor(report: VerificationReport): CorrectionReport {
+export function correctionReportFor(
+  report: VerificationReport,
+  request: ValidatedPromptEvidenceRequest,
+): CorrectionReport {
+  if (report.goalDigest !== request.goalDigest
+    || report.scopeDigest !== request.scopeDigest
+    || report.taskType !== request.goal.taskType) {
+    throw new Error('verification report does not match the verified request');
+  }
+
+  const requirements = new Map(request.requirements.map(requirement => [requirement.id, requirement]));
+  if (!Array.isArray(report.requirements) || report.requirements.length !== requirements.size) {
+    throw new Error('verification report does not match the verified request');
+  }
+  const seenRequirementIds = new Set<string>();
+  for (const evaluation of report.requirements) {
+    const declaration = requirements.get(evaluation.id);
+    if (!declaration || declaration.text !== evaluation.text || seenRequirementIds.has(evaluation.id)
+      || evaluation.criteria.length !== declaration.criteria.length) {
+      throw new Error('verification report does not match the verified request');
+    }
+    seenRequirementIds.add(evaluation.id);
+    const declaredCriterionIds = new Set(declaration.criteria.map(criterion => criterion.id));
+    const evaluatedCriterionIds = new Set(evaluation.criteria.map(criterion => criterion.criterionId));
+    if (evaluatedCriterionIds.size !== evaluation.criteria.length
+      || evaluatedCriterionIds.size !== declaredCriterionIds.size
+      || [...evaluatedCriterionIds].some(criterionId => !declaredCriterionIds.has(criterionId))) {
+      throw new Error('verification report does not match the verified request');
+    }
+  }
+
   return {
-    schema: 'amabie-correction-report/2',
+    schema: 'amabie-correction-report/3',
     goalDigest: report.goalDigest,
     scopeDigest: report.scopeDigest,
     attempt: report.attempt,
     scopeGaps: sourceCoverageGaps(report.sourceCoverage),
-    unresolved: report.requirements.filter(r => r.status !== 'met').map(requirement => ({
-      requirementId: requirement.id,
-      requirement: requirement.text,
-      status: requirement.status,
-      gaps: [...(requirement.note ? [requirement.note] : [])],
-      criteria: requirement.criteria.filter(c => c.status !== 'met').map(c => ({
-        criterionId: c.criterionId,
-        status: c.status,
-        gap: c.note,
-      })),
-    })),
+    unresolved: report.requirements.filter(r => r.status !== 'met').map(requirement => {
+      const declaration = requirements.get(requirement.id);
+      if (!declaration || declaration.text !== requirement.text) {
+        throw new Error('verification report does not match the verified request');
+      }
+      const criteria = new Map(declaration.criteria.map(criterion => [criterion.id, criterion]));
+      return {
+        requirementId: requirement.id,
+        requirement: requirement.text,
+        status: requirement.status,
+        gaps: [...(requirement.note ? [requirement.note] : [])],
+        criteria: requirement.criteria.filter(criterion => criterion.status !== 'met').map(criterion => {
+          const criterionDeclaration = criteria.get(criterion.criterionId);
+          if (!criterionDeclaration) throw new Error('verification report does not match the verified request');
+          return {
+            criterionId: criterion.criterionId,
+            statement: criterionDeclaration.statement,
+            adapterId: criterionDeclaration.adapterId,
+            evidenceType: criterionDeclaration.evidenceType,
+            predicate: criterionDeclaration.predicate,
+            status: criterion.status,
+            gap: criterion.note,
+          };
+        }),
+      };
+    }),
     instruction: 'Address only the listed gaps within the original authorized task; do not broaden scope.',
   };
 }
 
 /** Opt-in orchestration only. It does not grant filesystem authority to the corrector. */
 export async function runBoundedCorrectionLoop(options: CorrectionLoopOptions): Promise<CorrectionLoopResult> {
+  const maxAttempts = options.maxAttempts ?? MAX_CORRECTION_CYCLES;
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > MAX_CORRECTION_CYCLES) {
+    throw new Error(`maxAttempts must be an integer from 1 to ${MAX_CORRECTION_CYCLES}`);
+  }
   const makeRunId = options.makeRunId ?? randomUUID;
   let verification = await verifyPromptEvidence(options.request, options.adapters, { runId: makeRunId(), attempt: 0 });
   if (verification.verdict === 'PASS') return { status: 'verified', verification, correctionAttempts: 0, correctionReport: null, stopReason: null };
-  let report = correctionReportFor(verification);
+  let report = correctionReportFor(verification, options.request);
   if (report.scopeGaps.length > 0) {
     return { status: 'scope-incomplete', verification, correctionAttempts: 0, correctionReport: report, stopReason: 'the original goal is not fully mapped to reviewed requirements; complete the requirement source mapping before code correction' };
   }
   if (!options.authorized) return { status: 'not-authorized', verification, correctionAttempts: 0, correctionReport: report, stopReason: 'corrections were not authorized' };
   if (!options.correct) return { status: 'no-corrector', verification, correctionAttempts: 0, correctionReport: report, stopReason: 'no correction agent callback is configured' };
 
-  for (let cycle = 1; cycle <= MAX_CORRECTION_CYCLES; cycle += 1) {
+  for (let cycle = 1; cycle <= maxAttempts; cycle += 1) {
     let rawCorrection: unknown;
     try { rawCorrection = await options.correct({ report, cycle }); }
     catch (error) {
@@ -790,7 +1104,7 @@ export async function runBoundedCorrectionLoop(options: CorrectionLoopOptions): 
     }
     verification = await verifyPromptEvidence(options.request, options.adapters, { runId: makeRunId(), attempt: cycle });
     if (verification.verdict === 'PASS') return { status: 'verified', verification, correctionAttempts: cycle, correctionReport: null, stopReason: null };
-    report = correctionReportFor(verification);
+    report = correctionReportFor(verification, options.request);
   }
-  return { status: 'limit-reached', verification, correctionAttempts: MAX_CORRECTION_CYCLES, correctionReport: report, stopReason: `the ${MAX_CORRECTION_CYCLES}-cycle correction limit was reached with unresolved requirements` };
+  return { status: 'limit-reached', verification, correctionAttempts: maxAttempts, correctionReport: report, stopReason: `the ${maxAttempts}-cycle correction limit was reached with unresolved requirements` };
 }

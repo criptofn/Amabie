@@ -70,6 +70,28 @@ by `packages/support/test/containment-hygiene.test.ts` (resolution + fail-
 safe; the lying-`ps` script harness is POSIX-only and says so) while sweep
 behavior stays pinned by `packages/support/test/lifecycle.test.ts`.
 
+**Windows PowerShell host selection.** Native provider operations use the
+inbox Windows PowerShell host resolved from System32 unless the operator
+explicitly sets `AMABIE_POWERSHELL_CORE_PATH` to an absolute, regular
+`pwsh.exe` file. That selects the host directly; native operations are not
+retried after execution begins because run and broker operations can have side
+effects. The same explicit override is first choice for process sweeps; when
+unset, sweeps try Windows PowerShell, then PowerShell Core 7 from standard
+Program Files locations after a missing executable or the observed CLR access
+violation `0xC0000005`. User-profile PowerShell installs are not
+auto-discovered. The override is an operator trust setting: Amabie checks its
+path and file shape, but does not attest its Authenticode signature; only point
+it at a trusted PowerShell Core installation. The value is read by the Amabie
+process and is not forwarded to the untrusted project process.
+
+For process sweeps, retry is limited to “host unavailable” and the specific access violation.
+Ordinary command errors, timeouts, malformed or incomplete output, unknown
+process identity, traversal limits, and surviving descendants remain failures
+and are not retried. Each attempt re-enumerates process identities and checks
+PID plus creation time before requesting a descendant kill. If no host produces
+a complete scan, the sweep remains failed closed. This is local host recovery,
+not an OS isolation boundary or a HARDENED capability claim.
+
 ## Boundaries — what is enforced, what is convention, what is absent
 
 Audit F14 requires an honest tiering. Amabie's isolation is **strongest at the

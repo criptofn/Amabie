@@ -33,14 +33,16 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-/** The workspace-local pytest interpreter, or null when this host has none. */
+/** The configured pytest interpreter, falling back to the workspace-local toolchain. */
 function findPytestPython(): string | null {
+  const configured = process.env['AMABIE_PYTEST_PYTHON'];
+  if (configured !== undefined && fs.existsSync(configured)) return configured;
   const rel = process.platform === 'win32' ? ['Scripts', 'python.exe'] : ['bin', 'python'];
   const candidate = path.join(REPO, '_toolchains', 'py', ...rel);
   return fs.existsSync(candidate) ? candidate : null;
 }
 const PY = findPytestPython();
-const SKIP = PY === null ? 'no workspace-local pytest interpreter (_toolchains/py)' : false;
+const SKIP = PY === null ? 'no pytest interpreter (set AMABIE_PYTEST_PYTHON or create _toolchains/py)' : false;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-runner-authority-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));

@@ -553,6 +553,15 @@ const SKIP_AWARE = new Set([
   // platform could not prove, and exit 3. SKIP is never counted as PASS.
   'probe: pre-1.0 human-acceptance battery (real git + pty)',
   'probe: acceptance growth (real git + pty)',
+  // The fixture requires NTFS 8.3 short-name creation. If the volume does not
+  // produce a distinct alias, the probe exits 3 and explicitly says the runner
+  // condition could not be exercised; that is unverified, never a pass.
+  '8.3 short-name suite (does the suite still hold when TEMP is spelled the way a runner spells it?)',
+  // This is an environment measurement, not a requirement that LOCAL installs
+  // provide OS confinement. A host that cannot start any confined child is a
+  // named, non-passing SKIP; a child that runs without an observed boundary is
+  // still a genuine FAIL.
+  '1.2 integrity boundary measurement (reports honestly whether confinement exists here)',
   // The two ecosystem end-to-end probes SKIP (exit 3) on a host with no
   // toolchain — which is an honest host bound, not a failure. Without this they
   // would be reported as FAIL on a machine that simply has no Go or no rustup,
@@ -630,10 +639,36 @@ for (const [label, cmd, args] of selectedSteps) {
   const skipLines = SKIP_AWARE.has(label)
     ? out.split(/\r?\n/).filter((l) => l.startsWith('SKIP')).map((l) => l.slice(0, 140))
     : [];
+  // Node's test runner exits 0 when a whole describe block is skipped. That
+  // used to make pytest wiring look PASS on a host with no pytest interpreter,
+  // even though the report said "tests 0". An explicit missing-interpreter
+  // reason is a host-bound SKIP; any other zero-execution test result is a FAIL.
+  const nodeTestStat = (name) => {
+    const match = out.match(new RegExp(`^(?:\\s*ℹ\\s+|\\s*#\\s*)${name}\\s+(\\d+)`, 'm'));
+    return match ? Number(match[1]) : null;
+  };
+  const nodeTests = args.includes('--test') ? {
+    total: nodeTestStat('tests'),
+    passed: nodeTestStat('pass') ?? 0,
+    failed: nodeTestStat('fail') ?? 0,
+    skipped: nodeTestStat('skipped') ?? 0,
+  } : null;
+  const noNodeTestsExecuted = nodeTests !== null
+    && nodeTests.total !== null
+    && nodeTests.passed + nodeTests.failed === 0
+    && (nodeTests.total === 0 || nodeTests.skipped === nodeTests.total);
+  const missingPytestInterpreter = label === '1.1 Phase 2 pytest channel WIRING (real recorder round path)'
+    && /no workspace-local pytest interpreter/.test(out);
+  if (noNodeTestsExecuted && missingPytestInterpreter && SKIP_AWARE.has(label)) {
+    skipLines.push('SKIP 0 pytest wiring tests executed: workspace-local pytest interpreter is unavailable');
+  }
   // "the assertion did not hold" and "we ran out of time" are different facts; only the first is
   // evidence about the product. spawnSync reports the second as error.code ETIMEDOUT.
   const timedOut = r.error?.code === 'ETIMEDOUT';
-  const verdict = r.error && !timedOut ? 'FAIL' : verdictFor({ status: r.status, skipAware: SKIP_AWARE.has(label), timedOut });
+  const verdict = r.error && !timedOut ? 'FAIL'
+    : noNodeTestsExecuted && r.status === 0
+      ? (missingPytestInterpreter && SKIP_AWARE.has(label) ? 'SKIP' : 'FAIL')
+      : verdictFor({ status: r.status, skipAware: SKIP_AWARE.has(label), timedOut });
   // M10.2 Fix 6: a SKIP that EXECUTED checks is a different fact from one that
   // ran zero because the environment is absent — the note must distinguish
   // them. Neither kind is ever counted as a PASS. The count is any `PASS <case>`

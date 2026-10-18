@@ -3952,6 +3952,13 @@ function lastVerificationFromCheckpoint(value: unknown): ProtocolEnvelope['lastV
 // about to EXECUTE (doctor). The probe that doctor does make is the SAME
 // hardened resolution+environment the plan itself will run under — never a
 // PATH lookup the old inherited-env `--version` allowed to be a liar shim.
+export function packageManagerProbeProblem(runner: string, probeError?: Error | null): string {
+  if (probeError?.message === 'post-run containment sweep could not confirm zero surviving descendants') {
+    return `Amabie could not confirm descendant cleanup after probing "${runner}"; it rejected the probe result`;
+  }
+  return `package manager "${runner}" is not runnable in Amabie's trusted environment (running Node's install dir, corepack, or OS-managed dirs only — the calling PATH is deliberately ignored)`;
+}
+
 function readOnlyProblems(root: string, cfg: AmabieConfig, livePmProbe: boolean): string[] {
   const problems: string[] = [];
   if (!Array.isArray(cfg.plan) || cfg.plan.length === 0) problems.push('the verification plan is empty — Amabie would have nothing to check (a pass here would be fake)');
@@ -3983,7 +3990,7 @@ function readOnlyProblems(root: string, cfg: AmabieConfig, livePmProbe: boolean)
       const resolved = resolvePm(runner);
       const probe = resolved ? spawnHardened(resolved, ['--version'], root, 30_000) : null;
       if (probe === null || probe.status !== 0 || probe.error) {
-        problems.push(`package manager "${runner}" is not runnable in Amabie's trusted environment (running Node's install dir, corepack, or OS-managed dirs only — the calling PATH is deliberately ignored)`);
+        problems.push(packageManagerProbeProblem(runner, probe?.error));
       }
     }
     for (const step of cfg.plan) {
@@ -4297,7 +4304,9 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
     o.context({ problems });
     o.verdict('NEEDS ATTENTION', 'Amabie is NOT fully active here:', '');
     for (const p of problems) o.say(`  - ${p}`);
-    o.say('next: amabie setup --yes repairs the above without touching your other settings');
+    o.say(problems.some((p) => p.startsWith('Amabie could not confirm descendant cleanup after probing '))
+      ? 'next: resolve the descendant-sweep failure above, then rerun `amabie doctor --json`; setup alone will not fix it'
+      : 'next: amabie setup --yes repairs the above without touching your other settings');
     return 2;
   }
   // Facts every later verdict in this command needs: the sealed checks, the

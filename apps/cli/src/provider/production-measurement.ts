@@ -14,9 +14,22 @@ import { spawnSync } from 'node:child_process';
 import { packagedProvider, providerRoot as repo } from './assets.js';
 const hash = (b: string | Buffer): string => crypto.createHash('sha256').update(b).digest('hex');
 export const PRODUCTION_MEASUREMENT = 'production-measurement.json';
+const SYSTEM_WINDOWS_POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
 export const NATIVE_ATTACKS = ['inherited-file', 'inherited-process-duplicate', 'acquire-and-duplicate-broker-file',
   'direct', 'extended', 'relative', 'dot-components', 'junction', 'symlink', 'temp-copy', 'rename-out',
   'authority-write-0', 'authority-write-1', 'authority-write-2', 'authority-write-3', 'authority-write-4', 'descendant-read'] as const;
+export function productionNativePowerShellExecutable(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.AMABIE_POWERSHELL_CORE_PATH;
+  if (!configured) return SYSTEM_WINDOWS_POWERSHELL;
+  if (!path.isAbsolute(configured) || path.basename(configured).toLowerCase() !== 'pwsh.exe') {
+    throw new Error('AMABIE_POWERSHELL_CORE_PATH must be an absolute path to pwsh.exe');
+  }
+  try {
+    const stat = fs.lstatSync(configured);
+    if (stat.isFile() && !stat.isSymbolicLink()) return configured;
+  } catch { /* report a stable operator-facing configuration error below */ }
+  throw new Error('AMABIE_POWERSHELL_CORE_PATH must point to an existing regular pwsh.exe file');
+}
 export function productionHost(): { user: string; host: string; profile: string } {
   if (process.platform !== 'win32') throw new Error('native host identity unavailable');
   // MEASURED (v1.4): this budget was 10 s, which is comfortable on an idle
@@ -28,13 +41,13 @@ export function productionHost(): { user: string; host: string; profile: string 
   // not tell that from a genuine policy refusal because the reason was dropped.
   // A budget is not an assertion: the probe still fails closed, it now says WHY.
   const timeoutMs = 60_000;
-  const r = spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  const r = spawnSync(productionNativePowerShellExecutable(),
     ['-NoProfile', '-NonInteractive', '-File', path.join(repo, 'tools/windows-boundary/production-host.ps1')],
     { encoding: 'utf8', windowsHide: true, timeout: timeoutMs });
   if (r.status !== 0) {
     const why = r.error !== undefined && r.error !== null
       ? `the probe did not complete within ${String(timeoutMs / 1000)}s (${r.error.message})`
-      : `the probe exited ${String(r.status)}: ${(r.stderr ?? '').trim().split('\n').slice(0, 3).join(' | ').slice(0, 300)}`;
+      : `the probe exited ${String(r.status)}: ${((r.stderr ?? '').trim() || (r.stdout ?? '').trim()).split('\n').slice(0, 3).join(' | ').slice(0, 300)}`;
     throw new Error(`OS-owned host/profile binding unavailable — ${why}`);
   }
   return JSON.parse(r.stdout);
@@ -232,7 +245,7 @@ export function readProductionMeasurement(store: string, now = Date.now()): { va
     if (p.observations.enrollmentDigest !== hash(safeRead(path.join(store, 'enrollment.json')))) throw new Error('enrollment changed');
     checkObservations(p, e);
     const nonce = crypto.randomBytes(32).toString('hex');
-    const heartbeat = spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    const heartbeat = spawnSync(productionNativePowerShellExecutable(),
       ['-NoProfile', '-NonInteractive', '-File', path.join(repo, 'tools/windows-boundary/production-heartbeat.ps1'),
         '-Pipe', e.pipe, '-Nonce', nonce, '-Deployment', e.id, '-Project', e.project],
       // Same budget lesson as productionHost() above: 10 s is enough when the
@@ -242,7 +255,7 @@ export function readProductionMeasurement(store: string, now = Date.now()): { va
     if (heartbeat.status !== 0) {
       const why = heartbeat.error !== undefined && heartbeat.error !== null
         ? `the heartbeat did not complete within 60s (${heartbeat.error.message})`
-        : `the heartbeat exited ${String(heartbeat.status)}: ${(heartbeat.stderr ?? '').trim().split('\n').slice(0, 3).join(' | ').slice(0, 300)}`;
+        : `the heartbeat exited ${String(heartbeat.status)}: ${((heartbeat.stderr ?? '').trim() || (heartbeat.stdout ?? '').trim()).split('\n').slice(0, 3).join(' | ').slice(0, 300)}`;
       throw new Error(`live production broker unavailable — ${why}`);
     }
     const live = JSON.parse(heartbeat.stdout);

@@ -38,9 +38,18 @@ if (!fs.existsSync(CLI)) { console.error(`FAIL: missing built CLI (run npm run b
 
 /** Rustup/cargo homes: the workspace-local install if present, else the user's. */
 function resolveRust() {
+  // Honour explicitly selected rustup homes first. This lets the same probe
+  // run from WSL against its Linux toolchain even when the shared worktree also
+  // contains a Windows MSVC toolchain under _toolchains/rust.
+  const explicitHomes = process.env.RUSTUP_HOME !== undefined || process.env.CARGO_HOME !== undefined;
   const local = { cargoHome: path.join(TC, 'cargo'), rustupHome: path.join(TC, 'rustup') };
   const localOk = fs.existsSync(path.join(local.rustupHome, 'toolchains')) || fs.existsSync(path.join(local.cargoHome, 'bin'));
-  const homes = localOk
+  const homes = explicitHomes
+    ? {
+      cargoHome: path.resolve(process.env.CARGO_HOME ?? path.join(os.homedir(), '.cargo')),
+      rustupHome: path.resolve(process.env.RUSTUP_HOME ?? path.join(os.homedir(), '.rustup')),
+    }
+    : localOk
     ? local
     : { cargoHome: path.join(os.homedir(), '.cargo'), rustupHome: path.join(os.homedir(), '.rustup') };
   const toolchainsDir = path.join(homes.rustupHome, 'toolchains');
@@ -58,6 +67,15 @@ if (rust.real === null) {
   console.log('      provision with: node tooling/toolchains.mjs rust');
   console.log('PROBE-PASS-WITH-SKIP — 1 explicit host-bound SKIP; the Rust path was NOT executed here');
   process.exit(3);
+}
+if (process.platform === 'win32' && /windows-msvc/i.test(rust.real)) {
+  const linker = spawnSync('where.exe', ['link.exe'], { encoding: 'utf8', timeout: 15_000 });
+  if (linker.status !== 0) {
+    console.log('SKIP  Windows Rust E2E: MSVC `link.exe` is not available on PATH; the configured Windows Rust toolchain cannot link `cargo test`.');
+    console.log('      The Windows Rust E2E was NOT executed. Install Visual C++ Build Tools in a developer environment and rerun this probe.');
+    console.log('PROBE-PASS-WITH-SKIP — Windows Rust verification is unverified here; this is not a pass');
+    process.exit(3);
+  }
 }
 console.log(`rust: real toolchain binary ${rust.real}`);
 console.log(`homes: RUSTUP_HOME=${rust.rustupHome} CARGO_HOME=${rust.cargoHome}`);
@@ -102,13 +120,20 @@ git('config', 'user.name', 'Rust E2E');
 git('add', '-A');
 git('commit', '-m', 'initial');
 
-const setup = run(['setup', '--yes']);
+// Amabie deliberately keeps the caller's PATH out of verification children.
+// The Rust toolchain directory is therefore an explicit operator grant, just
+// as it is in the documented first-run flow; merely finding rustc/cargo is not
+// enough to authorize it for a sealed check.
+const rustToolchainDir = path.dirname(rust.real);
+const canonicalRustToolchainDir = fs.realpathSync(rustToolchainDir);
+const setup = run(['setup', '--yes', '--toolchain-dir', rustToolchainDir]);
 console.log(`\n--- amabie setup (exit ${setup.status}) ---`);
 console.log(`${setup.stdout ?? ''}${setup.stderr ?? ''}`.trim().split('\n').slice(0, 14).join('\n'));
 
 check('setup seals the REAL toolchain binary, not the rustup proxy', () => {
   assert(setup.status === 0, `setup must succeed on a crate:\n${setup.stdout}${setup.stderr}`);
   const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
+  assert((cfg.toolchain?.dirs ?? []).includes(canonicalRustToolchainDir), 'setup must seal the explicitly authorized Rust toolchain directory');
   const argv0s = (cfg.plan ?? []).filter((s) => s.argv !== undefined).map((s) => s.argv[0]);
   assert(argv0s.length >= 2, `expected cargo argv steps: ${JSON.stringify(cfg.plan)}`);
   for (const a of argv0s) {

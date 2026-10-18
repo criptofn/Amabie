@@ -4,6 +4,7 @@ import {
   PROMPT_EVIDENCE_SCHEMA,
   correctionReportFor,
   draftPromptEvidence,
+  draftPromptEvidenceFromQuotes,
   evidenceIntegrityValid,
   materialDigest,
   runBoundedCorrectionLoop,
@@ -95,13 +96,248 @@ test('prompt intake drafts source-linked unresolved requirements without claimin
   assert.deepEqual(draft.candidates.map(candidate => candidate.id), draftPromptEvidence(goal).candidates.map(candidate => candidate.id));
 });
 
-test('a one-line compound task remains one unclear draft instead of invented subrequirements', () => {
-  const goal = 'Implement registration, validate input, hash passwords, and add tests.';
+test('free-form compound prompts produce deterministic, exact-span candidates that remain review-only', () => {
+  const goal = 'Implement account creation, reject invalid email, and hash passwords. Preserve existing login behavior.';
+  const draft = draftPromptEvidence(goal);
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Implement account creation',
+    'reject invalid email',
+    'hash passwords.',
+    'Preserve existing login behavior.',
+  ]);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  const refs = draft.request.requirements.map(requirement => requirement.sourceRef);
+  assert.equal(refs[0]!.start, 0);
+  assert.equal(refs.at(-1)!.end, goal.length);
+  for (const [index, requirement] of draft.request.requirements.entries()) {
+    const ref = requirement.sourceRef;
+    assert.equal(goal.slice(ref.start, ref.end), ref.excerpt);
+    assert.equal(goal.slice(ref.focusStart!, ref.focusEnd!), requirement.text);
+    if (index > 0) assert.equal(refs[index - 1]!.end, ref.start, 'source ranges partition the original prompt without gaps or overlaps');
+  }
+  assert.deepEqual(draft.candidates.map(candidate => candidate.id), draftPromptEvidence(goal).candidates.map(candidate => candidate.id));
+
+  const finalList = draftPromptEvidence('Add input validation, tests and safe password storage.');
+  assert.deepEqual(finalList.request.requirements.map(requirement => requirement.text), [
+    'Add input validation, tests and safe password storage.',
+  ]);
+  assert.equal(finalList.sourceCoverage.complete, true);
+});
+
+test('natural prompts preserve comma-separated values and conditional clauses', () => {
+  const goal = 'Build a CSV importer and exporter for transaction records. Accept UTF-8 CSV with date, merchant, amount, and currency headers. Reject files larger than 1 MiB. If any row is invalid, save no rows. Validate every date and amount. Escape formulas in CSV exports by prefixing values beginning with =, +, -, or @. Preserve existing export behavior. Add tests for valid imports, malformed rows, the size limit, and formula escaping. Document the command and its exit codes.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Build a CSV importer and exporter for transaction records.',
+    'Accept UTF-8 CSV with date, merchant, amount, and currency headers.',
+    'Reject files larger than 1 MiB.',
+    'If any row is invalid, save no rows.',
+    'Validate every date and amount.',
+    'Escape formulas in CSV exports by prefixing values beginning with =, +, -, or @.',
+    'Preserve existing export behavior.',
+    'Add tests for valid imports, malformed rows, the size limit, and formula escaping.',
+    'Document the command and its exit codes.',
+  ]);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+});
+
+test('free prose splits common inflected actions and action gerunds into source-linked review candidates', () => {
+  const goal = 'Build a CSV transaction importer that returns accepted rows and structured errors, requires id, date, amount, and description headers, accepts a UTF-8 BOM, parses quoted commas and escaped double quotes, rejects missing or blank ids, rejects missing, non-numeric, NaN, or infinite amounts, reports original one-based physical line numbers across quoted newlines, keeps the first valid row for duplicate IDs, totals only accepted signed amounts, and exports correctly quoted CSV while neutralizing spreadsheet formulas. Preserve existing signed-total behavior, and include tests.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Build a CSV transaction importer that returns accepted rows and structured errors',
+    'requires id, date, amount, and description headers',
+    'accepts a UTF-8 BOM',
+    'parses quoted commas and escaped double quotes',
+    'rejects missing or blank ids',
+    'rejects missing, non-numeric, NaN, or infinite amounts',
+    'reports original one-based physical line numbers across quoted newlines',
+    'keeps the first valid row for duplicate IDs',
+    'totals only accepted signed amounts',
+    'exports correctly quoted CSV',
+    'neutralizing spreadsheet formulas.',
+    'Preserve existing signed-total behavior',
+    'include tests.',
+  ]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  for (const requirement of draft.request.requirements) {
+    const ref = requirement.sourceRef;
+    assert.equal(goal.slice(ref.focusStart!, ref.focusEnd!), requirement.text);
+  }
+});
+
+test('free prose separates coordinated declarative actions without proving them', () => {
+  const goal = 'The signed balance must remain negative when expenses outweigh credits, and export must quote CSV fields while neutralizing formula-leading cells.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'The signed balance must remain negative when expenses outweigh credits',
+    'export must quote CSV fields',
+    'neutralizing formula-leading cells.',
+  ]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+
+  const conditional = draftPromptEvidence('Keep a session active while the user is logged in.');
+  assert.deepEqual(conditional.request.requirements.map(requirement => requirement.text), [
+    'Keep a session active while the user is logged in.',
+  ]);
+});
+
+test('deterministic extraction splits coordinated action clauses with attach', () => {
+  const goal = 'Parse quoted fields containing commas and escaped quotes, and attach each rejection to its original physical line number.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Parse quoted fields containing commas and escaped quotes',
+    'attach each rejection to its original physical line number.',
+  ]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+});
+
+test('free prose separates an independent preservation obligation joined with but', () => {
+  const goal = 'Add CSV import but preserve the existing signed-total behavior.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Add CSV import',
+    'preserve the existing signed-total behavior.',
+  ]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+});
+
+test('common in-sentence abbreviations do not fragment one requirement into false candidates', () => {
+  for (const goal of [
+    'Set a cache lifetime, e.g. 30 seconds, i.e. half a minute.',
+    'Compare HTTP vs. HTTPS defaults.',
+  ]) {
+    const draft = draftPromptEvidence(goal);
+    assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [goal]);
+    assert.equal(draft.sourceCoverage.complete, true);
+    assert.equal(draft.verdict, 'NOT PROVEN');
+    assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  }
+});
+
+test('extractor-proposed quotes are exact, ordered, source-mapped, and still require review', () => {
+  const goal = 'Create accounts, reject invalid email, and hash passwords.';
+  const draft = draftPromptEvidenceFromQuotes(goal, [
+    'Create accounts',
+    'reject invalid email',
+    'hash passwords.',
+  ]);
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'Create accounts', 'reject invalid email', 'hash passwords.',
+  ]);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  for (const [index, requirement] of draft.request.requirements.entries()) {
+    assert.equal(goal.slice(requirement.sourceRef.focusStart!, requirement.sourceRef.focusEnd!), requirement.text);
+    if (index > 0) assert.equal(draft.request.requirements[index - 1]!.sourceRef.end, requirement.sourceRef.start);
+  }
+});
+
+test('an omitted clause stays visible in its source span and cannot turn an extraction draft into PASS', () => {
+  const goal = 'Implement account registration, validate email addresses, hash passwords with Argon2, preserve existing login behavior, and add tests.';
+  const draft = draftPromptEvidenceFromQuotes(goal, [
+    'Implement account registration',
+    'validate email addresses',
+    'hash passwords with Argon2',
+    'add tests.',
+  ]);
+
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.equal(draft.reviewRequired, true);
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  const narrowCandidate = draft.request.requirements[2]!;
+  assert.equal(goal.slice(narrowCandidate.sourceRef.focusStart!, narrowCandidate.sourceRef.focusEnd!), narrowCandidate.text);
+  const recoveredCandidate = draft.request.requirements.find(requirement => requirement.text === 'preserve existing login behavior');
+  assert.ok(recoveredCandidate);
+  assert.equal(goal.slice(recoveredCandidate.sourceRef.focusStart!, recoveredCandidate.sourceRef.focusEnd!), recoveredCandidate.text);
+  assert.ok(draft.request.requirements.some(requirement => requirement.text.includes('add tests.')));
+  assert.match(draft.notes.join(' '), /lexical, not semantic completeness/u);
+  assert.match(draft.notes.join(' '), /unquoted prompt text.*preserved as additional unresolved candidates.*preserve existing login behavior/iu);
+});
+
+test('extraction review surfaces omitted text at the prompt edges and ignores connective-only gaps', () => {
+  const leadingGoal = 'Create accounts, validate email addresses, and add tests.';
+  const leading = draftPromptEvidenceFromQuotes(leadingGoal, ['validate email addresses', 'add tests.']);
+  assert.ok(leading.request.requirements.some(requirement => requirement.text.includes('Create accounts')));
+  assert.match(leading.notes.join(' '), /not covered by the extractor's exact quotes.*Create accounts/iu);
+
+  const trailingGoal = 'Create accounts, validate email addresses, and add tests.';
+  const trailing = draftPromptEvidenceFromQuotes(trailingGoal, ['Create accounts', 'validate email addresses']);
+  assert.ok(trailing.request.requirements.some(requirement => requirement.text.includes('add tests')));
+  assert.match(trailing.notes.join(' '), /not covered by the extractor's exact quotes.*add tests/iu);
+
+  const connectiveGoal = 'Create accounts, and add tests.';
+  const connectiveOnly = draftPromptEvidenceFromQuotes(connectiveGoal, ['Create accounts', 'add tests.']);
+  assert.equal(connectiveOnly.notes.some(note => /unquoted prompt text/iu.test(note)), false);
+  assert.equal(connectiveOnly.verdict, 'NOT PROVEN');
+
+  const numberedGoal = '1. Create accounts\n2. Add tests.';
+  const numbered = draftPromptEvidenceFromQuotes(numberedGoal, ['Create accounts', 'Add tests.']);
+  assert.deepEqual(numbered.request.requirements.map(requirement => requirement.text), ['Create accounts', 'Add tests.']);
+  assert.equal(numbered.notes.some(note => /unquoted prompt text/iu.test(note)), false);
+});
+
+test('a polite request opener does not look like an omitted requirement', () => {
+  const draft = draftPromptEvidenceFromQuotes('Please add tests.', ['add tests.']);
+
+  assert.equal(draft.notes.some(note => /unquoted prompt text/iu.test(note)), false);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+});
+
+test('extractor-proposed quotes reject paraphrases, ambiguous repetitions, overlaps, and empty output', () => {
+  assert.throws(() => draftPromptEvidenceFromQuotes('Add email validation.', ['Validate the email.']), /not an exact source quote/u);
+  assert.throws(() => draftPromptEvidenceFromQuotes('Test twice. Test twice.', ['Test twice.']), /ambiguous because it occurs more than once/u);
+  assert.throws(() => draftPromptEvidenceFromQuotes('Validate email input.', ['Validate email', 'email input']), /overlap/u);
+  assert.throws(() => draftPromptEvidenceFromQuotes('Add tests.', []), /at least one exact source quote/u);
+});
+
+test('extractor-proposed quotes map repeated requirements only when every exact occurrence is represented', () => {
+  const goal = 'Test twice. Test twice.';
+  const draft = draftPromptEvidenceFromQuotes(goal, ['Test twice.', 'Test twice.']);
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), ['Test twice.', 'Test twice.']);
+  assert.deepEqual(draft.request.requirements.map(requirement => [requirement.sourceRef.focusStart, requirement.sourceRef.focusEnd]), [[0, 11], [12, 23]]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.throws(() => draftPromptEvidenceFromQuotes(goal, ['Test twice.', 'Test twice.', 'Test twice.']), /occurrence count does not match/u);
+});
+
+test('an ambiguous coordinated noun phrase stays a single unclear candidate', () => {
+  const goal = 'Implement registration with email and password checks.';
   const draft = draftPromptEvidence(goal);
   assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [goal]);
   assert.equal(draft.request.requirements[0]!.clarity, 'unclear');
   assert.equal(draft.request.requirements[0]!.criteria.length, 0);
-  assert.match(draft.notes.join(' '), /split compound requests/u);
+});
+
+test('request validation rejects forged focus offsets even when the broader source quote is intact', () => {
+  const draft = draftPromptEvidence('Implement account creation, then add tests.');
+  const input = structuredClone(draft.request) as PromptEvidenceRequest;
+  const first = input.requirements[0]!;
+  first.sourceRef.focusStart = first.sourceRef.focusStart! + 1;
+  const task: RegisteredTask = {
+    taskType: 'coding',
+    taskDigest: materialDigest(draft.request.goal.text),
+    requirementDigests: draft.request.requirements.map(requirement => materialDigest(requirement.text)),
+  };
+  assert.throws(() => validatePromptEvidenceRequest(input, task), /focus offsets do not quote the exact candidate text/u);
 });
 
 test('request validation binds exact goal and a multiset of exact declared requirements', () => {
@@ -262,7 +498,30 @@ test('Scenario F: structured correction report is followed by fresh verification
   assert.equal(stuck.status, 'limit-reached');
   assert.equal(stuck.correctionAttempts, 3);
   assert.equal(stuck.verification.verdict, 'FAIL');
-  assert.equal(correctionReportFor(stuck.verification).unresolved.length, 1);
+  assert.equal(correctionReportFor(stuck.verification, data.request).unresolved.length, 1);
+});
+
+test('the correction loop can enforce a smaller per-run cap without exceeding the hard three-cycle ceiling', async () => {
+  const data = makeRequest([{ text: registration }]);
+  let calls = 0;
+  const result = await runBoundedCorrectionLoop({
+    request: data.request,
+    adapters: [adapterFor(() => undefined)],
+    authorized: true,
+    maxAttempts: 1,
+    async correct() { calls += 1; return { outcome: 'applied', scopeDigest: data.request.scopeDigest }; },
+  });
+  assert.equal(result.status, 'limit-reached');
+  assert.equal(result.correctionAttempts, 1);
+  assert.equal(calls, 1);
+  assert.match(result.stopReason ?? '', /1-cycle correction limit/u);
+
+  await assert.rejects(() => runBoundedCorrectionLoop({
+    request: data.request,
+    adapters: [adapterFor(() => undefined)],
+    authorized: true,
+    maxAttempts: 4,
+  }), /maxAttempts must be an integer from 1 to 3/u);
 });
 
 test('a correction that reports changed scope is stopped before another verification', async () => {
@@ -378,7 +637,7 @@ test('requirements that cover only part of the original prompt cannot PASS and d
   });
   assert.equal(loop.status as string, 'scope-incomplete');
   assert.equal(correctionCalled, false);
-  assert.equal(loop.correctionReport?.schema, 'amabie-correction-report/2');
+  assert.equal(loop.correctionReport?.schema, 'amabie-correction-report/3');
   assert.ok((loop.correctionReport as unknown as { scopeGaps?: string[] } | null)?.scopeGaps?.length);
 });
 
@@ -411,4 +670,86 @@ test('a paraphrased requirement cannot mark its quoted source text clear without
   const report = await verifyPromptEvidence(request, [adapterFor(() => ({ ok: true }))], { runId: 'paraphrase', attempt: 0 });
   assert.equal(report.verdict, 'NOT PROVEN');
   assert.match(report.issues.join(' '), /source reference.*do not match/u);
+});
+
+test('correction reports include the unresolved criterion contract for the executing agent', async () => {
+  const data = makeRequest([{ text: registration }]);
+  const verification = await verifyPromptEvidence(data.request, [adapterFor(() => ({ ok: false }))], {
+    runId: 'correction-context',
+    attempt: 0,
+  });
+
+  const correction = correctionReportFor(verification, data.request);
+  assert.equal(correction.schema, 'amabie-correction-report/3');
+  assert.equal(correction.unresolved.length, 1);
+  assert.deepEqual(correction.unresolved[0]?.criteria, [{
+    criterionId: data.request.requirements[0]!.criteria[0]!.id,
+    statement: `The sealed check covers: ${registration}`,
+    adapterId: ADAPTER,
+    evidenceType: 'sealed-check-run',
+    predicate: { path: '/ok', equals: true },
+    status: 'unmet',
+    gap: verification.requirements[0]!.criteria[0]!.note,
+  }]);
+  assert.equal(Object.hasOwn(correction.unresolved[0]!.criteria[0]!, 'evidence'), false);
+  assert.equal(Object.hasOwn(correction.unresolved[0]!.criteria[0]!, 'facts'), false);
+});
+
+test('correction reports reject a verification report for a different sealed request', async () => {
+  const first = makeRequest([{ text: registration }]);
+  const second = makeRequest([{ text: registration }, { text: 'Preserve existing login behavior.' }]);
+  const verification = await verifyPromptEvidence(first.request, [adapterFor(() => ({ ok: false }))], {
+    runId: 'correction-context-mismatch',
+    attempt: 0,
+  });
+
+  assert.throws(() => correctionReportFor(verification, second.request), /does not match the verified request/u);
+
+  const mismatchedRequirement = {
+    ...verification,
+    requirements: verification.requirements.map(requirement => ({ ...requirement, text: `${requirement.text} changed` })),
+  };
+  assert.throws(() => correctionReportFor(mismatchedRequirement, first.request), /does not match the verified request/u);
+
+  const mismatchedCriterion = {
+    ...verification,
+    requirements: verification.requirements.map(requirement => ({
+      ...requirement,
+      criteria: requirement.criteria.map(criterion => ({ ...criterion, criterionId: 'unknown-criterion' })),
+    })),
+  };
+  assert.throws(() => correctionReportFor(mismatchedCriterion, first.request), /does not match the verified request/u);
+
+  assert.throws(() => correctionReportFor({ ...verification, requirements: [] }, first.request), /does not match the verified request/u);
+  const missingCriterion = {
+    ...verification,
+    requirements: verification.requirements.map(requirement => ({ ...requirement, criteria: [] })),
+  };
+  assert.throws(() => correctionReportFor(missingCriterion, first.request), /does not match the verified request/u);
+});
+
+test('free prose splits a coordinated subject-modal action into unresolved source-linked candidates', () => {
+  const goal = 'The invite expires after 24 hours, and existing users can accept an invitation without creating duplicate accounts.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [
+    'The invite expires after 24 hours',
+    'existing users can accept an invitation without creating duplicate accounts.',
+  ]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
+  for (const requirement of draft.request.requirements) {
+    const ref = requirement.sourceRef;
+    assert.equal(goal.slice(ref.focusStart!, ref.focusEnd!), requirement.text);
+  }
+});
+test('free-prose subject-modal boundaries do not split a dependent only-when clause', () => {
+  const goal = 'Show a warning, but only when an administrator can approve it.';
+  const draft = draftPromptEvidence(goal);
+
+  assert.deepEqual(draft.request.requirements.map(requirement => requirement.text), [goal]);
+  assert.equal(draft.sourceCoverage.complete, true);
+  assert.equal(draft.verdict, 'NOT PROVEN');
+  assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
 });

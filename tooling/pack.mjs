@@ -71,6 +71,16 @@ try {
     process.exit(1);
   }
 
+  // The ESM bundle includes CommonJS dependencies (notably cross-spawn). Let
+  // esbuild's dynamic-require helper resolve Node built-ins through Node's
+  // native require while keeping the executable itself ESM and self-contained.
+  // Keep the shebang as byte one: npm's Windows and POSIX bin shims both rely on it.
+  const shebangEnd = out.indexOf('\n');
+  if (shebangEnd < 0) { console.error('FAIL: CLI bundle has no newline after its shebang'); process.exit(1); }
+  const nodeRequireBridge = "import { createRequire as __amabieCreateRequire } from 'node:module';\nconst require = __amabieCreateRequire(import.meta.url);\n";
+  const executable = `${out.slice(0, shebangEnd + 1)}${nodeRequireBridge}${out.slice(shebangEnd + 1)}`;
+  fs.writeFileSync(path.join(STAGE, 'dist', 'main.js'), executable);
+
   const cliPkg = JSON.parse(fs.readFileSync(path.join(AMABIE, 'apps', 'cli', 'package.json'), 'utf8'));
   const manifest = {
     name: '@amabie/cli',

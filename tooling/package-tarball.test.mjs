@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { canonicalPackageTarball } from './package-tarball.mjs';
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function fixture(mode, name = 'package/dist/main.js') {
   const body = Buffer.from('#!/usr/bin/env node\nconsole.log("Amabie");\n');
@@ -35,4 +40,23 @@ test('Windows and POSIX bin modes produce identical portable bytes without alter
 
 test('a package without the declared CLI cannot be reported as canonical', () => {
   assert.throws(() => canonicalPackageTarball(fixture('000644', 'package/README.md').archive), /no CLI entry/);
+});
+
+test('the exact packed CLI starts after clean-room installation', { timeout: 240_000 }, () => {
+  const env = { ...process.env };
+  // The Node test runner marks child processes so a nested `node --test`
+  // invocation skips discovery. The clean-room journey itself must run the
+  // shipped example's documented test command as an ordinary user process.
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, ['tooling/probes/cleanroom-packed-artifact.mjs'], {
+    cwd: REPO,
+    encoding: 'utf8',
+    timeout: 240_000,
+    windowsHide: true,
+    maxBuffer: 32 * 1024 * 1024,
+    env,
+  });
+  assert.equal(result.error, undefined, `clean-room probe could not run: ${String(result.error ?? '')}`);
+  assert.equal(result.signal, null, `clean-room probe was terminated by ${String(result.signal)}`);
+  assert.equal(result.status, 0, `clean-room probe failed\n${result.stdout ?? ''}\n${result.stderr ?? ''}`);
 });

@@ -7,7 +7,7 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { enrollment, nativeRoot, read, plainFile, native as runNative, quote } from './production.js';
-import { anchorPath, publishProductionMeasurement, type ProductionTranscript, type NativeObservation } from './production-measurement.js';
+import { anchorPath, productionNativePowerShellExecutable, publishProductionMeasurement, type ProductionTranscript, type NativeObservation } from './production-measurement.js';
 import { candidateIdentity } from '../onboarding.js';
 
 const fixture = path.resolve(nativeRoot, '../../tooling/test-support/fixtures');
@@ -60,7 +60,7 @@ export async function measureProductionAttacks(store: string): Promise<void> {
       while (!fs.existsSync(ready) && Date.now() < deadline) await new Promise(r => setTimeout(r, 25));
       if (!fs.existsSync(ready)) throw new Error(`independent listener failed to start within ${String(HELPER_STARTUP_MS / 1000)}s`);
       const port = plainFile(ready).toString('utf8');
-      const r = spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      const r = spawnSync(productionNativePowerShellExecutable(),
         ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(fixture, 'boundary-native-run.ps1'),
           '-Work', work, '-Store', store, '-Package', sid, '-HostAddress', host, '-Port', port, '-Side', side, '-Symlink', 'symlink', '-SecretPath', secret, '-AuthorityTargets', targets],
         { windowsHide: true, encoding: 'utf8', timeout: 45000 });
@@ -85,7 +85,7 @@ export async function measureProductionAttacks(store: string): Promise<void> {
     const ready = path.join(store, 'pipe-negative-ready'), side = path.join(store, 'pipe-negative-side');
     fs.rmSync(ready, { force: true });
     const pipe = `amabie-negative-${e.id}`;
-    negativePipe = spawn('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    negativePipe = spawn(productionNativePowerShellExecutable(),
       ['-NoProfile', '-NonInteractive', '-File', path.join(fixture, 'medium-pipe.ps1'), '-Pipe', pipe, '-Package', e.package, '-Ready', ready, '-DenyPackage'],
       { windowsHide: true, stdio: 'ignore' });
     const deadline = Date.now() + HELPER_STARTUP_MS;

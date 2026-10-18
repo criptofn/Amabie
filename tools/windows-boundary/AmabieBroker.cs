@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
@@ -267,6 +268,28 @@ namespace AmabieBroker {
     }
 
     // ---- pipe creation with an explicit DACL -------------------------------------------
+    static NamedPipeServerStream CreateSecurePipe(string pipeName, PipeSecurity security) {
+      // .NET Core exposes the ACL-aware factory while .NET Framework exposes
+      // the equivalent PipeSecurity constructor. Keep the zero additional
+      // rights and non-inheritable handle identical across both runtimes.
+      var factoryType = Type.GetType("System.IO.Pipes.NamedPipeServerStreamAcl, System.IO.Pipes.AccessControl", false);
+      if (factoryType != null) {
+        var factory = factoryType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, null,
+          new Type[] { typeof(string), typeof(PipeDirection), typeof(int), typeof(PipeTransmissionMode),
+            typeof(PipeOptions), typeof(int), typeof(int), typeof(PipeSecurity), typeof(HandleInheritability), typeof(PipeAccessRights) }, null);
+        if (factory != null)
+          return (NamedPipeServerStream)factory.Invoke(null, new object[] { pipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 1 << 16, 1 << 16, security,
+            HandleInheritability.None, (PipeAccessRights)0 });
+      }
+      var constructor = typeof(NamedPipeServerStream).GetConstructor(new Type[] { typeof(string), typeof(PipeDirection),
+        typeof(int), typeof(PipeTransmissionMode), typeof(PipeOptions), typeof(int), typeof(int), typeof(PipeSecurity) });
+      if (constructor != null)
+        return (NamedPipeServerStream)constructor.Invoke(new object[] { pipeName, PipeDirection.InOut, 1,
+          PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 1 << 16, 1 << 16, security });
+      throw new PlatformNotSupportedException("ACL-aware named pipe creation is unavailable");
+    }
+
     static NamedPipeServerStream Listen(string pipeName, string callerSid, SecurityIdentifier owner) {
       var security = new PipeSecurity();
       security.SetOwner(owner);
@@ -278,8 +301,7 @@ namespace AmabieBroker {
       // Set and read back our chosen low label separately from the DACL. A package
       // grant can allow AppContainer access to a medium-label object too; medium
       // integrity alone is NOT a connection-denial control. See the paired ACL probe.
-      var pipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-        PipeOptions.Asynchronous, 1 << 16, 1 << 16, security);
+      var pipe = CreateSecurePipe(pipeName, security);
       ApplyLowMandatoryLabel(pipe.SafePipeHandle.DangerousGetHandle());
       return pipe;
     }

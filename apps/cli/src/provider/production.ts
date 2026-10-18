@@ -14,7 +14,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { cmdIsolate, controllerCandidate } from '../candidate.js';
 import { candidateIdentity, configPath, gitCommand, readConfig, untrustedConfigReason, CLI_ENTRY } from '../onboarding.js';
 import { controllerExecution, type ControllerExecution } from './execution.js';
-import { enrollMeasurementAuthority, measurementGeneration, productionHost } from './production-measurement.js';
+import { enrollMeasurementAuthority, measurementGeneration, productionHost, productionNativePowerShellExecutable } from './production-measurement.js';
 
 import { providerRoot } from './assets.js';
 export const nativeRoot = path.join(providerRoot, 'tools/windows-boundary');
@@ -51,7 +51,7 @@ export function native(store: string, request: Record<string, unknown>) {
     // the release battery's full unit suite failed the native confinement
     // fixture that way while the same fixture passed alone. A budget is not an
     // assertion: the launch is still bounded and still fails closed.
-    return spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    return spawnSync(productionNativePowerShellExecutable(),
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(nativeRoot, 'production-native.ps1'), '-Request', file],
       { encoding: 'utf8', windowsHide: true, timeout: 300000, maxBuffer: 1024 * 1024 });
   } finally { fs.rmSync(file, { force: true }); }
@@ -157,7 +157,11 @@ export async function enrollProduction(baseArg: string, storeArg: string): Promi
   const identity = (name: string): string => {
     const result = path.join(store, `${crypto.randomUUID()}.identity.json`);
     const r = native(store, { mode: 'identity', name, delete: false, result });
-    if (r.status !== 0) throw new Error(`identity provisioning refused: ${r.stderr}`);
+    if (r.status !== 0) {
+      const detail = r.stderr?.trim() || r.stdout?.trim() || r.error?.message
+        || `PowerShell exited ${String(r.status)}${r.signal ? ` (${r.signal})` : ''}`;
+      throw new Error(`identity provisioning refused: ${detail.slice(0, 400)}`);
+    }
     return read<{ package: string }>(result).package;
   };
   const e: Enrollment = { schema: 'amabie-production/2', id, store: canonicalPath(store), base,
@@ -182,7 +186,7 @@ export function serveProduction(store: string): Promise<number> {
   const request = path.join(store, 'broker-native.json');
   write(request, { mode: 'broker', argv: ['--pipe', e.pipe, '--store', e.store, '--target', e.base,
     '--package', e.package, '--identity', e.owner, '--controller', CLI_ENTRY, '--node', process.execPath] });
-  const child = spawn('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+  const child = spawn(productionNativePowerShellExecutable(),
     ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(nativeRoot, 'production-native.ps1'), '-Request', request],
     { windowsHide: true, stdio: 'inherit' });
   return new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', code => resolve(code ?? 2)); });

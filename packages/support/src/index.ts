@@ -732,31 +732,133 @@ export function posixSessionMember(pgrp: number, sid: number, childPid: number):
   return sid === childPid || pgrp === childPid;
 }
 
+let windowsPowerShellAccessViolationPath: string | undefined;
+
 function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
-  // F-6: same trusted absolute System32 resolution (bare-name fail-safe is
-  // unchanged), plus the sanitized environment on the spawn below.
-  const psExe = resolveSystemTool('WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const allCandidates = windowsPowerShellCandidates();
+  const systemHost = allCandidates[0];
+  // Once this process has observed the specific CLR crash, do not pay the
+  // multi-second crash cost on every later sweep in the same Amabie run.
+  const candidates = windowsPowerShellAccessViolationPath === systemHost
+    ? allCandidates.filter((candidate) => candidate !== windowsPowerShellAccessViolationPath)
+    : allCandidates;
   const script = buildWin32SweepScript(pid, spawnedAtMs);
-  const r = spawnSync(psExe,
-    ['-NoProfile', '-NonInteractive', '-Command', script],
-    // Bounded snapshots request only process identity fields; a timeout still fails CLOSED
-    // (never "no survivors") and names its cause.
-    { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
-  const why = r.error !== undefined && r.error !== null
-    ? `powershell spawn failed: ${r.error.message}`
-    : r.status !== 0
-      ? `powershell exited ${String(r.status)}: ${(r.stderr ?? '').trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}`
-      : '';
-  if (why !== '') {
-    // A sweep that could not LOOK must say so where an operator can see it: the
-    // round is about to be invalidated, and "could not confirm" without a reason
-    // cost this repository a full CI archaeology round.
-    process.stderr.write(`containment sweep could not run: ${why}\n`);
-    return { killed: [], failed: true };
-  }
-  const result = parseWin32SweepOutput(r.stdout ?? '');
+  const result = runWin32SweepWithFallback(pid, spawnedAtMs, candidates, (psExe, command) => {
+    const r = spawnSync(psExe,
+      ['-NoProfile', '-NonInteractive', '-Command', command],
+      // Bounded snapshots request only process identity fields; a timeout still fails CLOSED
+      // (never "no survivors") and names its cause.
+      { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
+    return {
+      status: r.status,
+      stdout: typeof r.stdout === 'string' ? r.stdout : '',
+      stderr: typeof r.stderr === 'string' ? r.stderr : '',
+      ...(r.error ? {
+        error: {
+          ...((r.error as NodeJS.ErrnoException).code ? { code: (r.error as NodeJS.ErrnoException).code! } : {}),
+          message: r.error.message,
+        },
+      } : {}),
+    };
+  }, (previous, next, reason) => {
+    if (previous === systemHost && reason === 'engine access violation 0xC0000005') {
+      windowsPowerShellAccessViolationPath = previous;
+    }
+    process.stderr.write(`containment sweep: ${path.basename(previous)} unavailable (${reason}); retrying with ${path.basename(next)}\n`);
+  });
   if (result.failed) process.stderr.write(`containment sweep incomplete: ${result.reason ?? 'Windows process descendants survived or traversal reached its limit'}\n`);
   return { killed: result.killed, failed: result.failed };
+}
+
+/**
+ * Resolve the Windows PowerShell hosts used by the process sweep. An explicit
+ * operator-selected Core host takes precedence; otherwise the signed-in inbox
+ * host stays first and Core is recovery for a missing or access-violating
+ * Windows PowerShell engine, never an ordinary query failure. User-profile
+ * module paths are not auto-discovered.
+ */
+export function windowsPowerShellCandidates(): string[] {
+  const configuredPowerShellCore = process.env.AMABIE_POWERSHELL_CORE_PATH;
+  const candidates: string[] = [];
+  if (configuredPowerShellCore && path.isAbsolute(configuredPowerShellCore)
+      && path.basename(configuredPowerShellCore).toLowerCase() === 'pwsh.exe') {
+    candidates.push(configuredPowerShellCore);
+  }
+  candidates.push(resolveSystemTool('WindowsPowerShell', 'v1.0', 'powershell.exe'));
+  const programRoots = [process.env.ProgramW6432, process.env.ProgramFiles, process.env['ProgramFiles(x86)']]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  for (const root of new Set(programRoots)) candidates.push(path.join(root, 'PowerShell', '7', 'pwsh.exe'));
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (candidate === 'powershell.exe') {
+      unique.push(candidate);
+      continue;
+    }
+    try {
+      if (fs.statSync(candidate).isFile()) unique.push(candidate);
+    } catch { /* an optional PowerShell Core installation is absent */ }
+  }
+  return unique;
+}
+
+export type WindowsPowerShellRunResult = {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: { code?: string; message: string };
+};
+
+/**
+ * Run the process-tree sweep through an ordered set of PowerShell hosts. Only
+ * a missing executable or the specifically observed CLR access violation is
+ * retried. A completed scan, a malformed result, survivors, timeouts, and all
+ * other failures are authoritative and fail closed. Repeating after this host
+ * crash is safe for this sweep: every pass re-enumerates descendants and checks
+ * PID plus creation time before requesting a kill.
+ * @internal Exported so the retry boundary can be regression-tested.
+ */
+export function runWin32SweepWithFallback(
+  pid: number,
+  spawnedAtMs: number,
+  candidates: readonly string[],
+  run: (executable: string, script: string) => WindowsPowerShellRunResult,
+  onFallback: (previous: string, next: string, reason: 'engine access violation 0xC0000005' | 'executable unavailable') => void = () => {},
+): SweepResult & { reason?: string } {
+  if (candidates.length === 0) return { killed: [], failed: true, reason: 'no PowerShell host is available' };
+  const script = buildWin32SweepScript(pid, spawnedAtMs);
+  for (let index = 0; index < candidates.length; index++) {
+    const executable = candidates[index]!;
+    let result: WindowsPowerShellRunResult;
+    try {
+      result = run(executable, script);
+    } catch (error) {
+      return {
+        killed: [], failed: true,
+        reason: `PowerShell host invocation threw: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+
+    if (result.status === 0 && !result.error) return parseWin32SweepOutput(result.stdout);
+
+    const accessViolation = result.status !== null && (result.status >>> 0) === 0xc0000005;
+    const executableMissing = result.status === null && result.error?.code === 'ENOENT';
+    if (index + 1 < candidates.length && (accessViolation || executableMissing)) {
+      const reason = accessViolation ? 'engine access violation 0xC0000005' : 'executable unavailable';
+      onFallback(executable, candidates[index + 1]!, reason);
+      continue;
+    }
+
+    const details = result.error
+      ? `spawn error ${result.error.code ?? 'unknown'}: ${result.error.message}`
+      : `exited ${String(result.status)}${result.stderr.trim() ? `: ${result.stderr.trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
+    return { killed: [], failed: true, reason: `${path.basename(executable)} ${details}` };
+  }
+  return { killed: [], failed: true, reason: 'no PowerShell host produced a result' };
 }
 
 /** @internal — shared with a deterministic Windows test for snapshot refresh. */
@@ -815,6 +917,7 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `$k=New-Object System.Collections.Generic.List[int];` +
     `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
     `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key)){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id) }catch{} } };` +
+    `if($k.Count -gt 0){ try{ Wait-Process -Id $k.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
     `$after=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
     `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +

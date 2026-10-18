@@ -9,7 +9,16 @@ Requirements: Node.js 22 or newer, npm, Git and a terminal. Amabie runs project 
 
 ## Install the prepared package
 
-Place the release tarball and its `.sha256` file in your working directory. Compare the recorded SHA256 with `Get-FileHash ./amabie-cli-2.0.0.tgz -Algorithm SHA256` in PowerShell, or `sha256sum --check amabie-cli-2.0.0.tgz.sha256` on Linux. A mismatch must stop installation.
+Place the release tarball and its `.sha256` sidecar in the same working directory. In PowerShell, compare the two values explicitly:
+
+```powershell
+$expected = ((Get-Content -Raw .\amabie-cli-2.0.0.tgz.sha256).Trim() -split '\s+')[0]
+$actual = (Get-FileHash .\amabie-cli-2.0.0.tgz -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected.ToLowerInvariant()) { throw 'Amabie package checksum mismatch; do not install it.' }
+'Checksum verified.'
+```
+
+On Linux, `sha256sum --check amabie-cli-2.0.0.tgz.sha256` performs the comparison. Stop if the files do not match.
 
 ```sh
 npm install -g ./amabie-cli-2.0.0.tgz
@@ -133,6 +142,10 @@ amabie result --json
 ```
 
 The new case fails against the sealed baseline and passes with the change.
+Because this task command has no explicit acceptance criterion, it may also say
+that no obligation was derived. That is expected here: task registration records
+intent, while the new regression test supplies the discriminating evidence. The
+explicit-requirement example below shows how to register and bind a criterion.
 Amabie's verdict comes from its own checks, not the claim. A test authored in the
 same worker session remains worker-authored evidence, which Amabie reports as a
 provenance caveat; READY is not an independent review of that test's completeness.
@@ -210,6 +223,11 @@ Do not waive or weaken the check to get a pass.
 - Codex CLI: setup writes a Stop hook. Review and trust it with `/hooks`; it cannot gate until that human trust step is complete.
 - Other CLI agents: advisory status, not automatic completion blocking.
 
+Creating an empty `.claude` directory or checking the generated hook file only
+tests local wiring. It does not prove that Claude Code or Codex accepted and ran
+the hook; that requires a real session in the project after the relevant host
+approval/trust step.
+
 ## Recover and inspect
 
 Run `amabie setup --check` to inspect missing scripts/tools without executing project checks. Declare external tools with `--toolchain <name>` when setup reports they are needed. This authorizes their executable directory, not just one binary. Do not authorize a repository directory as a trusted toolchain.
@@ -220,6 +238,25 @@ Read the named failing check and evidence path. `amabie result --json` reads kno
 those checks passed. It does not override an insufficient completion proof.
 Read the doctor/result envelope and completion checkpoint too: candidate and
 baseline plans can both pass while completion correctly remains NOT PROVEN.
+
+### Windows process-sweep failures
+
+If setup or doctor prints `containment sweep could not run` or says descendant
+cleanup could not be confirmed, Amabie has not accepted that probe or
+verification result. A project test that passed before this error does not
+produce READY. This is a Windows host process-inventory/cleanup failure, not
+proof that npm is missing. Re-running setup alone will not repair it; resolve
+the host error shown above and rerun `amabie doctor --json`. Windows native
+provider operations use inbox Windows PowerShell by default. If the operator
+has explicitly selected a trusted PowerShell Core installation, set
+`AMABIE_POWERSHELL_CORE_PATH` to its absolute `pwsh.exe` path in the current
+PowerShell session before running Amabie. That host is used directly; Amabie
+does not replay a native run or broker operation after a process failure.
+Process sweeps use the explicit host first; otherwise they can recover from an
+unavailable or access-violating inbox host with PowerShell Core. Ordinary query
+failures, timeouts, incomplete results, and surviving descendants still fail
+closed. This process cleanup does not grant HARDENED isolation; see
+`docs/SECURITY.md` for the host trust boundary.
 
 License: Apache-2.0; the package includes the full text in `LICENSE`. This
 demonstration is local verification, not an independent security audit or proof

@@ -4,6 +4,10 @@
 > entry point and mirrors them; when a rule changes, change AGENTS.md first, then
 > mirror it here.
 
+## Product direction
+
+Read [docs/NORTH_STAR.md](docs/NORTH_STAR.md) before planning or implementing substantial product work. Product-phase numbering is strategic: an implementation-plan Section 3 for Prompt-to-Evidence V1 is strategic Phase 2, not Phase 3. Keep Phase 2's coding-only production support explicit; a non-coding mock is only an extensibility test. Do not claim Phase 3 Universal Agent Assurance until real executing-agent workflows in two genuinely different task domains use the same task-neutral verification core and each passes reproducible end-to-end, independent-evidence, and authorized bounded-correction tests. Connected MCPs, disconnected integrations, and mock verifiers alone do not satisfy that gate; verdicts remain deterministic.
+
 ## Verification workflow authoring (binding for every agent, including spawned ones)
 
 Do not use inline interpreters (`node -e`, `python -c`, `bash -c` with generated

@@ -203,7 +203,10 @@ public static class AmabieConfined {
       var packageIdentity = new SecurityIdentifier(package);
       grant = new FileSystemAccessRule(packageIdentity, FileSystemRights.Modify | FileSystemRights.Synchronize,
         InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow);
-      var acl = Directory.GetAccessControl(directory); acl.AddAccessRule(grant); Directory.SetAccessControl(directory, acl);
+      var directoryInfo = new DirectoryInfo(directory);
+      var acl = directoryInfo.GetAccessControl(AccessControlSections.Access);
+      acl.AddAccessRule(grant);
+      directoryInfo.SetAccessControl(acl);
       Check(OpenProcessToken(GetCurrentProcess(), 0x8b, out current), "OpenProcessToken");
       Check(CreateRestrictedToken(current, 1, 0, IntPtr.Zero, 0, IntPtr.Zero, 0, IntPtr.Zero, out restricted), "CreateRestrictedToken");
       Check(ConvertStringSidToSid("S-1-16-4096", out low), "low SID");
@@ -280,7 +283,12 @@ public static class AmabieConfined {
       if (restricted != IntPtr.Zero) CloseHandle(restricted);
       if (current != IntPtr.Zero) CloseHandle(current);
       if (low != IntPtr.Zero) LocalFree(low);
-      if (grant != null) { var acl = Directory.GetAccessControl(directory); acl.RemoveAccessRuleSpecific(grant); Directory.SetAccessControl(directory, acl); }
+      if (grant != null) {
+        var aclDirectoryInfo = new DirectoryInfo(directory);
+        var acl = aclDirectoryInfo.GetAccessControl(AccessControlSections.Access);
+        acl.RemoveAccessRuleSpecific(grant);
+        aclDirectoryInfo.SetAccessControl(acl);
+      }
       if (package != IntPtr.Zero) FreeSid(package);
       if (deleteProfile) { try { Marshal.ThrowExceptionForHR(DeleteAppContainerProfile(name)); } catch { } }
       } finally {

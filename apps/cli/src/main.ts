@@ -112,9 +112,18 @@ usage:
                             pretends a hook exists where none does
   amabie doctor             is Amabie actually protecting this repo? Runs the checks now;
                             READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED
-  amabie prompt-evidence draft "<original task>" [--json]
-                            EXPERIMENTAL: create source-linked, UNCLEAR candidates for
-                            manual review; structural draft only, never a verification result.
+  amabie prompt-evidence draft "<original task>" [--extractor ollama] [--suggest-criteria]
+                            [--model MODEL] [--ollama-host LOOPBACK_URL] [--json]
+                            EXPERIMENTAL: extract source-linked, UNCLEAR candidates for
+                            review; optional Ollama mode accepts exact quotes only.
+                            --suggest-criteria previews unreviewed ideas outside the request;
+                            numeric values absent from the task are flagged for review.
+  amabie prompt-evidence loop --request FILE (--agent codex|claude |
+                            --agent-executable PROGRAM [--agent-arg ARG]...)
+                            --authorize-corrections [--max-corrections 1..3] [--json]
+                            EXPERIMENTAL: bounded correction with fresh sealed checks;
+                            requires explicit project-change authorization. A provider CLI
+                            may consume its account quota or API billing. The default limit is 3.
   amabie doctor --check ID  re-runs one sealed check for diagnosis (PARTIAL only;
                             never a completion result). Run amabie doctor for the full gate.
   amabie doctor --prompt-evidence FILE

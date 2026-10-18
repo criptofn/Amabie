@@ -21,7 +21,9 @@
  *
  * Usage: node tooling/probes/v12-integrity-boundary.mjs
  * Exit: 0 only when a boundary is observed holding and every assertion passes;
- * unavailable execution and inconclusive denial fail closed.
+ * 3 when no confined child can be started and the controls themselves pass
+ *   (host-bound SKIP; this is not evidence that a boundary exists);
+ * 1 when a control fails or an executed child does not demonstrate the boundary.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -101,6 +103,10 @@ try {
   let boundaryHolds = false;
   let confinementAvailable = false;
   let hostSkips = 0;
+  if (levels.length === 0) {
+    hostSkips += 1;
+    console.log('SKIP  integrity-launcher: this host exposes no launcher that can start a confined child; no boundary was measured or claimed');
+  }
   for (const [name, launch] of levels) {
     const confined = attempt(launch, `confined-${name}`);
     /**
@@ -141,7 +147,10 @@ try {
   fs.writeFileSync(path.join(os.tmpdir(), 'amabie-integrity-boundary.json'),
     JSON.stringify({ at: new Date().toISOString(), platform: process.platform, node: process.version, results, boundaryPresent, hostSkips }, null, 2));
 
-  process.exitCode = boundaryPresent && results.every(r => r.ok) ? 0 : 1;
+  const assertionsHold = results.every(r => r.ok);
+  process.exitCode = !assertionsHold ? 1
+    : hostSkips > 0 ? 3
+      : boundaryPresent ? 0 : 1;
 } finally {
   try { applyAuthorityLabel(authorityDir, 'medium'); } catch { /* best effort */ }
   fs.rmSync(root, { recursive: true, force: true });

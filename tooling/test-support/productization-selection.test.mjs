@@ -10,6 +10,14 @@ test('selection preserves every applicable remaining gate and isolated mutations
   const lastMutation = gates.findIndex(gate => gate.label.endsWith('/ M13'));
   const windowsProvider = gates.some(gate => gate.label === 'probe: installed HARDENED production authority and custody');
   assert.equal(windowsProvider, process.platform === 'win32', 'the native Windows provider gate must appear only on Windows');
+  for (const label of [
+    '8.3 short-name suite (does the suite still hold when TEMP is spelled the way a runner spells it?)',
+    '1.2 integrity boundary measurement (reports honestly whether confinement exists here)',
+  ]) {
+    const gate = gates.find(candidate => candidate.label === label);
+    assert.ok(gate, `productization gate is present: ${label}`);
+    assert.equal(gate.skipAware, true, `an explicit unsupported-host result is a SKIP, not a FAIL or PASS: ${label}`);
+  }
   assert.equal(gates.length - lastMutation - 1, process.platform === 'win32' ? 35 : 34);
   assert.equal(gates[lastMutation + 1].label, 'probe: 1.1 P0 trust-boundary mutations (scratch builds)');
   for (let id = 1; id <= 13; id++) {

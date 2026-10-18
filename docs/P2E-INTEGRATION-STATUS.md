@@ -1,28 +1,35 @@
-# Experimental Prompt-to-Evidence Integration Status
+# Prompt-to-Evidence integration status
 
-Date: 2026-10-18
+This document records the local integration of the experimental Prompt-to-Evidence work with the Amabie 2.0 stable-candidate changes. It is an integration record, not a release-readiness approval.
 
-This branch is a local experimental integration of the committed Prompt-to-Evidence baseline and the committed Amabie 2.0 candidate. It is not a stable release branch.
+## Integration snapshot
 
-## Source and scope
+- Branch: `codex/p2e-amabie-integration`
+- Worktree: `_canary-data/worktrees/amabie-p2e-integrated-2026-10-18`
+- Starting merge commit: `5d89f823a2e33da82cec04d3e08c06c510b63453`
+- Included committed bases: Prompt-to-Evidence `30ca264` and Amabie 2.0 candidate `0980555`.
+- Also integrated the current uncommitted snapshots from the Prompt-to-Evidence and stable-candidate worktrees. Those source worktrees remain intact and were not reset or edited by this integration.
+- The independently researched shared-assurance contract from `68c5709` was copied selectively, with its import updated for this tree. The adapter test is mock-only; it does not claim a second production task domain.
+- This branch has not been pushed, published, or deployed.
 
-- Prompt-to-Evidence source: `codex/prompt-to-evidence-v1` at `30ca264`.
-- Amabie 2.0 candidate source: `codex/amabie-2-0-release` at `0980555`.
-- Integration branch: `codex/p2e-amabie-integration`.
-- The source P2E worktree has uncommitted and untracked changes. They remain there and are deliberately not included in this merge. This integration therefore covers the committed snapshot only.
-- The authorization-first research work is in a separate Git repository at `Documents/ChatGPT/Canary/research/authorization-first`, commit `8d0ecd4`; its history is unrelated and was not copied into the product repository. Its recorded V4 pilot had 0/24 valid plans, so it is not a product integration.
-- Stable branch `codex/amabie-2-0-release` and all source worktrees remain unchanged.
+## Conflict decisions
 
-The only committed merge conflicts were `AGENTS.md` and `docs/NORTH_STAR.md`. Resolution retains the P2E versions, whose Phase 3 acceptance gate explicitly requires real workflows in two different task domains with independent evidence and bounded correction. Release follow-up documentation and the lifecycle fix/tests from the 2.0 candidate are included.
+- Adopted the newer stable-candidate native-provider policy that does not retry side-effectful native PowerShell operations after a process crash.
+- Kept the stable-candidate trusted PowerShell host selection and exact broker reflection/ACL changes.
+- Preserved Prompt-to-Evidence's bounded `Wait-Process -Timeout 2` sweep wait and lifecycle assertion while taking the stable-candidate process-sweep implementation.
+- Kept the narrower `AccessControlSections.Access` update for the confined launcher.
+- Removed the Prompt-to-Evidence-only native-runner fallback test from this integrated tree because the selected no-retry provider policy makes that fallback obsolete. The original test remains in its source worktree.
+- Merged the release checklist with the experimental Prompt-to-Evidence recheck addendum. Stable 2.0 remains marked BLOCKED for its outstanding hosted CI, default-Windows-host, registry-authentication, and live-provider acceptance gates.
 
-## Validation
+## Validation on this integrated snapshot
 
-- `npm ci`: passed; 20 packages installed, 36 audited, zero reported vulnerabilities. npm warned that the `esbuild` install script was not approved by the current npm policy.
+- `npm run clean`: passed.
 - `npm run build:force`: passed.
-- Prompt-to-Evidence core tests: 20 passed, 0 failed, 0 skipped.
-- Combined targeted CLI/P2E/lifecycle tests: 39 total, 26 passed, 13 failed, 0 skipped. The 13 failures were in CLI/lifecycle cases that invoke Windows PowerShell 5.1 process enumeration. A direct `Get-CimInstance Win32_OperatingSystem` query under that host exited `-1073741819` (`0xC0000005`); the same query under installed PowerShell Core succeeded. No assertion was changed or suppressed. This is an observed host/runtime limitation; the affected Windows integration checks remain unverified here.
-- The full `npm test` suite and `npm run verify:productization` were not run on this integration branch.
+- Focused combined Node test run after the stable-candidate overlay: **126 tests, 126 passed, 0 failed, 0 skipped**, 320,979 ms. It covered requirement extraction and evidence evaluation, correction limits, local Codex/Claude process shims, manipulation and failure cases, Windows broker/host and process-sweep behavior, plus the shared-assurance mock adapter.
+- The Codex and Claude cases used local executable shims. No live provider sessions or API requests were made.
+- The full product suite, productization gates, final package cleanroom, hosted CI, and final live-provider correction acceptance were not rerun on this combined snapshot. Historical results in `docs/RELEASE-CHECKLIST.md` remain historical and do not clear those gates.
+- The shared-assurance non-coding verifier is an architecture compatibility test only. Universal Agent Assurance is not implemented or claimed as complete.
 
-## Release boundary
+## Release and scope status
 
-Do not treat this experimental merge as a release candidate or merge it into Stable 2.0 without resolving or independently validating the Windows process-sweep test environment and running the required release gates. Nothing was pushed, published, or deployed.
+Prompt-to-Evidence remains experimental and separate from the stable Amabie 2.0 candidate. Requirements without independent evidence remain unresolved; agent completion claims do not establish PASS. The integrated branch is ready for code review and further local validation, but **Amabie 2.0 is not declared release-ready by this integration**.
