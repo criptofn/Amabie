@@ -26,15 +26,17 @@ after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const amabie = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 180_000 });
 
-/** Is a real `python` runnable here? Probed, never assumed. */
+/** Is a real Python runnable here? Probed, never assumed. Linux hosts often ship only `python3`. */
 function pythonRuns(): boolean {
-  const exe = process.platform === 'win32' ? 'python.exe' : 'python';
+  const exes = process.platform === 'win32' ? ['python.exe'] : ['python', 'python3'];
   const dirs = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
-  for (const d of dirs) {
-    const abs = path.join(d, exe);
-    if (!fs.existsSync(abs)) continue;
-    const r = spawnSync(abs, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'], { encoding: 'utf8', timeout: 60_000 });
-    if (r.status === 0) return true;
+  for (const exe of exes) {
+    for (const d of dirs) {
+      const abs = path.join(d, exe);
+      if (!fs.existsSync(abs)) continue;
+      const r = spawnSync(abs, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'], { encoding: 'utf8', timeout: 60_000 });
+      if (r.status === 0) return true;
+    }
   }
   return false;
 }

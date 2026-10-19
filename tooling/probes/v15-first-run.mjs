@@ -254,7 +254,7 @@ function makeProject(dir, { seedUserConfig = true } = {}) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
     name: path.basename(dir), version: '1.0.0', private: true,
-    scripts: { test: 'node --test greeting.test.cjs' },
+    scripts: { test: 'node --test' },
   }, null, 2) + '\n');
   fs.writeFileSync(path.join(dir, 'greeting.cjs'), GREETING_V1);
   fs.writeFileSync(path.join(dir, 'greeting.test.cjs'), TEST_V1);
@@ -322,11 +322,17 @@ if (!undoWorded) note_pending('setup says how to undo the trust step / the wirin
 // ─────────────────────────────────── 2. first normal task: a completion the checks can PROVE ──
 console.log('\n=== 2. first normal task (discriminating change) ===');
 fs.writeFileSync(path.join(repo, 'greeting.cjs'), 'module.exports = (name) => `Hello, ${String(name).trim()}!`;\n');
-fs.writeFileSync(path.join(repo, 'greeting.test.cjs'), `${TEST_V1}
-test('greeting trims the name', () => {
-  assert.equal(greeting('  Ada  '), 'Hello, Ada!');
-});
-`);
+// The sealed greeting.test.cjs stays untouched; the discriminating check is a NEW file (P0:21).
+fs.writeFileSync(path.join(repo, 'greeting.trim.test.cjs'), [
+  "const test = require('node:test');",
+  "const assert = require('node:assert/strict');",
+  "const greeting = require('./greeting.cjs');",
+  '',
+  "test('greeting trims the name', () => {",
+  "  assert.equal(greeting('  Ada  '), 'Hello, Ada!');",
+  '});',
+  '',
+].join('\n'));
 const firstStop = checkpoint(repo, {});
 check('a change the sealed checks can discriminate is ALLOWED (silence, exit 0)',
   firstStop.status === 0 && allowed(firstStop), `exit ${firstStop.status} stdout=${JSON.stringify(firstStop.raw)}`);
