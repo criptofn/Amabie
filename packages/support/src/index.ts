@@ -658,13 +658,17 @@ export type ProcessRow = { p: number; ppid: number; pgrp: number; sid: number };
  * is never rendered as "no survivors"; audit F5 honesty law unchanged).
  */
 export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | null {
-  const ps = spawnSync(psBin, ['-o', 'pid=,ppid=,pgid=,sid='],
+  // -A: every process. The default query lists only processes attached to a terminal, so a session helper
+  // without one would be invisible to the sweep.
+  const ps = spawnSync(psBin, ['-A', '-o', 'pid=,ppid=,pgid=,sid=,stat='],
     { timeout: 10_000, encoding: 'utf8', env: containmentEnv(), shell: false });
   if (ps.error || ps.status !== 0 || typeof ps.stdout !== 'string') return null;
   const rows: ProcessRow[] = [];
   for (const line of ps.stdout.split('\n')) {
-    const [p, pp, pg, sd] = line.trim().split(/\s+/).map(Number);
+    const fields = line.trim().split(/\s+/);
+    const [p, pp, pg, sd] = fields.slice(0, 4).map(Number);
     if (p === undefined || pp === undefined || !Number.isFinite(p) || !Number.isFinite(pp)) continue;
+    if (isDeadState(fields[4])) continue;
     rows.push({
       p, ppid: pp,
       pgrp: pg !== undefined && Number.isFinite(pg) ? pg : -1,
@@ -674,52 +678,101 @@ export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | n
   return rows;
 }
 
-function sweepPosix(pid: number): SweepResult {
-  const killed: number[] = [];
-  // collect: [pid, ppid, pgrp, session]
+/** Zombie (Z) and dead (X) processes hold nothing to contain; they are not sweep targets. */
+function isDeadState(state: string | undefined): boolean {
+  return state !== undefined && (state.startsWith('Z') || state.startsWith('X'));
+}
+
+/** Enumeration passes before the sweep stops and reports whatever still lives. */
+const SWEEP_MAX_PASSES = 10;
+const SWEEP_PASS_PAUSE_MS = 25;
+
+/** Process-table access for the POSIX sweep. Injectable so the pass logic is testable on any platform. */
+export interface PosixSweepIo {
+  /** The sweeping process itself; never a target. */
+  self: number;
+  /** Full process table (zombies and dead rows excluded), or null when it cannot be read. */
+  table(): ProcessRow[] | null;
+  /** SIGKILL one pid. Returns whether the signal was delivered; survivors are decided by the next enumeration. */
+  kill(pid: number): boolean;
+  /** SIGKILL the process group led by pid, as a race backstop for members the table did not show. */
+  killGroup(pid: number): void;
+  pause(ms: number): void;
+}
+
+function procTableRows(): ProcessRow[] {
   const rows: ProcessRow[] = [];
-  if (fs.existsSync('/proc')) {
-    for (const entry of fs.readdirSync('/proc')) {
-      if (!/^\d+$/.test(entry)) continue;
-      let stat = '';
-      try { stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8'); } catch { continue; }
-      // fields after the parenthesized comm: state ppid pgrp session ...
-      const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
-      const ppid = Number(rest[1]); const pgrp = Number(rest[2]); const sid = Number(rest[3]);
-      if (!Number.isFinite(ppid)) continue;
-      rows.push({ p: Number(entry), ppid, pgrp, sid });
-    }
-  } else {
-    const psRows = psTableRows();
-    if (psRows === null) return { killed, failed: true };
-    rows.push(...psRows);
+  for (const entry of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(entry)) continue;
+    let stat = '';
+    try { stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8'); } catch { continue; }
+    // fields after the parenthesized comm: state ppid pgrp session ...
+    const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+    const ppid = Number(rest[1]); const pgrp = Number(rest[2]); const sid = Number(rest[3]);
+    if (!Number.isFinite(ppid) || isDeadState(rest[0])) continue;
+    rows.push({ p: Number(entry), ppid, pgrp, sid });
   }
-  // Membership: same session as the (setsid'd) child — catches descendants that
-  // setpgid()ed into their own group but never escaped the session; OR stale
-  // direct-ppid lineage (BFS below handles intermediate deaths). A process that
-  // BOTH setsid()es and reparents is a documented residual (SECURITY Tier B).
-  const inSession = (r: { pgrp: number; sid: number }): boolean => posixSessionMember(r.pgrp, r.sid, pid);
+  return rows;
+}
+
+function posixProcessIo(): PosixSweepIo {
+  return {
+    self: process.pid,
+    table: () => (fs.existsSync('/proc') ? procTableRows() : psTableRows()),
+    kill: pid => {
+      try { process.kill(pid, 'SIGKILL'); return true; } catch { return false; }
+    },
+    killGroup: pid => { try { process.kill(-pid, 'SIGKILL'); } catch { /* group already empty */ } },
+    pause: ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); },
+  };
+}
+
+/**
+ * Lineage of the swept child from one fresh enumeration: members of its SESSION or group (setpgid()
+ * descendants keep the session) plus a transitive PPID closure. Null when the table cannot be read.
+ */
+function posixLineage(io: PosixSweepIo, pid: number): number[] | null {
+  const rows = io.table();
+  if (rows === null) return null;
+  // A process that BOTH setsid()es and reparents is a documented residual (SECURITY Tier B).
   const members = new Set<number>();
   for (const r of rows) {
-    if (r.p === pid || r.p === process.pid) continue;
-    if (inSession(r)) members.add(r.p);
+    if (r.p === pid || r.p === io.self) continue;
+    if (posixSessionMember(r.pgrp, r.sid, pid)) members.add(r.p);
   }
-  // transitive PPID BFS (catches lineage whose session was reset but parentage
-  // retained — rare, bounded by SWEEP_MAX_PROCESSES)
   let grew = true;
   while (grew) {
     grew = false;
     for (const r of rows) {
-      if (r.p === pid || r.p === process.pid || members.has(r.p)) continue;
+      if (r.p === pid || r.p === io.self || members.has(r.p)) continue;
       if (members.has(r.ppid)) { members.add(r.p); grew = true; }
     }
   }
-  for (const m of members) {
-    if (killed.length >= SWEEP_MAX_PROCESSES) break;
-    try { process.kill(m, 'SIGKILL'); killed.push(m); } catch { /* already dead */ }
+  return [...members];
+}
+
+/**
+ * Bounded, identity-safe sweep. Each pass re-enumerates and kills at most SWEEP_MAX_PROCESSES members, so
+ * the per-pass budget never silently drops a helper: the next pass sees the rest. The sweep is complete only
+ * when a fresh enumeration finds no members. Anything still alive after the last pass is a failed sweep.
+ */
+export function sweepPosixPasses(pid: number, io: PosixSweepIo): SweepResult {
+  const killed = new Set<number>();
+  let survivors = posixLineage(io, pid);
+  for (let pass = 0; pass < SWEEP_MAX_PASSES && survivors !== null && survivors.length > 0; pass++) {
+    for (const m of survivors.slice(0, SWEEP_MAX_PROCESSES)) {
+      if (io.kill(m)) killed.add(m);
+    }
+    io.killGroup(pid);
+    io.pause(SWEEP_PASS_PAUSE_MS);
+    survivors = posixLineage(io, pid);
   }
-  try { process.kill(-pid, 'SIGKILL'); } catch { /* group already empty */ }
-  return { killed, failed: false };
+  // Post-check: `survivors` is the last fresh enumeration, so anything left is a known survivor.
+  return { killed: [...killed], failed: survivors === null || survivors.length > 0 };
+}
+
+function sweepPosix(pid: number): SweepResult {
+  return sweepPosixPasses(pid, posixProcessIo());
 }
 
 /**
