@@ -271,6 +271,25 @@ function parseDoctorReport(
     if (seenCriteria.size !== declaration.criteria.length) return null;
   }
 
+  // The per-requirement block can read PASS while the overall doctor gate refuses (regression evidence,
+  // task obligations, failed sealed checks). A refused envelope that still shows an unmet criterion is a
+  // real gap: its validated evidence goes through the normal path, so the loop reports FAIL and the
+  // correction targets that gap. Without one, nothing in the refused envelope can be trusted, so every
+  // criterion takes the refusal label.
+  let hasUnmet = false;
+  for (const row of raw.requirements) {
+    if (!isRecord(row) || !Array.isArray(row.criteria)) return null;
+    if (row.criteria.some(item => isRecord(item) && item.status === 'unmet')) hasUnmet = true;
+  }
+  if (envelope.status !== 'READY' && !hasUnmet) {
+    // The refusal keeps the doctor's own label: NOT PROVEN stays unproven, anything else is blocked.
+    const reason = `the overall doctor gate returned ${String(envelope.status)}, not READY`;
+    const refusal = envelope.status === 'NOT PROVEN'
+      ? { blocked: [], unproven: [...expected.keys()].map(criterionId => ({ criterionId, reason })) }
+      : { blocked: [...expected.keys()].map(criterionId => ({ criterionId, reason })), unproven: [] };
+    return { report: raw as unknown as VerificationReport, evidence: [], collection: { evidence: [], ...refusal } };
+  }
+
   const evidence: EvidenceDraft[] = [];
   const seenEvidence = new Set<string>();
   for (const record of raw.evidence) {
