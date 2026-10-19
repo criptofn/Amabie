@@ -180,12 +180,14 @@ test('a normalized-equal source rewrite cannot hide a committed covered fix', ()
   write(root, 'greet.cjs', checkout.replace(/\r\n$/, '\n'));
   assert.equal(git(root, 'diff', '--name-only', 'HEAD', '--', 'greet.cjs'), '');
   assert.ok(candidateDiffSignals(root, git(root, 'rev-parse', 'HEAD')).touched.includes('greet.cjs'), 'fixture must retain the status-only source change');
+  // P0:21: the regression in tests/greet.test.cjs was written by this same worker, so it is not
+  // independent authority. The covered fix stays NOT PROVEN, and the completion stays blocked.
   const covered = amabie(root, 'doctor', '--json');
-  assert.equal(covered.code, 0, covered.out);
+  assert.equal(covered.code, 2, covered.out);
   assert.match(covered.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
   const completion = hook(root);
-  assert.notEqual(completion.decision, 'block');
-  assert.match(completion.systemMessage ?? '', /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
+  assert.equal(completion.decision, 'block');
+  assert.match(completion.systemMessage ?? completion.reason ?? '', /discriminating check text was written by the worker/);
 
   write(root, 'greet.cjs', '// production greeting\n' + FIXED + "module.exports.uncovered = () => 'wrong';\n");
   assertDoctorAndHookBlocked(root, /base commit too/);
@@ -200,10 +202,11 @@ test('a committed earlier regression cannot prove a later uncovered change', () 
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
+  // P0:21: the regression is written by this same worker, so it is UNPROVEN rather than independent evidence.
   const first = discriminationObligation(root, cfg);
-  assert.equal(first?.status, 'met', first?.note);
+  assert.equal(first?.status, 'unproven', first?.note);
   const firstDoctor = amabie(root, 'doctor', '--json');
-  assert.equal(firstDoctor.code, 0, firstDoctor.out);
+  assert.equal(firstDoctor.code, 2, firstDoctor.out);
   commit(root);
   assert.equal(amabie(root, 'task', 'fix trailing whitespace', '--kind', 'bugfix').code, 0);
   // This second implementation still passes the earlier leading-space assertion,
@@ -229,14 +232,15 @@ test('a committed earlier regression cannot prove a later uncovered change', () 
   assertDoctorAndHookBlocked(root, /base commit too/);
   write(root, 'greet.cjs', "module.exports = n => 'hello ' + n.trim();\n");
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION + "test('trailing whitespace', () => assert.equal(greet('Ada  '), 'hello Ada'));\n");
+  // P0:21: the repaired check is still worker-written, so the repair stays NOT PROVEN, with the same label.
   const repaired = amabie(root, 'doctor', '--json');
-  assert.equal(repaired.code, 0, repaired.out);
+  assert.equal(repaired.code, 2, repaired.out);
   assert.match(repaired.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
   commit(root);
   write(root, 'README.md', 'Documentation after the covered repair.\n');
   commit(root);
   const committedRepair = amabie(root, 'doctor', '--json');
-  assert.equal(committedRepair.code, 0, committedRepair.out);
+  assert.equal(committedRepair.code, 2, committedRepair.out);
   assert.match(committedRepair.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
 });
 
@@ -250,8 +254,11 @@ test('an imported dash-test check is compared and retains worker provenance, whi
   assert.ok(candidateDiffSignals(root, cfg.baseline!.head!).changes.includes('scripts/greet-regression-test.cjs'));
   assert.equal(discriminationObligation(root, cfg)?.status, 'unproven', 'an unused file cannot certify work');
   write(root, 'tests/greet.test.cjs', TEST + "require('../scripts/greet-regression-test.cjs');\n");
+  // The fixture's tests/greet.test.cjs already exists at the base, so importing the new check there rewrites an
+  // EXISTING check: UNPROVEN under P0:21. The caveat still names the created file as worker-authored.
   const genuine = discriminationObligation(root, cfg);
-  assert.equal(genuine?.status, 'met', genuine?.note);
+  assert.equal(genuine?.status, 'unproven', genuine?.note);
+  assert.match(genuine?.note ?? '', /tests\/greet\.test\.cjs \(EXISTING check rewritten by this session\)/);
   assert.match(genuine?.caveat ?? '', /greet-regression-test\.cjs.*created by this session/);
   write(root, 'greet.cjs', "module.exports = n => 'hello ' + String(n);\n");
   write(root, 'scripts/greet-regression-test.cjs', "const assert = require('node:assert/strict'); const copied = n => 'hello ' + n.trimStart(); assert.equal(copied('  Ada'), 'hello Ada');\n");
@@ -298,13 +305,15 @@ test('a nondiscriminating check links its actual comparison output without chang
   assert.ok(bundle.steps.some((step: { stdout: { file: string } }) => fs.readFileSync(path.join(output, step.stdout.file), 'utf8').includes('greet')));
   assert.equal(fs.existsSync(bundle.cwd), false, 'output survives removal of the comparison tree');
 
+  // P0:21: the worker-written regression leaves the verdict NOT PROVEN. The checks still pass, so the record is
+  // unproven: neither a failure nor an independent pass.
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   const covered = amabie(root, 'doctor', '--json');
-  assert.equal(covered.code, 0, covered.out);
+  assert.equal(covered.code, 2, covered.out);
   assert.match(covered.out, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/);
   const history = amabie(root, 'result', '--json');
   const historyPacket = JSON.parse(history.out.split(/\r?\n/)[0]!) as { lastVerification: { status: string; source: string } };
-  assert.equal(historyPacket.lastVerification.status, 'pass');
+  assert.equal(historyPacket.lastVerification.status, 'unproven');
   assert.equal(historyPacket.lastVerification.source, 'doctor', 'a baseline failure is not a failed current verification');
 });
 
@@ -331,8 +340,9 @@ test('an imported test-prefix regression outside test directories discriminates 
   write(root, 'scripts/test-greet-regression.cjs', "const assert = require('node:assert/strict'); const greet = require('../greet.cjs'); assert.equal(greet('  Ada'), 'hello Ada');\n");
   write(root, 'tests/greet.test.cjs', TEST + "require('../scripts/test-greet-regression.cjs');\n");
   const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
+  // P0:21: the imported check is worker-written, so it is UNPROVEN; its caveat still names the file.
   const result = discriminationObligation(root, cfg);
-  assert.equal(result?.status, 'met', result?.note);
+  assert.equal(result?.status, 'unproven', result?.note);
   assert.match(result?.caveat ?? '', /scripts\/test-greet-regression\.cjs/);
   assert.match(result?.caveat ?? '', /CREATED|WRITTEN BY THE WORKER/);
 });
@@ -376,12 +386,18 @@ test('candidate comparison uses isolation base even when setup baseline would di
   assertBlocked(root, /base commit too/);
 });
 
-test('a discriminating check allows the same candidate to finish and promote', () => {
-  const root = fixture('positive'); const candidate = work(root);
-  write(candidate, 'greet.cjs', FIXED); write(candidate, 'tests/greet.test.cjs', TEST + REGRESSION); commit(candidate);
+test('an unchanged red oracle discriminates through the isolated base and lets the candidate finish and promote', () => {
+  // P0:21 positive control: the regression is committed to the base before the candidate exists,
+  // and the candidate changes only the implementation, so the oracle is not worker-authored.
+  const root = fixture('positive');
+  write(root, 'tests/greet.test.cjs', TEST + REGRESSION); commit(root);
+  assert.equal(amabie(root, 'setup', '--yes').code, 2, 'setup baseline is red');
+  const candidate = work(root);
+  write(candidate, 'greet.cjs', FIXED); commit(candidate);
   const expected = git(candidate, 'rev-parse', 'HEAD');
   const r = amabie(root, 'finish', 'fix'); assert.equal(r.code, 0, r.out); assert.equal(git(root, 'rev-parse', 'HEAD'), expected);
-  assert.match(r.out, /full evidence: .*per-step logs and verification\.json/);
+  // P0:21: the promotion line names its evidence directory as `evidence:`, not `full evidence:`.
+  assert.match(r.out, /evidence: .*promotion/);
   assert.equal(amabie(root, 'doctor').code, 0); assert.notEqual(hook(root).decision, 'block');
 });
 
@@ -412,9 +428,12 @@ test('completion refuses to prove a change when the candidate skips an extra tes
   assert.equal(amabie(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(control, 'greet.cjs', FIXED);
   write(control, 'tests/greet.test.cjs', TEST + REGRESSION);
+  // P0:21: the control's regression is worker-written, so it blocks, but only for that reason,
+  // never for a pending-count increase it does not have.
   const normal = hook(control);
-  assert.notEqual(normal.decision, 'block');
-  assert.doesNotMatch(normal.systemMessage ?? '', /more skipped\/pending cases/);
+  assert.equal(normal.decision, 'block');
+  assert.match(normal.systemMessage ?? normal.reason ?? '', /regression evidence is UNPROVEN/);
+  assert.doesNotMatch(normal.systemMessage ?? normal.reason ?? '', /more skipped\/pending cases/);
 
   const candidateRoot = fixture('candidate-pending-count-increase');
   const candidate = work(candidateRoot);
@@ -445,9 +464,11 @@ test('mixed runner summaries still block when one runner reports an extra skippe
   assert.equal(amabie(control, 'task', 'fix leading whitespace', '--kind', 'bugfix').code, 0);
   write(control, 'greet.cjs', FIXED);
   write(control, 'tests/greet.test.cjs', TEST + REGRESSION);
+  // P0:21: worker-written regression, so the control blocks for that reason only (see the pending-count control).
   const normal = hook(control);
-  assert.notEqual(normal.decision, 'block');
-  assert.doesNotMatch(normal.systemMessage ?? '', /more skipped\/pending cases/);
+  assert.equal(normal.decision, 'block');
+  assert.match(normal.systemMessage ?? normal.reason ?? '', /regression evidence is UNPROVEN/);
+  assert.doesNotMatch(normal.systemMessage ?? normal.reason ?? '', /more skipped\/pending cases/);
 });
 
 test('Jest-style skipped counts keep a successful completion unproven', () => {
@@ -487,11 +508,12 @@ test('a worker check crashing on absent baseline data cannot certify a change', 
   assert.match(stillMissing.out, /same inputs used for the baseline comparison/);
 
   // A real assertion over defined inputs still proves the fix, with worker provenance.
+  // P0:21: the repaired assertion is worker-written, so it proves the input contract but not the change.
   write(root, 'tests/greet.test.cjs', TEST + "require('./check-input.cjs').assertExpected();\n");
   const repaired = amabie(root, 'doctor');
-  assert.equal(repaired.code, 0, repaired.out);
-  assert.match(repaired.out, /NOT independent authority/);
-  assert.notEqual(hook(root).decision, 'block');
+  assert.equal(repaired.code, 2, repaired.out);
+  assert.match(repaired.out, /NOT PROVEN/);
+  assert.equal(hook(root).decision, 'block');
 });
 
 test('a genuine old implementation crash remains discriminating when the input control passes', () => {
@@ -501,10 +523,11 @@ test('a genuine old implementation crash remains discriminating when the input c
   commit(root);
   assert.equal(amabie(root, 'setup', '--yes').code, 0);
   write(root, 'greet.cjs', FIXED);
+  // P0:21: the regression is worker-written, so the fix is NOT PROVEN even though the base crash is real.
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
   const result = amabie(root, 'doctor');
-  assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /NOT independent authority/);
+  assert.equal(result.code, 2, result.out);
+  assert.match(result.out, /NOT PROVEN/);
 });
 
 test('missing regression proof points to the sealed test entry, never a changed script', () => {
@@ -546,29 +569,31 @@ test('argv-based projects get the exact sealed test command in regression guidan
 });
 
 test('doctor visibly labels worker-authored regression evidence as non-independent', () => {
+  // P0:21: worker-authored regression evidence is UNPROVEN, so the outer verdict is NOT PROVEN, not READY.
   const root = fixture('worker-authored-evidence');
   write(root, 'greet.cjs', FIXED);
   write(root, 'tests/greet.test.cjs', TEST + REGRESSION);
 
   const human = amabie(root, 'doctor');
-  assert.equal(human.code, 0, human.out);
-  assert.match(human.out, /READY/);
-  assert.match(human.out, /NOT independent authority/);
+  assert.equal(human.code, 2, human.out);
+  assert.match(human.out, /NOT PROVEN/);
+  // P0:21: the human report prints the obligation note, which names the worker-written check; the caveat stays in JSON.
+  assert.match(human.out, /written by the worker/);
   assert.match(human.out, /tests\/greet\.test\.cjs \(EXISTING check rewritten by this session\)/);
 
   const json = spawnSync(process.execPath, [CLI, 'doctor', '--json'], {
     cwd: root, encoding: 'utf8', windowsHide: true, timeout: 120_000,
   });
-  assert.equal(json.status, 0, json.stderr);
+  assert.equal(json.status, 2, json.stderr);
   const envelope = JSON.parse(json.stdout);
-  assert.equal(envelope.status, 'READY');
+  assert.equal(envelope.status, 'NOT PROVEN');
   assert.equal(envelope.proof.registeredRequirements, 0);
   const evidence = envelope.proof.obligations.find((ob: { id: string }) => ob.id === 'regression-evidence');
-  assert.equal(evidence.status, 'met');
+  assert.equal(evidence.status, 'unproven');
   assert.match(evidence.caveat, /NOT independent authority/);
-  assert.match(json.stderr, /NOT independent authority/);
+  assert.match(json.stdout, /NOT independent authority/);
 
-  assert.notEqual(hook(root).decision, 'block');
+  assert.equal(hook(root).decision, 'block');
   const stored = JSON.parse(fs.readFileSync(path.join(root, '.amabie/last-checkpoint.json'), 'utf8'));
   assert.deepEqual(stored.proof, envelope.proof);
   const history = spawnSync(process.execPath, [CLI, 'result', '--json'], { cwd: root, encoding: 'utf8', windowsHide: true });
@@ -587,7 +612,12 @@ test('JSON proof information does not upgrade an unbound task requirement to REA
   const envelope = JSON.parse(result.stdout);
   assert.equal(envelope.status, 'NOT PROVEN');
   assert.equal(envelope.proof.registeredRequirements, 1);
-  assert.match(envelope.next, /bind the requirement/);
+  // P0:21: the JSON proof summary carries no notes, and the open regression obligation shadows the bind hint in `next`.
+  // The hint lives on the per-requirement obligation's note, so it is asserted in the human report.
+  assert.ok(envelope.proof.obligations.some((ob: { id: string }) => ob.id === 'per-requirement'));
+  const human = amabie(root, 'doctor');
+  assert.match(human.out, /per-requirement/);
+  assert.match(human.out, /amabie bind <sealed script> --requirement/);
   assert.ok(envelope.proof.obligations.some((ob: { status: string }) => ob.status === 'unproven'));
   const checkpointPath = path.join(root, '.amabie/last-checkpoint.json');
   const forged = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));

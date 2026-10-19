@@ -7,13 +7,16 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 // P0-1 regression: the prompt-evidence loop must never report `verified/PASS` while the overall
-// doctor gate refuses. The READY control proves the same plan does verify when the change is real.
+// doctor gate refuses. P0-21 regression: a check the candidate wrote or rewrote itself is not independent
+// authority, so it cannot make a requirement met. The READY control proves an unchanged, operator-committed
+// oracle still verifies a real change.
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..');
 const cliEntry = path.join(repoRoot, 'apps', 'cli', 'dist', 'src', 'main.js');
 const checkFixture = path.join(repoRoot, 'tooling', 'test-support', 'fixtures', 'prompt-evidence-source-check.mjs');
 const noopAgent = path.join(repoRoot, 'tooling', 'test-support', 'fixtures', 'prompt-evidence-noop-agent.mjs');
 const loopArgs = ['prompt-evidence', 'loop', '--request', '.amabie/prompt-evidence.json', '--agent-executable', process.execPath, '--agent-arg', noopAgent, '--authorize-corrections', '--max-corrections', '1', '--json'];
+const doctorArgs = ['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json'];
 
 const requirements = [
   'Registration rejects an invalid email address.',
@@ -40,8 +43,8 @@ function passwordSource(rule) {
   return `export const passwordRule = "${rule}";\n`;
 }
 
-// The worker-owned check for the password requirement. It passes only when the rule it names is
-// present in the policy file, so a change to the rule needs the check to move with it.
+// The check for the password requirement. It passes only when the rule it names is present in the
+// policy file. Its bytes are the operator's oracle when they are committed before the candidate starts.
 function passwordCheckSource(rule) {
   return [
     "import fs from 'node:fs';",
@@ -56,10 +59,11 @@ function passwordCheckSource(rule) {
   ].join('\n');
 }
 
-/** A scratch project whose sealed plan runs two source checks. `setup` only accepts a passing baseline,
- *  so the baseline is committed green, `setup` runs there, and an empty commit then records the base
- *  that `task` registers against. The candidate is written uncommitted and is what the verdict reads. */
-function makeProject({ baseRule, candidateRule, candidateNote = '', breakStable = false }) {
+/** A scratch project whose sealed plan runs two source checks. The starting commit holds the policy at
+ *  `baseRule` and the operator's oracle (password-policy.test.mjs), which requires `fixtureRule`; `setup`
+ *  seals that commit as the comparison base. The candidate is written uncommitted and is what the verdict
+ *  reads. `rewriteCheckTo` makes the candidate rewrite the oracle itself. */
+function makeProject({ baseRule, candidateRule, candidateNote = '', rewriteCheckTo, breakStable = false, fixtureRule = 'rejects blank input' }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-loop-verdict-'));
   const git = (args) => run('git', args, root);
   assertRun(git(['init', '--quiet']), 0, 'initialize scratch repository');
@@ -72,7 +76,7 @@ function makeProject({ baseRule, candidateRule, candidateNote = '', breakStable 
   const stableFile = path.join(root, 'stable.mjs');
   fs.writeFileSync(registrationFile, 'export const emailRule = "rejects invalid email";\n');
   fs.writeFileSync(passwordFile, passwordSource(baseRule));
-  fs.writeFileSync(passwordCheckFile, passwordCheckSource(baseRule));
+  fs.writeFileSync(passwordCheckFile, passwordCheckSource(fixtureRule));
   fs.writeFileSync(stableFile, 'export const existingFeature = true;\n');
   const proofs = Object.fromEntries(requirements.map((requirement, index) => [materialDigest(requirement), index === 0 ? 'test' : 'typecheck']));
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({
@@ -88,8 +92,10 @@ function makeProject({ baseRule, candidateRule, candidateNote = '', breakStable 
   assertRun(git(['commit', '--quiet', '-m', 'fixture baseline']), 0, 'commit fixture baseline');
 
   const cli = (args) => run(process.execPath, [cliEntry, ...args], root);
-  assertRun(cli(['setup', '--yes']), 0, 'configure Amabie in scratch project');
-  assertRun(git(['commit', '--quiet', '--allow-empty', '-m', 'base behaviour']), 0, 'commit base behaviour');
+  // A red starting commit is the realistic base for a new behaviour: `setup` exits 2 ("setup baseline is
+  // red") and still seals the plan, which is how the discrimination suite builds its frozen base.
+  const setup = cli(['setup', '--yes']);
+  assert.ok([0, 2].includes(setup.status), `configure Amabie in scratch project\n${setup.stderr}\n${setup.stdout}`);
   assertRun(cli(['task', goal, ...requirements.flatMap(requirement => ['--requirement', requirement])]), 0, 'register original task and requirements');
 
   const [registrationText, passwordText] = requirements;
@@ -114,7 +120,7 @@ function makeProject({ baseRule, candidateRule, candidateNote = '', breakStable 
   fs.mkdirSync(path.join(root, '.amabie'), { recursive: true });
   fs.writeFileSync(path.join(root, '.amabie', 'prompt-evidence.json'), `${JSON.stringify(request, null, 2)}\n`);
   fs.writeFileSync(passwordFile, `${passwordSource(candidateRule)}${candidateNote}`);
-  fs.writeFileSync(passwordCheckFile, passwordCheckSource(candidateRule));
+  if (rewriteCheckTo !== undefined) fs.writeFileSync(passwordCheckFile, passwordCheckSource(rewriteCheckTo));
   if (breakStable) fs.writeFileSync(stableFile, 'export const = broken;\n');
   return { root, cli };
 }
@@ -130,9 +136,9 @@ function parseJson(result, label) {
 test('NOT PROVEN: a green per-requirement block with no discrimination is never reported as a verified loop', () => {
   // The candidate adds only a comment: no behaviour change, so the sealed checks pass on the base too.
   // The overall doctor gate must refuse with NOT PROVEN even though every requirement reads PASS.
-  const project = makeProject({ baseRule: 'accepts blank input', candidateRule: 'accepts blank input', candidateNote: '// reviewed: comment only\n' });
+  const project = makeProject({ baseRule: 'rejects blank input', candidateRule: 'rejects blank input', candidateNote: '// reviewed: comment only\n' });
   try {
-    const doctor = project.cli(['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json']);
+    const doctor = project.cli(doctorArgs);
     const doctorEnvelope = parseJson(doctor, 'doctor');
     assert.equal(doctorEnvelope.status, 'NOT PROVEN', `the outer gate must refuse this candidate\n${doctor.stdout}`);
     assert.equal(doctor.status, 2);
@@ -148,13 +154,13 @@ test('NOT PROVEN: a green per-requirement block with no discrimination is never 
   }
 });
 
-test('READY control: the same plan verifies when the candidate really changes the base behaviour', () => {
-  // The base accepts blank input and its check says so. The candidate rejects blank input and its
-  // check moves with it, so the rewritten check fails on the base and discriminates the change.
-  // The overall gate must reach READY, so the loop may report verified/PASS with exit 0.
+test('READY control: an unchanged operator oracle verifies a real change that the base fails', () => {
+  // The base breaks the policy and the operator's check, byte-identical to the fixture, fails there.
+  // The candidate restores the rule without touching the check. The change is discriminated by an
+  // independent oracle, so the overall gate must reach READY and the loop may report verified/PASS.
   const project = makeProject({ baseRule: 'accepts blank input', candidateRule: 'rejects blank input' });
   try {
-    const doctor = project.cli(['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json']);
+    const doctor = project.cli(doctorArgs);
     const doctorEnvelope = parseJson(doctor, 'doctor');
     assert.equal(doctorEnvelope.status, 'READY', `the real change must reach READY\n${doctor.stdout}`);
     assert.equal(doctor.status, 0);
@@ -174,10 +180,39 @@ test('NEEDS ATTENTION: a failing sealed check elsewhere keeps the loop off PASS 
   // PASS. An unbound sealed check breaks on the candidate, so the overall gate refuses with NEEDS ATTENTION.
   const project = makeProject({ baseRule: 'accepts blank input', candidateRule: 'rejects blank input', breakStable: true });
   try {
-    const doctor = project.cli(['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json']);
+    const doctor = project.cli(doctorArgs);
     const doctorEnvelope = parseJson(doctor, 'doctor');
     assert.equal(doctorEnvelope.status, 'NEEDS ATTENTION', `the broken sealed check must refuse the overall gate\n${doctor.stdout}`);
     assert.equal(doctor.status, 2);
+
+    const loop = project.cli(loopArgs);
+    const loopEnvelope = parseJson(loop, 'loop');
+    assert.notEqual(loopEnvelope.status, 'verified', `the loop must not claim verified\n${loop.stdout}`);
+    assert.notEqual(loopEnvelope.verification?.verdict, 'PASS', `the loop must not claim PASS\n${loop.stdout}`);
+    assert.equal(loop.status, 2, 'a refused candidate exits 2');
+  } finally {
+    fs.rmSync(project.root, { recursive: true, force: true });
+  }
+});
+
+test('P0-21: a candidate that rewrites the check to match its own wrong behaviour does not satisfy the requirement', () => {
+  // The candidate ships a policy the requirement does not ask for, and rewrites the existing check to assert
+  // that same wrong text. Against the base the rewritten check fails, so it discriminates the change, but its
+  // text is the worker's own. It must not be counted as independent satisfaction of the requirement.
+  const project = makeProject({
+    baseRule: 'accepts blank input',
+    candidateRule: 'accepts blank input with warning',
+    rewriteCheckTo: 'accepts blank input with warning',
+  });
+  try {
+    const doctor = project.cli(doctorArgs);
+    const doctorEnvelope = parseJson(doctor, 'doctor');
+    assert.notEqual(doctorEnvelope.status, 'READY', `a worker-rewritten check must not reach READY\n${doctor.stdout}`);
+    assert.notEqual(doctor.status, 0, `a worker-rewritten check must not exit 0\n${doctor.stdout}`);
+    // The base failure is real, so the obligation must be UNPROVEN for the worker-written check, not failed or met.
+    const regression = doctorEnvelope.proof?.obligations?.find(o => o.id === 'regression-evidence');
+    assert.equal(regression?.status, 'unproven', `the worker-rewritten check must leave regression evidence UNPROVEN\n${doctor.stdout}`);
+    assert.match(regression?.caveat ?? '', /password-policy\.test\.mjs/, 'the caveat must name the rewritten check file');
 
     const loop = project.cli(loopArgs);
     const loopEnvelope = parseJson(loop, 'loop');

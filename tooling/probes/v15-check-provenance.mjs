@@ -115,7 +115,10 @@ const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m'
   const gate = checkpoint(dir);
   const blob = `${gate.stdout}\n${gate.stderr}`;
   const silent = gate.stdout.length === 0;
-  const titled = /CHECK TEXT WRITTEN BY THE WORKER ITSELF/.test(blob);
+  // P0:21: a rewritten EXISTING check is UNPROVEN, so the block reason carries the unproven note
+  // ("the discriminating check text was written by the worker ..."), not the uppercase caveat that
+  // a worker-CREATED check gets when it is met. Either label proves the worker authorship.
+  const titled = /CHECK TEXT WRITTEN BY THE WORKER ITSELF|check text was written by the worker/.test(blob);
   const named = /greeting\.test\.cjs/.test(blob) && /EXISTING check rewritten/.test(blob);
 
   check(!silent, 'BLOCKER 1: a rewritten EXISTING check does NOT produce a silent, uncaveated pass',
@@ -159,8 +162,10 @@ const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m'
   const falseRed = /pass on the base commit too/.test(blob);
   check(!falseRed, 'BLOCKER 7: a sealed-script check outside a test path is NOT a false red',
     falseRed ? `the gate still refused with the base-comparison note: ${blob.slice(0, 240)}` : `gate said: ${blob.slice(0, 200)}`);
-  check(/CHECK TEXT WRITTEN BY THE WORKER ITSELF/.test(blob),
-    'BLOCKER 7: it is admitted as evidence, and still labelled worker-authored (no new false green)',
+  // P0:21: the rewritten sealed check is UNPROVEN rather than admitted as independent evidence; it
+  // must still be labelled worker-authored (no new false green).
+  check(/CHECK TEXT WRITTEN BY THE WORKER ITSELF|check text was written by the worker/.test(blob),
+    'BLOCKER 7: it is labelled worker-authored and not counted as independent authority (no new false green)',
     blob.slice(0, 240));
 }
 

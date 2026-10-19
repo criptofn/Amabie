@@ -184,7 +184,10 @@ console.log('\n── B: the same change plus a discriminating check');
   const root = makeRepo('discriminating', SRC_V1, TEST_V1);
   setup(root);
   write(root, 'src/greet.js', SRC_V2);
-  write(root, 'tests/greet.test.js', TEST_DISCRIMINATING);
+  // P0:21: the discriminating check is a NEW file the worker creates. Rewriting the existing
+  // tests/greet.test.js to assert the new behaviour is the attack and stays NOT PROVEN (see the
+  // discrimination tests); a worker-created check earns READY with a worker-authored caveat (G1/G2).
+  write(root, 'tests/greet-discrimination.test.js', TEST_DISCRIMINATING);
   const d = doctor(root);
   console.log(`   doctor: status=${String(d.env?.status ?? '?')} exit=${d.status}`);
   if (d.env?.status !== 'READY') console.log(`   why: ${String(d.env?.why ?? '').slice(0, 300)}`);

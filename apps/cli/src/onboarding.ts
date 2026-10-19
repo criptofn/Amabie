@@ -2121,7 +2121,7 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
     ...disc.modifiedChecks.map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`),
   ];
   const workerCaveat = workerAuthored.length > 0
-    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. This is a provenance caveat, not a failed obligation; retain it in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance`
+    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. Retain this in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance`
     : undefined;
   const pendingCaveat = disc.pendingCountIncreases?.length
     ? `the test runner reported more skipped/pending cases on the candidate than on the comparison baseline (${disc.pendingCountIncreases.map((x) => `test check ${x.testRun}: ${x.baseline}→${x.candidate} (${x.runner})`).join(', ')}); review those cases because a green exit code alone does not show that they ran${disc.baselineEvidence ? `; baseline comparison evidence: ${disc.baselineEvidence}` : ''}`
@@ -2143,6 +2143,17 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
       ...(caveat ? { caveat } : {}),
     };
   }
+  /**
+   * Rewriting an EXISTING recognized check is the attack: the worker edits the oracle it is then
+   * judged by, so the base failure proves nothing about the worker's work. Keep it UNPROVEN with the
+   * provenance named. A check the worker CREATED is the repair the completion contract asks for and
+   * stays `met` below, carrying the caveat that names it as worker-authored.
+   */
+  if (disc.modifiedChecks.length > 0) return {
+    id: 'regression-evidence', mode: 'objective', status: 'unproven',
+    note: `the sealed checks fail without this change, but the discriminating check text was written by the worker (${disc.modifiedChecks.slice(0, 3).map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`).join(', ')}), so regression evidence is UNPROVEN until an operator-bound check or a human's acceptance covers this change`,
+    caveat,
+  };
   return {
     id: 'regression-evidence', mode: 'objective', status: 'met',
     note: `the sealed checks fail without this change (${disc.baseFailures.join(', ') || 'a sealed step'}), so their pass is evidence about it${disc.overlaidChecks.length > 0 ? ` (candidate check files overlaid on the base: ${disc.overlaidChecks.slice(0, 3).map(safePath).join(', ')})` : ''}`,
