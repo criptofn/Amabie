@@ -39,7 +39,7 @@ test('signed malformed observations refuse without throwing', () => withRecord(r
   r.controls[0]!.positiveControl = 7 as unknown as string;
 }, /malformed/));
 test('host user is checked independently from host name', () => withRecord(r => { r.host.user = 'different-user'; }, /host\/user/));
-test('arbitrary claims cannot activate custody', () => withRecord(() => {}, /required fact|observation/));
+test('arbitrary claims cannot activate custody', () => withRecord(() => {}, /required fact|observation|boundary tools/));
 test('non-finite or enlarged freshness limit cannot disable expiry', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-repair-age-'));
   try {

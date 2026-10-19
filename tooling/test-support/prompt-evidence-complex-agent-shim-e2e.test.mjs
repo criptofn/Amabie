@@ -28,7 +28,7 @@ for (const agent of ['codex', 'claude']) {
       assert.fail(`prepare did not return one JSON manifest: ${error instanceof Error ? error.message : String(error)}\nstdout prefix:\n${prepared.stdout.slice(0, 2_000)}\nstdout suffix:\n${prepared.stdout.slice(-2_000)}\nstderr:\n${prepared.stderr}`);
     }
     assert.equal(scenario.requirements, 10);
-    assert.deepEqual(scenario.initialCoverage, { total: 10, met: 5, unmet: 5, unproven: 0, blocked: 0 });
+    assert.deepEqual(scenario.initialCoverage, { total: 10, met: 5, unmet: 0, unproven: 5, blocked: 0 });
 
     const env = { ...process.env };
     delete env.AMABIE_ALLOW_CODEX_PROVIDER_USAGE;

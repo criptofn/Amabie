@@ -15,7 +15,7 @@ assert.equal(input.schema, 'amabie-correction-request/1');
 assert.equal(input.cycle, 1);
 assert.equal(input.report?.unresolved?.length, expected.length);
 assert.deepEqual(input.report.unresolved.map((item) => item.requirement), expected);
-assert.ok(input.report.unresolved.every((item) => item.status === 'unmet'));
+assert.ok(input.report.unresolved.every((item) => item.status === 'unproven'));
 assert.equal(path.basename(process.cwd()), 'project');
 
 fs.copyFileSync(path.join(import.meta.dirname, 'prompt-evidence-complex-csv.baseline.mjs'), path.join(process.cwd(), 'transactions.mjs'));

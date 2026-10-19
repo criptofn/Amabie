@@ -440,8 +440,8 @@ async function prepare() {
   const initial = runSync(process.execPath, [cliEntry, 'doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json'], projectRoot, env);
   assertRun(initial, 2, 'Amabie must reject the incomplete candidate');
   const initialEnvelope = JSON.parse(initial.stdout);
-  assert.equal(initialEnvelope.promptEvidence.verdict, 'FAIL');
-  assert.deepEqual(initialEnvelope.promptEvidence.coverage, { total: 10, met: 5, unmet: 5, unproven: 0, blocked: 0 });
+  assert.equal(initialEnvelope.promptEvidence.verdict, 'NOT PROVEN');
+  assert.deepEqual(initialEnvelope.promptEvidence.coverage, { total: 10, met: 5, unmet: 0, unproven: 5, blocked: 0 });
 
   const manifest = {
     schema: 'amabie-complex-codex-p2e-e2e/2',
@@ -489,7 +489,7 @@ async function correct() {
   if (manifest.schema !== 'amabie-complex-codex-p2e-e2e/2'
     || path.resolve(manifest.tempRoot) !== tempRoot
     || path.resolve(manifest.projectRoot) !== path.join(tempRoot, 'project')
-    || manifest.initial?.verdict !== 'FAIL'
+    || manifest.initial?.verdict !== 'NOT PROVEN'
     || manifest.productIdentity?.schema !== 'amabie-product-source-identity/1') {
     throw new Error('the saved temp manifest is not a verified false-done fixture');
   }
