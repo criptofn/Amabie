@@ -165,18 +165,24 @@ function idOf(data) {
   return null;
 }
 
-// keyOf is the PAIRING key, and it is deliberately not the frame's id field: the
-// id must be the test's name because that is what the runner's TAP text names, but
-// two DIFFERENT tests in one file may legitimately share a leaf name (measured:
-// t.test('shared') under two parents). Keying start/pass tracking on the name
-// would report the second one as dup-pass and fail an honest round closed, so
-// tracking uses the runner's own unique testId where it exists, with the name as
-// the fallback for a version that omits it.
-function keyOf(data, id) {
+// identityOf is the DECLARATION identity: the pairing key, and the frame's tid. It is
+// deliberately not the frame's id field, which must be the test's name because that is
+// what the runner's TAP text names. Two DIFFERENT tests in one file may legitimately
+// share a leaf name (measured: t.test('shared') under two parents), so keying on the
+// name reports the second as dup-pass and fails an honest round closed. Node 26 supplies
+// a unique testId. Node 22 supplies no testId, so the file, line and column of the
+// declaration identify it instead (measured on 22.23.3: start, pass and fail all carry
+// line and column).
+// ponytail: file:line:column collides for two identical-name tests generated at one
+// location (a loop). Upgrade path: a runner id that carries the parent chain.
+function identityOf(data) {
   if (data && typeof data === 'object' && (typeof data.testId === 'number' || typeof data.testId === 'string')) {
-    return 'tid:' + String(data.testId);
+    return data.testId;
   }
-  return 'id:' + String(id);
+  if (data && typeof data === 'object' && typeof data.line === 'number' && typeof data.column === 'number') {
+    return 'loc:' + String(data.file) + ':' + data.line + ':' + data.column;
+  }
+  return null;
 }
 
 // A pending (skipped/todo) test is reported through BOTH test:pass+flag and
@@ -213,7 +219,8 @@ module.exports = class AmabieNodeTestReporter extends Transform {
       const type = event && event.type;
       const data = (event && event.data) || {};
       const id = idOf(data);
-      const key = keyOf(data, id);
+      const tid = identityOf(data);
+      const key = tid === null ? 'id:' + String(id) : 'tid:' + String(tid);
       // Only real TESTS are counted. A file's own scheduling events
       // (enqueue/dequeue/complete) and the plan/summary/diagnostic events carry no
       // test identity, and no file-level start/pass/fail is emitted at all
@@ -235,7 +242,7 @@ module.exports = class AmabieNodeTestReporter extends Transform {
         } else {
           passed.add(key);
           counts.pass += 1;
-          frame({ k: 'pass', id: id, tid: data.testId, file: data.file });
+          frame({ k: 'pass', id: id, tid: tid, file: data.file });
         }
       } else if (type === 'test:fail') {
         if (id === null) {
@@ -245,7 +252,7 @@ module.exports = class AmabieNodeTestReporter extends Transform {
           frame({ k: 'reject', ev: 'fail', id: id, reason: 'no-run' });
         } else {
           counts.fail += 1;
-          frame({ k: 'fail', id: id, hook: false, tid: data.testId, file: data.file });
+          frame({ k: 'fail', id: id, hook: false, tid: tid, file: data.file });
         }
       } else if (type === 'test:skip' || type === 'test:todo') {
         markPending(id, key);
