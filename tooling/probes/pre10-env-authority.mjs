@@ -195,11 +195,12 @@ check('A PATH liar cannot forge PASS over broken code; shadowed git never runs; 
   assert(!hasPromotionBundle(root), 'A: zero accepted bundles');
 });
 
+// The sealed check only asserts once the worker CREATES tests/expected.json (the base has none), so the
+// worker's oracle is a new check, not a rewrite of an existing one (P0:21). Mirrors regression-fixture.mjs.
 // B — honest positive control: clean env, real work, real promotion.
 check('B honest candidate PASSes and promotes with byte-verified trusted-path evidence', () => {
   const root = makeRepo('b-honest', { test: 'node scripts/brittle.js', build: BUILD }, {
-    'scripts/brittle.js': "const fs = require('node:fs'); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
-    'tests/expected.json': '2\n',
+    'scripts/brittle.js': "const fs = require('node:fs'); if (!fs.existsSync('tests/expected.json')) process.exit(0); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
   });
   const t = amabie(['task', 'fix the crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `B: task: ${t.stdout}`);
@@ -295,8 +296,7 @@ check('D NODE_OPTIONS + npm_config_* + PATH poison during verify: children see a
 // the promotion either way (neither forge, nor block, nor substitute bytes).
 check('E promote under poisoned env: honest PASS still promotes; evidence still names trusted bytes', () => {
   const root = makeRepo('e-promote', { test: 'node scripts/brittle.js', build: BUILD }, {
-    'scripts/brittle.js': "const fs = require('node:fs'); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
-    'tests/expected.json': '2\n',
+    'scripts/brittle.js': "const fs = require('node:fs'); if (!fs.existsSync('tests/expected.json')) process.exit(0); const expected = Number(fs.readFileSync('tests/expected.json', 'utf8')); process.exit(require('../src/app.js') === expected ? 0 : 1);\n",
   });
   const t = amabie(['task', 'fix the crash', '--kind', 'bugfix'], root);
   assertEq(t.status, 0, `E: task: ${t.stdout}`);

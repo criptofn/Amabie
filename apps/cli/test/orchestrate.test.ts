@@ -212,9 +212,9 @@ describe('1.1 workflow: finish cannot promote what was not proven', () => {
 describe('1.1 workflow: finish promotes the exact committed candidate once the duties hold', () => {
   it('objective work completes with no human approval', () => {
     const root = fixture('finish-proven');
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'finish-proven', scripts: { test: 'node --test regression.test.js' } }));
-    fs.writeFileSync(path.join(root, 'regression.test.js'), 'import assert from "node:assert/strict";\nassert.equal(1, 1);\n');
-    commitIn(root, 'declare the regression runner');
+    // the base has NO regression test: the candidate's test is a new, worker-created check (P0:21 — a rewritten existing check is not evidence)
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'finish-proven', scripts: { test: 'node --test' } }));
+    commitIn(root, 'declare the test runner');
     assert.equal(amabie(['setup', '--yes'], root).status, 0);
     const before = head(root);
     assert.equal(amabie(['work', 'fix', 'fix the tolerance bug'], root).status, 0);
