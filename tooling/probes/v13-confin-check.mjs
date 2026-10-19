@@ -18,6 +18,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+// production-tool.cjs reads SystemRoot when it loads (it builds the AppContainer PATH and ComSpec). Every
+// Windows host sets it, so this line is a no-op there. A POSIX host does not, and the tool would crash before
+// any assertion runs; the placeholder only lets the real logic run, and every assertion below is unchanged.
+if (process.platform !== 'win32') process.env.SystemRoot ??= '/usr';
+
 const repo = path.resolve(import.meta.dirname, '../..');
 const toolSrc = path.join(repo, 'tools/windows-boundary/production-tool.cjs');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confin-check-'));
