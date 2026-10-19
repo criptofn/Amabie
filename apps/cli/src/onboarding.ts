@@ -2792,6 +2792,53 @@ function removeClaudeTurnState(root: string, sessionId: string): void {
   } catch { /* session shutdown must not fail because local state could not be cleaned */ }
 }
 
+// P0:22 — the latest user prompt, bound at the harness intake. Only SHA-256 digests of each
+// normalised line are stored, never the raw prompt. LOCAL and same-user: a process that can write
+// .amabie can rewrite the record; this proves the intake-to-doctor path, not worker-independent trust.
+const ORIGINAL_PROMPT_SCHEMA = 'amabie-original-prompt/1';
+const ORIGINAL_PROMPT_FILE = path.join(CONFIG_DIR, 'original-prompt.json');
+
+function promptLineDigests(text: string): string[] {
+  const lines = text.split(/\r?\n/).map(line => line.trim().replace(/\s+/g, ' ')).filter(line => line !== '');
+  return [...new Set(lines.map(sha256))];
+}
+
+function recordOriginalPrompt(root: string, prompt: string): void {
+  const p = path.join(root, ORIGINAL_PROMPT_FILE);
+  try {
+    if (containedRealPath(root, path.dirname(p)) === null || containedRealPath(root, p) === null) throw new Error('refused');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    assertPlainTarget(p);
+    writeFileAtomic(p, JSON.stringify({ schema: ORIGINAL_PROMPT_SCHEMA, lineDigests: promptLineDigests(prompt) }, null, 2) + '\n');
+  } catch {
+    // a failed write must not leave the previous prompt's record standing in for this one
+    try { if (containedRealPath(root, p) !== null) { assertPlainTarget(p); fs.rmSync(p, { force: true }); } } catch { /* absence is labelled at doctor */ }
+  }
+}
+
+function readOriginalPrompt(root: string): string[] | null {
+  try {
+    const p = path.join(root, ORIGINAL_PROMPT_FILE);
+    if (containedRealPath(root, p) === null) return null;
+    const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
+    if (v?.schema !== ORIGINAL_PROMPT_SCHEMA || !Array.isArray(v.lineDigests) || !v.lineDigests.every(d => typeof d === 'string')) return null;
+    return v.lineDigests.length > 0 ? v.lineDigests as string[] : null;
+  } catch { return null; }
+}
+
+/**
+ * Every line of the recorded original prompt must still be a line of the request goal. A missing
+ * line is NOT PROVEN (FAIL stays FAIL); no record is not silent — it is labelled as unbound.
+ */
+function bindOriginalPrompt(report: VerificationReport, recorded: string[] | null, goalText: string): VerificationReport {
+  if (recorded === null) return { ...report, issues: [...report.issues, 'No original-prompt record exists for this project, so the original prompt is unbound; manual operator confirmation is required.'] };
+  const goal = new Set(promptLineDigests(goalText));
+  const missing = recorded.filter(digest => !goal.has(digest)).length;
+  if (missing === 0) return report;
+  return { ...report, verdict: report.verdict === 'PASS' ? 'NOT PROVEN' : report.verdict,
+    issues: [...report.issues, `The original prompt has ${missing} line(s) the request goal does not carry verbatim, so the original prompt is not bound.`] };
+}
+
 const sameTask = (left: TaskIdentity | null, right: TaskIdentity | null): boolean =>
   left !== null && right !== null && JSON.stringify(left) === JSON.stringify(right);
 
@@ -4446,7 +4493,7 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
       planDigest: planDigest(cfg.plan),
       baselineDigest: cfg.baseline?.head ?? null,
     });
-    promptEvidenceReport = await verifyPromptEvidence(promptEvidenceRequest, [adapter], { runId: crypto.randomUUID(), attempt: 0 });
+    promptEvidenceReport = bindOriginalPrompt(await verifyPromptEvidence(promptEvidenceRequest, [adapter], { runId: crypto.randomUUID(), attempt: 0 }), readOriginalPrompt(root), promptEvidenceRequest.goal.text);
     o.context({ promptEvidence: promptEvidenceReport });
     o.say(`Prompt-to-Evidence (EXPERIMENTAL): ${promptEvidenceReport.verdict} — ${promptEvidenceReport.coverage.met}/${promptEvidenceReport.coverage.total} requirements verified.`);
     o.say(`  Original-goal source coverage: ${promptEvidenceReport.sourceCoverage.mappedNonWhitespaceCharacters}/${promptEvidenceReport.sourceCoverage.nonWhitespaceCharacters} non-whitespace characters${promptEvidenceReport.sourceCoverage.complete ? '' : ' — incomplete, so PASS is unavailable'}.`);
@@ -4522,7 +4569,7 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
       id: 'prompt-evidence',
       mode: 'objective',
       status: promptEvidenceReport.verdict === 'FAIL' ? 'unmet' : 'unproven',
-      note: `experimental per-requirement evaluation is ${promptEvidenceReport.verdict}: ${failedRequirements} requirement(s) have contradictory evidence, ${pendingRequirements} remain unproven or blocked — see promptEvidence for the criteria and gaps`,
+      note: `experimental per-requirement evaluation is ${promptEvidenceReport.verdict}: ${failedRequirements} requirement(s) have contradictory evidence, ${pendingRequirements} remain unproven or blocked, ${promptEvidenceReport.issues.length} scope issue(s) — see promptEvidence for the criteria, gaps and issues`,
     });
   }
   const proof = proofSummary(task?.requirementCount ?? 0, obligations);
@@ -4672,7 +4719,7 @@ export function cmdUninstall(rawArgs: string[]): number {
  *    damaged authority is NOT
  */
 export async function cmdCheckpoint(): Promise<number> {
-  let input: { cwd?: string; stop_hook_active?: boolean; task?: string; hook_event_name?: string; tool_name?: string; tool_input?: unknown; session_id?: string } = {};
+  let input: { cwd?: string; prompt?: string; stop_hook_active?: boolean; task?: string; hook_event_name?: string; tool_name?: string; tool_input?: unknown; session_id?: string } = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')) as typeof input; } catch { /* interactive invocation or empty stdin */ }
   const root = findRepoRoot(input.cwd ?? process.cwd());
   const emit = (obj: Record<string, unknown>) => { console.log(JSON.stringify(obj)); return 0; };
@@ -4684,6 +4731,7 @@ export async function cmdCheckpoint(): Promise<number> {
       registeredPromptId: null, task: null,
     };
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
+    if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt);
     return emit({ hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
       additionalContext: 'Amabie started a fresh task scope for this request. Before project writes, shell commands, delegation, or MCP calls, register the current intent and exact stated criteria with mcp__amabie__amabie_task; use requirements: [] when none were stated.',
