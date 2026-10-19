@@ -38,6 +38,7 @@ import { build } from 'esbuild';
 // run this script — it was the real GitHub Actions `standalone` job, on all three OSes, that
 // caught it. A rule that is tested in isolation is not the same as a rule that is WIRED.
 import { seaCapable, seaRequirement } from './sea-capability.mjs';
+import { bundledPackages, thirdPartyNotices } from './third-party-notices.mjs';
 
 const AMABIE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = path.join(AMABIE, 'apps', 'cli', 'dist', 'src', 'main.js');
@@ -122,7 +123,7 @@ const evidence = {
 try {
   // 1. ONE self-contained ES module, exactly like the npm tarball's bundle.
   const bundlePath = path.join(STAGE, 'main.mjs');
-  await build({
+  const { metafile } = await build({
     entryPoints: [ENTRY],
     bundle: true,
     format: 'esm',
@@ -131,17 +132,28 @@ try {
     outfile: bundlePath,
     legalComments: 'none',
     logLevel: 'warning',
+    metafile: true,
   });
+  // The executable inlines the same third-party code as the npm bundle, so its notices ship beside it.
+  const notices = thirdPartyNotices(bundledPackages(metafile, AMABIE));
+  if (notices.missing.length > 0) fail(`bundled packages ship no license file: ${notices.missing.join(', ')}`);
   // A shebang is meaningless inside an executable and SEA does not need it;
   // strip it so the embedded module is plain ESM with no leading special line.
   const bundled = fs.readFileSync(bundlePath, 'utf8');
-  if (bundled.startsWith('#!')) fs.writeFileSync(bundlePath, bundled.slice(bundled.indexOf('\n') + 1));
+  const body = bundled.startsWith('#!') ? bundled.slice(bundled.indexOf('\n') + 1) : bundled;
+  // The bundle inlines CommonJS dependencies (cross-spawn) whose require('child_process') esbuild
+  // routes through a dynamic-require helper that throws inside an ES module. Give the module a
+  // real require, exactly as the npm bundle does (tooling/pack.mjs). Measured: without it the
+  // executable died on `--version` with "Dynamic require of \"child_process\" is not supported".
+  const nodeRequireBridge = "import { createRequire as __amabieCreateRequire } from 'node:module';\nconst require = __amabieCreateRequire(import.meta.url);\n";
+  fs.writeFileSync(bundlePath, `${nodeRequireBridge}${body}`);
   evidence.bundleBytes = fs.statSync(bundlePath).size;
 
   // 2. The SEA config. `mainFormat: 'module'` keeps `import.meta.url` and ESM
   //    semantics working (measured: the CLI is ESM and relies on them).
   const cfgPath = path.join(STAGE, 'sea-config.json');
   fs.mkdirSync(OUTDIR, { recursive: true });
+  fs.writeFileSync(path.join(OUTDIR, 'THIRD-PARTY-NOTICES.txt'), notices.text);
   fs.writeFileSync(cfgPath, JSON.stringify({
     main: bundlePath,
     output: OUT,

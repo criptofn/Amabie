@@ -29,6 +29,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { canonicalPackageTarball } from './package-tarball.mjs';
+import { bundledPackages, thirdPartyNotices } from './third-party-notices.mjs';
 
 const AMABIE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = path.join(AMABIE, 'apps', 'cli', 'dist', 'src', 'main.js');
@@ -52,7 +53,7 @@ try {
   // it); adding a banner then yields a SECOND shebang on line 2, which Node
   // does not strip — SyntaxError. Only add one if the source lacks it.
   const hasShebang = fs.readFileSync(ENTRY, 'utf8').startsWith('#!');
-  await build({
+  const { metafile } = await build({
     absWorkingDir: AMABIE,
     entryPoints: [ENTRY],
     bundle: true,
@@ -64,6 +65,7 @@ try {
     ...(hasShebang ? {} : { banner: { js: '#!/usr/bin/env node' } }),
     legalComments: 'none',
     logLevel: 'warning',
+    metafile: true,
   });
   const out = fs.readFileSync(path.join(STAGE, 'dist', 'main.js'), 'utf8');
   if (!out.startsWith('#!/') || out.slice(0, out.indexOf('\n', out.indexOf('\n') + 1) + 1).includes('\n#!')) {
@@ -90,13 +92,18 @@ try {
     type: 'module',
     bin: { amabie: 'dist/main.js', canary: 'dist/main.js' },
     engines: { node: '>=22' },
-    files: ['dist/main.js', 'tools/windows-boundary', 'tooling/test-support/fixtures', 'QUICKSTART.md', 'examples/quickstart'],
+    files: ['dist/main.js', 'tools/windows-boundary', 'tooling/test-support/fixtures', 'QUICKSTART.md', 'examples/quickstart', 'THIRD-PARTY-NOTICES.txt'],
   };
   fs.writeFileSync(path.join(STAGE, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
   // Apache-2.0 §4(a): a recipient of this artifact must receive a copy of the License.
   // The manifest's `license` field is a declaration, not the license text, so the file
   // itself ships in the tarball and is asserted by the cleanroom probe.
   copyText('LICENSE');
+  // esbuild strips license comments (legalComments: 'none'), so the notices for the code it
+  // copied in ship as text, built from the packages the metafile actually lists.
+  const notices = thirdPartyNotices(bundledPackages(metafile, AMABIE));
+  if (notices.missing.length > 0) { console.error(`FAIL: bundled packages ship no license file: ${notices.missing.join(', ')}`); process.exit(1); }
+  fs.writeFileSync(path.join(STAGE, 'THIRD-PARTY-NOTICES.txt'), notices.text);
   // The consumer receives the runnable first-run guide, without monorepo-only links.
   copyText('QUICKSTART.md', 'README.md');
   copyText('QUICKSTART.md');
