@@ -1167,6 +1167,8 @@ export function attributeRunFailures(root: string, cfg: AmabieConfig, failed: St
   const seal: ToolchainSeal | null = cfg.toolchain ?? null;
   const sealedDirs = sealedToolchainDirs(root);
   const vanished = vanishedToolchainDirs(root);
+  // The operator's live PATH: only a hint for the remediation text (see locateFor), never handed to a child.
+  const operatorDirs = pathEntries(process.env);
   const inputs: AttributeInput[] = failed.map((f) => {
     const step = plan.find((s) => s.kind === f.kind && stepDisplay(cfg.pm, s) === f.display)
       ?? plan.find((s) => s.kind === f.kind);
@@ -1174,7 +1176,7 @@ export function attributeRunFailures(root: string, cfg: AmabieConfig, failed: St
     const childPathDirs = [...pathEntries(hardenedEnv(cwd)), ...npmScriptDirs(cwd), ...sealedDirs];
     return {
       kind: f.kind, script: step?.script ?? f.display, exitCode: f.exitCode,
-      output: `${f.stdout}${f.stderr}`, childPathDirs, vanishedDirs: vanished, seal,
+      output: `${f.stdout}${f.stderr}`, childPathDirs, vanishedDirs: vanished, seal, operatorDirs,
       ...(stepProcessFailures.has(f) ? { executionFailure: stepProcessFailures.get(f)! } : {}),
     };
   });

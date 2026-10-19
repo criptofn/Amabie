@@ -39,6 +39,26 @@ const CLI = path.resolve(cliArg === -1
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v15-sealed-toolchain-'));
 const TRUST = path.join(TMP, 'trust-store');
 
+// The control program: a fixture-owned executable that resolves ONLY through the directory it is written to.
+// It replaces the earlier `git` premise, which does not hold on every host: Linux keeps git in /usr/bin, and the
+// sealed PATH always includes that, so git can never be the invisible program there. The directory is prepended to
+// THIS process's PATH, so the ambient shell resolves the control; the sealed step must not, because the directory
+// is neither trusted nor operator-authorized until a test authorizes it.
+const TOOL = 'amabie-probe-tool';
+const CONTROL_DIR = path.join(TMP, 'control-bin');
+function writeTool(dir, name, command) {
+  fs.mkdirSync(dir, { recursive: true });
+  if (process.platform === 'win32') {
+    fs.writeFileSync(path.join(dir, `${name}.cmd`), `@echo off\r\n${command}\r\n`);
+  } else {
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, `#!/bin/sh\n${command}\n`);
+    fs.chmodSync(file, 0o755);
+  }
+}
+writeTool(CONTROL_DIR, TOOL, `echo ${TOOL} 1.0`);
+process.env.PATH = `${CONTROL_DIR}${path.delimiter}${process.env.PATH ?? ''}`;
+
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -51,7 +71,7 @@ assert(fs.existsSync(CLI), `missing built CLI: ${CLI} — run: npm exec -- tsc -
 // ---------------------------------------------------------------- fixture: a CLEAN project whose own
 // check shells out to a tool the ambient environment has. This is the auditor's shape: `npm test`
 // spawns a program Amabie never named.
-const CANDIDATES = ['git', 'java', 'python', 'python3', 'node', 'npm'];
+const CANDIDATES = ['git', 'java', 'python', 'python3', 'node', 'npm', TOOL];
 
 const CHECK_CJS = `'use strict';
 // A project check of the ordinary kind: it dumps the environment it was handed (so the sealed vs
@@ -94,8 +114,8 @@ fs.writeFileSync(OUT, JSON.stringify({
 }, null, 2));
 const win = process.platform === 'win32';
 const r = win
-  ? spawnSync('cmd.exe', ['/d', '/s', '/c', 'git --version'], { stdio: 'inherit' })
-  : spawnSync('/bin/sh', ['-c', 'git --version'], { stdio: 'inherit' });
+  ? spawnSync('cmd.exe', ['/d', '/s', '/c', '${TOOL} --version'], { stdio: 'inherit' })
+  : spawnSync('/bin/sh', ['-c', '${TOOL} --version'], { stdio: 'inherit' });
 process.exit(r.status === null ? 127 : r.status);
 `;
 
@@ -153,7 +173,7 @@ console.log(`    resolves: ${CANDIDATES.map((c) => `${c}=${outsideDump.resolved[
 
 check('A1 the fixture\'s own check PASSES outside Amabie (the control the audit used)', () => {
   assert(outsideRun.status === 0, `npm test exited ${outsideRun.status} outside Amabie:\n${outsideRun.stdout}${outsideRun.stderr}`);
-  assert(outsideDump.resolved.git !== null, 'the control fixture needs a resolvable `git`, and this host has none');
+  assert(outsideDump.resolved[TOOL] !== null, `the control fixture needs a resolvable ${TOOL}, and the ambient PATH does not show it`);
 });
 
 // ---------------------------------------------------------------- inside Amabie, nothing authorized
@@ -180,7 +200,7 @@ check('A3 a program the ambient shell resolves can be invisible to the sealed st
   const lost = CANDIDATES.filter((c) => outsideDump.resolved[c] && !beforeDumpResolves(c));
   function beforeDumpResolves(c) { return failuresBefore.dump.resolved[c] !== null; }
   console.log(`     visible outside but NOT inside: ${lost.length ? lost.join(', ') : '(none)'}`);
-  assert(lost.includes('git'), 'the control program `git` was expected to be invisible in the sealed environment on this host');
+  assert(lost.includes(TOOL), `the control program ${TOOL} was expected to be invisible in the sealed environment`);
 });
 
 check('D1 the verdict is the ENVIRONMENT outcome, with the required vocabulary', () => {
@@ -196,12 +216,12 @@ check('D2 Amabie does NOT blame the project for its own restriction (the false a
 });
 
 check('E1 the remediation NAMES the missing executable and a command that can be run', () => {
-  assert(/\bgit\b/.test(beforeOut), 'the missing executable `git` is not named');
+  assert(beforeOut.includes(TOOL), `the missing executable ${TOOL} is not named`);
   const m = beforeOut.match(/amabie setup --toolchain-dir "([^"]+)"/);
   assert(m !== null, `no actionable command was printed. Output tail:\n${beforeOut.split(/\r?\n/).slice(-12).join('\n')}`);
   const suggested = m[1];
-  assert(fs.existsSync(path.join(suggested, 'git.exe')) || fs.existsSync(path.join(suggested, 'git.cmd')) || fs.existsSync(path.join(suggested, 'git')),
-    `the suggested directory does not contain git: ${suggested}`);
+  assert([TOOL, `${TOOL}.exe`, `${TOOL}.cmd`].some((f) => fs.existsSync(path.join(suggested, f))),
+    `the suggested directory does not contain ${TOOL}: ${suggested}`);
 });
 
 check('D5 the COMPLETION GATE tells the agent the environment is the cause, not the project', () => {
@@ -222,12 +242,11 @@ check('D5 the COMPLETION GATE tells the agent the environment is the cause, not 
   assert(!/That is your project talking/.test(reason), 'the completion gate still blamed the project');
 });
 
-check('B1 the calling PATH is still IGNORED: a planted `git.cmd` earlier on it is never executed', () => {
-  // A shim directory prepended to the CALLER's PATH, in front of the real git. Amabie must not run it.
+check(`B1 the calling PATH is still IGNORED: a planted ${TOOL} earlier on it is never executed`, () => {
+  // A shim directory prepended to the CALLER's PATH, in front of the control. Amabie must not run it.
   const shimDir = path.join(TMP, 'planted-shim');
-  fs.mkdirSync(shimDir, { recursive: true });
   const marker = path.join(TMP, 'shim-ran.txt');
-  fs.writeFileSync(path.join(shimDir, 'git.cmd'), `@echo off\r\necho SHIM RAN > "${marker}"\r\ngit --version\r\n`);
+  writeTool(shimDir, TOOL, `echo SHIM RAN > "${marker}"`);
   const planted = makeFixture('planted', { test: 'node check.cjs' }, { 'check.cjs': CHECK_CJS });
   const r = amabie(planted, ['setup', '--yes'], { PATH: `${shimDir}${path.delimiter}${process.env.PATH ?? ''}` });
   const out = `${r.stdout}${r.stderr}`;
@@ -239,7 +258,7 @@ check('B1 the calling PATH is still IGNORED: a planted `git.cmd` earlier on it i
 // ---------------------------------------------------------------- the same project, authorized
 const gitDir = ambientTools.git === null ? null : path.dirname(ambientTools.git);
 const authorizedDirs = [];
-for (const tool of ['git', 'java', 'python']) {
+for (const tool of ['git', 'java', 'python', TOOL]) {
   if (ambientTools[tool] !== null) authorizedDirs.push(path.dirname(ambientTools[tool]));
 }
 const uniqueDirs = [...new Set(authorizedDirs)];
@@ -278,11 +297,11 @@ check('C2 the SAME project check now PASSES inside Amabie (the defect is closed,
   assert(env === null || env.status === 'READY', `doctor status was ${String(env?.status)}`);
   const post = dumpOf(inside);
   assert(post.path.includes(uniqueDirs[0]), 'the authorized directory is not in the child PATH');
-  assert(post.resolved.git !== null, 'git still does not resolve in the sealed environment');
+  assert(post.resolved[TOOL] !== null, `${TOOL} still does not resolve in the sealed environment`);
 });
 
 check('C3 every tool the AMBIENT environment provided now resolves inside Amabie too', () => {
-  for (const tool of ['git', 'java', 'python', 'python3']) {
+  for (const tool of ['git', 'java', 'python', 'python3', TOOL]) {
     if (ambientTools[tool] === null && outsideDump.resolved[tool] === null) { console.log(`     (host has no ${tool} — not asserted)`); continue; }
     assert(authDump.resolved[tool] !== null, `${tool} resolves outside Amabie and not inside, after its directory was authorized`);
   }
@@ -320,13 +339,15 @@ check('D3 a genuinely failing project check is reported as a PROJECT CHECK FAILU
 });
 
 check('D4 a project that merely PRINTS a "not found" line cannot move the attribution', () => {
+  // The faked tool must be one the sealed environment ALWAYS resolves (node: its own install dir is on the
+  // sealed PATH). java is absent on some hosts; a "java: not found" fake there would test nothing.
   const faker = makeFixture('faker', { test: 'node fake-not-found.cjs' }, {
-    'fake-not-found.cjs': "'use strict';\nconsole.error(\"sh: 1: java: not found\");\nconsole.error('and my assertion failed anyway');\nprocess.exit(1);\n",
+    'fake-not-found.cjs': "'use strict';\nconsole.error(\"sh: 1: node: not found\");\nconsole.error('and my assertion failed anyway');\nprocess.exit(1);\n",
   });
   const r = amabie(faker, ['setup', '--yes', ...authArgs]);
   const out = `${r.stdout}${r.stderr}`;
   assert(/PROJECT CHECK FAILURE/.test(out),
-    `a printed "java: not found" moved the blame while java WAS resolvable in the sealed environment:\n${out.split(/\r?\n/).slice(-10).join('\n')}`);
+    `a printed "node: not found" moved the blame while node WAS resolvable in the sealed environment:\n${out.split(/\r?\n/).slice(-10).join('\n')}`);
   assert(!/AMABIE SEALED ENVIRONMENT CANNOT RESOLVE/.test(out), 'the fake signature was taken as an environment fact');
 });
 

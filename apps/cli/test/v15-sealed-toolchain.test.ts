@@ -251,6 +251,30 @@ describe('attribution: is Amabie\'s environment the cause, or the project?', () 
       `the remediation must name the directory that HAS the tool; got: ${a.next}`);
   });
 
+  it('ENVIRONMENT: a program the setup record never saw is located on the operator PATH now, and named as such', () => {
+    // Outside TOOLCHAIN_CANDIDATES, so the setup record cannot hold it and `--toolchain <name>` is refused.
+    const OPERATOR_DIR = path.join(TMP, 'operator only bin');
+    fs.mkdirSync(OPERATOR_DIR, { recursive: true });
+    fs.writeFileSync(path.join(OPERATOR_DIR, WINDOWS ? 'amabie-only-tool.exe' : 'amabie-only-tool'), 'tool\n');
+    const notFound = WINDOWS
+      ? '\'amabie-only-tool\' is not recognized as an internal or external command,\r\noperable program or batch file.'
+      : 'sh: 1: amabie-only-tool: not found';
+    const unrecorded = { ...base, exitCode: WINDOWS ? 9009 : 127, output: notFound, seal: { dirs: [], found: {}, at: 'test' }, operatorDirs: [OPERATOR_DIR] };
+    const a = attributeStepFailure(unrecorded);
+    assert.equal(a.cause, 'environment');
+    assert.deepEqual(a.missing, ['amabie-only-tool']);
+    assert.ok(a.reason.includes(`your shell PATH has it at ${OPERATOR_DIR} now`), `live location must be named as live; got: ${a.reason}`);
+    assert.ok(!a.reason.includes('when Amabie was set up'), 'a live lookup must not be described as setup evidence');
+    assert.ok(a.next.includes(`amabie setup --toolchain-dir "${OPERATOR_DIR}"`), `got: ${a.next}`);
+    assert.ok(!a.next.includes('--toolchain amabie-only-tool'), 'a non-candidate must not get the refused --toolchain form');
+    assert.ok(!a.next.includes('<that directory>'), 'the remediation must name the directory it found, not a placeholder');
+
+    // The setup record wins when it does hold the program: it is the measured evidence.
+    const recorded = attributeStepFailure({ ...unrecorded, seal: { dirs: [], found: { 'amabie-only-tool': path.join(TMP, 'recorded bin', 'amabie-only-tool') }, at: 'test' } });
+    assert.ok(recorded.reason.includes(`your environment had it at ${path.join(TMP, 'recorded bin')} when Amabie was set up`), `got: ${recorded.reason}`);
+    assert.ok(recorded.next.includes(`--toolchain-dir "${path.join(TMP, 'recorded bin')}"`), `got: ${recorded.next}`);
+  });
+
   it('PROJECT: the same text when the program DOES resolve (a project cannot print its way out of blame)', () => {
     /*
      * PORTABILITY (v1.5 post-audit, MEASURED on the ubuntu CI leg). This test handed the resolution

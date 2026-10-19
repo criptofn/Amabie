@@ -225,15 +225,22 @@ export interface AttributeInput {
   /** Operator-authorized directories that NO LONGER EXIST at verification time. */
   vanishedDirs: readonly string[];
   seal: ToolchainSeal | null;
+  /** The operator's CURRENT PATH entries: a live hint for where a missing program is, never trusted to run. */
+  operatorDirs?: readonly string[];
   /** Trusted supervisor observation, never inferred from project output. */
   executionFailure?: string;
 }
 
-/** Where the operator's own environment had this program when Amabie was set up (evidence only). */
-function suggestDirFor(program: string, seal: ToolchainSeal | null): string | null {
+/**
+ * Where a missing program is, for the remediation text ONLY — nothing here is ever executed. The setup
+ * record is consulted first (it was measured at the one authorizing moment); the operator's live PATH
+ * covers a program the record never saw, e.g. one outside TOOLCHAIN_CANDIDATES or installed later.
+ */
+function locateFor(program: string, seal: ToolchainSeal | null, operatorDirs: readonly string[]): { dir: string; source: 'setup' | 'path' } | null {
   const hit = seal?.found?.[program];
-  if (typeof hit !== 'string' || hit.length === 0) return null;
-  return path.dirname(hit);
+  if (typeof hit === 'string' && hit.length > 0) return { dir: path.dirname(hit), source: 'setup' };
+  const live = resolvesIn(program, operatorDirs);
+  return live === null ? null : { dir: path.dirname(live), source: 'path' };
 }
 
 /**
@@ -294,23 +301,32 @@ export function attributeStepFailure(input: AttributeInput): FailureAttribution 
   //    be blamed on Amabie's environment, which is the same defect in the other direction.
   const missing = reported.filter((name) => resolvesIn(name, childPathDirs) === null);
   if (missing.length > 0) {
-    const list = missing.map((m) => {
-      const dir = suggestDirFor(m, seal);
-      return dir === null ? m : `${m} (your environment had it at ${dir} when Amabie was set up)`;
+    const operatorDirs = input.operatorDirs ?? [];
+    const located = missing.map((m) => ({ name: m, at: locateFor(m, seal, operatorDirs) }));
+    const list = located.map(({ name, at }) => {
+      if (at === null) return name;
+      return at.source === 'setup'
+        ? `${name} (your environment had it at ${at.dir} when Amabie was set up)`
+        : `${name} (your shell PATH has it at ${at.dir} now)`;
     }).join(', ');
     const gone = vanishedDirs.length > 0 ? ` A toolchain directory sealed at setup is also gone: ${vanishedDirs[0]}.` : '';
     const reason = `${SEALED_ENV_CANNOT_RESOLVE} — the ${kind} check ("${script}") needed ${list}. `
       + 'Amabie runs your checks without your shell\'s PATH on purpose (a program planted earlier on that PATH would be executed as Amabie\'s own authority). '
       + `This is NOT your project failing.${gone}`;
-    const first = missing[0] as string;
-    const dir = vanishedDirs.length > 0 ? vanishedDirs[0] as string : suggestDirFor(first, seal);
-    const namedRepair = `amabie setup --yes ${missing.map((name) => `--toolchain ${name}`).join(' ')}`;
+    const dir = vanishedDirs.length > 0 ? vanishedDirs[0] as string : located[0]?.at?.dir ?? null;
+    // `--toolchain <name>` is accepted only for TOOLCHAIN_CANDIDATES (onboarding refuses any other name),
+    // so other programs are covered by the directory form alone.
+    const candidates = missing.filter((name) => TOOLCHAIN_CANDIDATES.includes(name));
+    const namedRepair = candidates.length > 0 ? `amabie setup --yes ${candidates.map((name) => `--toolchain ${name}`).join(' ')}` : null;
+    const byDir = dir === null ? null : `amabie setup --toolchain-dir "${dir}"`;
     return {
       cause: 'environment', missing,
       reason,
       next: dir === null
-        ? `install ${missing.join(', ')} and make them visible on your shell PATH, then: ${namedRepair}; alternatively: amabie setup --toolchain-dir "<that directory>"`
-        : `authorize the missing tools from your shell PATH: ${namedRepair}; alternatively authorize the known directory: amabie setup --toolchain-dir "${dir}"`,
+        ? `install ${missing.join(', ')} and make them visible on your shell PATH, then: ${namedRepair === null ? '' : `${namedRepair}; alternatively: `}amabie setup --toolchain-dir "<that directory>"`
+        : namedRepair === null
+          ? `authorize the known directory: ${byDir}`
+          : `authorize the missing tools from your shell PATH: ${namedRepair}; alternatively authorize the known directory: ${byDir}`,
     };
   }
 
