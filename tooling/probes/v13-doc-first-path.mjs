@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
@@ -143,7 +144,7 @@ try {
   // bare temp directory resolves to whatever repository encloses it — here `C:\Users\Johannes`, which
   // already carried an advisory block, so the install honestly reported "nothing changed" about a
   // project the probe never created.
-  const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
+  const git = hostGit();
   for (const args of [['init', '-b', 'main'], ['config', 'user.email', 'docs@amabie.local'],
     ['config', 'user.name', 'Doc Path Probe'], ['add', '-A'], ['commit', '-m', 'base']]) {
     const r = spawnSync(git, args, { cwd: temp, encoding: 'utf8', windowsHide: true, timeout: 120000 });

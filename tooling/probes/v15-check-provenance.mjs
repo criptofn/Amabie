@@ -29,12 +29,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const cliArg = process.argv.indexOf('--cli');
 const cli = path.resolve(cliArg === -1 ? path.join(repo, 'apps/cli/dist/src/main.js') : process.argv[cliArg + 1]);
-const GIT = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const GIT = hostGit();
 
 let pass = 0, fail = 0;
 const check = (ok, name, detail) => {

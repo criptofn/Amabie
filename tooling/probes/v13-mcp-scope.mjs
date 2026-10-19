@@ -27,9 +27,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const claude = path.join(os.homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude');
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const git = hostGit();
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mcp-scope-'));
 let failures = 0;
 const check = (name, fn) => {

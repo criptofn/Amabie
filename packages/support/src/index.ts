@@ -745,7 +745,8 @@ function posixLineage(io: PosixSweepIo, pid: number): number[] | null {
     grew = false;
     for (const r of rows) {
       if (r.p === pid || r.p === io.self || members.has(r.p)) continue;
-      if (members.has(r.ppid)) { members.add(r.p); grew = true; }
+      // Seed with the swept child itself: a detached direct child is its own session, so only its PPID links it.
+      if (r.ppid === pid || members.has(r.ppid)) { members.add(r.p); grew = true; }
     }
   }
   return [...members];

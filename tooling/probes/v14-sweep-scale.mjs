@@ -71,8 +71,10 @@ info('per-process ParentProcessId queries', perProcessQueries);
 info('whole-table enumerations', snapshots);
 check('no per-process WMI query remains (the O(N) shape that timed out)', perProcessQueries === 0,
   `found ${perProcessQueries}`);
-check('one tree snapshot plus bounded pre/post identity checks (not one query per process)',
-  snapshots === 3, `expected tree + pre-kill + survivor snapshots, found ${snapshots}`);
+// Four, not three: the Windows host preflight (P1:2, WIN32_HOST_PROBE_SCRIPT) is one read-only snapshot
+// taken before any kill is requested. Still bounded; still not one query per process.
+check('one tree snapshot plus bounded preflight and pre/post identity checks (not one query per process)',
+  snapshots === 4, `expected preflight + tree + pre-kill + survivor snapshots, found ${snapshots}`);
 check('the enumeration result is required to be non-empty before "no survivors" is reported',
   /\$all=@\(Get-CimInstance -ClassName Win32_Process/.test(src)
     && /if\(\$all\.Count -le 0\)\{ throw 'empty process snapshot' \};/.test(src));

@@ -93,7 +93,9 @@ check('pointing a run AT the damaged store still REFUSES (fail-closed preserved)
 console.log('\n=== D. repeated runs give the SAME verdict ===');
 check('two consecutive M2+M9 runs agree exactly', () => {
   const run = () => {
-    const r = spawnSync(process.execPath, ['--test', '--test-concurrency=8',
+    // The summary lines below are the spec reporter's format. Node's default reporter is
+    // TAP when stdout is a pipe, so the format must be pinned rather than inherited.
+    const r = spawnSync(process.execPath, ['--test', '--test-reporter=spec', '--test-concurrency=8',
       'apps/cli/dist/test/m2-claims-not-evidence.test.js', 'apps/cli/dist/test/m9-authority.test.js'],
       { cwd: REPO, encoding: 'utf8', timeout: 900_000, maxBuffer: 32 * 1024 * 1024 });
     const nums = ['tests', 'pass', 'fail'].map((k) => {
