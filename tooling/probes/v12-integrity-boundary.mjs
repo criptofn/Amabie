@@ -87,9 +87,18 @@ try {
   applyAuthorityLabel(scratchDir, 'low');
   fs.writeFileSync(path.join(authorityDir, 'sealed-record.json'), '{"authority":true}');
 
+  let hostSkips = 0;
   const label = applyAuthorityLabel(authorityDir, 'medium');
-  record('an integrity label can be applied to a directory this user owns', label.applied,
-    label.applied ? label.command : `${label.command} -> exit ${String(label.exitCode)} ${label.stderr}`);
+  // icacls exists only on Windows. Where it is absent, the label cannot be applied and that is a property of the host,
+  // not of the product, so it is a host-bound SKIP (counted in hostSkips), never a PASS. On Windows it stays a hard record.
+  const labelHostBound = process.platform !== 'win32' && !label.applied;
+  if (labelHostBound) {
+    hostSkips += 1;
+    console.log(`SKIP  integrity-label: this host has no integrity-label tool (${label.command} -> exit ${String(label.exitCode)}); no label was applied and nothing about the boundary is claimed`);
+  } else {
+    record('an integrity label can be applied to a directory this user owns', label.applied,
+      label.applied ? label.command : `${label.command} -> exit ${String(label.exitCode)} ${label.stderr}`);
+  }
 
   // CONTROL — with NO confinement. If this does not write, nothing below is meaningful.
   const control = attempt([], 'control');
@@ -102,7 +111,6 @@ try {
   const levels = primitive.launchers.map((l) => [l.level, l.argvPrefix]);
   let boundaryHolds = false;
   let confinementAvailable = false;
-  let hostSkips = 0;
   if (levels.length === 0) {
     hostSkips += 1;
     console.log('SKIP  integrity-launcher: this host exposes no launcher that can start a confined child; no boundary was measured or claimed');
