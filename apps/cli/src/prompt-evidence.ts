@@ -49,6 +49,12 @@ export function createCodingSealedPlanAdapter(input: CodingPlanAdapterInput): Ve
       const evidence: EvidenceDraft[] = [];
       const blocked: Array<{ criterionId: string; reason: string }> = [];
       const unproven: Array<{ criterionId: string; reason: string }> = [];
+      // One sealed check run reports one outcome for every requirement bound to it, so a shared failure cannot say which requirement failed.
+      const requirementsPerScript = new Map<string, number>();
+      for (const requirement of request.requirements) {
+        const script = input.proofBindings[materialDigest(requirement.text)];
+        if (script) requirementsPerScript.set(script, (requirementsPerScript.get(script) ?? 0) + 1);
+      }
       for (const { requirement, criterion } of criteria) {
         if (criterion.evidenceType !== SEALED_CHECK_EVIDENCE || criterion.predicate.path !== '/ok' || criterion.predicate.equals !== true) {
           blocked.push({ criterionId: criterion.id, reason: 'the coding adapter currently supports only a successful sealed-check predicate (/ok equals true)' });
@@ -80,12 +86,18 @@ export function createCodingSealedPlanAdapter(input: CodingPlanAdapterInput): Ve
           startedAt: result.startedAt,
           endedAt: result.endedAt,
         }));
+        const ok = results.length > 0 && results.every(result => result.ok);
+        const sharedBy = requirementsPerScript.get(script) ?? 0;
+        if (!ok && sharedBy > 1) {
+          unproven.push({ criterionId: criterion.id, reason: `the bound sealed check ${script} failed, but ${sharedBy} requirements share it and it reports no per-requirement result; no requirement is refuted individually` });
+          continue;
+        }
         evidence.push({
           requirementId: requirement.id,
           criterionId: criterion.id,
           evidenceType: SEALED_CHECK_EVIDENCE,
           facts: {
-            ok: results.length > 0 && results.every(result => result.ok),
+            ok,
             checkId: script,
             checkCount: results.length,
             planDigest: input.planDigest,

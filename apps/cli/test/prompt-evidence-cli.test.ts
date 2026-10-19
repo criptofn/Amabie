@@ -1160,16 +1160,18 @@ it('a green check cannot hide original-goal text omitted from the registered req
   assert.match(envelope.promptEvidence?.issues.join(' ') ?? '', /uncovered non-whitespace/u);
 });
 
-it('Scenario D: a real failing sealed check is reported as contradictory evidence', () => {
+it('Scenario D: a failing sealed check shared by two requirements blocks completion but refutes neither', () => {
   const project = prepareProject({ fixture: 'f-controlled.js', includeBindings: 2 }, 'scenario-d');
   fs.writeFileSync(path.join(project.root, '.amabie', 'controlled-failure'), 'fail');
   const request = writeRequest(project.root, project.goal, project.requirements);
   const result = run(['doctor', '--prompt-evidence', request, '--json'], project.root);
   assert.equal(result.status, 2);
-  const envelope = JSON.parse(result.stdout) as { status: string; promptEvidence?: { verdict: string; coverage: { unmet: number } } };
+  const envelope = JSON.parse(result.stdout) as { status: string; promptEvidence?: { verdict: string; coverage: { unmet: number; unproven: number } } };
   assert.equal(envelope.status, 'NEEDS ATTENTION');
-  assert.equal(envelope.promptEvidence?.verdict, 'FAIL');
-  assert.equal(envelope.promptEvidence?.coverage.unmet, 2);
+  // One sealed check run reports one outcome for both requirements, so neither is individually refuted (P1:23).
+  assert.equal(envelope.promptEvidence?.verdict, 'NOT PROVEN');
+  assert.equal(envelope.promptEvidence?.coverage.unmet, 0);
+  assert.equal(envelope.promptEvidence?.coverage.unproven, 2);
 });
 
 it('Scenario E: a failed password-policy check is FAIL, while a green unbound check remains NOT PROVEN', () => {
