@@ -192,7 +192,12 @@ console.log('\n=== amabie provider status (the measured boundary) ===');
     check('install-plan PRINTS the privileged steps and executes nothing', () => {
       assert(plan.status === 0, `install-plan failed: ${planOut.slice(-400)}`);
       assert(/OWNER AUTHORIZATION REQUIRED/.test(planOut), 'the plan must say what it is waiting for');
-      for (const needle of ['net user', 'sc.exe create', 'icacls']) {
+      // Each host names its own commands: the Windows plan is `net user` / `sc.exe` / `icacls`, the Linux plan is the
+      // `useradd` / `setfacl` / `systemctl` argv that `linuxInstallPlan` builds. Both must be printed in full.
+      const needles = process.platform === 'win32'
+        ? ['net user', 'sc.exe create', 'icacls']
+        : ['useradd', 'setfacl', 'systemctl enable --now'];
+      for (const needle of needles) {
         assert(planOut.includes(needle), `the plan must name the real command (${needle})`);
       }
       assert(/rollback/i.test(planOut), 'a plan without a rollback is not a plan');
