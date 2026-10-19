@@ -231,7 +231,8 @@ export async function cmdProvider(rawArgs: string[]): Promise<number> {
     case 'install-plan': {
       const plan = providerInstallPlan();
       if (json) { console.log(JSON.stringify(plan, null, 2)); return 0; }
-      console.log(`OWNER AUTHORIZATION REQUIRED — WINDOWS HARDENED ACTIVATION`);
+      const platformName = plan.platform === 'win32' ? 'WINDOWS' : plan.platform.toUpperCase();
+      console.log(`OWNER AUTHORIZATION REQUIRED — ${platformName} HARDENED ACTIVATION`);
       console.log(`platform: ${plan.platform}\n`);
       console.log('1. exactly what the privileged commands will change:');
       for (const s of plan.steps) console.log(`   - ${s.id}: ${s.why}`);
