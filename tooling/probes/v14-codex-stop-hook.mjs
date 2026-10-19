@@ -30,8 +30,9 @@
  *      own checkpoint record, deleted just before the run, exists again afterwards (so the harness
  *      really executed the hook), and that the session continued on its decision.
  *
- * WHAT A SKIP MEANS HERE. If no runnable `codex` CLI exists, if it has no credentials, or if it times
- * out, the end-to-end arm prints an explicit SKIP naming what could not be done and the probe exits 3
+ * WHAT A SKIP MEANS HERE. The end-to-end arm starts a paid provider session, so it runs only when the
+ * operator sets AMABIE_ALLOW_CODEX_PROVIDER_USAGE=1. Without that opt-in, or if no runnable `codex` CLI
+ * exists, or if it has no credentials, the arm prints an explicit SKIP naming what could not be done and the probe exits 3
  * (host-bound) — a SKIP is never a PASS, and the `gatingMeasured` claim in the capability table is
  * exactly the thing this arm is evidence for. If the session RUNS but the hook never fires, that is
  * not a host bound: it is a FAIL, because the product would be claiming a gate the harness skipped.
@@ -311,7 +312,11 @@ try {
    */
   const codex = resolveCodex();
   const userAuth = path.join(os.homedir(), '.codex', 'auth.json');
-  if (codex === null) {
+  // An installed CLI and a credentials file are not consent: `codex exec` starts a real, billable
+  // provider session. Only the operator's explicit opt-in starts it; otherwise the live arm is NOT RUN.
+  if (process.env.AMABIE_ALLOW_CODEX_PROVIDER_USAGE !== '1') {
+    skip('v14-end-to-end: NOT RUN — AMABIE_ALLOW_CODEX_PROVIDER_USAGE=1 is not set, so the `codex exec` session was not started (the hook contracts above still ran)');
+  } else if (codex === null) {
     skip('v14-end-to-end: no runnable codex CLI on this host — the `codex exec` session was NOT attempted, so nothing here measures a real session');
   } else if (!fs.existsSync(userAuth)) {
     skip(`v14-end-to-end: no Codex credentials at ${userAuth} — the \`codex exec\` session was NOT attempted (an unauthenticated run measures nothing)`);
