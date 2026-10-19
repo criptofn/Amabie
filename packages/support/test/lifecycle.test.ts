@@ -320,29 +320,56 @@ describe('Windows PowerShell host fallback', () => {
     }
   });
 
-  it('retries only after a process-host access violation and keeps successful scan semantics authoritative', () => {
+  it('chooses the host with a read-only preflight and sweeps once on the chosen host', () => {
     const calls: string[] = [];
     const fallbackEvents: Array<[string, string, string]> = [];
     const clean = 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=\n';
-    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable) => {
-      calls.push(executable);
-      return executable === 'powershell.exe'
-        ? { status: 3221225477, stdout: '', stderr: '' }
-        : { status: 0, stdout: clean, stderr: '' };
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable, script) => {
+      const phase = script.includes('Stop-Process') ? 'sweep' : 'probe';
+      calls.push(`${phase}:${executable}`);
+      if (executable === 'powershell.exe') return { status: 3221225477, stdout: '', stderr: '' };
+      return { status: 0, stdout: phase === 'probe' ? 'probe=ok\n' : clean, stderr: '' };
     }, (previous, next, reason) => fallbackEvents.push([previous, next, reason]));
     assert.deepEqual(result, { killed: [], failed: false });
-    assert.deepEqual(calls, ['powershell.exe', 'pwsh.exe']);
+    assert.deepEqual(calls, ['probe:powershell.exe', 'probe:pwsh.exe', 'sweep:pwsh.exe'],
+      'a crashing host is passed over by its probe, and the kill-capable sweep runs once on the host that answered');
     assert.deepEqual(fallbackEvents, [['powershell.exe', 'pwsh.exe', 'engine access violation 0xC0000005']]);
+  });
+
+  it('a healthy first host is probed once and swept once without a fallback', () => {
+    const calls: string[] = [];
+    const clean = 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=\n';
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable, script) => {
+      const phase = script.includes('Stop-Process') ? 'sweep' : 'probe';
+      calls.push(`${phase}:${executable}`);
+      return { status: 0, stdout: phase === 'probe' ? 'probe=ok\n' : clean, stderr: '' };
+    }, () => assert.fail('no fallback is expected on a healthy host'));
+    assert.deepEqual(result, { killed: [], failed: false });
+    assert.deepEqual(calls, ['probe:powershell.exe', 'sweep:powershell.exe']);
+  });
+
+  it('never repeats a sweep that crashed after its preflight succeeded, because it may already have requested kills', () => {
+    const calls: string[] = [];
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable, script) => {
+      const phase = script.includes('Stop-Process') ? 'sweep' : 'probe';
+      calls.push(`${phase}:${executable}`);
+      return phase === 'probe'
+        ? { status: 0, stdout: 'probe=ok\n', stderr: '' }
+        : { status: 3221225477, stdout: '', stderr: '' };
+    });
+    assert.equal(result.failed, true);
+    assert.match(result.reason ?? '', /not retried/u);
+    assert.deepEqual(calls, ['probe:powershell.exe', 'sweep:powershell.exe']);
   });
 
   it('does not retry a valid scan that reports surviving descendants', () => {
     const calls: string[] = [];
-    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable) => {
-      calls.push(executable);
-      return { status: 0, stdout: 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=53002\n', stderr: '' };
+    const result = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe', 'pwsh.exe'], (executable, script) => {
+      calls.push(`${script.includes('Stop-Process') ? 'sweep' : 'probe'}:${executable}`);
+      return { status: 0, stdout: script.includes('Stop-Process') ? 'snapshot=1\nlimit=0\nuncertain=0\nkilled=\nsurvivors=53002\n' : 'probe=ok\n', stderr: '' };
     });
     assert.deepEqual(result, { killed: [], failed: true, reason: 'surviving process ids: 53002' });
-    assert.deepEqual(calls, ['powershell.exe']);
+    assert.deepEqual(calls, ['probe:powershell.exe', 'sweep:powershell.exe']);
   });
 
   it('fails closed after non-crash errors or when no fallback runtime succeeds', () => {

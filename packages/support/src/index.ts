@@ -867,13 +867,26 @@ export type WindowsPowerShellRunResult = {
 };
 
 /**
- * Run the process-tree sweep through an ordered set of PowerShell hosts. Only
- * a missing executable or the specifically observed CLR access violation is
- * retried. A completed scan, a malformed result, survivors, timeouts, and all
- * other failures are authoritative and fail closed. Repeating after this host
- * crash is safe for this sweep: every pass re-enumerates descendants and checks
- * PID plus creation time before requesting a kill.
- * @internal Exported so the retry boundary can be regression-tested.
+ * Read-only host preflight: one CIM process snapshot, no kill. It exists so a host
+ * that crashes on CIM enumeration is passed over BEFORE any kill is requested.
+ * @internal
+ */
+export const WIN32_HOST_PROBE_SCRIPT =
+  `$ErrorActionPreference='Stop';` +
+  `$all=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+  `if($all.Count -le 0){ throw 'empty process snapshot' };` +
+  `Write-Output 'probe=ok';`;
+
+/**
+ * Choose the Windows PowerShell host, then run the kill-capable sweep ONCE on it.
+ * Only the read-only preflight may move to the next host, and only after a missing
+ * executable or the specifically observed CLR access violation. A sweep that fails
+ * after its preflight succeeded is never repeated on another host: an earlier
+ * attempt may already have requested kills, so a retry would be an unplanned
+ * second side effect. That failure fails closed and names its cause. A completed
+ * scan, a malformed result, survivors, timeouts, and all other failures are
+ * authoritative.
+ * @internal Exported so the host-selection boundary can be regression-tested.
  */
 export function runWin32SweepWithFallback(
   pid: number,
@@ -886,32 +899,52 @@ export function runWin32SweepWithFallback(
   const script = buildWin32SweepScript(pid, spawnedAtMs);
   for (let index = 0; index < candidates.length; index++) {
     const executable = candidates[index]!;
-    let result: WindowsPowerShellRunResult;
-    try {
-      result = run(executable, script);
-    } catch (error) {
+    const probe = invokeWin32Host(run, executable, WIN32_HOST_PROBE_SCRIPT);
+    if ('reason' in probe) return { killed: [], failed: true, reason: probe.reason };
+
+    const probed = probe.result;
+    if (probed.status === 0 && !probed.error) {
+      if (!probed.stdout.includes('probe=ok')) {
+        return { killed: [], failed: true, reason: `${path.basename(executable)} returned no process snapshot` };
+      }
+      const swept = invokeWin32Host(run, executable, script);
+      if ('reason' in swept) return { killed: [], failed: true, reason: swept.reason };
+      if (swept.result.status === 0 && !swept.result.error) return parseWin32SweepOutput(swept.result.stdout);
       return {
         killed: [], failed: true,
-        reason: `PowerShell host invocation threw: ${error instanceof Error ? error.message : String(error)}`,
+        reason: `${describeWin32HostFailure(executable, swept.result)}; the sweep is not retried on another host because it may already have requested kills`,
       };
     }
 
-    if (result.status === 0 && !result.error) return parseWin32SweepOutput(result.stdout);
-
-    const accessViolation = result.status !== null && (result.status >>> 0) === 0xc0000005;
-    const executableMissing = result.status === null && result.error?.code === 'ENOENT';
+    const accessViolation = probed.status !== null && (probed.status >>> 0) === 0xc0000005;
+    const executableMissing = probed.status === null && probed.error?.code === 'ENOENT';
     if (index + 1 < candidates.length && (accessViolation || executableMissing)) {
       const reason = accessViolation ? 'engine access violation 0xC0000005' : 'executable unavailable';
       onFallback(executable, candidates[index + 1]!, reason);
       continue;
     }
-
-    const details = result.error
-      ? `spawn error ${result.error.code ?? 'unknown'}: ${result.error.message}`
-      : `exited ${String(result.status)}${result.stderr.trim() ? `: ${result.stderr.trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
-    return { killed: [], failed: true, reason: `${path.basename(executable)} ${details}` };
+    return { killed: [], failed: true, reason: describeWin32HostFailure(executable, probed) };
   }
   return { killed: [], failed: true, reason: 'no PowerShell host produced a result' };
+}
+
+function invokeWin32Host(
+  run: (executable: string, script: string) => WindowsPowerShellRunResult,
+  executable: string,
+  script: string,
+): { result: WindowsPowerShellRunResult } | { reason: string } {
+  try {
+    return { result: run(executable, script) };
+  } catch (error) {
+    return { reason: `PowerShell host invocation threw: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+function describeWin32HostFailure(executable: string, result: WindowsPowerShellRunResult): string {
+  const details = result.error
+    ? `spawn error ${result.error.code ?? 'unknown'}: ${result.error.message}`
+    : `exited ${String(result.status)}${result.stderr.trim() ? `: ${result.stderr.trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
+  return `${path.basename(executable)} ${details}`;
 }
 
 /** @internal — shared with a deterministic Windows test for snapshot refresh. */
