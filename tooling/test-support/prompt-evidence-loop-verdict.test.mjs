@@ -59,7 +59,7 @@ function passwordCheckSource(rule) {
 /** A scratch project whose sealed plan runs two source checks. `setup` only accepts a passing baseline,
  *  so the baseline is committed green, `setup` runs there, and an empty commit then records the base
  *  that `task` registers against. The candidate is written uncommitted and is what the verdict reads. */
-function makeProject({ baseRule, candidateRule, candidateNote = '' }) {
+function makeProject({ baseRule, candidateRule, candidateNote = '', breakStable = false }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-loop-verdict-'));
   const git = (args) => run('git', args, root);
   assertRun(git(['init', '--quiet']), 0, 'initialize scratch repository');
@@ -69,19 +69,22 @@ function makeProject({ baseRule, candidateRule, candidateNote = '' }) {
   const registrationFile = path.join(root, 'registration.mjs');
   const passwordFile = path.join(root, 'password-policy.mjs');
   const passwordCheckFile = path.join(root, 'password-policy.test.mjs');
+  const stableFile = path.join(root, 'stable.mjs');
   fs.writeFileSync(registrationFile, 'export const emailRule = "rejects invalid email";\n');
   fs.writeFileSync(passwordFile, passwordSource(baseRule));
   fs.writeFileSync(passwordCheckFile, passwordCheckSource(baseRule));
+  fs.writeFileSync(stableFile, 'export const existingFeature = true;\n');
   const proofs = Object.fromEntries(requirements.map((requirement, index) => [materialDigest(requirement), index === 0 ? 'test' : 'typecheck']));
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({
     name: 'amabie-loop-verdict',
     scripts: {
       test: `node "${checkFixture}" registration.mjs "rejects invalid email"`,
       typecheck: 'node password-policy.test.mjs',
+      build: 'node --check stable.mjs',
     },
     amabie: { proofs },
   }, null, 2)}\n`);
-  assertRun(git(['add', 'package.json', 'registration.mjs', 'password-policy.mjs', 'password-policy.test.mjs']), 0, 'stage fixture baseline');
+  assertRun(git(['add', 'package.json', 'registration.mjs', 'password-policy.mjs', 'password-policy.test.mjs', 'stable.mjs']), 0, 'stage fixture baseline');
   assertRun(git(['commit', '--quiet', '-m', 'fixture baseline']), 0, 'commit fixture baseline');
 
   const cli = (args) => run(process.execPath, [cliEntry, ...args], root);
@@ -112,6 +115,7 @@ function makeProject({ baseRule, candidateRule, candidateNote = '' }) {
   fs.writeFileSync(path.join(root, '.amabie', 'prompt-evidence.json'), `${JSON.stringify(request, null, 2)}\n`);
   fs.writeFileSync(passwordFile, `${passwordSource(candidateRule)}${candidateNote}`);
   fs.writeFileSync(passwordCheckFile, passwordCheckSource(candidateRule));
+  if (breakStable) fs.writeFileSync(stableFile, 'export const = broken;\n');
   return { root, cli };
 }
 
@@ -160,6 +164,26 @@ test('READY control: the same plan verifies when the candidate really changes th
     assert.equal(loopEnvelope.status, 'verified', `\n${loop.stdout}`);
     assert.equal(loopEnvelope.verification.verdict, 'PASS', `\n${loop.stdout}`);
     assert.equal(loop.status, 0);
+  } finally {
+    fs.rmSync(project.root, { recursive: true, force: true });
+  }
+});
+
+test('NEEDS ATTENTION: a failing sealed check elsewhere keeps the loop off PASS even when every requirement is discriminated', () => {
+  // Both requirement checks discriminate the real password change, so the per-requirement block reads
+  // PASS. An unbound sealed check breaks on the candidate, so the overall gate refuses with NEEDS ATTENTION.
+  const project = makeProject({ baseRule: 'accepts blank input', candidateRule: 'rejects blank input', breakStable: true });
+  try {
+    const doctor = project.cli(['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json']);
+    const doctorEnvelope = parseJson(doctor, 'doctor');
+    assert.equal(doctorEnvelope.status, 'NEEDS ATTENTION', `the broken sealed check must refuse the overall gate\n${doctor.stdout}`);
+    assert.equal(doctor.status, 2);
+
+    const loop = project.cli(loopArgs);
+    const loopEnvelope = parseJson(loop, 'loop');
+    assert.notEqual(loopEnvelope.status, 'verified', `the loop must not claim verified\n${loop.stdout}`);
+    assert.notEqual(loopEnvelope.verification?.verdict, 'PASS', `the loop must not claim PASS\n${loop.stdout}`);
+    assert.equal(loop.status, 2, 'a refused candidate exits 2');
   } finally {
     fs.rmSync(project.root, { recursive: true, force: true });
   }
