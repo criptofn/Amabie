@@ -435,6 +435,8 @@ const STEPS = [
   ['probe: master-pass split-verdict subjectivity battery (real git)', process.execPath, ['tooling/probes/master-pass-subjectivity.mjs'], {}],
   ['probe: pre-1.0 execution-environment authority battery (real git, poisoned env)', process.execPath, ['tooling/probes/pre10-env-authority.mjs'], {}],
   ['probe: pre-1.0 human-acceptance battery (real git + pty)', process.execPath, ['tooling/probes/pre10-acceptance.mjs'], {}],
+  // Stable-scope consistency: the 2.0 release note must label the Prompt-to-Evidence commands the same way the CLI does.
+  ['probe: stable-scope consistency (release note vs CLI experimental labels)', process.execPath, ['tooling/probes/stable-scope-consistency.mjs'], {}],
   // Each fault has its own unchanged finite budget; accumulated valid owner work cannot hide M12/M13.
   ...Array.from({ length: 13 }, (_, i) => [`probe: master-pass mutation battery (built dist) / M${i + 1}`, process.execPath,
     ['tooling/probes/master-pass-mutations.mjs', '--only', `M${i + 1}`], {}]),
