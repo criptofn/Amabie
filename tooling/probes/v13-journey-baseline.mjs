@@ -51,7 +51,8 @@ function makeProject(dir, name) {
   fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
     name, version: '1.0.0', private: true,
-    scripts: { test: 'node greeting.test.cjs' },
+    // `node --test` runs every *.test.cjs, so a check the worker ADDS is part of the sealed plan.
+    scripts: { test: 'node --test' },
   }, null, 2) + '\n');
   fs.writeFileSync(path.join(dir, 'greeting.cjs'), 'module.exports = (name) => `Hello, ${name}!`;\n');
   fs.writeFileSync(path.join(dir, 'greeting.test.cjs'),
@@ -72,12 +73,14 @@ const FIXED_SRC =
   "  if (typeof name !== 'string' || name.trim() === '') throw new Error('name is required');\n" +
   '  return `Hello, ${name.trim()}!`;\n' +
   '};\n';
+/** P0:21: the discriminating check is a NEW file the worker creates. Rewriting the existing
+ *  greeting.test.cjs is the oracle-rewrite attack and stays NOT PROVEN. */
+const FIXED_TEST_FILE = 'greeting-empty.test.cjs';
 const FIXED_TEST =
   "const assert = require('node:assert/strict');\n" +
   "const greeting = require('./greeting.cjs');\n" +
-  "assert.equal(greeting('Ada'), 'Hello, Ada!');\n" +
   "assert.throws(() => greeting(''), /name is required/);\n" +
-  "console.log('greeting OK');\n";
+  "console.log('empty name rejected');\n";
 
 /** Run the whole ordinary path for one fixture and report what happened at each step. */
 function journey(label, intent, extraFlags) {
@@ -87,11 +90,12 @@ function journey(label, intent, extraFlags) {
   const w = amabie(['work', 'task1', intent, ...extraFlags], root, null);
   const wText = out(w);
   const printed = [...wText.matchAll(/[A-Za-z]:\\[^\s"']+/g)].map((m) => m[0].replace(/[.,)]+$/, ''));
+  const printed = [...wText.matchAll(/(?:[A-Za-z]:\\|\/)[^\s"']+/g)].map((m) => m[0].replace(/[.,)]+$/, ''));
   const cand = printed.find((p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } }) ?? null;
   let fStatus = null; let fText = '(candidate never opened — finish not attempted)';
   if (cand !== null) {
     fs.writeFileSync(path.join(cand, 'greeting.cjs'), FIXED_SRC);
-    fs.writeFileSync(path.join(cand, 'greeting.test.cjs'), FIXED_TEST);
+    fs.writeFileSync(path.join(cand, FIXED_TEST_FILE), FIXED_TEST);
     run('git', ['add', '.'], cand);
     run('git', ['-c', 'user.name=Worker', '-c', 'user.email=worker@localhost', 'commit', '-m', 'reject empty names'], cand);
     const f = amabie(['finish', 'task1'], root, null);
@@ -180,7 +184,7 @@ try {
 
   // ───────────────────────────────── C. the naive agent edits the BASE directly ──
   fs.writeFileSync(path.join(naive, 'greeting.cjs'), FIXED_SRC);
-  fs.writeFileSync(path.join(naive, 'greeting.test.cjs'), FIXED_TEST);
+  fs.writeFileSync(path.join(naive, FIXED_TEST_FILE), FIXED_TEST);
   const naiveDoctor = amabie(['doctor'], naive, null);
   const naiveText = out(naiveDoctor);
   console.log('===== C. amabie doctor after the agent edited the BASE directly =====');
@@ -195,7 +199,7 @@ try {
    * That version recorded `doctor` answering READY here as an OPEN FINDING — "an agent that edits the
    * base directly is told READY while the candidate route can refuse", i.e. a false-acceptance hole on
    * the default path. The OBSERVATION was accurate; the INFERENCE was not, and section F is what
-   * settles it. This fixture changed BOTH the source and the test, so the sealed plan genuinely
+   * settles it. This fixture changed the source and ADDED a test (P0:21: a rewritten existing test stays NOT PROVEN), so the sealed plan genuinely
    * discriminates the change (the overlay runs the edited test against the base code and it fails) —
    * the READY is EARNED. Section F2 measures the case that would make the inference true — a
    * behaviour change no declared check can see — and there the gate BLOCKS with NOT PROVEN.
@@ -265,12 +269,11 @@ try {
   const f1 = hookFixture('f1-discriminated');
   fs.writeFileSync(path.join(f1, 'greeting.cjs'),
     'module.exports = (name) => `Hello, ${String(name).trim()}!`;\n');
-  fs.writeFileSync(path.join(f1, 'greeting.test.cjs'),
+  fs.writeFileSync(path.join(f1, 'greeting-trim.test.cjs'),
     "const assert = require('node:assert/strict');\n" +
     "const greeting = require('./greeting.cjs');\n" +
-    "assert.equal(greeting('Ada'), 'Hello, Ada!');\n" +
     "assert.equal(greeting('  Ada  '), 'Hello, Ada!');\n" +
-    "console.log('greeting OK');\n");
+    "console.log('greeting trims');\n");
   const v1h = hookVerdict(f1);
 
   // F2 — a behaviour change NO declared check can see (the suite is green on both sides).
