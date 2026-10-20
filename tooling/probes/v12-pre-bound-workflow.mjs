@@ -49,11 +49,16 @@ const BUG = 'module.exports = (a,b) => a+b;\n';
 // The project's own check is green on the starting bytes, so the operator's seal and its
 // smoke test are meaningful. The DISCRIMINATING check lives outside the project: it is the
 // probe's independent measure of delivered correctness, never a promotion authority.
-const CHECK = "const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3);\n";
+// The sealed check also requires every sibling *.test.cjs, so a check the worker ADDS is part
+// of the sealed plan (P0:21: rewriting the existing sum.test.cjs is the oracle-rewrite attack
+// and stays UNPROVEN).
+const CHECK = "const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3);\n" +
+  "for (const f of require('node:fs').readdirSync(__dirname)) if (f !== 'sum.test.cjs' && f.endsWith('.test.cjs')) require('./' + f);\n";
 // Amabie's completion contract: a check green on BOTH sides proves nothing, so the
-// worker must point the sealed check at the behaviour it changed. The worker writes this
-// stronger check; the probe's independent measure still decides delivered correctness.
-const CHECK_STRONG = "const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3); assert.equal(sum('1','2'),3);\n";
+// worker adds a check of the behaviour it changed. The worker writes this new check;
+// the probe's independent measure still decides delivered correctness.
+const STRINGS_CHECK_FILE = 'sum-strings.test.cjs';
+const CHECK_STRONG = "const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum('1','2'),3);\n";
 const REQUIREMENT = 'Handle numeric string operands';
 const independentCheck = path.join(temp, 'strings.check.cjs');
 
@@ -145,9 +150,9 @@ try {
   const actions = [
     ['read', { op: 'read', path: 'index.cjs' }],
     ['write', { op: 'write', path: 'index.cjs', text: FIX }],
-    ['strengthen-check', { op: 'write', path: 'sum.test.cjs', text: CHECK_STRONG }],
+    ['strengthen-check', { op: 'write', path: STRINGS_CHECK_FILE, text: CHECK_STRONG }],
     ['status', { op: 'exec', argv: [gitExe, 'status', '--porcelain'] }],
-    ['add', { op: 'exec', argv: [gitExe, 'add', '--', 'index.cjs', 'sum.test.cjs'] }],
+    ['add', { op: 'exec', argv: [gitExe, 'add', '--', 'index.cjs', STRINGS_CHECK_FILE] }],
     ['cached', { op: 'exec', argv: [gitExe, 'diff', '--cached'] }],
     // ── worker authority attacks, all inside the measured boundary ──
     ['write-authority-source', { op: 'write', path: basePackagePath, text: JSON.stringify({ amabie: { proofs: { ['c'.repeat(64)]: 'test' } } }) }],
@@ -207,7 +212,7 @@ try {
   // ── the model's implementation is real, and it crossed the boundary ──
   const workerBytes = fs.readFileSync(path.join(work, 'index.cjs'), 'utf8');
   check('model-requested-implementation-landed', workerBytes === FIX, { bytes: workerBytes.length });
-  check('model-requested-check-strengthening-landed', fs.readFileSync(path.join(work, 'sum.test.cjs'), 'utf8') === CHECK_STRONG, 'the sealed check now measures the changed behaviour');
+  check('model-requested-check-strengthening-landed', fs.readFileSync(path.join(work, STRINGS_CHECK_FILE), 'utf8') === CHECK_STRONG, 'the sealed plan now measures the changed behaviour');
   check('confined-git-staged-the-implementation', run(gitExe, ['diff', '--cached'], work).stdout.includes('Number(a)+Number(b)'), 'trusted-side index readback of the confined worker index');
   check('worker-cannot-reach-the-authority-source', fs.readFileSync(basePackagePath).equals(operatorBindingBytes), 'base package.json bytes unchanged through the whole worker session');
   check('worker-cannot-reach-the-sealed-plan', fs.readFileSync(baseConfigPath).equals(baseConfigBytes), 'sealed plan authority bytes unchanged');
@@ -240,7 +245,7 @@ try {
   check('independent-correctness-check-still-fails-on-the-base', run(process.execPath, [independentCheck, base], base, null).status !== 0, 'the change is what makes it pass');
 
   // ── broker owns review and promotion; a self-binding proposal cannot become authoritative ──
-  const files = Object.fromEntries(['index.cjs', 'sum.test.cjs'].map(f => [f, fs.readFileSync(path.join(work, f)).toString('base64')]));
+  const files = Object.fromEntries(['index.cjs', STRINGS_CHECK_FILE].map(f => [f, fs.readFileSync(path.join(work, f)).toString('base64')]));
   const forgedProofs = { ...operatorProofs, ['d'.repeat(64)]: 'test' };
   const callerConfig = {
     ...enrolled, challenge, candidate: 'model', output: callerOut,
