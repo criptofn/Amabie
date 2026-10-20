@@ -386,6 +386,20 @@ describe('Windows PowerShell host fallback', () => {
     }));
     assert.equal(noHost.failed, true);
   });
+
+  it('names the documented remedy when the only host crashes, and only then', () => {
+    const crashed = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe'], () => ({
+      status: 3221225477, stdout: '', stderr: '',
+    }));
+    assert.equal(crashed.failed, true);
+    assert.match(crashed.reason ?? '', /access violation 0xC0000005/);
+    assert.match(crashed.reason ?? '', /AMABIE_POWERSHELL_CORE_PATH/);
+
+    const ordinary = runWin32SweepWithFallback(53001, Date.now(), ['powershell.exe'], () => ({
+      status: 1, stdout: '', stderr: 'query failed',
+    }));
+    assert.doesNotMatch(ordinary.reason ?? '', /AMABIE_POWERSHELL_CORE_PATH/);
+  });
 });
 
 describe('Windows sweep snapshot refresh', () => {

@@ -925,7 +925,10 @@ export function runWin32SweepWithFallback(
       onFallback(executable, candidates[index + 1]!, reason);
       continue;
     }
-    return { killed: [], failed: true, reason: describeWin32HostFailure(executable, probed) };
+    const remedy = accessViolation
+      ? ` (engine access violation 0xC0000005 before any kill; install PowerShell 7 or set AMABIE_POWERSHELL_CORE_PATH to an absolute pwsh.exe, see QUICKSTART)`
+      : '';
+    return { killed: [], failed: true, reason: describeWin32HostFailure(executable, probed) + remedy };
   }
   return { killed: [], failed: true, reason: 'no PowerShell host produced a result' };
 }
