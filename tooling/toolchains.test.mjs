@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { extractVerifiedGoArchive } from './toolchains.mjs';
+import { TAR, extractVerifiedGoArchive } from './toolchains.mjs';
 
 test('Go archive verification precedes extraction and preserves sibling toolchains', () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-toolchain-test-'));
@@ -28,7 +28,7 @@ test('Go archive verification precedes extraction and preserves sibling toolchai
     fs.mkdirSync(path.join(source, 'go', 'bin'), { recursive: true });
     const executable = process.platform === 'win32' ? 'go.exe' : 'go';
     fs.writeFileSync(path.join(source, 'go', 'bin', executable), 'new Go fixture');
-    const packed = spawnSync(process.platform === 'win32' ? 'tar.exe' : 'tar', ['-cf', archive, '-C', source, 'go'], { encoding: 'utf8' });
+    const packed = spawnSync(TAR, ['-cf', archive, '-C', source, 'go'], { encoding: 'utf8' });
     assert.equal(packed.status, 0, packed.stderr);
     const validHash = createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
     extractVerifiedGoArchive(archive, validHash, goroot);

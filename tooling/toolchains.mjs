@@ -36,6 +36,10 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = path.join(REPO, '_toolchains');
 
+// The Windows inbox bsdtar, named explicitly: a PATH lookup under Git Bash finds GNU tar,
+// which reads `C:\...` as a remote host and cannot open the Windows Go .zip. MEASURED.
+export const TAR = process.platform === 'win32' ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+
 const log = (s) => console.log(s);
 function fail(msg) { console.error(`FAIL: ${msg}`); process.exit(1); }
 
@@ -78,7 +82,7 @@ export function extractVerifiedGoArchive(archive, expectedSha256, goroot) {
   fs.mkdirSync(parent, { recursive: true });
   const stage = fs.mkdtempSync(path.join(parent, '.go-stage-'));
   try {
-    const un = spawnSync(process.platform === 'win32' ? 'tar.exe' : 'tar', ['-xf', archive, '-C', stage], { encoding: 'utf8', timeout: 900_000, windowsHide: true });
+    const un = spawnSync(TAR, ['-xf', archive, '-C', stage], { encoding: 'utf8', timeout: 900_000, windowsHide: true });
     if (un.status !== 0) throw new Error(`Go archive extraction failed: ${un.stderr || un.status}`);
     const extracted = path.join(stage, 'go');
     if (!fs.existsSync(path.join(extracted, 'bin', process.platform === 'win32' ? 'go.exe' : 'go'))) throw new Error('Go archive contains no host executable');
