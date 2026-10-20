@@ -22,10 +22,11 @@ import path from 'node:path';
 import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const gitExe = hostGit();
 const claude = path.join(os.homedir(), '.local/bin/claude.exe');
 // `indexOf` returns -1 when the flag is absent, and `argv[-1 + 1]` is argv[0] — the interpreter path.
 const argOf = (name, fallback) => {

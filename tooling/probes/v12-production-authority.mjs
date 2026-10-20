@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { hostGit } from '../test-support/host-git.mjs';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
 const cliIndex = process.argv.indexOf('--cli');
 const cli = cliIndex < 0 ? path.join(repo, 'apps/cli/dist/src/main.js') : path.resolve(process.argv[cliIndex + 1]);
@@ -35,7 +36,8 @@ const command = (exe,args,cwd=root,timeout=300000) => {
   return r.stdout;
 };
 const amabie = args => command(process.execPath,[cli,...args]);
-const git = args => command('C:\\Program Files\\Git\\cmd\\git.exe',args,base);
+const gitExe = hostGit();
+const git = args => command(gitExe,args,base);
 /** v1.4: the --capability verdict, carried out of the try block so the cleanup
  *  in `finally` cannot overwrite it with the battery's pass/fail code. */
 class CapabilityVerdict extends Error { constructor(code, message) { super(message); this.code = code; } }
@@ -84,18 +86,18 @@ try {
   };
   // Trusted preflight creates an independent implementation repository. No
   // linked worktree, borrowed object store, or authority metadata is exposed.
-  command('C:\\Program Files\\Git\\cmd\\git.exe',['init'],work);
+  command(gitExe,['init'],work);
   for (const file of ['package.json','index.cjs','sum.test.cjs'])
     fs.copyFileSync(path.join(base,file),path.join(work,file));
-  command('C:\\Program Files\\Git\\cmd\\git.exe',['add','.'],work);
-  command('C:\\Program Files\\Git\\cmd\\git.exe',['-c','user.name=Worker baseline','-c','user.email=baseline@localhost','commit','-m','trusted starting bytes'],work);
+  command(gitExe,['add','.'],work);
+  command(gitExe,['-c','user.name=Worker baseline','-c','user.email=baseline@localhost','commit','-m','trusted starting bytes'],work);
   const {productionTool}=await import('../../apps/cli/dist/src/provider/production.js');
   for (const [file,body] of Object.entries(intendedFiles)) {
     const edit=productionTool(store,work,{op:'write',path:file,text:Buffer.from(body,'base64').toString()});
     check('confined-implementation-'+file,edit.output?.result==='written' && edit.observation[0].package===enrollment.package,'real production tool execution');
   }
   for (const args of [['rev-parse','--show-toplevel'],['status','--porcelain'],['diff'],['diff','--cached'],['add','--','index.cjs','sum.test.cjs']]) {
-    const result=productionTool(store,work,{op:'exec',argv:['C:\\Program Files\\Git\\cmd\\git.exe',...args]});
+    const result=productionTool(store,work,{op:'exec',argv:[gitExe,...args]});
     check('confined-git-'+args.join('-'),result.output?.result?.status===0,JSON.stringify(result.output));
   }
   // v1.4 — CAPABILITY MODE: answer ONE host question and stop.

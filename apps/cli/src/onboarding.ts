@@ -1331,14 +1331,21 @@ export function pinPlanPrograms(plan: PlanStep[]): { plan: PlanStep[]; problems:
   const cache = new Map<string, string | null>();
   const resolveOnPath = (program: string): string | null => {
     if (cache.has(program)) return cache.get(program) ?? null;
-    const names = process.platform === 'win32'
-      ? [`${program}.exe`, `${program}.cmd`, `${program}.bat`, program]
-      : [program];
+    // Most Linux hosts ship only `python3`, and the python checks invoke `python`. On non-Windows hosts a
+    // `python` miss may pin the `python3` on PATH; the pinned absolute path is what runs. Windows keeps
+    // `python` alone because a `python3.exe` there can be an app-store stub.
+    const programs = process.platform !== 'win32' && program === 'python' ? ['python', 'python3'] : [program];
     let found: string | null = null;
-    for (const d of pathDirs) {
-      for (const n of names) {
-        const abs = path.join(d, n);
-        if (fs.existsSync(abs)) { found = abs; break; }
+    for (const candidate of programs) {
+      const names = process.platform === 'win32'
+        ? [`${candidate}.exe`, `${candidate}.cmd`, `${candidate}.bat`, candidate]
+        : [candidate];
+      for (const d of pathDirs) {
+        for (const n of names) {
+          const abs = path.join(d, n);
+          if (fs.existsSync(abs)) { found = abs; break; }
+        }
+        if (found !== null) break;
       }
       if (found !== null) break;
     }

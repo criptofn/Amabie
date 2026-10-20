@@ -21,13 +21,14 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { native } from '../../apps/cli/dist/src/provider/production.js';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..'), cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const dosScript = path.join(repo, 'tooling/test-support/fixtures/dos-device.ps1');
 const holder = path.join(repo, 'tooling/test-support/fixtures/alias-holder.mjs');
 const observer = path.join(repo, 'tooling/test-support/fixtures/alias-observer.cjs');
 const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const git = hostGit();
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-alias-audit-'));
 const results = [];

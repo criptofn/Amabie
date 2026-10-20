@@ -20,13 +20,14 @@ import net from 'node:net';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? fallback : process.argv[i + 1]; };
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const fixtures = path.join(repo, 'tooling/benchmark/fixtures');
 const results = path.join(repo, 'tooling/benchmark/results');
-const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const gitExe = hostGit();
 const claude = path.join(os.homedir(), '.local/bin/claude.exe');
 const task = arg('task', 'bound-requirements');
 const label = arg('label', 'v12pilot');

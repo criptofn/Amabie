@@ -8,10 +8,12 @@ import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { enrollment as readEnrollment, productionTool } from '../../apps/cli/dist/src/provider/production.js';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 const repo = path.resolve(import.meta.dirname, '../..'), cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-transport-audit-'));
 const base = path.join(temp, 'base'), work = path.join(temp, 'work'), store = path.join(temp, 'store');
 const executable = path.join(os.homedir(), '.local/bin/claude.exe');
+const gitExe = hostGit();
 let enrolled, server;
 const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd = base) => {
@@ -34,9 +36,9 @@ try {
   assert.equal(readEnrollment(store).id, enrolled.id);
   const tool = request => productionTool(store, work, request);
   for (const argv of [
-    ['C:\\Program Files\\Git\\cmd\\git.exe', '--version'],
-    ['C:\\Program Files\\Git\\cmd\\git.exe', '-C', work, 'init'],
-    ['C:\\Program Files\\Git\\cmd\\git.exe', '--git-dir=' + path.join(work, '.git'), '--work-tree=' + work, 'init'],
+    [gitExe, '--version'],
+    [gitExe, '-C', work, 'init'],
+    [gitExe, '--git-dir=' + path.join(work, '.git'), '--work-tree=' + work, 'init'],
   ]) console.log('GIT DIAGNOSTIC', JSON.stringify({ argv, result: tool({ op: 'exec', argv }).output }));
   const normal = tool({ op: 'write', path: 'direct-control.txt', text: 'inside' });
   assert.equal(normal.output.result, 'written');
@@ -60,14 +62,14 @@ try {
   const actions = [
     ['mcp__amabie_confined__implement', { operations: [{ op: 'write', path: 'model-edit.txt', text: 'model-requested confined edit' }] }],
     ['mcp__amabie_confined__implement', { operations: [{ op: 'exec', argv: ['C:\\Windows\\System32\\cmd.exe', '/d', '/c', 'echo confined-shell'] }] }],
-    ['mcp__amabie_confined__implement', { operations: [{ op: 'exec', argv: ['C:\\Program Files\\Git\\cmd\\git.exe', 'init'] }] }],
+    ['mcp__amabie_confined__implement', { operations: [{ op: 'exec', argv: [gitExe, 'init'] }] }],
     // Several operations in ONE call: the primary contract the model is offered.
     ['mcp__amabie_confined__implement', { operations: [
       { op: 'write', path: 'batch-control.txt', text: 'batched inside confinement' },
       { op: 'read', path: 'batch-control.txt' },
       { op: 'exec', argv: ['C:\\Windows\\System32\\cmd.exe', '/d', '/c', 'echo confined-batch'] },
       { op: 'read', path: 'package.json' },
-      { op: 'exec', argv: ['C:\\Program Files\\Git\\cmd\\git.exe', 'status', '--porcelain'] },
+      { op: 'exec', argv: [gitExe, 'status', '--porcelain'] },
     ] }],
     // The one-operation form is NOT offered. Whether a caller can still use it decides
     // whether the contract is enforced by the schema or only by the description.
@@ -140,7 +142,7 @@ try {
   fs.renameSync(path.join(store, 'enrollment.saved'), path.join(store, 'enrollment.json'));
   console.log('PASS unavailable boundary refuses before model I/O; no fallback');
   const confinedGitSucceeded = fs.existsSync(path.join(work, '.git', 'HEAD'));
-  run('C:\\Program Files\\Git\\cmd\\git.exe', ['init'], work);
+  run(gitExe, ['init'], work);
   assert.ok(fs.existsSync(path.join(work, '.git', 'HEAD')));
   console.log('PASS unrestricted Git init control succeeds in the exact same workspace');
   // Keep this required compatibility assertion: a real Git mutation must work.

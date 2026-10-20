@@ -21,9 +21,10 @@ import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import { productionTool, enrollment as readEnrollment } from '../../apps/cli/dist/src/provider/production.js';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..'), cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const gitExe = hostGit();
 const claude = path.join(os.homedir(), '.local/bin/claude.exe');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-prebound-'));
 const base = path.join(temp, 'base'), work = path.join(temp, 'work'), store = path.join(temp, 'store');
