@@ -343,6 +343,13 @@ describe('1.1 ecosystems declare checks, they never invent them', () => {
     assert.deepEqual(python.planProblems(root, [{ kind: 'tests', script: 'pytest', adapter: 'python', argv: [path.join(root, 'toolchain', 'python.exe'), '-m', 'pytest'] }]), []);
     assert.match(String(python.planProblems(root, [{ kind: 'tests', script: 'pytest', adapter: 'python', argv: [path.join(root, 'toolchain', 'python.cmd'), '-m', 'pytest', '-k', 'only'] }])),
       /no longer declares/);
+    // A Linux host pins the python3 fallback (setup's pinPlanPrograms): still the declared `python`.
+    assert.deepEqual(python.planProblems(root, [{ kind: 'tests', script: 'pytest', adapter: 'python', argv: [path.join(root, 'usr', 'bin', 'python3'), '-m', 'pytest'] }]), []);
+    // ...but a different program, or the same program with changed arguments, is still drift.
+    assert.match(String(python.planProblems(root, [{ kind: 'tests', script: 'pytest', adapter: 'python', argv: [path.join(root, 'usr', 'bin', 'pip3'), '-m', 'pytest'] }])),
+      /no longer declares/);
+    assert.match(String(python.planProblems(root, [{ kind: 'tests', script: 'pytest', adapter: 'python', argv: [path.join(root, 'usr', 'bin', 'python3'), '-m', 'pytest', '-k', 'only'] }])),
+      /no longer declares/);
   });
 });
 

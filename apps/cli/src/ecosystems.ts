@@ -252,7 +252,11 @@ const goEcosystem: Ecosystem = {
  *  (which sees the declared name again) must still recognize the same check —
  *  comparing the raw strings would report every python/rust/go plan as
  *  no-longer-declared the moment it was pinned. */
-const programIdentity = (p: string): string => path.basename(p).replace(/\.(exe|cmd|bat)$/i, '').toLowerCase();
+const programIdentity = (p: string): string => {
+  const name = path.basename(p).replace(/\.(exe|cmd|bat)$/i, '').toLowerCase();
+  // ponytail: the only alias is python3 standing in for python (pinPlanPrograms falls back to it off Windows); add more when a second one shows up
+  return name === 'python3' ? 'python' : name;
+};
 
 /** Is this discovered declaration the same check the plan sealed? The program
  *  is compared by identity and everything AFTER it byte-for-byte: the sealed
