@@ -90,7 +90,8 @@ it('refuses a successful check when containment cannot be measured', () => {
   const originalReadDir = fs.readdirSync;
   if (process.platform === 'win32') {
     mock.method(childProcess, 'spawnSync', (...args: Parameters<typeof originalSpawnSync>) => {
-      if (String(args[0]).toLowerCase().includes('powershell')) throw new Error('simulated unavailable containment tool');
+      // Every sweep host, including an operator-selected Core pwsh.exe (AMABIE_POWERSHELL_CORE_PATH).
+      if (/powershell|pwsh/i.test(path.basename(String(args[0])))) throw new Error('simulated unavailable containment tool');
       return originalSpawnSync(...args);
     });
   } else {
