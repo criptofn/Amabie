@@ -48,7 +48,7 @@ for (const agent of ['codex', 'claude']) {
     assert.equal(result.providerShim?.requestSchema, 'amabie-correction-request/1');
     assert.equal(result.providerShim?.reportSchema, 'amabie-correction-report/3');
     assert.equal(result.providerShim?.cycle, 1);
-    // A NEEDS ATTENTION doctor run is refused fail-closed: every registered requirement goes to the agent as blocked, and each of its criteria is blocked too.
+    // A NEEDS ATTENTION doctor run is refused fail-closed: every registered requirement goes to the agent as unproven, and each of its criteria is unproven too.
     assert.equal(result.providerShim?.unresolvedCount, 10);
     assert.ok(result.providerShim?.unresolvedCriterionCount > 0);
     assert.equal(result.providerShim?.criteriaContractsMatchRequest, false);

@@ -282,12 +282,10 @@ function parseDoctorReport(
     if (row.criteria.some(item => isRecord(item) && item.status === 'unmet')) hasUnmet = true;
   }
   if (envelope.status !== 'READY' && !hasUnmet) {
-    // The refusal keeps the doctor's own label: NOT PROVEN stays unproven, anything else is blocked.
+    // Every refused criterion stays unproven whatever the doctor's status: the refused envelope proves nothing either way, so the verdict is NOT PROVEN, not BLOCKED, and the correction still names each gap.
     const reason = `the overall doctor gate returned ${String(envelope.status)}, not READY`;
-    const refusal = envelope.status === 'NOT PROVEN'
-      ? { blocked: [], unproven: [...expected.keys()].map(criterionId => ({ criterionId, reason })) }
-      : { blocked: [...expected.keys()].map(criterionId => ({ criterionId, reason })), unproven: [] };
-    return { report: raw as unknown as VerificationReport, evidence: [], collection: { evidence: [], ...refusal } };
+    const unproven = [...expected.keys()].map(criterionId => ({ criterionId, reason }));
+    return { report: raw as unknown as VerificationReport, evidence: [], collection: { evidence: [], blocked: [], unproven } };
   }
 
   const evidence: EvidenceDraft[] = [];
