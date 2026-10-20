@@ -124,8 +124,8 @@ if (batch === 'git-exec') {
   // `core.pager` is NOT tested: git invokes the pager only when stdout is a terminal,
   // and the confined executor always captures to a file, so no positive control could
   // establish that vector by construction. This is recorded as non-coverage, not a pass.
+  // `core.editor` is NOT tested: with stdin ignored, Windows git 2.55 launches no editor, so no positive control can establish it.
   git('gpgProgram', ['-c', 'gpg.program=' + helper('gpgProgram'), '-c', 'gpg.format=openpgp', 'commit', '-S', '--allow-empty', '-m', 'signed']);
-  git('editor', ['-c', 'core.editor=' + helper('editor'), 'commit', '--allow-empty']);
   git('sshCommand', ['-c', 'core.sshCommand=' + helper('sshCommand'), 'ls-remote', 'ssh://probe.invalid/x']);
 }
 

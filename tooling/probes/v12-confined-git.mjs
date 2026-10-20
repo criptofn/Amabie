@@ -95,8 +95,11 @@ const ESCAPE_VECTORS = {
     includeIf: { attribution: ['rb-outside-secret'] },
     'core.worktree-status': { attribution: ['rb-outside-listing'], signal: listingSignal },
   },
+  // `core.editor` is NOT tested: with stdin from /dev/null, Windows git 2.55 launches no editor (verified: `commit -m x -e` and a bare
+  // `commit` both run none), so the positive control never fired. Linux git 2.43 does launch it without a terminal, so this is
+  // platform-specific. Recorded as non-coverage, like core.pager.
   'git-exec': Object.fromEntries(['hooksPath-hookrun', 'hooksPath-commit', 'external-diff', 'GIT_EXTERNAL_DIFF', 'textconv',
-    'filter-clean', 'fsmonitor', 'editor', 'sshCommand', 'gpgProgram'].map(id => [id, { attribution: ['rb-helper-listing'], signal: helperSignal(id) }])),
+    'filter-clean', 'fsmonitor', 'sshCommand', 'gpgProgram'].map(id => [id, { attribution: ['rb-helper-listing'], signal: helperSignal(id) }])),
   alias: {
     'subst-create-y-trusted': { attribution: ['rb-trusted-checkout-listing'], signal: ctx => ctx.devices['Y:'] !== undefined },
     'alias-created-read': { attribution: ['rb-trusted-checkout-listing'], control: ['reads', 'trusted-checkout-listing'] },
@@ -257,7 +260,7 @@ try {
   run(git, ['config', 'amabie.probe', 'ESCAPE_CANARY'], outside);
   run(git, ['add', 'ESCAPE_CANARY'], outside);
   run(git, ['commit', '-m', 'outside secret'], outside);
-  for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'editor', 'sshCommand']) {
+  for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'sshCommand']) {
     fs.writeFileSync(path.join(helpers, `ran-${id}.sh`), helperText(id));
   }
   fs.writeFileSync(path.join(helpers, 'pre-commit'), helperText('hooksPath'));
@@ -283,6 +286,8 @@ try {
   const shortSecret = report.environment.shortIsDistinct ? path.join(short.short, 'secret.config') : null;
   const ntSecret = ntDevicePath + outside.slice(2) + '\\secret.config';
 
+  // A linked worktree has a FILE as .git and keeps its config in the shared common dir, so ask git where it is.
+  const trustedGitConfig = path.resolve(repo, run(git, ['rev-parse', '--git-path', 'config'], repo).trim());
   const cfg = {
     git, base, work, store, repo, outside, outsideSlash: slash(outside), helperDirSlash: slash(helpers),
     secretObject: run(git, ['hash-object', 'ESCAPE_CANARY'], outside).trim(),
@@ -298,7 +303,7 @@ try {
       'extended-path': '\\\\?\\' + path.join(base, 'package.json'),
       'outside-secret': path.join(outside, 'secret.config'),
       'outside-git-config': path.join(outside, '.git', 'config'),
-      'trusted-checkout-config': path.join(repo, '.git', 'config'),
+      'trusted-checkout-config': trustedGitConfig,
     },
     listings: {
       'outside-listing': outside,
@@ -351,7 +356,8 @@ try {
     assert.match(report.positives[2].result.stdout, /confined change/);
     assert.equal(report.positives[3].result.stdout, '');
     assert.match(report.positives[5].result.stdout, /confined change/);
-    assert.equal(report.positives[0].result.stdout.trim(), 'Z:/', 'the confined workspace root is the sandbox alias root');
+    // Git canonicalises the alias it was started in (cwd Z:\) to the real sandbox directory, so compare identity, not spelling.
+    assert.equal(fs.realpathSync.native(report.positives[0].result.stdout.trim()), fs.realpathSync.native(work), 'the confined workspace root is the sandbox work directory');
     // Independent readback by the TRUSTED side: the worker's index is really staged.
     assert.match(run(git, ['diff', '--cached'], work), /confined change/);
     console.log(`PASS ${positives.length} confined Git positive controls; trusted-side index readback; self-contained .git`);
