@@ -465,7 +465,8 @@ export interface RunOutcome {
 export async function runCommand(o: RunOptions): Promise<RunOutcome> {
   const env = sanitizedEnv(o);
   const envKeys = sanitizedEnvKeys(env);
-  const start = Date.now();
+  const start = performance.now(); // monotonic: the wall clock can step back (WSL resync)
+  const elapsed = (): number => Math.round(performance.now() - start);
   return new Promise<RunOutcome>((resolve) => {
     let child: ChildProcess;
     try {
@@ -480,7 +481,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     } catch (e) {
       resolve({
         exitCode: -1, killedByTimeout: false, stdout: '',
-        stderr: String((e as Error).message ?? e), durationMs: Date.now() - start,
+        stderr: String((e as Error).message ?? e), durationMs: elapsed(),
         argv: [...o.argv], envKeys,
         ...(o.observeChildFd3 ? { observation: '' } : {}),
       });
@@ -550,7 +551,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
       stderr += `\nspawn error: ${err.message}`;
       resolve({
         exitCode: -1, killedByTimeout: false, stdout, stderr,
-        durationMs: Date.now() - start, argv: [...o.argv], envKeys,
+        durationMs: elapsed(), argv: [...o.argv], envKeys,
         ...(o.observeChildFd3 ? { observation: obs, observationTruncated: obsTruncated } : {}),
       });
     });
@@ -567,7 +568,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
         exitCode: killed ? -1 : (code ?? (signal ? -1 : -1)),
         killedByTimeout: killed,
         stdout, stderr,
-        durationMs: Date.now() - start,
+        durationMs: elapsed(),
         argv: [...o.argv], envKeys,
         childPid, sweptPids: sweep.killed, sweepFailed: sweep.failed,
         ...(o.observeChildFd3 ? { observation: obs, observationTruncated: obsTruncated } : {}),
