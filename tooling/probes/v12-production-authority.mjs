@@ -48,10 +48,14 @@ try {
   // `<root>/.claude` or the operator's `~/.claude`, so without this the fixture passed only on a
   // machine that has Claude Code installed and failed on every CI runner.
   fs.mkdirSync(path.join(base, '.claude'), { recursive: true });
-  // A sealed ordinary Node assertion program; no unmeasured test-runner IPC dependency.
+  // A sealed ordinary Node assertion program; no unmeasured test-runner IPC dependency (`node --test`
+  // spawns a child and times out inside the confinement). It also requires every sibling *.test.cjs,
+  // so the check the worker ADDS is part of the sealed plan (P0:21: rewriting the existing
+  // sum.test.cjs is the oracle-rewrite attack and stays UNPROVEN).
   fs.writeFileSync(path.join(base,'package.json'),JSON.stringify({name:'production-authority-test',version:'1.0.0',scripts:{test:'node sum.test.cjs'}}));
   fs.writeFileSync(path.join(base,'index.cjs'),'module.exports = (a,b) => a+b;\n');
-  fs.writeFileSync(path.join(base,'sum.test.cjs'),"const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3);\n");
+  fs.writeFileSync(path.join(base,'sum.test.cjs'),"const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3);\n" +
+    "for (const f of require('node:fs').readdirSync(__dirname)) if (f !== 'sum.test.cjs' && f.endsWith('.test.cjs')) require('./' + f);\n");
   git(['init']); git(['config','user.name','Amabie fixture']); git(['config','user.email','amabie@localhost']);
   git(['add','.']); git(['commit','-m','base']);
   amabie(['setup','--yes',base]);
@@ -82,7 +86,7 @@ try {
   if(!ready) throw new Error(`production broker unavailable: ${brokerLog}`);
   const intendedFiles = {
     'index.cjs': Buffer.from('module.exports = (a,b) => Number(a)+Number(b);\n').toString('base64'),
-    'sum.test.cjs': Buffer.from("const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum(1,2),3); assert.equal(sum('1','2'),3);\n").toString('base64'),
+    'sum-strings.test.cjs': Buffer.from("const assert=require('node:assert/strict'); const sum=require('./index.cjs'); assert.equal(sum('1','2'),3);\n").toString('base64'),
   };
   // Trusted preflight creates an independent implementation repository. No
   // linked worktree, borrowed object store, or authority metadata is exposed.
@@ -96,7 +100,7 @@ try {
     const edit=productionTool(store,work,{op:'write',path:file,text:Buffer.from(body,'base64').toString()});
     check('confined-implementation-'+file,edit.output?.result==='written' && edit.observation[0].package===enrollment.package,'real production tool execution');
   }
-  for (const args of [['rev-parse','--show-toplevel'],['status','--porcelain'],['diff'],['diff','--cached'],['add','--','index.cjs','sum.test.cjs']]) {
+  for (const args of [['rev-parse','--show-toplevel'],['status','--porcelain'],['diff'],['diff','--cached'],['add','--','index.cjs','sum-strings.test.cjs']]) {
     const result=productionTool(store,work,{op:'exec',argv:[gitExe,...args]});
     check('confined-git-'+args.join('-'),result.output?.result?.status===0,JSON.stringify(result.output));
   }
