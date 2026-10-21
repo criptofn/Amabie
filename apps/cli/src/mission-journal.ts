@@ -226,7 +226,7 @@ export function readJournal(dir: string): JournalRead {
 }
 
 const LOCK_WAIT_MS = 5000;
-function withLock<T>(dir: string, action: () => T): T {
+export function withLock<T>(dir: string, action: () => T): T {
   fs.mkdirSync(dir, { recursive: true });
   const lock = path.join(dir, 'journal.lock');
   const deadline = Date.now() + LOCK_WAIT_MS;

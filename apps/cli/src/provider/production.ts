@@ -17,7 +17,8 @@ import { controllerExecution, type ControllerExecution } from './execution.js';
 import { enrollMeasurementAuthority, measurementGeneration, productionHost, productionNativePowerShellExecutable } from './production-measurement.js';
 
 import { providerRoot } from './assets.js';
-import { gateRequest } from './production-grants.js';
+import { admit, complete, noteRefusal, runId } from './production-audit.js';
+import { gateRequest, regimeOpen } from './production-grants.js';
 export const nativeRoot = path.join(providerRoot, 'tools/windows-boundary');
 const sha = (value: string | Buffer): string => crypto.createHash('sha256').update(value).digest('hex');
 export const quote = (value: string): string => {
@@ -239,14 +240,19 @@ export function productionTool(store: string, cwd: string, request: unknown): un
   }
   const payload = JSON.stringify(request);
   if (!payload || payload.length > 1024 * 1024) throw new Error('tool request size refused');
-  gateRequest(store, e.project, cwd, request);
+  // T26: with an open permission regime every call is audited. An actual attempt outside the contract is recorded
+  // (and stops the run) BEFORE anything is launched; the intent is recorded before the effect, the outcome after.
+  const audited = regimeOpen(store), run = runId(work), op = crypto.randomUUID();
+  try { gateRequest(store, e.project, cwd, request); } catch (err) { if (audited) noteRefusal(store, run, err); throw err; }
   const lock =path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
-  let call: string | undefined;
+  let call: string | undefined, admitted = false, started = false, finished = false;
   try {
+    if (audited) { admit(store, run, op, sha(payload)); admitted = true; }
     call = fs.mkdtempSync(path.join(cwd, 'amabie-tool-'));
     const script = path.join(call, 'tool.cjs'), side = path.join(store, `${crypto.randomUUID()}.tool-token.jsonl`);
     fs.copyFileSync(path.join(nativeRoot, 'production-tool.cjs'), script);
     fs.writeFileSync(path.join(call, 'request.json'), JSON.stringify({ request, runtime: path.join(e.store, 'runtime') }), { flag: 'wx' });
+    started = true;
     const launched = native(store, { mode: 'run', command: [process.execPath, '--preserve-symlinks-main', script].map(quote).join(' '),
       cwd, side, package: e.package, gitDirectoryAlias: true });
     if (launched.error || launched.status !== 0) throw new Error(`confined tool launch failed; no fallback: ${launched.stderr}`);
@@ -256,10 +262,18 @@ export function productionTool(store: string, cwd: string, request: unknown): un
         facts[0].integrity !== 'S-1-16-4096' || facts[1].pid !== facts[0].pid || facts[1].exit !== 0)
       throw new Error('confined tool execution unproven; no fallback');
     // The output is untrusted model context, NEVER a verification verdict.
-    return { observation: facts, output: read<unknown>(path.join(call, 'result.json')) };
+    const out = { observation: facts, output: read<unknown>(path.join(call, 'result.json')) };
+    // A failure to record the outcome propagates: the intent stays pending (effect unknown), never an invented completion.
+    if (audited) complete(store, op, 'completed');
+    finished = true;
+    return out;
   } finally {
     try { if (call) { noLinks(call); fs.rmSync(call, { recursive: true, force: true }); } }
-    finally { fs.closeSync(handle); fs.unlinkSync(lock); }
+    finally {
+      fs.closeSync(handle); fs.unlinkSync(lock);
+      // Nothing was launched, so no effect is possible: do not leave a false "unknown" behind. After launch it stays pending.
+      if (audited && admitted && !started && !finished) try { complete(store, op, 'none'); } catch { /* stays pending: conservative */ }
+    }
   }
 }
 /** A builder may propose implementation bytes, never a new binding source for

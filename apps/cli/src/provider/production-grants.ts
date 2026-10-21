@@ -59,11 +59,30 @@ function noLinkBelow(cwd: string, rel: string): void {
   }
 }
 
+/**
+ * T26: a refusal by the gate. `unready` = authorized in principle but a prerequisite is open (permission is not
+ * readiness): that is NOT an authorization violation and does not stop the run. Every other refusal names an
+ * actual attempt outside the contract and stops it (see production-audit.ts).
+ */
+export class GateRefusal extends Error {
+  constructor(message: string, readonly unready = false) { super(message); }
+}
+
+/** Is the permission regime open for this store (`<store>/grants/` exists)? The audit is active exactly then. */
+export const regimeOpen = (store: string): boolean => fs.existsSync(path.join(store, 'grants'));
+
 /** Throws unless every operation of `request` is covered. Returns silently when no regime is open for the store. */
 export function gateRequest(store: string, projectId: string, cwd: string, request: unknown, now = Date.now()): void {
   const dir = path.join(store, 'grants');
   if (!fs.existsSync(dir)) return;
-  const refuse = (why: string): never => { throw new Error(`permission contract refused: ${why}`); };
+  const refuse = (why: string): never => { throw new GateRefusal(`permission contract refused: ${why}`); };
+  // An open prerequisite is remembered, not thrown at once: a later forbidden operation of the same call must still stop the run.
+  const waiting: string[] = [];
+  const judge = (best: Verdict, what: string): void => {
+    if (best.decision === 'authorized') return;
+    if (best.decision === 'unready') { waiting.push(`${what}: unready (${best.reason})`); return; }
+    refuse(`${what}: ${best.decision} (${best.reason})`);
+  };
   const policy = plainJson<GrantPolicy>(path.join(dir, 'policy.json'));
   const grants = fs.readdirSync(dir).filter(f => /^grant-\d+\.json$/.test(f)).map(f => plainJson<RecordEnvelope>(path.join(dir, f)));
   const ctx: PermissionContext = {
@@ -78,7 +97,7 @@ export function gateRequest(store: string, projectId: string, cwd: string, reque
       if (v.decision === 'authorized') { best = v; break; }
       if (best.decision === 'forbidden') best = v;
     }
-    if (best.decision !== 'authorized') refuse(`${what}: ${best.decision} (${best.reason})`);
+    judge(best, what);
   };
   const r = request as { operations?: unknown[]; check?: { argv?: unknown } } | null;
   // The declared check runs only after a change, but is judged up front: the whole call is covered or refused.
@@ -99,7 +118,8 @@ export function gateRequest(store: string, projectId: string, cwd: string, reque
       if (v.decision === 'authorized') { best = v; break; }
       if (best.decision === 'forbidden') best = v;
     }
-    if (best.decision !== 'authorized') refuse(`${kind} ${String(op!.path)}: ${best.decision} (${best.reason})`);
+    judge(best, `${kind} ${String(op!.path)}`);
     try { noLinkBelow(cwd, op!.path as string); } catch (e) { refuse(`${kind} ${String(op!.path)}: ${(e as Error).message}`); }
   }
+  if (waiting.length) throw new GateRefusal(`permission contract refused: ${waiting[0]}`, true);
 }
