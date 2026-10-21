@@ -33,3 +33,14 @@ This document records the local integration of the experimental Prompt-to-Eviden
 ## Release and scope status
 
 Prompt-to-Evidence remains experimental and separate from the stable Amabie 2.0 candidate. Requirements without independent evidence remain unresolved; agent completion claims do not establish PASS. The integrated branch is ready for code review and further local validation, but **Amabie 2.0 is not declared release-ready by this integration**.
+
+## Second domain: CSV report (T32)
+
+A second, non-coding task domain now runs through the same, unchanged task-neutral core (`@amabie/prompt-evidence`) and the same domain-neutral double gate (`apps/cli/src/double-gate.ts`).
+
+- **Task:** the agent turns a pinned `sales.csv` into `out/summary.csv` (per-region totals) and `out/report.md` (`Grand total`, `Top region`).
+- **Independent evidence:** `apps/cli/src/report-evidence.ts` recomputes the totals in exact cents from the sha256-pinned source and reads the delivered files itself. The agent's text is never evidence; a changed source or an oversized/unsafe artifact is BLOCKED.
+- **Real executors:** `tooling/probes/v32-second-domain.mjs` (`AMABIE_T32_AGENT=claude|codex`) drives a real agent through the confined production gateway. Measured on this snapshot, for both Claude and Codex: natural delivery PASS with 0 corrections; a seeded omission plus false claim repaired through the unchanged bounded loop; an attempt to overwrite the source stopped by the gateway before its effect (D03), so the outcome is NOT_ELIGIBLE even with a PASS report. 4 passed, 0 failed per agent.
+- **Offline test:** `apps/cli/test/report-evidence.test.ts` (positive, negative, BLOCKED, scripted loop, double gate).
+
+Limits, stated plainly: this is **one** second domain, evidence level LOCAL, on the Windows AppContainer reference environment, with a single task shape. Further long-term domains, other platforms and hostile-agent isolation (the broker is a local authorization kernel, not a sandbox) remain open. This is the evidence for the Phase 3 gate as far as it goes; it is not a claim of general Universal Agent Assurance.
