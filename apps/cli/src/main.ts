@@ -58,6 +58,7 @@ import {
   type ProofExpectation, type HostFingerprint, type TrustedRunSpec,
 } from './prove.js';
 import { verifyTreeSnapshots } from './verify-tree.js';
+import { cmdProfile } from './profile.js';
 import { CLI_ENTRY, cmdSetup, cmdStatus, cmdDoctor, cmdUninstall, cmdCheckpoint, cmdSessionStart, cmdClaim, cmdTask, cmdBind, cmdResult, cmdAgents } from './onboarding.js';
 import { cmdIsolate, cmdAccept } from './candidate.js';
 import { appendMetric, metricFor, metricsTarget, streamSnapshot } from './metrics.js';
@@ -143,6 +144,10 @@ usage:
                             judge completion at all — none frozen = NOT PROVEN, never
                             PASS, and registering after the fact cannot mint it:
                             register, then re-isolate (there is no opt-out)
+  amabie profile list "<task>" | apply <id> "<task>"
+                            an approved routine profile (committed amabie.profiles.json):
+                            a matching task is registered and bound with the profile's
+                            reviewed requirement; anything unmet stays a PROPOSAL, exit 2
   amabie bind <script> --requirement "<exact stated requirement>" [--requirement …] [--reseal]
                             the OPERATOR's binding act: declare that a stated requirement
                             is proven by a script the SEALED PLAN runs. Writes
@@ -451,6 +456,7 @@ async function main(argv: string[]): Promise<number> {
   // "every objective requirement has a frozen proof obligation" is reachable without hand-editing
   // package.json. It writes the declaration; `amabie setup` seals it.
   if (cmd === 'bind') return cmdBind(rest);
+  if (cmd === 'profile') return cmdProfile(rest);
   if (cmd === 'isolate') return cmdIsolate(rest);
   if (cmd === 'work') return cmdWork(rest); // 1.1 §22: register + open, in one step
   if (cmd === 'finish') return cmdFinish(rest); // 1.1 §22: verify + promote, or hand to a human
