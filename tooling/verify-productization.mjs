@@ -489,6 +489,9 @@ const STEPS = [
   // NOT PROVEN (never READY), the worker must be told, the printed exit must be one that can be
   // taken, and binding each requirement to a sealed script must make coverage attainable.
   ['1.1 requirement coverage gate (authorized requirements are proven or NOT PROVEN)', process.execPath, ['tooling/probes/requirement-coverage-gate.mjs'], {}],
+  // P0:22 — the user's original prompt reaches the verdict through the harness intake, not through the
+  // worker's own goal text: omission, negation and replay of an older prompt are NOT PROVEN, never PASS.
+  ['P0:22 original prompt bound through intake to the prompt-evidence verdict', process.execPath, ['tooling/probes/original-prompt-binding.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53
