@@ -3645,7 +3645,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     // step by the package.json script text (unchanged M5 semantics). The
     // project's fast-path declaration is sealed HERE too, so a check may only be
     // left out on authority the project gave at setup.
-    const amabieBlock = (rootDisc?.source.amabie ?? rootDisc?.source.amabie) as { proofs?: unknown; paths?: unknown } | undefined;
+    const amabieBlock = rootDisc?.source.amabie as { proofs?: unknown; paths?: unknown } | undefined;
     seal = sealPlanAuthority(plan, planScriptTexts(root, plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>),
       amabieBlock?.proofs, amabieBlock?.paths);
   } catch (e) {
@@ -5247,7 +5247,6 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
   catch (e) { o.verdict('NEEDS ATTENTION', `cannot read ${surface} to record the binding (${String(e).slice(0, 120)}).`, 'fix the file, then re-run'); return 2; }
   const amabieSection = isNode ? {
     ...(isRecord(doc.amabie) ? doc.amabie as Record<string, unknown> : {}),
-    ...(isRecord(doc.amabie) ? doc.amabie as Record<string, unknown> : {}),
   } : {};
   const existingProofs = isNode ? amabieSection.proofs : doc.proofs;
   const proofs: Record<string, unknown> = isRecord(existingProofs) ? { ...existingProofs } : {};
@@ -5258,7 +5257,7 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
     written.push({ digest: d, text: canonicalText(r).slice(0, 90) });
   }
   const sortedProofs = Object.fromEntries(Object.entries(proofs).sort(([a], [b]) => a.localeCompare(b)));
-  if (isNode) { doc.amabie = { ...amabieSection, proofs: sortedProofs }; delete doc.amabie; }
+  if (isNode) { doc.amabie = { ...amabieSection, proofs: sortedProofs }; }
   else doc.proofs = sortedProofs;
   try { writeFileAtomic(targetPath, `${JSON.stringify(doc, null, 2)}\n`); }
   catch (e) { o.verdict('NEEDS ATTENTION', `could not write the binding into ${surface} (${String(e).slice(0, 120)}).`, 'close whatever holds the file, then re-run'); return 2; }

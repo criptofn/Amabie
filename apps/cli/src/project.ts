@@ -451,7 +451,7 @@ export const nodeAdapter: ProjectAdapter = {
   },
   describe() { return 'Node-style project (checks declared as package.json scripts)'; },
   seal(plan, source, bindings) {
-    const declaration = (source.amabie ?? source.amabie) as { paths?: unknown } | undefined;
+    const declaration = source.amabie as { paths?: unknown } | undefined;
     return sealPlanAuthority(plan, (source.scripts ?? {}) as Record<string, unknown>, bindings, declaration?.paths);
   },
   drift(root, cfg, source) { return planAuthorityDrift(root, cfg, source); },
