@@ -25,6 +25,27 @@ export function evaluateClaudeCodeVersion(output: string): ClaudeCodeVersionChec
   return { version: `${major}.${minor}.${patch}`, supported, minimumVersion: '2.1.248' };
 }
 
+// No-call capability probe: the built-in profiles rely on these options, so a CLI whose help
+// does not advertise them must stop the loop before any model request is made.
+export const AGENT_HELP_PROBES: Record<BuiltinCorrectionAgent, { args: string[]; flags: string[] }> = {
+  codex: {
+    args: ['exec', '--help'],
+    flags: ['--ephemeral', '--ignore-user-config', '--sandbox', '--color', '--cd', '--config'],
+  },
+  claude: {
+    args: ['--help'],
+    flags: [
+      '--print', '--input-format', '--output-format', '--no-session-persistence', '--restricted',
+      '--permission-mode', '--permission-prompts', '--tools', '--strict-mcp-config', '--disallowedTools',
+    ],
+  },
+};
+
+export function missingAgentFlags(agent: BuiltinCorrectionAgent, helpText: string): string[] {
+  const advertised = new Set(helpText.match(/--[A-Za-z][\w-]*/gu) ?? []);
+  return AGENT_HELP_PROBES[agent].flags.filter((flag) => !advertised.has(flag));
+}
+
 const SAFE_AGENT_ENV_KEYS = new Set([
   'path', 'pathext', 'systemroot', 'windir', 'comspec', 'systemdrive',
   'userprofile', 'home', 'appdata', 'localappdata', 'temp', 'tmp', 'tmpdir',

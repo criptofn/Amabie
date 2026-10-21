@@ -5,9 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import crossSpawn from 'cross-spawn';
 import {
+  AGENT_HELP_PROBES,
   buildCorrectionAgentEnvironment,
   buildCorrectionAgentInvocation,
   evaluateClaudeCodeVersion,
+  missingAgentFlags,
   renderCorrectionAgentPrompt,
 } from '../src/prompt-evidence-agents.js';
 
@@ -151,4 +153,31 @@ test('shared agent prompt carries structured evidence but never converts an agen
 
 test('unknown built-in coding agents are rejected', () => {
   assert.throws(() => buildCorrectionAgentInvocation('gemini' as never, process.cwd()), /unsupported correction agent/u);
+});
+
+test('capability probe accepts a help text that advertises every required option', () => {
+  for (const agent of ['codex', 'claude'] as const) {
+    assert.deepEqual(missingAgentFlags(agent, AGENT_HELP_PROBES[agent].flags.join(' ')), []);
+  }
+});
+
+test('capability probe names each missing option and does not match a flag by prefix or substring', () => {
+  const claudeFlags = AGENT_HELP_PROBES.claude.flags;
+  assert.deepEqual(missingAgentFlags('claude', claudeFlags.filter((flag) => flag !== '--restricted').join(' ')), ['--restricted']);
+  // '--tools' must not be satisfied by '--disallowedTools', nor '--print' by '--print-all'.
+  assert.deepEqual(
+    missingAgentFlags('claude', claudeFlags.filter((flag) => flag !== '--tools' && flag !== '--print').concat('--print-all').join(' ')),
+    ['--print', '--tools'],
+  );
+  assert.deepEqual(missingAgentFlags('codex', ''), AGENT_HELP_PROBES.codex.flags);
+});
+
+test('correction environment never forwards provider credentials', () => {
+  const secrets = { OPENAI_API_KEY: 'sk-test-secret', ANTHROPIC_API_KEY: 'sk-ant-secret', GITHUB_TOKEN: 'ghp_secret', AWS_SECRET_ACCESS_KEY: 'aws-secret' };
+  for (const agent of ['codex', 'claude'] as const) {
+    const environment = buildCorrectionAgentEnvironment({ PATH: 'p', HOME: 'h', ...secrets }, agent);
+    assert.equal(environment.PATH, 'p');
+    assert.deepEqual(Object.keys(environment).filter((key) => key in secrets), []);
+    assert.ok(!JSON.stringify(environment).includes('secret'));
+  }
 });

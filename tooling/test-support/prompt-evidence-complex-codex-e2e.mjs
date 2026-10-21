@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { AGENT_HELP_PROBES } from '../../apps/cli/dist/src/prompt-evidence-agents.js';
 import {
   assertProductSourceIdentityMatches,
   collectProductSourceIdentity,
@@ -307,6 +308,7 @@ function installLocalAgentShim(tempRoot, agent) {
     'const [actualAgent, ...args] = process.argv.slice(2);',
     "const record = (event) => fs.appendFileSync(capturePath, JSON.stringify(event) + '\\n');",
     "if (actualAgent !== expectedAgent) { console.error('unexpected shim profile'); process.exit(20); }",
+    `if (args.includes('--help')) { console.log(${JSON.stringify(AGENT_HELP_PROBES[agent].flags.join(' '))}); process.exit(0); }`,
     "if (actualAgent === 'claude' && args.length === 1 && args[0] === '--version') {",
     "  record({ kind: 'version', agent: actualAgent });",
     "  console.log('2.1.278 (Claude Code)');",

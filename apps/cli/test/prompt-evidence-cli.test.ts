@@ -7,6 +7,10 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, it } from 'node:test';
 import { materialDigest } from '../src/authorization.js';
+import { AGENT_HELP_PROBES, type BuiltinCorrectionAgent } from '../src/prompt-evidence-agents.js';
+
+// What a shim prints for the no-call capability preflight: every option the built-in profile relies on.
+const shimHelpLine = (agent: BuiltinCorrectionAgent) => `if (process.argv.includes('--help')) { console.log(${JSON.stringify(AGENT_HELP_PROBES[agent].flags.join(' '))}); process.exit(0); }`;
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
@@ -720,6 +724,7 @@ it('built-in Codex and Claude profiles launch npm shims through the bounded corr
     fs.writeFileSync(shimProgram, [
       "import fs from 'node:fs';",
       "if (process.argv.includes('--version')) { console.log('2.1.278 (Claude Code)'); process.exit(0); }",
+      shimHelpLine(agent),
       ...(agent === 'claude' ? ["if (process.env.CLAUDE_CODE_MAX_TURNS !== '6') process.exit(12);"] : []),
       'fs.writeFileSync(process.argv[2], fs.readFileSync(0, \'utf8\'));',
       "console.log('Done.');",
@@ -817,6 +822,7 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
   fs.writeFileSync(fakeProgram, [
     "import fs from 'node:fs';",
     "if (process.argv.includes('--version')) { console.log('2.1.278 (Claude Code)'); process.exit(0); }",
+    shimHelpLine(agent),
     "const input = fs.readFileSync(0, 'utf8');",
     `fs.writeFileSync(${JSON.stringify(capturedPrompt)}, input);`,
     "const request = JSON.parse(input.slice(input.lastIndexOf('\\n\\n') + 2));",
@@ -850,6 +856,22 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
     entry && ![...providerExecutables].some(executable => fs.existsSync(path.join(entry, executable))),
   );
   const env = { ...process.env, PATH: [shimDir, ...safePath].join(path.delimiter) };
+  // Capability preflight: a CLI that does not advertise a required option, or whose help probe fails, stops before any correction request.
+  const workingProgram = fs.readFileSync(fakeProgram, 'utf8');
+  const [firstFlag] = AGENT_HELP_PROBES[agent].flags;
+  const deficientHelp = shimHelpLine(agent).replace(`${firstFlag} `, '');
+  const brokenHelp = shimHelpLine(agent).replace('process.exit(0)', 'process.exit(7)');
+  for (const [variant, expected] of [[deficientHelp, /does not advertise required option.*--/u], [brokenHelp, /capability preflight exited 7/u]] as const) {
+    fs.writeFileSync(fakeProgram, workingProgram.replace(shimHelpLine(agent), variant));
+    const blocked = run([
+      'prompt-evidence', 'loop', '--request', request, '--agent', agent,
+      '--authorize-corrections', '--max-corrections', '1', '--json',
+    ], root, { ...process.env, PATH: [shimDir, ...safePath].join(path.delimiter) });
+    assert.notEqual(blocked.status, 0, blocked.stdout);
+    assert.match(blocked.stdout + blocked.stderr, expected);
+    assert.equal(fs.existsSync(capturedPrompt), false, 'no correction request may be sent after a failed capability preflight');
+  }
+  fs.writeFileSync(fakeProgram, workingProgram);
   const result = run([
     'prompt-evidence', 'loop', '--request', request, '--agent', agent,
     '--authorize-corrections', '--max-corrections', '1', '--json',

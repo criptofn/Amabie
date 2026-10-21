@@ -20,6 +20,8 @@ import { CLI_ENTRY, Out, containedRealPath, findRepoRoot, planDigest, planWithFr
 import { CODING_SEALED_PLAN_ADAPTER, createCodingSealedPlanAdapter, type SealedStepResult } from './prompt-evidence.js';
 import {
   buildCorrectionAgentEnvironment,
+  AGENT_HELP_PROBES,
+  missingAgentFlags,
   buildCorrectionAgentInvocation,
   evaluateClaudeCodeVersion,
   renderCorrectionAgentPrompt,
@@ -370,6 +372,7 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     : process.env;
   const agentProcessDiagnostics: AgentProcessDiagnostic[] = [];
   let claudeVersionPreflightPassed = false;
+  let agentHelpPreflightPassed = false;
   // The correction agent only ever edits a disposable candidate worktree of the
   // base's committed HEAD; the base project is never touched by the loop.
   let candidate = null as { name: string; rec: CandidateRecord; cfg: AmabieConfig } | null;
@@ -500,6 +503,27 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
         }
         claudeVersionPreflightPassed = true;
         console.error(`[P2E] Claude Code ${version.version} satisfies the built-in profile minimum ${version.minimumVersion}.`);
+      }
+      if (options.agent && !agentHelpPreflightPassed) {
+        const probe = AGENT_HELP_PROBES[options.agent];
+        const helpRun = await runBoundedProcess(
+          agentInvocation.executable, probe.args, root, '',
+          AGENT_PREFLIGHT_TIMEOUT_MS, MAX_AGENT_PREFLIGHT_OUTPUT_BYTES * 16, agentEnvironment,
+        );
+        if (helpRun.timedOut || helpRun.outputExceeded || helpRun.sweepFailed || helpRun.error || helpRun.exitCode !== 0) {
+          const cause = helpRun.timedOut ? 'timed out' : helpRun.outputExceeded ? 'exceeded its output limit'
+            : helpRun.sweepFailed ? 'could not be cleaned up' : helpRun.error ? boundedReason(helpRun.error)
+              : `exited ${helpRun.exitCode ?? 'without an exit code'}`;
+          return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `${options.agent} capability preflight ${cause}; no correction request was sent` };
+        }
+        if (localScopeDigest(root, requestPath) !== expectedScope || repoWorkspaceDigest(root) !== baseBefore) {
+          return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `the project changed during ${options.agent} capability preflight; no correction request was sent` };
+        }
+        const missing = missingAgentFlags(options.agent, `${helpRun.stdout} ${helpRun.stderr}`);
+        if (missing.length > 0) {
+          return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `${options.agent} does not advertise required option(s) ${missing.join(', ')}; no correction request was sent` };
+        }
+        agentHelpPreflightPassed = true;
       }
       console.error('[P2E] Safety warning: The correction agent edits a disposable candidate worktree, not this project; uncommitted changes in this project are not visible to it. Inspect the candidate diff before adopting anything.');
       const agentInput = options.agent ? renderCorrectionAgentPrompt(correctionInput) : correctionInput;

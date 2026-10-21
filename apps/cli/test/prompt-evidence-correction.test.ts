@@ -114,3 +114,20 @@ test('agent process diagnostics distinguish unclassified output from a silent ex
   assert.equal(successful.diagnosticHint, 'exit-success-with-output');
   assert.equal(failed.diagnosticHint, 'nonzero-exit-with-output');
 });
+
+test('agent process diagnostics classify an authentication failure without exporting the credential', () => {
+  const secret = 'sk-live-0123456789abcdef';
+  const summary = summarizeAgentProcess(2, {
+    exitCode: 1,
+    stdout: 'private transcript line',
+    stderr: `Invalid API key: ${secret}`,
+    timedOut: false,
+    outputExceeded: false,
+    sweepFailed: false,
+  });
+
+  assert.equal(summary.diagnosticHint, 'authentication');
+  const serialized = JSON.stringify(summary);
+  assert.ok(!serialized.includes(secret));
+  assert.ok(!serialized.includes('private transcript'));
+});
