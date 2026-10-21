@@ -503,6 +503,8 @@ const STEPS = [
   ['P0:26 the mission journal keeps order, attempts and limit across restart; a torn tail heals, corruption blocks', process.execPath, ['tooling/probes/mission-journal.mjs'], {}],
   // P0:27 — finishing the last sub-goal never completes the root goal, and no duty or attempt is lost on a revision or an agent switch (T16).
   ['P0:27 sub-goals keep dependency order; the root goal is checked separately; duties and attempts survive revision and agent handover', process.execPath, ['tooling/probes/mission-subgoals.mjs'], {}],
+  // P0:28 — parallel workers get separate change areas; collisions, moved baselines and lost leases are caught before release (T17).
+  ['P0:28 parallel workers hold separate areas; overlap, overshoot, moved baseline and expired lease are refused before release', process.execPath, ['tooling/probes/mission-assignments.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53

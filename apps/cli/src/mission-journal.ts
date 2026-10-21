@@ -13,6 +13,7 @@
  * LOCAL custody only: a same-UID worker can rewrite this file and its chain. Protecting the file is the
  * trust boundary's job (see trust-store.ts); this module makes accidents and interruptions detectable.
  */
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +35,16 @@ export interface MissionState {
   rootVerified: boolean;
   /** Agent currently responsible; a handover is an event, never an implicit reset. */
   agent: string | null;
+  /** Leases on change areas for parallel workers (T17). `fence` numbers them; `clock` only ever moves forward. */
+  assignments: Assignment[];
+  fence: number;
+  clock: number;
+}
+export interface Assignment {
+  id: string; worker: string; paths: string[]; baseHead: string;
+  /** Fencing token: only the holder of the CURRENT token for this id may renew, rebase or release. */
+  token: number; expiresAt: number;
+  status: 'active' | 'released' | 'expired';
 }
 export interface SubGoal { id: string; goal: string; dependsOn: string[]; status: 'open' | 'done' | 'stale' }
 export type MissionEvent =
@@ -45,6 +56,10 @@ export type MissionEvent =
   | { type: 'duty-close'; id: string }
   | { type: 'root-verified' }
   | { type: 'handover'; to: string }
+  | { type: 'assign'; id: string; worker: string; paths: string[]; baseHead: string; at: number; ttlMs: number }
+  | { type: 'renew'; id: string; token: number; at: number; ttlMs: number }
+  | { type: 'rebase'; id: string; token: number; baseHead: string; at: number }
+  | { type: 'release'; id: string; token: number; at: number; changed: string[]; baseMoved: string[] }
   | { type: 'attempt'; note?: string }
   | { type: 'transition'; to: MissionStatus };
 
@@ -53,7 +68,16 @@ const NEXT: Record<MissionStatus, MissionStatus[]> = {
   none: [], approved: ['working', 'blocked'], working: ['verifying', 'blocked'],
   verifying: ['done', 'working', 'blocked'], done: [], blocked: [],
 };
-export const emptyState = (): MissionState => ({ mission: null, revision: 0, goal: null, status: 'none', attemptsUsed: 0, attemptLimit: DEFAULT_ATTEMPT_LIMIT, approvedBy: null, subgoals: [], duties: [], rootVerified: false, agent: null });
+export const emptyState = (): MissionState => ({ mission: null, revision: 0, goal: null, status: 'none', attemptsUsed: 0, attemptLimit: DEFAULT_ATTEMPT_LIMIT, approvedBy: null, subgoals: [], duties: [], rootVerified: false, agent: null, assignments: [], fence: 0, clock: 0 });
+
+/** Repo-relative, forward-slash, lower-cased (a case-insensitive filesystem makes `Src` and `src` ONE resource). */
+export function normPath(p: string): string {
+  const n = p.replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/+$/, '').toLowerCase();
+  if (!n || n === '.' || n.startsWith('/') || /^[a-z]:/.test(n) || n.split('/').some(x => x === '..' || x === '' || x === '.')) throw new Error(`not a repo-relative area: ${JSON.stringify(p)}`);
+  return n;
+}
+const covers = (claim: string, p: string): boolean => p === claim || p.startsWith(`${claim}/`);
+const overlaps = (a: string, b: string): boolean => covers(a, b) || covers(b, a);
 
 /** Pure reducer. Throws on any event the current state does not allow. */
 export function reduce(state: MissionState, event: MissionEvent): MissionState {
@@ -99,6 +123,39 @@ export function reduce(state: MissionState, event: MissionEvent): MissionState {
       if (!event.to) throw new Error('a handover names the receiving agent');
       if (s.status === 'none' || s.status === 'done') throw new Error(`nothing to hand over in status ${s.status}`);
       return { ...s, agent: event.to };
+    case 'assign': {
+      if (s.status !== 'working') throw new Error(`areas are assigned in status working, not ${s.status}`);
+      if (!event.id || !event.worker || !event.baseHead || !(event.ttlMs > 0)) throw new Error('an assignment needs id, worker, base head and a positive ttl');
+      if (s.assignments.some(a => a.id === event.id)) throw new Error(`assignment ${event.id} already exists`);
+      const paths = event.paths.map(normPath);
+      if (paths.length === 0) throw new Error('an assignment needs at least one area');
+      const now = Math.max(s.clock, event.at);
+      const assignments = s.assignments.map(a => {
+        if (a.status !== 'active' || !a.paths.some(x => paths.some(y => overlaps(x, y)))) return a;
+        // A lease past its expiry is lost: it is recorded as expired and its token can authorize nothing again.
+        if (a.expiresAt < now) return { ...a, status: 'expired' as const };
+        throw new Error(`area is held by ${a.worker} (assignment ${a.id}, ${a.paths.join(', ')}) until ${a.expiresAt}`);
+      });
+      const token = s.fence + 1;
+      return { ...s, clock: now, fence: token, assignments: [...assignments, { id: event.id, worker: event.worker, paths, baseHead: event.baseHead, token, expiresAt: now + event.ttlMs, status: 'active' as const }] };
+    }
+    case 'renew': case 'rebase': case 'release': {
+      const now = Math.max(s.clock, event.at);
+      const a = s.assignments.find(x => x.id === event.id);
+      if (!a) throw new Error(`unknown assignment ${event.id}`);
+      if (a.status === 'released') throw new Error(`assignment ${a.id} is already released`);
+      if (a.status === 'expired' || a.token !== event.token) throw new Error(`assignment ${a.id}: responsibility was lost (token ${event.token} is void)`);
+      if (a.expiresAt < now) throw new Error(`assignment ${a.id}: the lease expired at ${a.expiresAt}; a lost responsibility cannot be used later`);
+      const put = (n: Assignment): MissionState => ({ ...s, clock: now, assignments: s.assignments.map(x => x.id === a.id ? n : x) });
+      if (event.type === 'renew') return put({ ...a, expiresAt: now + event.ttlMs });
+      if (event.type === 'rebase') return put({ ...a, baseHead: event.baseHead });
+      const changed = event.changed.map(normPath);
+      const outside = changed.filter(c => !a.paths.some(x => covers(x, c)));
+      if (outside.length) throw new Error(`assignment ${a.id}: changes outside the assigned area: ${outside.join(', ')}`);
+      const moved = event.baseMoved.map(normPath).filter(m => [...a.paths, ...changed].some(x => overlaps(x, m)));
+      if (moved.length) throw new Error(`assignment ${a.id}: the baseline moved under the assigned work: ${moved.join(', ')} — rebase first`);
+      return put({ ...a, status: 'released' });
+    }
     case 'attempt':
       if (s.status !== 'working') throw new Error(`an attempt needs status working, not ${s.status}`);
       if (s.attemptsUsed >= s.attemptLimit) throw new Error(`attempt limit ${s.attemptLimit} is used up`);
@@ -196,4 +253,17 @@ export function transact(dir: string, events: MissionEvent[], expectedSeq?: numb
     } finally { fs.closeSync(fd); }
     return state;
   });
+}
+
+const git = (cwd: string, args: string[]): string[] =>
+  execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 << 20 }).split('\n').filter(Boolean);
+
+/** Everything the worker changed since `baseHead`: committed, staged, unstaged and untracked bytes alike. */
+export function changedPaths(worktree: string, baseHead: string): string[] {
+  return [...new Set([...git(worktree, ['diff', '--name-only', baseHead]), ...git(worktree, ['ls-files', '-o', '--exclude-standard'])])];
+}
+
+/** What other work put on the shared line since the worker's baseline (`baseHead`..`currentHead`). */
+export function baselineMoves(worktree: string, baseHead: string, currentHead: string): string[] {
+  return git(worktree, ['diff', '--name-only', `${baseHead}..${currentHead}`]);
 }
