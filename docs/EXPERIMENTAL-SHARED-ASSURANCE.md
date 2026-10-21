@@ -20,3 +20,7 @@ The prototype is adapted from the isolated authorization-first research commit `
 ## Validation and next gate
 
 The focused contract suite has 12 deterministic cases covering dual evidence legs, binding/schema failures, incomplete audit coverage, invalid transitions, unauthorized selected/attempted/executed actions, and stale policy. Passing these tests validates only the aggregator's mock contract. Before product use, Amabie still needs real adapters that verify each evidence artifact and its provenance, plus reproducible end-to-end workflows and bounded authorized correction tests.
+
+## Real double gate (T28)
+
+`apps/cli/src/double-gate.ts` is the first real adapter pair on top of this contract, and it does not import the aggregator: the outcome adapter recomputes the Prompt-to-Evidence verdict from the raw evidence and requires the report the trust store sealed for the exact mission, criteria revision, snapshot, candidate and policy revision; the execution adapter reads the hash-chained audit journal and the signed grants (a stopped run is a violation, a reviewed successor is compliant for the new run only). A delivered `VERIFIED` string or well-formed digest is never authority: `tooling/probes/v28-double-gate.mjs` shows this aggregator saying ELIGIBLE for a bare claim that the real gate refuses. Level LOCAL: signatures establish issuer and integrity, not freshness or human identity.
