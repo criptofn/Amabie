@@ -30,7 +30,7 @@ export interface GrantPayload {
   source: GrantSource;
   resource: { kind: 'file'; path: string };
   operation: FileOperation;
-  /** read: {}; write: { maxBytes } */
+  /** read: {}; write: { maxBytes } - bytes carried by one operation, not the resulting file size */
   args: { maxBytes?: number };
   notBefore: number;
   expiresAt: number;

@@ -17,6 +17,7 @@ import { controllerExecution, type ControllerExecution } from './execution.js';
 import { enrollMeasurementAuthority, measurementGeneration, productionHost, productionNativePowerShellExecutable } from './production-measurement.js';
 
 import { providerRoot } from './assets.js';
+import { gateRequest } from './production-grants.js';
 export const nativeRoot = path.join(providerRoot, 'tools/windows-boundary');
 const sha = (value: string | Buffer): string => crypto.createHash('sha256').update(value).digest('hex');
 export const quote = (value: string): string => {
@@ -238,7 +239,8 @@ export function productionTool(store: string, cwd: string, request: unknown): un
   }
   const payload = JSON.stringify(request);
   if (!payload || payload.length > 1024 * 1024) throw new Error('tool request size refused');
-  const lock = path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
+  gateRequest(store, e.project, cwd, request);
+  const lock =path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
   let call: string | undefined;
   try {
     call = fs.mkdtempSync(path.join(cwd, 'amabie-tool-'));
