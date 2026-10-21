@@ -18,7 +18,7 @@ test('selection preserves every applicable remaining gate and isolated mutations
     assert.ok(gate, `productization gate is present: ${label}`);
     assert.equal(gate.skipAware, true, `an explicit unsupported-host result is a SKIP, not a FAIL or PASS: ${label}`);
   }
-  assert.equal(gates.length - lastMutation - 1, process.platform === 'win32' ? 37 : 36);
+  assert.equal(gates.length - lastMutation - 1, process.platform === 'win32' ? 38 : 37);
   assert.equal(gates[lastMutation + 1].label, 'probe: 1.1 P0 trust-boundary mutations (scratch builds)');
   for (let id = 1; id <= 13; id++) {
     const label = `probe: master-pass mutation battery (built dist) / M${id}`;

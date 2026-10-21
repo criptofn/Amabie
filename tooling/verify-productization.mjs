@@ -495,6 +495,8 @@ const STEPS = [
   // P0:23 — the task record is append-only and hash-chained: only a NEW user request may weaken the
   // duties; a drop inside one request, an edited chain and a rolled-back task are NOT PROVEN.
   ['P0:23 task revisions are chained and only a new request may weaken the duties', process.execPath, ['tooling/probes/task-revision-integrity.mjs'], {}],
+  // P0:24 — a fixture/golden the sealed check reads is oracle bytes: a worker rewriting it is not `met`.
+  ['P0:24 a rewritten fixture the sealed check reads cannot self-approve', process.execPath, ['tooling/probes/oracle-fixture-authority.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53

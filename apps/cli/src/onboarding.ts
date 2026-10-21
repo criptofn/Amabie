@@ -2436,13 +2436,48 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
         return false;
       } catch { return false; }
     };
+    const testShaped = (p: string): boolean => isTestPath(p) || /[-_](?:test|spec)\.[cm]?[jt]sx?$/i.test(p)
+      || /(?:^|\/)(?:test|spec)[-_][^/]+\.[cm]?[jt]sx?$/i.test(p);
+    /**
+     * T12 — a file the sealed check READS is oracle bytes too. A fixture, golden or snapshot is neither
+     * test-shaped nor named in the sealed script, so a worker could rewrite it to match its own wrong
+     * output while the check file stayed byte-identical: the fixture was not overlaid, the base kept
+     * failing against the OLD fixture, and "the check discriminates" read as `met` with no caveat.
+     * The anchor is taken from the BASELINE tree (never the candidate), so the worker cannot widen it:
+     * a fixture-shaped directory, or a non-source data file whose path a baseline check file spells out.
+     * Known ceiling: a code-extension verifier outside such a directory (lib/expected.mjs) is not covered.
+     */
+    const CODE_EXT = /\.(?:[cm]?[jt]sx?|py|go|rs|java|kt|rb|php|cs|c|cc|cpp|h|hpp|swift|sh|ps1)$/i;
+    let baselineChecks: Array<{ dir: string; text: string }> | undefined;
+    const readBaselineChecks = (): Array<{ dir: string; text: string }> => {
+      if (baselineChecks) return baselineChecks;
+      baselineChecks = [];
+      const baseTree = tree;
+      if (!baseTree) return baselineChecks;
+      const listed = gitWithinRoot(root, ['ls-tree', '-r', '--name-only', head]) ?? '';
+      for (const f of listed.split('\n').map((x) => x.trim()).filter(Boolean)) {
+        if (baselineChecks.length >= 200) break;
+        if (!testShaped(f) && !namedBySealedScript(f)) continue;
+        try {
+          const abs = path.join(baseTree, f);
+          if (fs.statSync(abs).size > 256 * 1024) continue;
+          baselineChecks.push({ dir: path.posix.dirname(f.replace(/\\/g, '/')), text: fs.readFileSync(abs, 'utf8') });
+        } catch { /* unreadable baseline file: not an anchor */ }
+      }
+      return baselineChecks;
+    };
+    const isCheckInput = (p: string): boolean => {
+      const norm = p.replace(/\\/g, '/');
+      if (/(^|\/)(?:fixtures?|__fixtures__|testdata|__snapshots__)(\/|$)/i.test(norm)) return true;
+      if (CODE_EXT.test(norm)) return false;
+      return readBaselineChecks().some((c) => c.text.includes(norm) || c.text.includes(path.posix.relative(c.dir, norm)));
+    };
     for (const p of changed) {
       if (!signals.changes.includes(p)) continue;
       // Imported checks use foo-test.js or test-foo.js as well as foo.test.js. Admit
       // that check surface here without exempting it from behaviour obligations.
       // An unused file still cannot make the sealed plan discriminate a change.
-      if (!isTestPath(p) && !/[-_](?:test|spec)\.[cm]?[jt]sx?$/i.test(p)
-        && !/(?:^|\/)(?:test|spec)[-_][^/]+\.[cm]?[jt]sx?$/i.test(p) && !namedBySealedScript(p)) continue;
+      if (!testShaped(p) && !namedBySealedScript(p) && !isCheckInput(p)) continue;
       // "Did this check file exist at the sealed baseline?" — asked of git, not guessed. Every
       // path in `changed` IS a change, so presence at the baseline is exactly the provenance split.
       const atBaseline = gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) !== null;
