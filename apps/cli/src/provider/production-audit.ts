@@ -24,6 +24,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { authorityJson, isEnvelope, verifySeal, type RecordEnvelope } from '../authority-envelope.js';
 import { withLock } from '../mission-journal.js';
 import { GateRefusal } from './production-grants.js';
 
@@ -34,13 +35,15 @@ export type AuditEvent =
   | { t: 'done'; op: string; effect: Effect; at: string }
   | { t: 'reconciled'; op: string; how: Clarified; note: string; at: string }
   | { t: 'refused'; run: string; why: string; at: string }
-  | { t: 'stop'; run: string; why: string; at: string };
+  | { t: 'stop'; run: string; why: string; at: string }
+  | { t: 'continued'; from: string; to: string; review: string; receipt: RecordEnvelope; at: string };
 
-export interface AuditState { ops: Map<string, string>; pending: Map<string, string>; stopped: Map<string, string> }
+/** `successor`: stopped run -> the newly authorized run that references it. `reviews`: review digests already spent. */
+export interface AuditState { ops: Map<string, string>; pending: Map<string, string>; stopped: Map<string, string>; successor: Map<string, string>; reviews: Set<string> }
 export interface AuditRead { status: 'ok' | 'blocked'; reason: string; state: AuditState; seq: number; goodBytes: number; tornTail: boolean; lastSum: string }
 
-const emptyState = (): AuditState => ({ ops: new Map(), pending: new Map(), stopped: new Map() });
-const copy = (s: AuditState): AuditState => ({ ops: new Map(s.ops), pending: new Map(s.pending), stopped: new Map(s.stopped) });
+const emptyState = (): AuditState => ({ ops: new Map(), pending: new Map(), stopped: new Map(), successor: new Map(), reviews: new Set() });
+const copy = (s: AuditState): AuditState => ({ ops: new Map(s.ops), pending: new Map(s.pending), stopped: new Map(s.stopped), successor: new Map(s.successor), reviews: new Set(s.reviews) });
 const sha = (text: string): string => crypto.createHash('sha256').update(text).digest('hex');
 const nonEmpty = (...v: unknown[]): boolean => v.every(x => typeof x === 'string' && x !== '');
 const auditDir = (store: string): string => path.join(store, 'audit');
@@ -68,8 +71,29 @@ function apply(s: AuditState, ev: AuditEvent): void {
       if (!nonEmpty(ev.run, ev.at) || typeof ev.why !== 'string') throw new Error('stop: malformed');
       if (!s.stopped.has(ev.run)) s.stopped.set(ev.run, ev.why); // the FIRST incident stays the incident
       return;
+    case 'continued': {
+      // The stopped run is never freed: a NEW run id takes over, bound to the review that authorized it.
+      if (!nonEmpty(ev.from, ev.to, ev.review, ev.at) || ev.from === ev.to) throw new Error('continued: malformed');
+      if (!s.stopped.has(ev.from) || s.successor.has(ev.from)) throw new Error('continued: the run is not stopped, or already continued');
+      if (s.reviews.has(ev.review)) throw new Error('continued: review already used');
+      if ([...s.ops.values()].includes(ev.to) || s.stopped.has(ev.to) || [...s.successor.values()].includes(ev.to)) throw new Error('continued: the new run id is not fresh');
+      if ([...s.pending.values()].includes(ev.from)) throw new Error('continued: an operation of the stopped run has an unknown effect; reconcile it first');
+      s.successor.set(ev.from, ev.to); s.reviews.add(ev.review); return;
+    }
     default: throw new Error('unknown audit event');
   }
+}
+
+/**
+ * A continuation is only legal with the independent reviewer's signed receipt carried in the event itself, so a
+ * hand-appended journal line cannot mint one: without the reviewer key the journal reads as blocked (fail closed).
+ */
+function sealed(store: string, ev: Extract<AuditEvent, { t: 'continued' }>): void {
+  let pub = '';
+  try { pub = fs.readFileSync(path.join(store, 'reviewer.pub'), 'utf8'); } catch { /* no reviewer enrolled */ }
+  const r = ev.receipt;
+  const p = isEnvelope(r) ? r.payload as { run?: unknown } : undefined;
+  if (!pub || !isEnvelope(r) || r.kind !== 'incident-review' || !verifySeal(r, pub) || p?.run !== ev.from || sha(authorityJson(r)) !== ev.review) throw new Error('continued: no valid independent review receipt');
 }
 
 const blocked = (reason: string): AuditRead => ({ status: 'blocked', reason, state: emptyState(), seq: 0, goodBytes: 0, tornTail: false, lastSum: '' });
@@ -93,7 +117,7 @@ export function readAudit(store: string): AuditRead {
     let rec: { seq: number; prev: string; events: AuditEvent[] };
     try { rec = JSON.parse(body); } catch { return blocked(`${at}: not valid JSON`); }
     if (rec.seq !== seq + 1 || rec.prev !== prev || !Array.isArray(rec.events)) return blocked(`${at}: sequence or chain broken`);
-    try { for (const ev of rec.events) apply(state, ev); }
+    try { for (const ev of rec.events) { if (ev?.t === 'continued') sealed(store, ev); apply(state, ev); } }
     catch (e) { return blocked(`${at}: events are not a legal transition (${(e as Error).message})`); }
     seq = rec.seq; prev = line.slice(0, 64); good += Buffer.byteLength(line) + 1;
   }
@@ -152,6 +176,29 @@ export function noteRefusal(store: string, run: string, err: unknown): void {
   const stop = err instanceof GateRefusal && !err.unready;
   if (stop) heldStopped.add(held(store, run));
   try { tx(store, () => [{ t: 'refused', run, why, at: now() }, ...(stop ? [{ t: 'stop' as const, run, why, at: now() }] : [])]); } catch { /* fail closed already: the call is refused */ }
+}
+
+/** The run that currently acts for a workspace: follows stop -> reviewed continuation. Unreadable audit: the base run (admit then fails closed). */
+export function resolveRun(store: string, base: string): string {
+  const { status, state } = readAudit(store);
+  let run = base;
+  if (status === 'ok') for (let i = 0; i < 1000 && state.successor.has(run); i++) run = state.successor.get(run)!;
+  return run;
+}
+
+/** The id a continuation takes: fixed by the stopped run and the review, so the same review can never mint a second run. */
+export const successorId = (from: string, review: string): string => sha(`${from}:${review}`).slice(0, 16);
+
+/**
+ * Controller-only, called by production-review.ts AFTER it verified the independent review. The stopped run stays
+ * stopped for ever; a new run takes over and the journal records which review and which history it references.
+ */
+export function continueRun(store: string, from: string, receipt: RecordEnvelope): string {
+  const review = sha(authorityJson(receipt)), to = successorId(from, review);
+  const ev = { t: 'continued' as const, from, to, review, receipt, at: now() };
+  sealed(store, ev); // never write what a later read would block
+  tx(store, () => [ev]);
+  return to;
 }
 
 /** Controller-only (not reachable from the worker tools): settle an operation whose effect is unknown. */

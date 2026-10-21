@@ -17,7 +17,7 @@ import { controllerExecution, type ControllerExecution } from './execution.js';
 import { enrollMeasurementAuthority, measurementGeneration, productionHost, productionNativePowerShellExecutable } from './production-measurement.js';
 
 import { providerRoot } from './assets.js';
-import { admit, complete, noteRefusal, runId } from './production-audit.js';
+import { admit, complete, noteRefusal, resolveRun, runId } from './production-audit.js';
 import { gateRequest, regimeOpen } from './production-grants.js';
 export const nativeRoot = path.join(providerRoot, 'tools/windows-boundary');
 const sha = (value: string | Buffer): string => crypto.createHash('sha256').update(value).digest('hex');
@@ -242,7 +242,7 @@ export function productionTool(store: string, cwd: string, request: unknown): un
   if (!payload || payload.length > 1024 * 1024) throw new Error('tool request size refused');
   // T26: with an open permission regime every call is audited. An actual attempt outside the contract is recorded
   // (and stops the run) BEFORE anything is launched; the intent is recorded before the effect, the outcome after.
-  const audited = regimeOpen(store), run = runId(work), op = crypto.randomUUID();
+  const audited = regimeOpen(store), run = audited ? resolveRun(store, runId(work)) : runId(work), op = crypto.randomUUID();
   try { gateRequest(store, e.project, cwd, request); } catch (err) { if (audited) noteRefusal(store, run, err); throw err; }
   const lock =path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
   let call: string | undefined, admitted = false, started = false, finished = false;
