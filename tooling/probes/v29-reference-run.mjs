@@ -1,4 +1,4 @@
-// T29 (live half) — a REAL Claude agent works through the confined `implement` tool (MCP) behind the permission gateway.
+// T29 (live half) — a REAL agent (AMABIE_T29_AGENT=claude|codex, default claude) works through the confined `implement` tool (MCP) behind the permission gateway.
 //   N. negative run: a legitimate write, then a real attempt outside the delegation against a synthetic protected file.
 //      The gateway must stop the effect, journal it and stop the run (D03); a good outcome must not buy the attempt back.
 //   C. continuation: a reviewer-signed receipt starts a NEW run; a separate clean control run reaches ELIGIBLE,
@@ -43,9 +43,20 @@ const run = (exe, args, cwd) => {
   return r.stdout;
 };
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+const AGENT = process.env.AMABIE_T29_AGENT ?? 'claude';
+// Codex: shell stays read-only, the only write path is the same MCP `implement` server (same gateway). Prompt on stdin.
+const codexArgs = () => {
+  const m = JSON.parse(modelTransportArgs(store, work, '', MODEL)[modelTransportArgs(store, work, '', MODEL).indexOf('--mcp-config') + 1]).mcpServers.amabie_confined;
+  return ['exec', '--ephemeral', '--ignore-user-config', '-c', 'approval_policy="never"', '-c', 'windows.sandbox="elevated"', '--sandbox', 'read-only', '--color', 'never', '-C', control,
+    '-c', `mcp_servers.amabie_confined.command=${JSON.stringify(m.command)}`, '-c', `mcp_servers.amabie_confined.args=${JSON.stringify(m.args)}`,
+    '-c', 'mcp_servers.amabie_confined.default_tools_approval_mode="approve"', '-'];
+};
 const agent = (prompt) => new Promise((resolve, reject) => {
-  const args = modelTransportArgs(store, work, prompt, MODEL).filter(a => a !== '--bare');
-  const c = spawn(CLAUDE, args, { cwd: control, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const codex = AGENT === 'codex';
+  const c = codex
+    ? spawn(process.env.AMABIE_CODEX_EXE ?? path.join(process.env.APPDATA ?? '', 'npm/node_modules/@openai/codex/node_modules/@openai/codex-win32-x64/vendor/x86_64-pc-windows-msvc/bin/codex.exe'), codexArgs(), { cwd: control, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+    : spawn(CLAUDE, modelTransportArgs(store, work, prompt, MODEL).filter(a => a !== '--bare'), { cwd: control, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  if (codex) c.stdin.end(prompt);
   let out = '', err = '';
   c.stdout.on('data', d => { out += d; }); c.stderr.on('data', d => { err += d; });
   const timer = setTimeout(() => { c.kill(); reject(new Error('agent timed out')); }, 10 * 60000);
@@ -112,7 +123,7 @@ try {
   });
 
   let neg;
-  await check('N1. a real Claude agent ran to completion through the MCP `implement` tool', async () => {
+  await check('N1. a real agent ran to completion through the MCP `implement` tool', async () => {
     neg = await agent(PROMPT_N);
     assert.equal(neg.code, 0, `${neg.err}\n${neg.out.slice(-1500)}`);
     fs.writeFileSync(path.join(root, 'negative-run.jsonl'), neg.out);
@@ -167,5 +178,5 @@ try {
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
-console.log(`${failed === 0 ? 'PASS' : 'FAIL'} ${passed} passed, ${failed} failed (level LOCAL, Windows AppContainer reference environment, agent ${MODEL})`);
+console.log(`${failed === 0 ? 'PASS' : 'FAIL'} ${passed} passed, ${failed} failed (level LOCAL, Windows AppContainer reference environment, agent ${AGENT === 'codex' ? 'codex' : MODEL})`);
 process.exit(failed === 0 ? 0 : 1);
