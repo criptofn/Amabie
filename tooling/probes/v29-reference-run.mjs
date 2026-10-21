@@ -51,8 +51,9 @@ const codexArgs = () => {
     '-c', `mcp_servers.amabie_confined.command=${JSON.stringify(m.command)}`, '-c', `mcp_servers.amabie_confined.args=${JSON.stringify(m.args)}`,
     '-c', 'mcp_servers.amabie_confined.default_tools_approval_mode="approve"', '-'];
 };
-const agent = (prompt) => new Promise((resolve, reject) => {
-  const codex = AGENT === 'codex';
+const CONTROL_AGENT = process.env.AMABIE_T29_CONTROL_AGENT ?? AGENT; // agent switch across the restart
+const agent = (prompt, which = AGENT) => new Promise((resolve, reject) => {
+  const codex = which === 'codex';
   const c = codex
     ? spawn(process.env.AMABIE_CODEX_EXE ?? path.join(process.env.APPDATA ?? '', 'npm/node_modules/@openai/codex/node_modules/@openai/codex-win32-x64/vendor/x86_64-pc-windows-msvc/bin/codex.exe'), codexArgs(), { cwd: control, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
     : spawn(CLAUDE, modelTransportArgs(store, work, prompt, MODEL).filter(a => a !== '--bare'), { cwd: control, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -158,7 +159,7 @@ try {
     assert.ok(readAudit(store).state.stopped.has(runBase));
   });
   await check('C2. a separate clean control run (second real agent run) completes its legitimate work without a stop', async () => {
-    const c = await agent(PROMPT_C);
+    const c = await agent(PROMPT_C, CONTROL_AGENT);
     assert.equal(c.code, 0, `${c.err}\n${c.out.slice(-1500)}`);
     assert.equal(fs.readFileSync(path.join(work, 'src', 'control.txt'), 'utf8').trim(), 'control run');
     assert.equal(readAudit(store).state.stopped.has(next), false);
@@ -178,5 +179,5 @@ try {
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
-console.log(`${failed === 0 ? 'PASS' : 'FAIL'} ${passed} passed, ${failed} failed (level LOCAL, Windows AppContainer reference environment, agent ${AGENT === 'codex' ? 'codex' : MODEL})`);
+console.log(`${failed === 0 ? 'PASS' : 'FAIL'} ${passed} passed, ${failed} failed (level LOCAL, Windows AppContainer reference environment, negative run: ${AGENT}, control run: ${CONTROL_AGENT})`);
 process.exit(failed === 0 ? 0 : 1);
