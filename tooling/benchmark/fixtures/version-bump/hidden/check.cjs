@@ -7,7 +7,7 @@
  * repository, which penalised the CORRECT behaviour — a changelog is supposed to keep
  * its historical release entries. MEASURED: a real trial that had updated every place
  * the CURRENT version is claimed was scored as broken because it left `## [1.2.3]` in
- * the changelog (and `.canary/evidence` contains whatever it contains). A benchmark
+ * the changelog (and `.amabie/evidence` contains whatever it contains). A benchmark
  * that marks right answers wrong is worse than no benchmark, so the rule is now
  * "the old version must not be claimed as current", which is the actual requirement.
  *
@@ -54,7 +54,7 @@ check('the old version is not claimed as CURRENT anywhere', () => {
   const isTestFile = (r) => /(^|[\\/])tests?([\\/]|$)/i.test(r) || /\.(test|spec)\.[cm]?[jt]sx?$/i.test(r);
   const walk = (dir, rel) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (e.name === 'node_modules' || e.name === '.git' || e.name === '.canary') continue;
+      if (e.name === 'node_modules' || e.name === '.git' || e.name === '.amabie') continue;
       const r = rel ? `${rel}/${e.name}` : e.name;
       const full = path.join(dir, e.name);
       if (e.isDirectory()) { walk(full, r); continue; }

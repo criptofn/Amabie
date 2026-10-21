@@ -90,7 +90,7 @@ try {
     description: 'Amabie: pre-finish verification for coding agents (self-contained bundle).',
     license: 'Apache-2.0',
     type: 'module',
-    bin: { amabie: 'dist/main.js', canary: 'dist/main.js' },
+    bin: { amabie: 'dist/main.js', amabie: 'dist/main.js' },
     engines: { node: '>=22' },
     files: ['dist/main.js', 'tools/windows-boundary', 'tooling/test-support/fixtures', 'QUICKSTART.md', 'examples/quickstart', 'THIRD-PARTY-NOTICES.txt'],
   };

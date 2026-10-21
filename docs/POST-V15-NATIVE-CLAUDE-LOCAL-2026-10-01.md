@@ -3,11 +3,11 @@
 ## Result
 
 Three native Claude Code sessions completed against the explicitly installed
-Canary improvement. The real Claude Stop hook accepted the passing control and
+Amabie improvement. The real Claude Stop hook accepted the passing control and
 blocked the failing control. The latter triggered native Stop feedback and a
 second model response; the loop guard subsequently allowed handoff with the
 checkpoint still **fail**, never pass. CLI exit 0 and the end of a model session
-are distinct from a passed Canary verification.
+are distinct from a passed Amabie verification.
 
 | Session | Native API input/output tokens | CLI totals match | Actual hook/checkpoint |
 | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ The final probe exited 0: **3/3 captured**, accounting matched in each case. It 
 model hashes, commands, raw native stream events, API exchanges, checkpoint
 records, product evidence and cleanup are retained at:
 
-`C:\Users\Johannes\Desktop\canary\_canary-data\evidence\claude-local-preflight-20261001-final`.
+`C:\Users\Johannes\Desktop\amabie\_canary-data\evidence\claude-local-preflight-20261001-final`.
 
 Start with `summary.json`, then each session's `record.json`, `claude.jsonl` and
 the numbered API request/response files. `instrument.mjs` preserves the executed
@@ -98,7 +98,7 @@ Those batteries were not repeated for this separate experimental preflight.
 ## Next step
 
 Prepare a native Claude/local paired pilot from fresh task starts, first with
-actual coding tools and Canary MCP available. Before freezing twelve sessions,
+actual coding tools and Amabie MCP available. Before freezing twelve sessions,
 verify that the same request accounting remains complete with tool calls and
 that both arms get equal task access. The local model replaces the previously
 planned paid Alibaba connection; results must identify that substitution and

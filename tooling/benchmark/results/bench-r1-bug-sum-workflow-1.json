@@ -1,10 +1,10 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r1-bug-sum-workflow-1",
   "task": "bug-sum",
   "arm": "workflow",
   "startedAt": "2026-09-12T02:53:59.171Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bug-sum-workflow-30p1vs",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bug-sum-workflow-30p1vs",
   "agent": {
     "command": "claude",
     "model": null,
@@ -18,10 +18,10 @@
     "secs": 0.8,
     "readme": "NEEDS ATTENTION",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "        numbers.test.js :: total includes negative values\n          Expected values to be strictly equal:\n      5 !== 0\n        numbers.test.js :: average uses every value\n          Expected values to be strictly equal:\n      2 !== 1\n      2 passing (0.01s)\n      2 failing\n\nNEEDS ATTENTION — Canary is wired here, but your project's own checks did not pass (tests). That is your project talking, not Canary.\nnext: fix the failing checks (ask the agent), then: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "        numbers.test.js :: total includes negative values\n          Expected values to be strictly equal:\n      5 !== 0\n        numbers.test.js :: average uses every value\n          Expected values to be strictly equal:\n      2 !== 1\n      2 passing (0.01s)\n      2 failing\n\nNEEDS ATTENTION — Amabie is wired here, but your project's own checks did not pass (tests). That is your project talking, not Amabie.\nnext: fix the failing checks (ask the agent), then: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -57,7 +57,7 @@
       "2026-09-12T02-55-48-794Z-promotion"
     ],
     "baseMoved": true,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -72,7 +72,7 @@
       "cacheCreationTokens": 20592,
       "totalTokens": 217427
     },
-    "finalText": "Everything works now. `npm test` passes — Canary verified the committed candidate from outside (`POST-PROOF PASS`) and fast-forwarded `main` to it, so no need to re-run the suite in the base.\n\n**What changed:**\n- `src/numbers.js` — removed the `if (v > 0)` guard in `total()` that dropped negatives and zeros; it's now `values.reduce((sum, v) => sum + v, 0)`. `average()` needed no change — it was only wrong through `total()`.\n- `tests/regression.test.js` — new: three tests (negatives mixed in, all-negative list, negative average) that all fail against the old implementation and pass against the fix, added to satisfy Canary's regression-evidence obligation.\n\nSkipped: touching `largest()` (already correct); candidate cleanup — run `canary isolate --remove sum-fix` when you're done with the record."
+    "finalText": "Everything works now. `npm test` passes — Amabie verified the committed candidate from outside (`POST-PROOF PASS`) and fast-forwarded `main` to it, so no need to re-run the suite in the base.\n\n**What changed:**\n- `src/numbers.js` — removed the `if (v > 0)` guard in `total()` that dropped negatives and zeros; it's now `values.reduce((sum, v) => sum + v, 0)`. `average()` needed no change — it was only wrong through `total()`.\n- `tests/regression.test.js` — new: three tests (negatives mixed in, all-negative list, negative average) that all fail against the old implementation and pass against the fix, added to satisfy Amabie's regression-evidence obligation.\n\nSkipped: touching `largest()` (already correct); candidate cleanup — run `amabie isolate --remove sum-fix` when you're done with the record."
   },
   "visible": {
     "exitCode": 0,

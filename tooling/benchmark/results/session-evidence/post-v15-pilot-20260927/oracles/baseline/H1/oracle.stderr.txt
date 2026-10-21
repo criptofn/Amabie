@@ -10,7 +10,7 @@ AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
 +   'old.txt'
   ]
 
-    at file:///C:/Users/Johannes/AppData/Local/Temp/canary-v15-pilot-baseline-oracles-20260927/H1/oracle.mjs:7:407 {
+    at file:///C:/Users/Johannes/AppData/Local/Temp/amabie-v15-pilot-baseline-oracles-20260927/H1/oracle.mjs:7:407 {
   generatedMessage: true,
   code: 'ERR_ASSERTION',
   actual: [ 'fresh.txt', 'old.txt' ],

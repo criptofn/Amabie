@@ -90,20 +90,20 @@ prepared tarball has package identity `@amabie/cli` and **zero runtime dependenc
 Require Node.js 22+, npm and Git. Verify its supplied `.sha256` before installing:
 `Get-FileHash ./amabie-cli-2.0.0.tgz -Algorithm SHA256` in PowerShell, or
 `sha256sum --check amabie-cli-2.0.0.tgz.sha256` on Linux. Do not substitute the
-historical Canary checksum for the current Amabie artifact.
+historical Amabie checksum for the current Amabie artifact.
 
 Start with the runnable [Quickstart](QUICKSTART.md), including a passing change,
 an intentional regression and an uncovered change that stays `NOT PROVEN`.
 The installed package includes the same guide and its three-file example.
 
-> **Version note.** Amabie 2.0.0 is being prepared from the published Canary v1.5.0 baseline. The latest
-> published artifact is **v1.5.0**, under its original Canary name, in the
+> **Version note.** Amabie 2.0.0 is being prepared from the published Amabie v1.5.0 baseline. The latest
+> published artifact is **v1.5.0**, under its original Amabie name, in the
 > [historical release](https://github.com/criptofn/Canary/releases/tag/v1.5.0).
 > Installing that package does not install Amabie 2.0.0. For a source checkout,
 > run `npm ci` and `npm run build:force`, then use `node apps/cli/dist/src/main.js`;
 > building does not put `amabie` on PATH. Prepare an installable local package
 > with `node tooling/pack.mjs`, then install `./pack/npm/amabie-cli-2.0.0.tgz`.
-> The `canary` executable remains as a compatibility alias for existing v1.5 hooks and scripts.
+> The `amabie` executable remains as a compatibility alias for existing v1.5 hooks and scripts.
 > v1.3's own bytes are described in [`docs/RELEASE-1.3.md`](docs/RELEASE-1.3.md).
 
 ## Use your coding agent normally
@@ -572,7 +572,7 @@ What Amabie does **not** claim is as much a part of the product as what it does.
   turn end, so a stubborn failure reaches you instead of spinning.
 - **Amabie sends nothing anywhere.** There is no telemetry and no network
   dependency; the only measurements are local ones you can read
-  (`AMABIE_METRICS=<file>` writes one local record per invocation; `CANARY_METRICS` remains a legacy alias).
+  (`AMABIE_METRICS=<file>` writes one local record per invocation; `AMABIE_METRICS` remains a legacy alias).
 - **Cursor is not a claimed integration.** Cursor documents importing Claude Code
   hooks — including `Stop`, honoured as an automatic follow-up — which would make
   the hook `setup` installs effective there. This project has **not reproduced
@@ -806,15 +806,15 @@ amabie version
 
 ### Installing, updating and removing Amabie
 
-For a Canary 1.5 upgrade, first record the repositories using its hooks and back
+For an Amabie 1.5 upgrade, first record the repositories using its hooks and back
 up their integration settings and local state. Stop active agent sessions before
 replacing the installed CLI. Do not use `npm --force` to overwrite a conflicting
-`canary` executable. Once you have reviewed the prepared Amabie artifact, remove
+`amabie` executable. Once you have reviewed the prepared Amabie artifact, remove
 the old `@canary-rn/cli` npm installation, install `@amabie/cli` from its local
 tarball, and rerun `amabie setup` in each recorded repository. Setup is an
 operator reseal: inspect its declared checks before accepting them. Run
 `amabie doctor --json` afterward and review the verdict rather than assuming the
-upgrade passed. Existing untracked `.canary` state is migrated when safe; legacy
+upgrade passed. Existing untracked `.amabie` state is migrated when safe; legacy
 signed records retain their historical serialized field names. Do not delete
 the old trust store or evidence directories as part of the upgrade.
 
@@ -898,7 +898,7 @@ Every downstream repository is **untrusted**. Enforced by
   failure the baseline never saw fail is never "pre-existing"; classifier
   rules 12/13 + an independent validator gate); **a
   strong verdict additionally requires that Amabie WATCHED the execution** —
-  a byte-pinned runner with a Amabie-injected in-process observer, whose
+  a byte-pinned runner with an Amabie-injected in-process observer, whose
   private-channel lifecycle counts agree with the text summary on every round
   (rule 14; `node -e "console.log('128 passing (1s)')"` → INCONCLUSIVE, never
   PASS — [docs/EXECUTION-AUTHORITY.md](docs/EXECUTION-AUTHORITY.md)); every

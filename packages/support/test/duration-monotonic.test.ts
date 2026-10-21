@@ -12,7 +12,7 @@ import { after, it } from 'node:test';
 
 import { runCommand } from '../src/index.js';
 
-const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-dur-'));
+const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-dur-'));
 after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
 
 it('durationMs stays a non-negative integer when the wall clock steps backwards', async () => {

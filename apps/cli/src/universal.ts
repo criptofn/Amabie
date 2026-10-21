@@ -55,8 +55,6 @@ import {
 /** The explicit-authority manifest (the escape hatch, never required). */
 export const UNIVERSAL_MANIFEST = 'amabie.project.json';
 export const UNIVERSAL_MANIFEST_SCHEMA = 'amabie-project/1';
-const LEGACY_UNIVERSAL_MANIFEST = 'canary.project.json';
-const LEGACY_UNIVERSAL_MANIFEST_SCHEMA = 'canary-project/1';
 
 /** What the capability levels mean, as data, so no surface has to remember them. */
 export interface ContractLevels {
@@ -153,14 +151,9 @@ export interface UniversalManifestRead {
  * than seal a plan that quietly omits what the author declared.
  */
 export function readUniversalManifest(root: string): UniversalManifestRead {
-  const currentFile = path.join(root, UNIVERSAL_MANIFEST);
-  const legacyFile = path.join(root, LEGACY_UNIVERSAL_MANIFEST);
-  if (fs.existsSync(currentFile) && fs.existsSync(legacyFile)) {
-    return { manifest: null, problems: [`both ${UNIVERSAL_MANIFEST} and ${LEGACY_UNIVERSAL_MANIFEST} exist; merge them and remove the legacy file`] };
-  }
-  const file = fs.existsSync(currentFile) ? currentFile : legacyFile;
-  const fileName = file === currentFile ? UNIVERSAL_MANIFEST : LEGACY_UNIVERSAL_MANIFEST;
-  const schema = file === currentFile ? UNIVERSAL_MANIFEST_SCHEMA : LEGACY_UNIVERSAL_MANIFEST_SCHEMA;
+  const file = path.join(root, UNIVERSAL_MANIFEST);
+  const fileName = UNIVERSAL_MANIFEST;
+  const schema = UNIVERSAL_MANIFEST_SCHEMA;
   if (!fs.existsSync(file)) return { manifest: null, problems: [] };
   const raw = parseJsonOrNull(file) as { schema?: unknown; scopes?: unknown; proofs?: unknown } | null;
   if (raw === null) return { manifest: null, problems: [`${fileName} is not valid JSON`] };

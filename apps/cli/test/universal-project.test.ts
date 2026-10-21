@@ -94,25 +94,6 @@ describe('the universal contract — the manifest is an authority format, not a 
     ]);
   });
 
-  it('reads legacy Canary project manifests and refuses ambiguous dual declarations', () => {
-    const legacy = project('legacy-manifest', {
-      'canary.project.json': JSON.stringify({ schema: 'canary-project/1', scopes: [
-        { path: '.', checks: [{ name: 'tests', kind: 'tests', argv: ['ctest'] }] },
-      ] }),
-    });
-    assert.equal(readUniversalManifest(legacy).manifest?.scopes[0]?.checks[0]?.name, 'tests');
-
-    const both = project('dual-manifest', {
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [
-        { path: '.', checks: [{ name: 'tests', kind: 'tests', argv: ['ctest'] }] },
-      ] }),
-      'canary.project.json': JSON.stringify({ schema: 'canary-project/1', scopes: [
-        { path: '.', checks: [{ name: 'build', kind: 'build', argv: ['cmake', '--build', 'build'] }] },
-      ] }),
-    });
-    assert.match(readUniversalManifest(both).problems.join(' '), /both amabie\.project\.json and canary\.project\.json exist/);
-  });
-
   it('REFUSES env, cwd, shell wrappers, escaping scopes, unknown kinds and duplicates', () => {
     const cases: Array<[string, Record<string, unknown>, RegExp]> = [
       ['env', { name: 'x', kind: 'tests', argv: ['ctest'], env: { PATH: '/tmp/evil' } }, /"env" is not part of the universal contract/],

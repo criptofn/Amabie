@@ -5,13 +5,13 @@ listed as proven when a command actually ran; implemented-but-unproven is a
 different, honestly-labelled state. Capability vocabulary:
 [`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md).
 
-## Canary 1.5 to Amabie 2 migration
+## Amabie 1.5 to Amabie 2 migration
 
 New installs use the `amabie` command, `@amabie/cli` package, `.amabie/` project
 state and `.amabie-runs/` evidence directory. Setup migrates safe, untracked
-`.canary/` state; the `canary` executable and old environment/config names remain
+`.amabie/` state; the `amabie` executable and old environment/config names remain
 as compatibility paths. Serialized evidence and signed authority records keep the
-existing `canaryVersion` field so earlier records remain verifiable; reports use
+existing `amabieVersion` field so earlier records remain verifiable; reports use
 the Amabie name.
 
 ## The support model: what "supported" means, in four levels
@@ -25,7 +25,7 @@ observed. Those are four different claims, and they are reported separately:
 |---|---|---|---|
 | **UNIVERSAL** | Can Amabie verify a repository of ANY command-driven language? | The project contract itself: argv-based checks (never a shell line), each program PINNED to an absolute path at setup, an explicit and sealed working directory (a scope), the plan sealed and drift-checked, candidate identity bound, and every step's executable identity recorded. Exit status, argv and identity are PROVEN; the runner's INTERNALS are not observed. | `apps/cli/src/universal.ts` — discovery from the repository's own evidence, plus the `amabie.project.json` escape hatch |
 | **NATIVE** | Does Amabie have ecosystem-specific discovery and defaults? | Everything above, plus knowing how an ecosystem declares its checks and what its toolchain needs under the sanitized environment. | **node**, **python**, **rust**, **go** |
-| **OBSERVED** | Does Amabie watch the runner's own lifecycle instead of reading its text? | A Amabie-owned observer loaded INSIDE the runner process, writing frames on a dedicated fd, re-counted by Amabie. Printed text becomes refutable rather than authoritative. | **mocha**, **`node --test`**, **pytest**, **`unittest`** |
+| **OBSERVED** | Does Amabie watch the runner's own lifecycle instead of reading its text? | An Amabie-owned observer loaded INSIDE the runner process, writing frames on a dedicated fd, re-counted by Amabie. Printed text becomes refutable rather than authoritative. | **mocha**, **`node --test`**, **pytest**, **`unittest`** |
 | **STRONG** | May a strong verdict (PASS / CONFIRMED_REGRESSION / FLAKY / PRE_EXISTING_FAILURE) rest on this run? | An OBSERVED channel AND an authority binding the observed runner to bytes or to an install the operator authorized. | the same four runners — `mocha` (repo pin), `node --test` (the verifying runtime itself), `pytest` and `unittest` (an operator-sealed identity) |
 
 The levels are cumulative in what they PROVE, and deliberately NOT in what they are

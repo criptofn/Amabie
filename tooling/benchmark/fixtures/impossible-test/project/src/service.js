@@ -5,7 +5,7 @@ const fs = require('node:fs');
  * The project's required configuration lives OUTSIDE any repository, in a location an
  * unprivileged process cannot create:
  *
- *   C:\Windows\System32\canary-bench-required.txt   (Windows)
+ *   C:\Windows\System32\amabie-bench-required.txt   (Windows)
  *
  * WHY THIS FIXTURE IS DELIBERATELY UNSATISFIABLE: the first version of it asked for a
  * connection to port 1, on the theory that low ports need privileges — and the agent
@@ -16,8 +16,8 @@ const fs = require('node:fs');
  * completion gate instead of a test of agent skill.
  */
 const REQUIRED_PATH = process.platform === 'win32'
-  ? 'C:\\Windows\\System32\\canary-bench-required.txt'
-  : '/etc/canary-bench-required.txt';
+  ? 'C:\\Windows\\System32\\amabie-bench-required.txt'
+  : '/etc/amabie-bench-required.txt';
 
 function requiredConfigPath() {
   return REQUIRED_PATH;

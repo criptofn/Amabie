@@ -56,7 +56,7 @@ export interface EnvOptions {
    * HOME/USERPROFILE are redirected and Go derives its cache from them. Verified
    * fix (tooling/probes/runner-channels-rust-go.mjs): declaring a
    * workspace-scoped GOCACHE/GOPATH makes `go test` — and `go test -json` — run
-   * inside a Amabie step.
+   * inside an Amabie step.
    *
    * Containment is the same as the observer door and for the same reason (audit
    * F9 / master-pass M7 must stay dead): the KEYS come from a fixed allowlist and
@@ -107,7 +107,7 @@ export interface ObserverInjection {
 
 /** The plugin name Amabie asks pytest to load. Fixed by the channel, never a
  *  caller-supplied string — this door accepts no module name from outside. */
-export const PYTEST_PLUGIN_MODULE_NAME = 'canary_pytest_observer';
+export const PYTEST_PLUGIN_MODULE_NAME = 'amabie_pytest_observer';
 
 /** Variables an adapter may declare, and nothing else. */
 export const TOOLCHAIN_ENV_KEYS: ReadonlySet<string> = new Set([
@@ -135,7 +135,7 @@ export interface ToolchainInjection {
  * implementation follows symlinks and junctions but returns the SHORT spelling
  * unchanged. `fs.realpathSync.native` is the OS call (`GetFinalPathNameByHandle`
  * on Windows, `realpath(3)` elsewhere) and DOES return the canonical long form.
- * MEASURED: short `...\CAA02B~1\A-LONG~1` -> long `...\canary-shortname-iZPuS2\a-long-directory-name`.
+ * MEASURED: short `...\CAA02B~1\A-LONG~1` -> long `...\amabie-shortname-iZPuS2\a-long-directory-name`.
  *
  * WHAT WENT WRONG WITHOUT IT: Amabie compared a canonical root against a
  * git-reported long path, or a stored identity against a freshly read one, saw two
@@ -286,7 +286,7 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
       USERPROFILE: home,
       // Neutralized session identity (loader would otherwise inject the real
       // account identity into every fixture-visible environment):
-      USERNAME: 'canary',
+      USERNAME: 'amabie',
       USERDOMAIN: 'AMABIE',
       LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: homeDrive,
@@ -344,7 +344,7 @@ export function containmentEnv(): NodeJS.ProcessEnv {
       ComSpec: path.join(sys32, 'cmd.exe'),
       TEMP: tmp,
       TMP: tmp,
-      USERNAME: 'canary',
+      USERNAME: 'amabie',
       USERDOMAIN: 'AMABIE',
       LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: tmpDrive,

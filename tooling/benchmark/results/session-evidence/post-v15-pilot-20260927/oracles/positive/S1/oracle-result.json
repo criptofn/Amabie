@@ -1,11 +1,11 @@
 {
-  "schema": "canary-validation-oracle/1",
+  "schema": "amabie-validation-oracle/1",
   "label": "S1",
   "expected": "pass",
   "probe": "tooling/probes/v15-validation-oracle.mjs",
   "probeSha256": "798b702c9d92462075a5757905e1ada3c700e396119e756e27aadb15a09d825b",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-positive-controls-20260927\\projects\\S1",
-  "runtimeRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-positive-controls-20260927\\projects\\S1",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-positive-controls-20260927\\projects\\S1",
+  "runtimeRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-positive-controls-20260927\\projects\\S1",
   "startingHead": "e6e8c6131c8b91eae19322664a2c612997320d8c",
   "startedAt": "2026-09-27T15:34:05.762Z",
   "sourceFiles": [
@@ -20,10 +20,10 @@
     "executable": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot\\bin\\java.exe",
     "args": [
       "-cp",
-      "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-positive-controls-20260927\\oracle-fixed\\S1\\classes",
+      "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-positive-controls-20260927\\oracle-fixed\\S1\\classes",
       "IdLookupOracle"
     ],
-    "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-positive-controls-20260927\\projects\\S1"
+    "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-positive-controls-20260927\\projects\\S1"
   },
   "generatedArtifacts": [
     "IdLookupOracle.java"

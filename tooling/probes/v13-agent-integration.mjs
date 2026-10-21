@@ -8,7 +8,7 @@
 //
 // MEASURED, and the reason this file exists: the answer is NOT "connected". Claude Code reads Amabie's
 // project entry and then holds it at "Pending approval" until a human approves the project's MCP
-// server once, in an interactive session. That is Claude Code's consent gate, not a Amabie defect —
+// server once, in an interactive session. That is Claude Code's consent gate, not an Amabie defect —
 // and it is exactly the kind of detail that turns into a false "seamless integration" claim if nobody
 // measures it. So this probe ASSERTS what is Amabie's (the entry is written and the agent READ its
 // exact command) and REPORTS what is the harness's (the approval state), never asserting a human act.

@@ -89,7 +89,7 @@ NEEDS ATTENTION — Amabie is wired here, but your project's own checks did not
 pass (test, build). That is your project talking, not Amabie.
 ```
 
-**Why it matters.** This is not a Amabie failure. The checks you declared are
+**Why it matters.** This is not an Amabie failure. The checks you declared are
 already failing on the current working tree, which means the gate would block
 every completion until they pass. Amabie says so at setup instead of letting you
 discover it mid-task.

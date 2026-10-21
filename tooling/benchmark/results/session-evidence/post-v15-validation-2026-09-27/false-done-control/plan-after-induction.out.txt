@@ -16,7 +16,7 @@ AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
 +   'old-report.txt'
   ]
 
-    at file:///C:/Users/Johannes/AppData/Local/Temp/canary-v15-baselines-20260927/H1/scripts/smoke-test.js:49:10 {
+    at file:///C:/Users/Johannes/AppData/Local/Temp/amabie-v15-baselines-20260927/H1/scripts/smoke-test.js:49:10 {
   generatedMessage: true,
   code: 'ERR_ASSERTION',
   actual: [ 'fresh.txt', 'old-report.txt' ],

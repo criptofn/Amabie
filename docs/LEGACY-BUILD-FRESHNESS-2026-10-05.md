@@ -49,7 +49,7 @@ unchanged. Both earlier and later outcomes remain available in the evidence.
   It covers stale broken source at doctor and Stop, initial-failure retention,
   a subsequent fully passing repair, failed builds and modern first-run success.
 
-Evidence is under `C:/Users/Johannes/Desktop/canary/_canary-data/evidence`.
+Evidence is under `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence`.
 Source commits: `6282c59`, `04e6732`, `4cb85ca`, `7989419` on
 `codex/legacy-build-freshness`. The scheduler and result mapping have been
 integrated into `codex/product-progress`; full sequential gates remain pending.
@@ -94,7 +94,7 @@ packed and installed the product in an isolated directory. Delivery evidence:
   `497650e8170a7cac242648aec2b7dee48cf9fee4a2bdabda8b54466bd4a6d65a`.
 * Installed entry: `package/installed/node_modules/@canary-rn/cli/dist/main.js`,
   SHA-256 `10c482d22ac12c6c951b859d1dedf628c932be1251ebf21488a61528f1237805`.
-* Version remains `canary 1.5.0`; this is an unreleased improvement artifact,
+* Version remains `amabie 1.5.0`; this is an unreleased improvement artifact,
   identified by source and hashes, not the published v1.5.0 archive.
 * Against the retained published release entry (`3cfdfece...d5e2`),
   `installed-comparison` passes all eleven observations, preserves seal bytes,

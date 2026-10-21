@@ -1,10 +1,10 @@
-# Canary: Nachweise im maschinenlesbaren Ergebnis
+# Amabie: Nachweise im maschinenlesbaren Ergebnis
 
 ## Produktproblem
 
 Der abgeschlossene native Pilot zeigte eine Grenze: Ein unterscheidender Test,
 den der arbeitende Agent selbst schreibt, kann eine ausdrücklich verlangte
-Eigenschaft übersehen. Canary kennzeichnet solche Tests bereits im Text als
+Eigenschaft übersehen. Amabie kennzeichnet solche Tests bereits im Text als
 `NOT independent authority`. Die JSON-Ausgabe von `doctor` enthielt diese
 Kennzeichnung jedoch nicht. Ein Verbraucher, der ausschließlich JSON auswertet,
 konnte `READY` lesen, ohne die Herkunftseinschränkung zu sehen.
@@ -41,7 +41,7 @@ seines Pakets oder seiner Ergebnisse.
 
 ## Ausgeführte Nachweise
 
-Evidenzwurzel: `C:/Users/Johannes/Desktop/canary/_canary-data/evidence`.
+Evidenzwurzel: `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence`.
 
 - `proof-scope-20261003-targeted-red.log`: zwei Regressionstests scheiterten vor
   der Änderung, weil die JSON-Nachweise fehlten.
@@ -88,10 +88,10 @@ CLI-Hash und die ursprünglichen Messungsdaten vor der Bereinigung.
 
 Die [strengere Bindungseingabe](POST-V15-BIND-INTAKE-2026-10-03.md) liegt jetzt
 als `f48c8e3` auf `codex/product-progress`; ihre dokumentierten älteren
-Entwicklungsbelege stammen aus dem separaten Canary-Checkout.
+Entwicklungsbelege stammen aus dem separaten Amabie-Checkout.
 
 `51adb59` korrigiert eine Grenze dieser neuen Nachweisübersicht: der historische
-Leser erlaubte zunächst nur 32 Pflichtzustände, obwohl Canary 64 Anforderungen
+Leser erlaubte zunächst nur 32 Pflichtzustände, obwohl Amabie 64 Anforderungen
 mit zusätzlichen Zielpflichten unterstützt. Der neue Test registriert tatsächlich
 64 Anforderungen und vergleicht die Doctor- mit der historischen Ausgabe.
 Er scheiterte vorher; danach bestehen alle drei gezielten JSON-Tests. Ungültige

@@ -72,7 +72,7 @@ export interface ExecutorDeps {
   yarnPin?: string;
   run?: (o: RunOptions) => Promise<RunOutcome>;
   /**
-   * post-GLM F5: in-process TEST AUTHORITY to select the 'canary-double'
+   * post-GLM F5: in-process TEST AUTHORITY to select the 'amabie-double'
    * runner pin for observation injection. The double's bytes are public
    * in-repo, so a pin MATCH is not sufficient for execution authority —
    * only this explicit grant (set by the offline test harnesses through
@@ -851,7 +851,7 @@ export class Recorder {
    *    (the same anchor the preload uses — a hoisted install is not
    *    injectable, "SUPPORTED TRUSTED MOCHA ADAPTER" honesty) AND the pin's
    *    ORIGIN may serve as an execution authority (post-GLM F5: the public
-   *    'canary-double' bytes require the explicit in-process
+   *    'amabie-double' bytes require the explicit in-process
    *    deps.allowAmabieDoubleOrigin grant — an untrusted spec that stages
    *    them at the anchor earns the same 'runner-identity-unpinned' ABSENT
    *    path, with observedRunnerTreeSha256 still recorded);
@@ -980,7 +980,7 @@ export class Recorder {
       const located = locateRunnerPackage(mochaBin, 'mocha');
       if (located) plan.observedRunnerTreeSha256 = located.treeSha256;
       const canonical = path.resolve(d.ws.fixture, ...OBSERVER_MOCHA_ANCHOR_REL);
-      // F5: origin-gated lookup — the public canary-double needs the explicit
+      // F5: origin-gated lookup — the public amabie-double needs the explicit
       // in-process grant; npm pins are selectable in both postures.
       const pin = located ? findRunnerPin(located, { allowAmabieDoubleOrigin: d.allowAmabieDoubleOrigin === true }) : null;
       if (located && pin && located.dir === canonical && isPhysicalAnchor(d.ws.fixture, located.dir)) {

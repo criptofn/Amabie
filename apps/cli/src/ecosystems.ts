@@ -72,7 +72,7 @@ interface Ecosystem {
    * `build cache is required, but could not be located: GOCACHE is not defined
    * and %LocalAppData% is not defined`, and declaring a workspace-scoped
    * GOCACHE/GOPATH was VERIFIED to make `go test` and `go test -json` run inside
-   * a Amabie step (tooling/probes/runner-channels-rust-go.mjs).
+   * an Amabie step (tooling/probes/runner-channels-rust-go.mjs).
    */
   toolchainEnv?(ctx: { dir: string; workspace: string }): Record<string, string>;
 }

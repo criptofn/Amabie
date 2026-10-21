@@ -1,20 +1,20 @@
-# Canary: measured repair access and a false proof removed (2026-09-30)
+# Amabie: measured repair access and a false proof removed (2026-09-30)
 
 ## What changed
 
 A follow-up to the scoped verification fix used four fresh local agent sessions
 on Hermes tasks H1/H2. The previous file-only experiment prevented the agent from
-running project tests or reading Canary output. The existing local harness now
+running project tests or reading Amabie output. The existing local harness now
 supports operator-listed check commands, complete saved output, and optional
-Canary diagnostics. Configuration and tool output live outside the measured
-workspace; file writes still cannot enter Canary state. This is an experiment
+Amabie diagnostics. Configuration and tool output live outside the measured
+workspace; file writes still cannot enter Amabie state. This is an experiment
 harness, not a new supported integration or an OS security sandbox.
 
 The sessions exposed a product defect in H2: the agent put example documents in
 its working directory and rewrote the smoke test to inspect them. Its check
-passed on the candidate. When Canary overlaid that test on the baseline, the
+passed on the candidate. When Amabie overlaid that test on the baseline, the
 documents were absent; reading `move.group` threw a TypeError before the
-assertion ran. Canary counted that crash as proof about the source change and
+assertion ran. Amabie counted that crash as proof about the source change and
 reported a pass with the worker-authored-evidence caveat.
 
 The completion comparison now measures an input control for worker-authored
@@ -48,9 +48,9 @@ completion and preserves the flat attempt layout. No merge or publication was pe
 ## Four recorded local sessions, before the product correction
 
 Both arms had the same authorized `npm test` command, model, task and independent
-starting commit. H1 started plain first; H2 started Canary first. The independent
+starting commit. H1 started plain first; H2 started Amabie first. The independent
 task oracles and historical solutions were outside the file-tool surface. There
-were no manual repairs or injected defects during these sessions. Canary
+were no manual repairs or injected defects during these sessions. Amabie
 checkpoints were driven by the harness; native Claude/Codex Stop hooks were not
 observed. The frozen package was the previous local improvement, not the GitHub
 release artifact.
@@ -60,11 +60,11 @@ Keeping oracles outside the file-tool surface does not provide an OS-enforced
 barrier against a program accessing those files. This pilot measures observed
 agent behavior; it does not demonstrate adversarial oracle isolation.
 
-| Task/arm | Independent source oracle | Native input/output tokens | Seconds | Check calls | Actual final Canary record |
+| Task/arm | Independent source oracle | Native input/output tokens | Seconds | Check calls | Actual final Amabie record |
 | --- | --- | --- | --- | --- | --- |
 | H1/plain | pass | 16,177 / 1,707 | 41.7 | 1 | not applicable |
-| H1/Canary | pass | 44,502 / 4,962 | 91.5 | 3 | unproven; one-repair stop guard |
-| H2/Canary | pass | 101,116 / 3,514 | 84.7 | 3 | pass with worker caveat; unsound baseline crash found afterwards |
+| H1/Amabie | pass | 44,502 / 4,962 | 91.5 | 3 | unproven; one-repair stop guard |
+| H2/Amabie | pass | 101,116 / 3,514 | 84.7 | 3 | pass with worker caveat; unsound baseline crash found afterwards |
 | H2/plain | pass | 16,091 / 1,531 | 53.4 | 1 | not applicable |
 
 All four model sessions emitted terminal results, but all four collection
@@ -85,7 +85,7 @@ reports all four captures incomplete and retains the observed native counts.
 
 H1's added regression accepts both filtered and unfiltered outcomes, so its
 NOT PROVEN result is justified. H2's source change is correct according to the
-independent oracle; its original Canary proof is unsound for the reason above.
+independent oracle; its original Amabie proof is unsound for the reason above.
 Neither is an additional correct source outcome over the plain arm. These four
 sessions do not demonstrate lower token use or justify a higher overall product
 rating. They did provide a naturally observed defect and its exact replay input.
@@ -138,7 +138,7 @@ input files are archived under `observed-H2/` as well as in the original agent
 transcript; their hashes appear in the comparison record.
 
 Local immutable evidence root:
-`C:\Users\Johannes\Desktop\canary\_canary-data\evidence\completion-agent-repair-20260930`.
+`C:\Users\Johannes\Desktop\amabie\_canary-data\evidence\completion-agent-repair-20260930`.
 Entry points: `pilot/pilot-manifest.json`, `pilot/pilot-summary.json`,
 `pilot-analysis-corrected.json`, and the installed replay `comparison.json` files.
 The earlier `pilot-analysis.json` is retained, but does not expose the capture
@@ -168,8 +168,8 @@ retain the actual executable, arguments, tool hashes and model observations.
 | Task/arm | Independent source oracle | Native input/output tokens | Seconds | Project check calls | Final checkpoint |
 | --- | --- | --- | --- | --- | --- |
 | H1/plain | pass | 16,171 / 1,695 | 43.8 | 1 | not applicable |
-| H1/Canary | pass | 40,155 / 3,925 | 77.1 | 2 | fail; session ended after repair guard |
-| H2/Canary | fail | 62,249 / 3,982 | 83.4 | 3 | fail; session ended after repair guard |
+| H1/Amabie | pass | 40,155 / 3,925 | 77.1 | 2 | fail; session ended after repair guard |
+| H2/Amabie | fail | 62,249 / 3,982 | 83.4 | 3 | fail; session ended after repair guard |
 | H2/plain | pass | 15,581 / 1,573 | 39.7 | 1 | not applicable |
 
 H1's source change passed the independent task oracle, but the added regression
@@ -177,12 +177,12 @@ called `fs.utimes` before creating `age1.txt`, so the project check failed with
 ENOENT. That is a broken check, not evidence of a product false block. H2's
 implementation still classified `invoice-2026.doc` as documents; its added
 assertion failed and the independent oracle also failed. This is a naturally
-observed source error; Canary did not certify it, and the repair did not succeed.
+observed source error; Amabie did not certify it, and the repair did not succeed.
 Neither ended session is labelled a passed checkpoint.
 
 The original baseline/input-control defect remains demonstrated by the installed
 replay and regression cases. These new sessions do not demonstrate successful
-agent repair of that defect: both Canary arms ended with failing project checks.
+agent repair of that defect: both Amabie arms ended with failing project checks.
 They show a working collector and honest failed statuses, not higher source
 correctness, fewer interventions or token savings. With only two pairs and this
 local tool harness, they also do not establish a general correctness disadvantage.

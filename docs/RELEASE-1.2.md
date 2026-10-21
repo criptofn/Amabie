@@ -1,6 +1,6 @@
-# Canary v1.2.0
+# Amabie v1.2.0
 
-**Released 2026-09-19.** Artifact: `canary-rn-cli-1.2.0.tgz` (+ `.sha256`) ·
+**Released 2026-09-19.** Artifact: `amabie-rn-cli-1.2.0.tgz` (+ `.sha256`) ·
 [GitHub release](https://github.com/criptofn/Canary/releases/tag/v1.2.0) ·
 Licence: Apache-2.0 (the licence text ships **inside** the tarball).
 
@@ -10,9 +10,9 @@ repository, and the evidence ledgers record what was observed rather than what w
 ## What v1.2 changes
 
 **1. The worker runs behind a measured boundary, and the model has no other way to act.**
-`canary provider model-transport` drives the real Claude CLI with native tools, skills, hooks,
+`amabie provider model-transport` drives the real Claude CLI with native tools, skills, hooks,
 project settings discovery and Chrome integration disabled, and advertises exactly one tool:
-`mcp__canary_confined__implement`. Every file edit, shell command and Git operation crosses a
+`mcp__amabie_confined__implement`. Every file edit, shell command and Git operation crosses a
 restricted, low-integrity AppContainer with zero capabilities. The worker receives no API
 credential and no broker secret, and there is **no fallback**: with the enrollment absent, the
 transport refuses before it contacts a model.
@@ -26,12 +26,12 @@ of the index the worker staged.
 
 **3. The worker cannot acquire proof authority.** The broker refuses (403) any proposal that
 creates, replaces, modifies or removes proof-binding declarations in `package.json` or
-`canary.project.json`, including Windows case aliases; the worker cannot write the authority
+`amabie.project.json`, including Windows case aliases; the worker cannot write the authority
 source or the sealed plan (EPERM), and it cannot invoke `bind`/`setup`/`seal`. The operator's
-`canary bind --reseal` is the only path that creates a binding, and it still is.
+`amabie bind --reseal` is the only path that creates a binding, and it still is.
 
 **4. A declared requirement that nothing measures fails before any worker starts.**
-`canary work` refuses (exit 2), opens no candidate, and launches no worker: measured **0 worker
+`amabie work` refuses (exit 2), opens no candidate, and launches no worker: measured **0 worker
 launches, 0 worker tokens**. The refusal is written with its own record schema and carries no
 delivery verdict, so it can never be read as completed work.
 
@@ -42,10 +42,10 @@ artifact, and the cleanroom probe installs the exact `.tgz` and asserts it.
 ## Token performance — what was measured, and what was not
 
 Same model (`qwen3.8-flash`), same fixtures, same starting bytes, same hidden oracle, and the
-CLI's own token accounting. Canary arm = the real confined transport with broker-owned review and
+CLI's own token accounting. Amabie arm = the real confined transport with broker-owned review and
 promotion; the Plain arm is this repository's own recorded arm.
 
-| task | Plain | Canary v1.2 | Δ | turns Plain → Canary | correctness |
+| task | Plain | Amabie v1.2 | Δ | turns Plain → Amabie | correctness |
 |---|---|---|---|---|---|
 | bound-requirements | 126,977 | 20,472 | **−83.9%** | 12 → 6 | 12/12 vs 12/12 |
 | bug-sum | 70,070 | 26,970 | **−61.5%** | 7 → 8 | 15/15 vs 15/15 |
@@ -55,7 +55,7 @@ promotion; the Plain arm is this repository's own recorded arm.
 **Read this honestly: v1.2 substantially reduces the workflow's overhead compared with the
 previous implementation, and it is still not cheaper than Plain overall.** Two of three fixtures
 used 61–84% fewer tokens; the stateful workload remained more expensive and dominates the sum.
-**Canary does not generally save tokens, and this release does not claim that it does.** The
+**Amabie does not generally save tokens, and this release does not claim that it does.** The
 mechanism behind the reduction is measurable: the worker's tool carries an ordered list of
 operations per call (4.67 operations per round trip on the stateful fixture, which fell from 45
 to 22 turns).
@@ -80,9 +80,9 @@ to 22 turns).
 ## Verify your download
 
 ```bash
-sha256sum -c canary-rn-cli-1.2.0.tgz.sha256      # or: certutil -hashfile <file> SHA256
-npm install -g ./canary-rn-cli-1.2.0.tgz
-canary --version                                  # canary 1.2.0
+sha256sum -c amabie-rn-cli-1.2.0.tgz.sha256      # or: certutil -hashfile <file> SHA256
+npm install -g ./amabie-rn-cli-1.2.0.tgz
+amabie --version                                  # amabie 1.2.0
 ```
 
 `v1.1.0` is untouched: it still resolves to `c559e55`.

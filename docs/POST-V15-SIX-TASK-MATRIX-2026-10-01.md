@@ -5,7 +5,7 @@
 This no-model follow-up measures the same installed product across all six
 recorded tasks: Hermes H1/H2/H3/H5, Refactron R1 and Schniedelsmp S1. It uses
 fresh, independent task copies at the recorded starting commits. Ordinary project
-checks and Canary setup/doctor are run before applying the known task solution.
+checks and Amabie setup/doctor are run before applying the known task solution.
 The historical solutions are operator-controlled inputs, not agent output in
 this experiment.
 
@@ -38,18 +38,18 @@ measurement executes edited project programs with LOCAL same-user rights; it
 does not demonstrate an OS security boundary or native agent-hook dispatch.
 
 Local evidence directory:
-`C:\Users\Johannes\AppData\Local\Temp\canary-installed-matrix-20261001`.
+`C:\Users\Johannes\AppData\Local\Temp\amabie-installed-matrix-20261001`.
 The instrument sources used for this run are also saved under `instruments/`.
 
 ## Results
 
-The first run completed all twelve plain/Canary preflights with zero nonzero
+The first run completed all twelve plain/Amabie preflights with zero nonzero
 commands and six READY results. H1's positive control passed and its negative
 control was blocked. H2 then exposed a historical fixture dependency: its
 regression code uses `fs`, `os` and `path`, but its saved task-only patch inherited
 those imports from an earlier H1 solution. On the independent original baseline,
 the source oracle passed but the project check crashed with `ReferenceError:
-fs is not defined`. Canary correctly recorded `fail` and blocked completion.
+fs is not defined`. Amabie correctly recorded `fail` and blocked completion.
 The run stopped there; the remaining controls were not executed. Its final
 summary is incomplete, not a passed six-task matrix.
 
@@ -61,9 +61,9 @@ setup/doctor record. Raw evidence is hashed separately from mutable project
 copies. No shipped product source or package changed in this follow-up.
 
 The corrected run uses new independent copies and a new evidence directory:
-`C:\Users\Johannes\AppData\Local\Temp\canary-installed-matrix-20261001-corrected`.
+`C:\Users\Johannes\AppData\Local\Temp\amabie-installed-matrix-20261001-corrected`.
 It exited 0 with **12/12 controls passed** in 19 minutes 17 seconds. All twelve
-plain/Canary preflights also passed; every Canary baseline was READY. Each of the
+plain/Amabie preflights also passed; every Amabie baseline was READY. Each of the
 six independent baseline oracles observed its target defect. Each positive
 oracle passed, and each negative oracle observed that same defect again.
 
@@ -83,7 +83,7 @@ records came from the real `checkpoint` command, not setup/doctor or a loop guar
 CLI and package hashes were unchanged at the end.
 
 Permanent raw evidence is under
-`C:\Users\Johannes\Desktop\canary\_canary-data\evidence\installed-six-task-20261001`:
+`C:\Users\Johannes\Desktop\amabie\_canary-data\evidence\installed-six-task-20261001`:
 `fixture-failure/` preserves 344 byte-verified files from the initial incomplete
 run; `corrected-final/` preserves 692 byte-verified files from the completed run.
 The exporter validates instrument snapshots and historical inputs against their

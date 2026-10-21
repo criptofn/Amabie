@@ -1,4 +1,4 @@
-# Canary: scoped verification and a usable repair loop (2026-09-30)
+# Amabie: scoped verification and a usable repair loop (2026-09-30)
 
 This change closes reproducible product defects after 1.5. It does not establish
 a new product rating or replace the outstanding native agent pilot.
@@ -35,7 +35,7 @@ they are not silently upgraded into trusted records.
 
 Both packages were installed offline with lifecycle scripts disabled into
 separate installation directories. The instrument selects an explicit path via
-`CANARY_TEST_CLI`; these comparison runs do not fall back to the development CLI.
+`AMABIE_TEST_CLI`; these comparison runs do not fall back to the development CLI.
 
 | Artifact | SHA-256 | Journey |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ both expectations held; it does not count the old product failure as a pass.
 For one installed CLI:
 
 ```powershell
-$env:CANARY_TEST_CLI = '<absolute installed dist/main.js path>'
+$env:AMABIE_TEST_CLI = '<absolute installed dist/main.js path>'
 node --test --test-name-pattern='scoped failures' apps/cli/dist/test/onboarding.test.js
 ```
 

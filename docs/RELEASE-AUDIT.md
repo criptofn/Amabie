@@ -24,7 +24,7 @@ What this repo does: Amabie runs declared project checks, compares changes with 
 
 ## First-run/documentation findings delegated to other release workstreams
 
-- README installs legacy Canary1.5, then invokes the unavailable `amabie` executable; source build does not implicitly make a global command. Current RC tarball/explicit entry instructions required.
+- README installs legacy Amabie1.5, then invokes the unavailable `amabie` executable; source build does not implicitly make a global command. Current RC tarball/explicit entry instructions required.
 - Go fixture hardcodes Windows `go.exe` on Linux and can skip real available coverage. Platform discovery and CI provisioning being fixed.
 - Compatibility text contradicts implemented explicit nested scopes.
 - Tarball omits first-run documentation; bundle cleanroom allowlist must add intended documentation without relaxing secret/runtime-file checks.
@@ -65,7 +65,7 @@ These cases were present and passed in the current Windows full-suite log. They 
 
 ## Open historical containment incident — not closed by this mission
 
-The public [Canary v1.5.0 release notes](https://github.com/criptofn/Canary/releases/tag/v1.5.0), `docs/AUDIT-KIT-1.5.md` section 7.0 and `docs/CLAIM-EVIDENCE-MATRIX-1.5.md` record one hosted Windows failure: the live-parent descendant test reported that the sweep killed PID 7564 but omitted expected PID 2144 after 35980 ms. Four later hosted greens and 14 local attempts did not explain it. The release explicitly kept its cause **OPEN / UNEXPLAINED / NOT FIXED**; the failure diagnostic did not run in successful repetitions.
+The public [Amabie v1.5.0 release notes](https://github.com/criptofn/Canary/releases/tag/v1.5.0), `docs/AUDIT-KIT-1.5.md` section 7.0 and `docs/CLAIM-EVIDENCE-MATRIX-1.5.md` record one hosted Windows failure: the live-parent descendant test reported that the sweep killed PID 7564 but omitted expected PID 2144 after 35980 ms. Four later hosted greens and 14 local attempts did not explain it. The release explicitly kept its cause **OPEN / UNEXPLAINED / NOT FIXED**; the failure diagnostic did not run in successful repetitions.
 
 The reviewed baseline at the time of this historical incident audit contained later, relevant product changes:
 

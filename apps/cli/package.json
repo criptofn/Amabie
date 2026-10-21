@@ -6,8 +6,7 @@
   "type": "module",
   "main": "./dist/src/main.js",
   "bin": {
-    "amabie": "./dist/src/main.js",
-    "canary": "./dist/src/main.js"
+    "amabie": "./dist/src/main.js"
   },
   "dependencies": {
     "@amabie/support": "*",

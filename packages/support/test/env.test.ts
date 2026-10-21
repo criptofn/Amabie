@@ -21,7 +21,7 @@ import { runCommand, sanitizedEnv, sanitizedEnvKeys, type WorkspaceLayout } from
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
 
-const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-env-'));
+const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-env-'));
 after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
 
 function workspace(): WorkspaceLayout {
@@ -76,7 +76,7 @@ describe('audit F6 — child env observation: declared == observed', () => {
         assert.ok(k in reported.picked, `loader must have injected ${k} (that is the whole point of neutralizing it)`);
         assert.equal(reported.picked[k], declared[k], `${k}: child saw the REAL value, neutralization failed`);
       }
-      assert.equal(reported.picked.USERNAME, 'canary');
+      assert.equal(reported.picked.USERNAME, 'amabie');
       assert.ok(reported.picked.HOMEPATH!.includes('isolated-home'), reported.picked.HOMEPATH);
     } else {
       for (const k of ['USERNAME', 'USERDOMAIN', 'LOGONSERVER', 'HOMEDRIVE', 'HOMEPATH', 'SYSTEMDRIVE']) {

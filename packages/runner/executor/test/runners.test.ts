@@ -48,7 +48,7 @@ describe('runner registry — internal consistency', () => {
   it('the STRONG set is exactly {mocha, node-test, pytest, unittest} — a claim that must be earned, not typed', () => {
     const strong = RUNNER_ADAPTERS.filter((a) => a.capability === 'STRONG').map((a) => a.id).sort();
     assert.deepEqual(strong, ['mocha', 'node-test', 'pytest', 'unittest'],
-      'adding or removing a STRONG runner requires a Amabie-owned channel, an authority for it, and an executed probe; '
+      'adding or removing a STRONG runner requires an Amabie-owned channel, an authority for it, and an executed probe; '
       + 'update this assertion in the same change that brings them');
   });
 

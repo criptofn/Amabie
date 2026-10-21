@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-r2-stateful-replay-plain-1",
   "task": "stateful-replay",
   "arm": "plain",
@@ -34,7 +34,7 @@
     "what": "State transitions spanning cache, batch mutation and replay; no implementation paths given in task."
   },
   "startedAt": "2026-09-24T04:36:01.913Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stateful-replay-plain-HR1S3e",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stateful-replay-plain-HR1S3e",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -56,9 +56,9 @@
     ],
     "mcpToolsAdvertised": false
   },
-  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in canary.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
+  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in amabie.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -88,7 +88,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. All three suites pass: `node run-tests.js` (1 passing), the registered contract check `node checks/contract.cjs` (passed), and the new extended checks (passed). I left Canary itself unconnected (`canary setup` wasn't part of the task and would add hooks) and didn't touch `checks/contract.cjs` or `canary.project.json`, so the registered proof hash stays valid.\n\n## What was broken and what I changed\n\n**`src/storage.js`** — `key()` was `id => id`, dropping the tenant entirely, so `('a','same')` and `('b','same')` collided. Replaced with a length-prefixed composite `` `${tenant.length}:${tenant}|${id.length}:${id}` ``, which is injective even when tenant/id contain `:`/`|` or look like each other's delimiters.\n\n**`src/replay.js`** — replay filtered to `op:'put'` only, so `open(exportJournal())` silently resurrected deleted pairs. Now applies every event in order; `apply()` already handled both ops.\n\n**`src/api.js`**\n- The read cache was never invalidated — cached hits *and* cached misses went stale after any mutation. `apply()` now does `cache.delete(k)` for the affected key, so all mutation paths (put, remove, batch, replay) keep reads fresh, including after journal replay.\n- `batch` ignored `event.op` (always `rows.set`, so batch deletes were no-ops) and bypassed `apply`. It now routes each event through `mutate({...e})`, giving in-order application, journal entries, and cache invalidation.\n- `journal.push(...history.map(...))` replaced with a per-event loop (avoids spread's argument-count limit on long histories); detach-copy semantics unchanged.\n- `exportJournal` already returned detached copies and is unchanged.\n\n**`checks/extended-contract.cjs`** (new) — covers contract clauses the smoke check misses: delimiter/punctuation key collisions, cached-miss freshness via put/batch, cached-hit staleness via remove/batch-delete, batch call-order and last-write-wins, exportJournal detachment (tampering with the array and its objects leaks neither into state nor later exports), `open(exportJournal())` including deletions, history preserved for subsequent exports/mutations, and repeated-replay equivalence."
+    "finalText": "Everything works now. All three suites pass: `node run-tests.js` (1 passing), the registered contract check `node checks/contract.cjs` (passed), and the new extended checks (passed). I left Amabie itself unconnected (`amabie setup` wasn't part of the task and would add hooks) and didn't touch `checks/contract.cjs` or `amabie.project.json`, so the registered proof hash stays valid.\n\n## What was broken and what I changed\n\n**`src/storage.js`** — `key()` was `id => id`, dropping the tenant entirely, so `('a','same')` and `('b','same')` collided. Replaced with a length-prefixed composite `` `${tenant.length}:${tenant}|${id.length}:${id}` ``, which is injective even when tenant/id contain `:`/`|` or look like each other's delimiters.\n\n**`src/replay.js`** — replay filtered to `op:'put'` only, so `open(exportJournal())` silently resurrected deleted pairs. Now applies every event in order; `apply()` already handled both ops.\n\n**`src/api.js`**\n- The read cache was never invalidated — cached hits *and* cached misses went stale after any mutation. `apply()` now does `cache.delete(k)` for the affected key, so all mutation paths (put, remove, batch, replay) keep reads fresh, including after journal replay.\n- `batch` ignored `event.op` (always `rows.set`, so batch deletes were no-ops) and bypassed `apply`. It now routes each event through `mutate({...e})`, giving in-order application, journal entries, and cache invalidation.\n- `journal.push(...history.map(...))` replaced with a per-event loop (avoids spread's argument-count limit on long histories); detach-copy semantics unchanged.\n- `exportJournal` already returned detached copies and is unchanged.\n\n**`checks/extended-contract.cjs`** (new) — covers contract clauses the smoke check misses: delimiter/punctuation key collisions, cached-miss freshness via put/batch, cached-hit staleness via remove/batch-delete, batch call-order and last-write-wins, exportJournal detachment (tampering with the array and its objects leaks neither into state nor later exports), `open(exportJournal())` including deletions, history preserved for subsequent exports/mutations, and repeated-replay equivalence."
   },
   "visible": {
     "exitCode": 0,
@@ -161,20 +161,20 @@
     "bytes": {
       "toolResultTotal": 6231,
       "largestToolResult": 1089,
-      "canaryVisible": 433,
+      "amabieVisible": 433,
       "hookOutput": 0
     },
     "commands": {
       "total": 4,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stateful-replay-plain-HR1S3e\\project\" && canary status 2>&1 | head -30"
+      "amabieCommands": [
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stateful-replay-plain-HR1S3e\\project\" && amabie status 2>&1 | head -30"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

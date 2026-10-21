@@ -30,7 +30,7 @@ import { Recorder, pythonRunnerIdentity, detectPythonRunner, observerNonce } fro
 import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
 import { classify, type RoundFact } from '@amabie/classification';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-python-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-python-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function whichPython(): string | null {
@@ -167,7 +167,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
     assert.equal(plan.injected, false, 'a digest that does not match the interpreter on disk must not authorize');
     assert.equal(plan.absentKind, 'runner-identity-unpinned');
     assert.equal(plan.observedRunnerIdentitySha256, identity.identitySha256,
-      '"what bytes were there" is a Amabie-derived fact regardless of trust');
+      '"what bytes were there" is an Amabie-derived fact regardless of trust');
   });
 
   it('5. printed stdout cannot mint observation counts', async () => {

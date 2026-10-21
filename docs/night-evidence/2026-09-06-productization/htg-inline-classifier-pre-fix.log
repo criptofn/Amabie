@@ -55,11 +55,11 @@ SKIP  L1-scan  scanInlineInterpreter export (pre-fix engine)
 --- LAYER 2: live PreToolUse hook (wrapper -> engine) ---
 FAIL  L2-routine  no prompt: bd create --title="Retire inline probes" --description="Replace node -  <<ask>>
 FAIL  L2-routine  no prompt: bd create --title="X" --description="ban node -e; python -c; bash -c;   <<ask>>
-PASS  L2-routine  no prompt: bd close canary-reliability-network-p8b --reason="structural classifie
+PASS  L2-routine  no prompt: bd close amabie-reliability-network-p8b --reason="structural classifie
 PASS  L2-routine  no prompt: bd list --status=open
 PASS  L2-routine  no prompt: bd ready
 PASS  L2-routine  no prompt: bd stats
-PASS  L2-routine  no prompt: bd show canary-reliability-network-a0g
+PASS  L2-routine  no prompt: bd show amabie-reliability-network-a0g
 PASS  L2-routine  no prompt: bd search classifier
 PASS  L2-routine  no prompt: git status --porcelain
 PASS  L2-routine  no prompt: git status

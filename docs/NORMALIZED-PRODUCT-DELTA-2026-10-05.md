@@ -5,13 +5,13 @@
 Four sessions used the frozen source `7ecf465`, installed entry SHA-256
 `10c482d22ac12c6c951b859d1dedf628c932be1251ebf21488a61528f1237805`.
 Capture: `legacy-build-freshness-20261005-native-h1h2-job/capture`, under
-`C:/Users/Johannes/Desktop/canary/_canary-data/evidence`.
+`C:/Users/Johannes/Desktop/amabie/_canary-data/evidence`.
 
 | Session | Independent correctness | Normal completion | Native tokens | Seconds |
 | --- | --- | --- | ---: | ---: |
 | H1/plain | pass | yes | 31,795 | 39.761 |
-| H1/Canary | pass | no: turn limit | 1,395,606 | 398.144 |
-| H2/Canary | pass | yes: real Stop pass | 550,676 | 214.924 |
+| H1/Amabie | pass | no: turn limit | 1,395,606 | 398.144 |
+| H2/Amabie | pass | yes: real Stop pass | 550,676 | 214.924 |
 | H2/plain | pass | yes | 178,070 | 52.595 |
 
 All four captures have reconciled native accounting, unchanged protected
@@ -30,7 +30,7 @@ status` still reported that source as modified, while `git diff HEAD` reported
 only the test change. Git's blob IDs for raw and normalized working source,
 index and HEAD all matched `eee72aa66d2ffb8d9cb53627bbaafdd3a9d59a12`.
 
-Canary used the status-only production path to select HEAD as an additional
+Amabie used the status-only production path to select HEAD as an additional
 comparison base. That commit already contained the fix, so the tests passed
 there and correct, covered work was unnecessarily blocked. The mandatory sealed
 baseline comparison had already discriminated the fix; otherwise the additional
@@ -74,7 +74,7 @@ signal and no execution error. The frozen archive hash is
 installed entry hash is
 `1cb802b88186ad04fd15cde857d5e6cbcdf1ead28353001af2727af88c0b730f`.
 
-The existing regression now accepts an explicit absolute `CANARY_TEST_CLI`
+The existing regression now accepts an explicit absolute `AMABIE_TEST_CLI`
 (test-only commit `dd74819`); malformed selection is refused rather than falling
 back. It reproduces exit 2 instead of zero against the older installed entry
 `10c482d2...7805`, then passes against the newly installed entry, including real

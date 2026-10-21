@@ -2,7 +2,7 @@
  * Post-GLM panel K — the pin table must never drift from the bytes it names.
  *
  * KNOWN_RUNNER_RELEASES is the ONLY authority that says "these runner bytes
- * may receive Amabie's observer". The canary-double entry names files that
+ * may receive Amabie's observer". The amabie-double entry names files that
  * LIVE IN THIS REPO, so the equality table==disk is checkable here on every
  * platform: editing the double without re-pinning (or re-pinning a hash no
  * checkout produces) fails this test, not a confusing mid-e2e ABSENT.
@@ -21,12 +21,12 @@ import { KNOWN_RUNNER_RELEASES, treeSha256 } from '@amabie/support';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..'); // dist/test -> dist -> cli -> apps -> repo root
 
-describe('KNOWN_RUNNER_RELEASES — table == disk (canary-double)', () => {
+describe('KNOWN_RUNNER_RELEASES — table == disk (amabie-double)', () => {
   it('the authored double retains its reviewed canonical LF bytes', () => {
     const reviewed = {
       'bin/mocha.js': '87622a3a483d0360f391251f9eb4d6d469adf0890bdf769046a671db38c94b6c',
-      'index.js': '2549836fb7b03fecb0f563c54aa54fe8c4f949e3287b2fb9242d416acf72a916',
-      'package.json': '4771d10974f1083ac90c29276b312f23eea6b61e5ae7f6af7394c61fd4d0452c',
+      'index.js': '025d44e7243d603e962e52a8ec1b6e7fccab7653e94bda7a3294be758abdafe6',
+      'package.json': 'eb1601a50a49692486e6f57916140fc0ba3557057e4b84f72758aca6465f60f9',
     };
     for (const [file, digest] of Object.entries(reviewed)) {
       const bytes = fs.readFileSync(path.join(REPO, 'apps', 'cli', 'test', 'fixtures', 'mocha-double', file));
@@ -37,8 +37,8 @@ describe('KNOWN_RUNNER_RELEASES — table == disk (canary-double)', () => {
   });
 
   it('the pinned double hash equals the treeSha256 of the repo fixture bytes', () => {
-    const double = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'canary-double');
-    assert.ok(double, 'the canary-double pin must exist (offline e2e has no other injectable runner)');
+    const double = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'amabie-double');
+    assert.ok(double, 'the amabie-double pin must exist (offline e2e has no other injectable runner)');
     const onDisk = treeSha256(path.join(REPO, 'apps', 'cli', 'test', 'fixtures', 'mocha-double'));
     assert.equal(onDisk, double.treeSha256,
       'double bytes changed without re-pinning (or eol normalization struck — see .gitattributes): the pin MUST be the bytes that exist');

@@ -83,7 +83,7 @@ describe('1.1 P0 trust-store wiring', () => {
     assert.equal(amabie(['setup', '--yes'], root).status, 0);
     // act as the trusted sealer re-sealing elsewhere with different bytes:
     // validly signed (so not 'forged'), yet no longer matching this config.
-    sealRecord(store, { projectId: projectIdForRoot(root), kind: 'plan-seal', canaryVersion: 'test', payload: { planDigest: 'a'.repeat(64), scriptDigests: {} } });
+    sealRecord(store, { projectId: projectIdForRoot(root), kind: 'plan-seal', amabieVersion: 'test', payload: { planDigest: 'a'.repeat(64), scriptDigests: {} } });
     const s = amabie(['status', '--verbose'], root);
     assert.equal(s.status, 0, 'report-only: sealing divergence never flips the v1.0 verdict');
     assert.match(s.stdout, /sealed copy: MISMATCH/);

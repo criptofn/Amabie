@@ -7,7 +7,7 @@ mit Exit 1, ohne Signal oder Startfehler. Der tatsächliche Reporter meldete
 **69 PASS, 4 SKIP, 2 FAIL**; 35 verbleibende Schritte wurden nach dem nicht grünen
 Dist-Mutationsschritt ausdrücklich nicht ausgeführt. Kein vollständiger PASS.
 
-Rohbelege: `C:/Users/Johannes/Desktop/canary/_canary-data/evidence/proof-freshness-gate-retry-20261003-job/capture/`.
+Rohbelege: `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/proof-freshness-gate-retry-20261003-job/capture/`.
 `stdout.log` SHA-256: `6a737602e8a35d0d91b192444659fd9ec862225a3cf4daf0a5d32985426bfbbe`.
 `result.json` hält Befehl, Zeitstempel, Exit, Signal und Fehler fest.
 

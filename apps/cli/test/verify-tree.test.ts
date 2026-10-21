@@ -48,10 +48,10 @@ const reSeal = (b: EvidenceBundle): EvidenceBundle => {
   return b;
 };
 
-// The canary-double pin: synthetic trustful bundles in section 3 must name a
+// The amabie-double pin: synthetic trustful bundles in section 3 must name a
 // REAL pinned runner identity (panel H/AM-1: strong labels without pinned
 // runner bytes die at validateBundle, exactly as they should).
-const DOUBLE_PIN = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'canary-double')!;
+const DOUBLE_PIN = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'amabie-double')!;
 const validObs = (passing: number, failing: number, ids: readonly string[]): Record<string, unknown> => ({
   status: 'VALID',
   observedFailingIdentities: [...ids],
@@ -502,7 +502,7 @@ describe('validateBundle — round-3 B6 snapshot/anomaly/version gates', () => {
       canonicalLog: `tree-${arm}.treels.canonical.json`, canonicalSha256: H,
     });
     const b: Record<string, unknown> = {
-      schemaVersion: 1, runId: 'r', createdAt: '2026-08-31T00:00:00Z', canaryVersion: '0.1.0', experimentId: 'e',
+      schemaVersion: 1, runId: 'r', createdAt: '2026-08-31T00:00:00Z', amabieVersion: '0.1.0', experimentId: 'e',
       dependency: { package: 'widget', baselineVersion: '1.0.0', candidateVersion: '2.0.0' },
       downstream: { repositoryUrl: 'https://github.com/s/d', commitSha: 'b'.repeat(40), fetchMethod: 'tarball-by-sha', tarballSha256: H },
       environment: { nodeVersion: 'v22', npmVersion: '11', packageManagerUsed: 'npm', platform: 'win32', arch: 'x64', toolchainOverrides: {} },

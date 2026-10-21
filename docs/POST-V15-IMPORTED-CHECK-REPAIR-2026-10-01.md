@@ -1,8 +1,8 @@
-# Canary: importierte Regressionstests werden vergleichbar
+# Amabie: importierte Regressionstests werden vergleichbar
 
 ## Konkreter Produktfortschritt
 
-Der archivierte H3-Agentenlauf lieferte eine korrekte Implementierung und einen schwachen Test in `scripts/matrixNormCore-regression-test.js`. Nach dem Einbinden dieses Tests und dem Ergänzen ausreichender Assertions blieb Canary auch bei korrekter Arbeit `unproven`: Der Vergleich kopierte die neue `*-test.js`-Datei nicht in den Ausgangsstand. Die dort fehlende Datei machte den Vergleich unbrauchbar. Das war eine unnötige Produktblockade.
+Der archivierte H3-Agentenlauf lieferte eine korrekte Implementierung und einen schwachen Test in `scripts/matrixNormCore-regression-test.js`. Nach dem Einbinden dieses Tests und dem Ergänzen ausreichender Assertions blieb Amabie auch bei korrekter Arbeit `unproven`: Der Vergleich kopierte die neue `*-test.js`-Datei nicht in den Ausgangsstand. Die dort fehlende Datei machte den Vergleich unbrauchbar. Das war eine unnötige Produktblockade.
 
 Zusätzlich meldete Git bei neuen, noch nicht eingecheckten Dateien nur `scripts/`. Auch ein ansonsten unterstützter Test darin konnte deshalb fehlen. Dieser zweite Fehler wurde bei der gezielten Regression sichtbar und ebenfalls korrigiert.
 
@@ -33,7 +33,7 @@ Finales Paket SHA-256: `806ccdf0b5785e072d667dfa85f38f8d1a80f679b5834d4633a5b8b2
 
 Der Befund wurde anschließend auch **direkt gegen das veröffentlichte GitHub-Paket** bestätigt: Paket `cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386`, CLI `3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2`. Der ausreichende Testzustand bleibt dort `unproven` und blockiert; derselbe Probe mit dem finalen Paket besteht alle vier Zustände. Beide Läufe verwenden denselben aktualisierten Instrumentstand. Für das Release wird ausschließlich der neue MCP-Startkontext optional behandelt und dessen Fehlen aufgezeichnet: Das Release hatte diese Anzeige noch nicht. Keine Erwartung an Status, tatsächliche Tests oder die Blockentscheidung wird gelockert. Dieses erwartete rote Gesamtergebnis bleibt als unvollständiger Versuch mit dem beobachteten dritten Zustand erhalten; der vierte Zustand wurde dort nicht ausgeführt.
 
-Rohbelege unter `C:/Users/Johannes/Desktop/canary/_canary-data/evidence/`:
+Rohbelege unter `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/`:
 
 - `dash-check-repair-20261001-H3-before`: derselbe finale Probe scheitert erwartungsgemäß an der unnötigen Blockade; beobachteter Checkpoint und Vergleichsausgaben sind erhalten.
 - `imported-check-final-20261001-H3`: vier Kontrollzustände einschließlich unveränderter Konfiguration, Archiv- und Ergebnisprüfsummen und erhaltener Produktausgaben.
@@ -48,9 +48,9 @@ Der erste H3-Kontrolllauf der Korrektur (`dash-check-repair-20261001-H3`) bestan
 
 Nach diesem kontrollierten Nachweis wurde ein neues autonomes H3-Vergleichspaar
 mit genau dem finalen Paket ausgeführt. Beide Lösungen bestanden das externe
-Oracle; Canary endete regulär mit tatsächlichem Stop-`pass` und beibehaltener
-Agententest-Kennzeichnung. Die Sitzung mit Canary blieb wesentlich aufwendiger
-als die ohne Canary. [Rohbelege, Vergleich und Grenzen](POST-V15-IMPORTED-CHECK-NATIVE-2026-10-01.md).
+Oracle; Amabie endete regulär mit tatsächlichem Stop-`pass` und beibehaltener
+Agententest-Kennzeichnung. Die Sitzung mit Amabie blieb wesentlich aufwendiger
+als die ohne Amabie. [Rohbelege, Vergleich und Grenzen](POST-V15-IMPORTED-CHECK-NATIVE-2026-10-01.md).
 
 ### Auswertung der vorhandenen Windows-Diagnosen
 
@@ -65,7 +65,7 @@ Spawnfehler, leere stderr. Der fehlgeschlagene Mechanismustest meldet
 Beide waren erst bei der anschließenden Diagnose nicht mehr vorhanden. Die
 Interpretation, das Kind sei *vor* dem Sweep beendet worden, ist aus dieser
 nachträglichen Momentaufnahme nicht beweisbar. Sie lässt sich ebenso wenig als
-Nachweis einer erfolgreichen Kindbeendigung durch Canary verwenden.
+Nachweis einer erfolgreichen Kindbeendigung durch Amabie verwenden.
 
 Alle zwölf Traces des damaligen Standes berichten den Eingabe-Elternprozess
 selbst als beendet; im ersten Trace etwa `killed=[69320,69932]`. Im damaligen

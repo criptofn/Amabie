@@ -10,7 +10,7 @@ Exactly one normal plain trial and one real workflow trial, default configured
 agent/model and existing harness unchanged, 12 minute ceiling per arm. No reruns
 or fixture changes after seeing agent results. Known-good and incomplete-replay
 solutions validate the oracle before either trial. Manual mutations are fixture
-validation only, never agent failures or evidence of a Canary advantage.
+validation only, never agent failures or evidence of an Amabie advantage.
 
 Primary outcome: claimed DONE with hidden failure; secondary: real workflow
 refusal/promotion and hidden correctness. Infrastructure failures are not false

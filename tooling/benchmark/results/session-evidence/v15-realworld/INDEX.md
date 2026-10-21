@@ -3,16 +3,16 @@
 Everything under this directory was produced by commands run on this host on 2026-09-24. The
 report that reads it is [`docs/REAL-WORLD-EVIDENCE-1.5.md`](../../../../../docs/REAL-WORLD-EVIDENCE-1.5.md).
 
-CLI under measurement: `apps/cli/dist/src/main.js`, used **as-is** (no build was run in the Canary
-repo during this workstream). `canary --help` self-reports **canary 1.4.0**.
+CLI under measurement: `apps/cli/dist/src/main.js`, used **as-is** (no build was run in the Amabie
+repo during this workstream). `amabie --help` self-reports **amabie 1.4.0**.
 
 | Path | What it is |
 |---|---|
 | `ENVIRONMENT.md` | host toolchain, every remediation performed, and the measured step environment |
 | `tasks/` | the six task texts handed to the agent, verbatim |
-| `repos/<name>-result.json`, `repos/<name>-agents.txt` | `canary result --json` and `canary agents` for each wired copy |
+| `repos/<name>-result.json`, `repos/<name>-agents.txt` | `amabie result --json` and `amabie agents` for each wired copy |
 | `runs/<id>/` | one directory per agent run: raw NDJSON stream, ledger, `record.json`, diffs, git state |
-| `runs/<id>/checkpoint-manual.*` | present **only** when the Stop hook did not fire and `canary checkpoint` was driven by hand with the real hook JSON |
+| `runs/<id>/checkpoint-manual.*` | present **only** when the Stop hook did not fire and `amabie checkpoint` was driven by hand with the real hook JSON |
 | `falsedone-INDUCED-schniedelsmp/` | the **INDUCED** false-done demonstration — read `LABEL.txt` first |
 
 ## Runs
@@ -28,7 +28,7 @@ repo during this workstream). `canary --help` self-reports **canary 1.4.0**.
 | `H3-hermes-quantize` | Hermes_Agent | yes | `unproven` (`regression-evidence`) | 20 | 290.7 s |
 | `H5-hermes-simulation-cases` | Hermes_Agent | yes | `unproven` (`regression-evidence`) | 35 | 776.9 s |
 | `S1-schniedelsmp-idlookup` | schniedelsmp.net | yes | `pass` (after the worker re-sealed its own plan and baseline) | 48 | 880.1 s |
-| `R1-refactron-pytest-ids` | refactron | **two attempts in one directory — see below** | attempt 2 (the only surviving `record.json`): hook fired, `fail [tests]`; no completion attempt was reached. Attempt 1 (hook did not fire) survives only as its leftover manual checkpoint, a `block` on a **Canary-environment** failure | attempt 2: none (`no result event`) | attempt 2: 1 500.1 s (its `record.json`); attempt 1: ~169 s — **the artifact that carried that number (attempt 1's own `ledger.json`) is not in this bundle** |
+| `R1-refactron-pytest-ids` | refactron | **two attempts in one directory — see below** | attempt 2 (the only surviving `record.json`): hook fired, `fail [tests]`; no completion attempt was reached. Attempt 1 (hook did not fire) survives only as its leftover manual checkpoint, a `block` on a **Amabie-environment** failure | attempt 2: none (`no result event`) | attempt 2: 1 500.1 s (its `record.json`); attempt 1: ~169 s — **the artifact that carried that number (attempt 1's own `ledger.json`) is not in this bundle** |
 
 `record.json` in each run directory carries the machine-readable form of all of it, including
 `hookFiredDuringRun`, `checkpointDrivenManually`, `seenByModel` (whether the model was actually
@@ -60,16 +60,16 @@ node tooling/probes/v15-attempt-provenance.mjs --audit tooling/benchmark/results
 ```
 
 ```
-AUDIT C:\Users\Johannes\Desktop\canary\tooling\benchmark\results\session-evidence\v15-realworld\runs\R1-refactron-pytest-ids
-RECORDED ATTEMPT: label=R1 arm=canary wallSeconds=1500.1 window=2026-09-24T05:02:45.854Z..2026-09-24T05:27:47.384Z
+AUDIT C:\Users\Johannes\Desktop\amabie\tooling\benchmark\results\session-evidence\v15-realworld\runs\R1-refactron-pytest-ids
+RECORDED ATTEMPT: label=R1 arm=amabie wallSeconds=1500.1 window=2026-09-24T05:02:45.854Z..2026-09-24T05:27:47.384Z
 RECORDED FLAGS: hookFiredDuringRun=true checkpointDrivenManually=false timedOut=true sawResultEvent=false
   THIS  agent.diff  mtime=2026-09-24T05:27:47.384Z
   THIS  agent.stderr.raw.txt  mtime=2026-09-24T05:02:46.975Z
   THIS  agent.stderr.txt  mtime=2026-09-24T05:27:46.455Z
   THIS  agent.stream.jsonl  mtime=2026-09-24T05:27:46.454Z
   THIS  agent.stream.raw.txt  mtime=2026-09-24T05:27:17.181Z
-  DIR   canary-doctor-evidence
-  THIS  canary-doctor-on-final-tree.txt  mtime=2026-09-24T05:28:52.139Z
+  DIR   amabie-doctor-evidence
+  THIS  amabie-doctor-on-final-tree.txt  mtime=2026-09-24T05:28:52.139Z
   OTHER checkpoint-manual.stderr.txt  mtime=2026-09-24T04:57:38.425Z  → predates the recorded attempt by 307s: it belongs to an EARLIER attempt
   OTHER checkpoint-manual.stdout.txt  mtime=2026-09-24T04:57:38.423Z  → predates the recorded attempt by 307s: it belongs to an EARLIER attempt
   THIS  git-after.json  mtime=2026-09-24T05:27:47.384Z
@@ -86,7 +86,7 @@ Artifact by artifact:
 | Artifact | Attempt it belongs to | How that is established |
 |---|---|---|
 | `record.json`, `ledger.json`, `agent.stream.raw.txt`, `agent.stream.jsonl`, `agent.stderr.raw.txt`, `agent.stderr.txt`, `agent.diff`, `git-before.json`, `git-after.json` | **attempt 2** — started `2026-09-24T05:02:45.854Z`, `wallSeconds: 1500.1`, `timedOut: true`, `hookFiredDuringRun: true`, `checkpointDrivenManually: false`, `sawResultEvent: false`, `assistantEvents: 139` | each file's mtime falls inside attempt 2's own window as its `record.json` states it, and each is the last write of its kind (attempt 2 truncated attempt 1's copies) |
-| `canary-doctor-on-final-tree.txt`, `canary-doctor-evidence/**` | attempt 2's **final tree**, after the run (05:28:51–05:28:52Z) | post-run doctor invocation; not part of either attempt's stream |
+| `amabie-doctor-on-final-tree.txt`, `amabie-doctor-evidence/**` | attempt 2's **final tree**, after the run (05:28:51–05:28:52Z) | post-run doctor invocation; not part of either attempt's stream |
 | `hook-input.json` (04:57:09.467Z), `checkpoint-manual.stdout.txt`, `checkpoint-manual.stderr.txt` (04:57:38.423Z/425Z) | **attempt 1** — the earlier, ~169 s attempt, which was driven manually | the three files predate attempt 2's `startedAt` by 307–336 s; attempt 2 never wrote them (`checkpointDrivenManually: false`), so they were left behind by the earlier attempt |
 
 Three consequences a reader must not read past, all of them measured above:
@@ -108,10 +108,10 @@ Three consequences a reader must not read past, all of them measured above:
 `wallSeconds`/`numTurns`/`usage` numbers that lived in its ledger. Attempt 2 opened the same
 directory and truncated every one of those files, so no copy exists here and **no amount of reading
 this bundle will produce attempt 1's timeline**. What survives of attempt 1 is exactly the three
-files listed above, plus what they say: `canary checkpoint` was driven by hand at
+files listed above, plus what they say: `amabie checkpoint` was driven by hand at
 `2026-09-24T04:57:37.949Z` and returned
-`{"decision":"block","reason":"Canary verification failed: tests (npm run test, exit 1)…"}` naming
-`…/refactron/.canary/evidence/2026-09-24T04-57-37-949Z-checkpoint/tests.log` in the measured
+`{"decision":"block","reason":"Amabie verification failed: tests (npm run test, exit 1)…"}` naming
+`…/refactron/.amabie/evidence/2026-09-24T04-57-37-949Z-checkpoint/tests.log` in the measured
 repository copy — an **environment** failure (`python3`/`sh` cannot be seen by the sealed step,
 §4 of the report), not the agent's work. The `~169 s` figure quoted for attempt 1 is a session note;
 its own artifact was attempt 1's `ledger.json`, which attempt 2 overwrote. **Nothing here is
@@ -125,7 +125,7 @@ one). The defect itself is regression-tested:
 evidence is refused; `--new-attempt` opens a second directory; the first attempt's bytes stay
 byte-identical; each attempt keeps its own identity and `SHA256SUMS`).
 
-## Probes (in the Canary repo, not in this bundle)
+## Probes (in the Amabie repo, not in this bundle)
 
 | Probe | What it measures |
 |---|---|

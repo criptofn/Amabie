@@ -451,7 +451,7 @@ export const nodeAdapter: ProjectAdapter = {
   },
   describe() { return 'Node-style project (checks declared as package.json scripts)'; },
   seal(plan, source, bindings) {
-    const declaration = (source.amabie ?? source.canary) as { paths?: unknown } | undefined;
+    const declaration = (source.amabie ?? source.amabie) as { paths?: unknown } | undefined;
     return sealPlanAuthority(plan, (source.scripts ?? {}) as Record<string, unknown>, bindings, declaration?.paths);
   },
   drift(root, cfg, source) { return planAuthorityDrift(root, cfg, source); },
@@ -600,8 +600,6 @@ export interface CompositePlan {
  */
 export const SCOPES_FILE = 'amabie.scopes.json';
 export const SCOPES_SCHEMA = 'amabie-scopes/1';
-const LEGACY_SCOPES_FILE = 'canary.scopes.json';
-const LEGACY_SCOPES_SCHEMA = 'canary-scopes/1';
 const MAX_SCOPE_PATH = 120;
 
 export interface DeclaredScope { path: string; ecosystem: string }
@@ -634,14 +632,9 @@ function scopePathProblem(p: unknown): string | null {
  * an unhonourable declaration must stop setup, not be ignored.
  */
 export function readScopeDeclaration(root: string): ScopeDeclarationRead {
-  const currentFile = path.join(root, SCOPES_FILE);
-  const legacyFile = path.join(root, LEGACY_SCOPES_FILE);
-  if (fs.existsSync(currentFile) && fs.existsSync(legacyFile)) {
-    return { scopes: [], problems: [`both ${SCOPES_FILE} and ${LEGACY_SCOPES_FILE} exist; merge them and remove the legacy file`] };
-  }
-  const file = fs.existsSync(currentFile) ? currentFile : legacyFile;
-  const fileName = file === currentFile ? SCOPES_FILE : LEGACY_SCOPES_FILE;
-  const schema = file === currentFile ? SCOPES_SCHEMA : LEGACY_SCOPES_SCHEMA;
+  const file = path.join(root, SCOPES_FILE);
+  const fileName = SCOPES_FILE;
+  const schema = SCOPES_SCHEMA;
   if (!fs.existsSync(file)) return { scopes: [], problems: [] };
   const raw = parseJsonOrNull(file) as { schema?: unknown; scopes?: unknown } | null;
   if (raw === null) return { scopes: [], problems: [`${fileName} is not valid JSON`] };

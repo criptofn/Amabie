@@ -74,18 +74,6 @@ describe('no declaration — root only, and subdirectories never add authority',
     assert.equal(composePlan(root).scopeSource, 'root-only');
   });
 
-  it('reads the legacy Canary scope file and refuses two declarations', () => {
-    const legacy = dir('legacy-scopes', { ...POLYGLOT,
-      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'web', ecosystem: 'node' }] }),
-    });
-    assert.deepEqual(where(legacy), ['web:node']);
-
-    const both = dir('both-scope-files', { ...POLYGLOT,
-      [SCOPES_FILE]: decl([{ path: 'web', ecosystem: 'node' }]),
-      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'backend', ecosystem: 'python' }] }),
-    });
-    assert.match(composePlan(both).problems.join(' '), /both amabie\.scopes\.json and canary\.scopes\.json exist/);
-  });
 });
 
 describe('a declaration names exactly the scopes that count', () => {

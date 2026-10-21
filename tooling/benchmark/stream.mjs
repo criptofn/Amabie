@@ -1,18 +1,18 @@
 /**
  * WHERE DID THE TOKENS GO? — the parser behind the token ledger.
  *
- * The owner's requirement is NEGATIVE overhead: an agent working with Canary should spend FEWER
- * model tokens than the same agent without it, because Canary does the verification instead of
+ * The owner's requirement is NEGATIVE overhead: an agent working with Amabie should spend FEWER
+ * model tokens than the same agent without it, because Amabie does the verification instead of
  * the model. That cannot be engineered from a single total, so this module turns the CLI's
  * `--output-format stream-json` event stream into the ledger the harness needs:
  *
  *   - how many requests the agent made and which carried tool calls,
  *   - every tool call, what it ran, and HOW MANY BYTES OF OUTPUT the model was shown,
- *   - how much of that output came from Canary itself,
- *   - how many times the project's own checks were run by the model (the work Canary is
+ *   - how much of that output came from Amabie itself,
+ *   - how many times the project's own checks were run by the model (the work Amabie is
  *     supposed to take over),
  *   - the tail: how many turns were spent after the last file edit,
- *   - the hooks that ran, including Canary's own Stop hook.
+ *   - the hooks that ran, including Amabie's own Stop hook.
  *
  * ── MEASURED SHAPE (tooling/probes/stream-usage-shape.mjs, real run 2026-09-12) ──
  * Three facts here were NOT what the first version of this module assumed, and getting them
@@ -31,7 +31,7 @@
  *      edit" cannot be attributed per turn, so the tail reports TURNS and marks tokens null.
  *   3. The run emits `system`/`hook_started` + `hook_response` events for every hook, including
  *      user-level ones. Their output is injected into the model's context, so it is measured —
- *      and Canary's Stop hook is visible here rather than inferred.
+ *      and Amabie's Stop hook is visible here rather than inferred.
  *
  * It is deliberately TOLERANT of shape drift: an unknown event type is counted, not fatal, and a
  * missing result event is reported as such. A parser that throws on an unexpected field would
@@ -55,38 +55,38 @@ const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const CHECK_CMD = /(?:^|[\s&|;(])(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|check|verify|lint|typecheck)\b|\bnode\s+run-tests\.js\b|\bcargo\s+test\b|\bgo\s+test\b|\bpytest\b|\bpython\s+-m\s+(?:pytest|unittest)\b|\bctest\b|\bmake\s+(?:test|check)\b/i;
 
 /**
- * Text that means the agent was TOLD, inside its own session, that Canary refused its completion.
+ * Text that means the agent was TOLD, inside its own session, that Amabie refused its completion.
  *
  * MEASURED limit, stated rather than assumed: this CLI emits `system`/`hook_response` events for
  * some hook sources (SessionStart, from user settings) but NOT for the project-level Stop hook —
- * a canary trial whose Stop hook demonstrably fired (it wrote `.canary/last-checkpoint.json`
+ * an amabie trial whose Stop hook demonstrably fired (it wrote `.amabie/last-checkpoint.json`
  * during the run) produced zero hook events in its stream. So the checkpoint file stays the
  * authoritative source for "the gate ran", and this pattern is the stream-side evidence that a
  * BLOCK reached the model.
  */
-const GATE_MSG = /Canary verification failed|NO PROOF, NO DONE|canary (?:checkpoint|doctor|finish)/i;
+const GATE_MSG = /Amabie verification failed|NO PROOF, NO DONE|amabie (?:checkpoint|doctor|finish)/i;
 
 /**
- * Did this command INVOKE Canary? — which is not the same as "does the string contain 'canary'".
+ * Did this command INVOKE Amabie? — which is not the same as "does the string contain 'amabie'".
  *
- * MEASURED false positive: a trial works inside `…\Temp\canary-bench-<task>-<arm>-<rand>\project`,
+ * MEASURED false positive: a trial works inside `…\Temp\amabie-bench-<task>-<arm>-<rand>\project`,
  * so in the PLAIN arm two commands (`ls -R "<path>" | head -50`, `cd "<path>" && npm test`) were
- * counted as Canary invocations, and their output as "Canary-visible bytes". That corrupts exactly
+ * counted as Amabie invocations, and their output as "Amabie-visible bytes". That corrupts exactly
  * the two columns the negative-overhead claim rests on, so the test is about invocation:
  *
  *   1. the repository's own CLI entry point, or
- *   2. a bare `canary <subcommand>` at a command boundary, or
- *   3. a canary binary by path (`/usr/local/bin/canary doctor`).
+ *   2. a bare `amabie <subcommand>` at a command boundary, or
+ *   3. an amabie binary by path (`/usr/local/bin/amabie doctor`).
  *
  * Quoted segments are stripped first, because a path is data, not an invocation.
  */
-export function isCanaryInvocation(command) {
+export function isAmabieInvocation(command) {
   const cmd = typeof command === 'string' ? command : '';
   if (/apps[\\/]cli[\\/]dist[\\/]src[\\/]main\.js/.test(cmd)) return true;
-  // A path segment that IS the canary binary, followed by a subcommand-like word.
-  if (/[\\/]canary(?:\.exe|\.cmd|\.js|\.mjs)?\s+[a-z][a-z-]*/i.test(cmd)) return true;
+  // A path segment that IS the amabie binary, followed by a subcommand-like word.
+  if (/[\\/]amabie(?:\.exe|\.cmd|\.js|\.mjs)?\s+[a-z][a-z-]*/i.test(cmd)) return true;
   const withoutQuoted = cmd.replace(/"[^"]*"|'[^']*'/g, ' ');
-  return /(?:^|[\s&|;(])canary\s+[a-z][a-z-]*/.test(withoutQuoted);
+  return /(?:^|[\s&|;(])amabie\s+[a-z][a-z-]*/.test(withoutQuoted);
 }
 
 /**
@@ -182,7 +182,7 @@ export function parseStream(stream) {
           exitCode: typeof ev.exit_code === 'number' ? ev.exit_code : null,
           outcome: ev.outcome === undefined ? null : String(ev.outcome),
           outputBytes: out.length,
-          isCanary: /canary/i.test(`${ev.hook_name ?? ''} ${out.slice(0, 400)}`),
+          isAmabie: /amabie/i.test(`${ev.hook_name ?? ''} ${out.slice(0, 400)}`),
         });
       } else {
         unknownTypes[`system:${subtype}`] = (unknownTypes[`system:${subtype}`] ?? 0) + 1;
@@ -247,17 +247,17 @@ export function parseStream(stream) {
   }
 
   const commands = toolCalls.filter((c) => c.name === 'Bash' || c.name === 'PowerShell').map((c) => c.command);
-  const canaryCalls = commands.filter((c) => isCanaryInvocation(c));
+  const amabieCalls = commands.filter((c) => isAmabieInvocation(c));
   const checkCalls = commands.filter((c) => CHECK_CMD.test(c));
   const toolResultBytes = toolResults.reduce((a, r) => a + r.bytes, 0);
 
-  // Agent-visible Canary bytes: the output of tool calls that invoked Canary, matched to the
+  // Agent-visible Amabie bytes: the output of tool calls that invoked Amabie, matched to the
   // results that followed them by position (the stream pairs them in order).
-  let canaryVisibleBytes = 0;
+  let amabieVisibleBytes = 0;
   {
     const orderedCalls = toolCalls.filter((c) => c.command !== '' || c.isEdit);
     for (let i = 0; i < orderedCalls.length && i < toolResults.length; i += 1) {
-      if (isCanaryInvocation(orderedCalls[i].command)) canaryVisibleBytes += toolResults[i].bytes;
+      if (isAmabieInvocation(orderedCalls[i].command)) amabieVisibleBytes += toolResults[i].bytes;
     }
   }
 
@@ -295,12 +295,12 @@ export function parseStream(stream) {
     bytes: {
       toolResultTotal: toolResultBytes,
       largestToolResult: toolResults.reduce((a, r) => Math.max(a, r.bytes), 0),
-      canaryVisible: canaryVisibleBytes,
+      amabieVisible: amabieVisibleBytes,
       hookOutput: hookOutputBytes,
     },
     hooks: {
       count: hooks.length,
-      canaryCount: hooks.filter((h) => h.isCanary).length,
+      amabieCount: hooks.filter((h) => h.isAmabie).length,
       names: [...new Set(hooks.map((h) => h.name))],
       events: hooks,
     },
@@ -313,9 +313,9 @@ export function parseStream(stream) {
     },
     commands: {
       total: commands.length,
-      canary: canaryCalls.length,
+      amabie: amabieCalls.length,
       checks: checkCalls.length,
-      canaryCommands: canaryCalls.slice(0, 20),
+      amabieCommands: amabieCalls.slice(0, 20),
     },
     tail: {
       lastFileEditTurn,

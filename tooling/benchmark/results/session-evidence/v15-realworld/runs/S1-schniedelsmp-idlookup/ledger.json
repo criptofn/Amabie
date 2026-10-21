@@ -1,7 +1,7 @@
 {
   "label": "S1",
-  "arm": "canary",
-  "repo": "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\schniedelsmp",
+  "arm": "amabie",
+  "repo": "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\schniedelsmp",
   "startedAt": "2026-09-24T04:57:41.575Z",
   "wallSeconds": 880.1,
   "agentExitCode": 0,

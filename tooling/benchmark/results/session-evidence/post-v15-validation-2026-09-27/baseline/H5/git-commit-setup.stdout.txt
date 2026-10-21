@@ -1,4 +1,4 @@
-[detached HEAD 62ac1ff] Canary validation setup baseline H5
+[detached HEAD 62ac1ff] Amabie validation setup baseline H5
  3 files changed, 42 insertions(+)
  create mode 100644 .claude/settings.json
  create mode 100644 .codex/hooks.json

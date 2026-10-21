@@ -8,7 +8,7 @@ merely suspected**.
 
 Operating rules (from operator):
 - Provider-blocked items are marked `PROVIDER_BLOCKED`, never retried with the
-  same generated content, never papered over by weakening Canary.
+  same generated content, never papered over by weakening Amabie.
 - After each milestone: focused tests → full suite → build+typecheck → golden
   Axios proof rerun (when the production pipeline is affected) → ledger update →
   local commit. No pushes, no remote, no v0.2 scope.
@@ -74,12 +74,12 @@ Status legend: OPEN · DONE · PROVIDER_BLOCKED · DISPROVEN(with evidence)
 ### M9 — CLI/report consistency
 | ID | Finding | Root cause located | Status |
 |---|---|---|---|
-| F12 | `npm run report` unusable without explicit evidence argument | `cmdReport` requires argv[1]; root script passes none → usage/exit 3. Fix: default to latest run's evidence; report must render failing-test identities from the bundle itself (currently only via unused `extras`). | DONE (M9): `findLatestEvidencePath()` resolves the newest `.canary-runs/latest-*.json` by mtime; `report` with no arg uses it (verified live: `npm run report` → exit 0). `renderHtml` now derives failing identities from the bundle's candidate rounds (F13) with `extras` demoted to an optional override; real axios report renders "handles baseURL correctly"/"can pass headers to match to a handler" with no caller passing extras. 3 new tests + live proof. |
+| F12 | `npm run report` unusable without explicit evidence argument | `cmdReport` requires argv[1]; root script passes none → usage/exit 3. Fix: default to latest run's evidence; report must render failing-test identities from the bundle itself (currently only via unused `extras`). | DONE (M9): `findLatestEvidencePath()` resolves the newest `.amabie-runs/latest-*.json` by mtime; `report` with no arg uses it (verified live: `npm run report` → exit 0). `renderHtml` now derives failing identities from the bundle's candidate rounds (F13) with `extras` demoted to an optional override; real axios report renders "handles baseURL correctly"/"can pass headers to match to a handler" with no caller passing extras. 3 new tests + live proof. |
 
 ### M10 — CI running the real proof
 | ID | Finding | Root cause located | Status |
 |---|---|---|---|
-| F11 | CI runs `canary run` instead of real proof assertions | `ci.yml` golden-proof step only checks `run`'s exit code. Fix: `run` + `check` in CI; split proof expectations into portable assertions (classification/rule/exit codes/summaries/failing identities/internal determinism) vs machine-local hash assertions skipped off-proof-host (structured `hostFingerprint` comparison, not string vibes). | DONE (M10): `assertProof` now takes an optional structured `proofHost {platform,arch,nodeVersion,npmVersion}`; only the two cross-host normalized-hash comparisons are gated (SKIP reported explicitly in the assertion list, never silent) — the other 14 assertions incl. within-arm determinism evaluate on EVERY host. Golden proof.json carries proofHost=win32/x64/v26.3.0/11.16.0; `ci.yml` now runs `canary run` AND `canary check` (job fails on any portable divergence). 4 assertProof gating tests. |
+| F11 | CI runs `amabie run` instead of real proof assertions | `ci.yml` golden-proof step only checks `run`'s exit code. Fix: `run` + `check` in CI; split proof expectations into portable assertions (classification/rule/exit codes/summaries/failing identities/internal determinism) vs machine-local hash assertions skipped off-proof-host (structured `hostFingerprint` comparison, not string vibes). | DONE (M10): `assertProof` now takes an optional structured `proofHost {platform,arch,nodeVersion,npmVersion}`; only the two cross-host normalized-hash comparisons are gated (SKIP reported explicitly in the assertion list, never silent) — the other 14 assertions incl. within-arm determinism evaluate on EVERY host. Golden proof.json carries proofHost=win32/x64/v26.3.0/11.16.0; `ci.yml` now runs `amabie run` AND `amabie check` (job fails on any portable divergence). 4 assertProof gating tests. |
 
 ### M11 — documentation truth pass
 | ID | Finding | Root cause located | Status |
@@ -142,7 +142,7 @@ vars to every child environment even when the block is fully replaced
 `USERDOMAIN`/`HOMEDRIVE`/`SYSTEMDRIVE`), while evidence recorded only the
 declared 9. A second probe proved explicitly-declared vars win over loader
 injection, so `sanitizedEnv` now neutralizes all six with fixed non-identity
-values (USERNAME=canary, USERDOMAIN=CANARY, LOGONSERVER=\\\\CANARY, HOME-
+values (USERNAME=amabie, USERDOMAIN=AMABIE, LOGONSERVER=\\\\AMABIE, HOME-
 drive/path/SYSTEMDRIVE derived from the disposable workspace). SANITIZE_-
 ALLOWLIST (evidence schema) extended accordingly. New PERMANENT observation
 test `packages/support/test/env.test.ts` (3 tests): observed keys == declared
@@ -159,7 +159,7 @@ LOWER`), so `.NPMRC` / `.YarnRc.yml` trip the injection gate on Windows/macOS
 case-insensitive filesystems — fail-closed on Linux too. 2 new audit tests
 (uppercase root `.NPMRC`, mixed-case nested `.YarnRc.yml`).
 F8: `pmArgvGuard()` replaces the shift-able `find(!startsWith('-'))` detector.
-It throws CanaryError on: any short option (`-u` etc.), any isolation-
+It throws AmabieError on: any short option (`-u` etc.), any isolation-
 conflicting long flag (`--userconfig/--prefix/--cache/--registry/--global/
 --script-shell/--workspace/--omit/...`) in EITHER position (before or after
 the subcommand — npm honors both), an unknown bare option before the
@@ -216,7 +216,7 @@ production default path verified unchanged by the seam).
 
 ### 2026-08-31 — M9 (F12) @ this commit
 `npm run report` (the literally-unusable command) now works: `cmdReport`
-defaults to `findLatestEvidencePath()` — newest `.canary-runs/latest-*.json`
+defaults to `findLatestEvidencePath()` — newest `.amabie-runs/latest-*.json`
 by mtime, skipping stale/unreadable pointers — with an explicit
 evidence.json still honored; usage text documents the optionality.
 `renderHtml` derives failing-test identities from the bundle's own candidate
@@ -229,7 +229,7 @@ report-suite bundle-derivation + section-omission, CLI subprocess no-arg
 report e2e. Suite 126→129; typecheck clean; golden Axios proof PASS (16/16).
 
 ### 2026-08-31 — M10 (F11) @ this commit
-CI now runs the REAL proof, not just `canary run`'s exit code. `assertProof`
+CI now runs the REAL proof, not just `amabie run`'s exit code. `assertProof`
 gains a structured `proofHost` fingerprint {platform,arch,nodeVersion,
 npmVersion}: the two cross-host normalized-stdout-hash comparisons evaluate
 only when the evidence environment matches it field-for-field, and otherwise
@@ -238,9 +238,9 @@ skipped=true) rather than failing. All 14 portable assertions —
 classification, rule, drift-confined, resolved-version attestation, dependency
 + commit pinning, per-arm exit codes, WITHIN-ARM determinism (host-independent),
 numeric summaries, extracted failing-test identities — are asserted on every
-host, so `canary check` in CI fails the job on any real regression-of-truth.
+host, so `amabie check` in CI fails the job on any real regression-of-truth.
 Golden proof.json carries proofHost win32/x64/v26.3.0/11.16.0; ci.yml
-golden-proof job runs `canary run` then `canary check`. main.ts prints a
+golden-proof job runs `amabie run` then `amabie check`. main.ts prints a
 `skip` tag and an honest PASS line ("N assertions held (M host-exact
 skipped)"). 4 assertProof gating tests. Suite 129→133; build+typecheck clean;
 golden Axios proof PASS on THIS host with all 16 (host matches, "all, incl.
@@ -265,7 +265,7 @@ intent; sanitizer located in packages/support); §10 limits updated — stale
 closed with pointer to this ledger. fixture README: era-install step now
 describes what the spec actually runs (`--before` date pin, not
 --frozen-lockfile). Code found by the pass: production tar extraction
-hard-coded `System32\tar.exe` (Linux could never run `canary run`) —
+hard-coded `System32\tar.exe` (Linux could never run `amabie run`) —
 platform-branched, honestly marked UNVERIFIED-on-Linux.
 Suite 133/133; typecheck clean; golden Axios proof PASS (16/16 all
 host-exact). ALL 15 audit findings now processed: none PROVIDER_BLOCKED;
@@ -303,4 +303,4 @@ POSIX-side code (env observation equality, process sweep, tar extraction) is
 WRITTEN AND TESTED-BY-CONSTRUCTION but has NOT been executed on Linux this
 session (no Linux host; CI legs run on push) — documented in SECURITY.md
 "Platform status", not hidden. This is a v0.1 verification core, not
-"Canary complete": no v0.2 features, no integrations, per operating rules.
+"Amabie complete": no v0.2 features, no integrations, per operating rules.

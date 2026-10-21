@@ -1,4 +1,4 @@
-# Cursor in Canary v1.5 — integration model, missing primitive, re-measurement
+# Cursor in Amabie v1.5 — integration model, missing primitive, re-measurement
 
 CURSOR: NOT SUPPORTED / NOT MEASURABLE — no Cursor install exists on this host (so no run can be produced here), and Cursor documents the completion-hook response mapping but not the input contract for hooks it imports from `.claude/settings.json`: the missing primitive is a documented `stop`-event payload carrying `cwd` and `stop_hook_active`, the two fields `cmdCheckpoint` reads.
 
@@ -10,21 +10,21 @@ here was produced by running Cursor, because Cursor is not installed on this hos
 
 ## 0. What this document is, and what the verdict means
 
-Canary's doctrine applies to this document itself: **claims are not evidence**,
+Amabie's doctrine applies to this document itself: **claims are not evidence**,
 **no proof, no done**, **a SKIP is never a PASS**, and **UNMEASURED is never
 MEASURED**. A vague `UNMEASURED` is not an acceptable resting place either, so
 this document does three things:
 
 1. it states the integration model that actually exists in the code, with
    `file:line` references;
-2. it names the primitive that is missing, separating **what Canary has not
+2. it names the primitive that is missing, separating **what Amabie has not
    implemented** from **what Cursor does not document**;
 3. it records the exact procedure and the exact evidence that would move this
    state to `MEASURED` — to be run by someone who has a Cursor host.
 
 Read the verdict word by word:
 
-- **NOT SUPPORTED** — *by this build*: nothing in Canary writes, reads or binds
+- **NOT SUPPORTED** — *by this build*: nothing in Amabie writes, reads or binds
   anything Cursor-specific beyond a detection heuristic. There is no Cursor
   hook installation, no Cursor MCP registration, and no Cursor probe. A
   case-insensitive `cursor` search over `apps/` returns exactly three files — the
@@ -37,13 +37,13 @@ Read the verdict word by word:
 - It is **not** a statement that Cursor can never be gated. Cursor documents a
   native completion hook that can send the agent back to work (§3.1–§3.2) — more
   than the older "Cursor offers only MCP" premise assumed. It is a statement
-  that Canary has neither **implemented** a Cursor binding nor **observed** one,
+  that Amabie has neither **implemented** a Cursor binding nor **observed** one,
   and will not guess the difference.
 
 **On this host the state is NOT MEASURABLE because Cursor is absent, and absence
 of configuration is never evidence of protection.** A repository with no
 `.cursor/` directory is not a protected repository; it is a repository about
-which Canary knows nothing. That is also why detection is not a claim: the
+which Amabie knows nothing. That is also why detection is not a claim: the
 Cursor row may read `not detected` here and `detected` elsewhere, and neither
 word says anything about whether a completion in that repository can be
 stopped.
@@ -66,11 +66,11 @@ Read-only probes, run from the repository root:
 | `C:\Program Files\Cursor` | does not exist |
 
 Claude Code (`.claude/`) and an `.mcp.json` **do** exist in this repository, and
-`canary agents` is therefore expected to report a gating Claude Code row here —
+`amabie agents` is therefore expected to report a gating Claude Code row here —
 while the Cursor row stays `UNMEASURED`, because a neighbouring harness being
 gated says nothing about Cursor.
 
-One measurement caveat, recorded rather than smoothed over: the `canary` on this
+One measurement caveat, recorded rather than smoothed over: the `amabie` on this
 machine's PATH is a **1.0.0** build that does not implement `agents`, so the v1.5
 table was **not** re-observed live here; the row's shape is pinned by source
 (§2.3) and by the unit test that asserts the four labels verbatim
@@ -89,14 +89,14 @@ were the source.
 // apps/cli/src/onboarding.ts:221-224
 const cursor = fs.existsSync(path.join(root, '.cursor')) || hasExe('cursor');
 if (cursor) {
-  found.push({ name: 'cursor', label: 'Cursor', supported: false, action: 'detected, completion-gate mechanism documented by the vendor but UNMEASURED by Canary' });
+  found.push({ name: 'cursor', label: 'Cursor', supported: false, action: 'detected, completion-gate mechanism documented by the vendor but UNMEASURED by Amabie' });
 }
 ```
 
 - Two signals only: a `.cursor` directory at the repository root, or a `cursor`
   executable in a **trusted directory** (`hasExe`, `apps/cli/src/onboarding.ts:233-238`
   — a trusted-dir scan, deliberately never PATH, so a shim cannot decide which
-  harnesses Canary reports).
+  harnesses Amabie reports).
 - `supported: false` is what keeps Cursor out of `integrable` / `integrables`
   (`apps/cli/src/onboarding.ts:225-230`), which is the list `setup` iterates.
   Cursor is therefore **never wired**, by construction.
@@ -109,7 +109,7 @@ if (cursor) {
   reproduced it on a real install — so it is reported as UNMEASURED rather than
   folded into either 'yes' or 'no'. Both of those would be claims."*
 
-### 2.2 What `canary setup` writes — and what it never writes
+### 2.2 What `amabie setup` writes — and what it never writes
 
 `setup` wires exactly two harnesses, decided by name from the integrable list:
 
@@ -126,7 +126,7 @@ harness surfaces this build touches:
 |---|---|---|
 | Claude Code `Stop` hook | `.claude/settings.json` (`settingsPath`, `apps/cli/src/onboarding.ts:434`; entry shape `{hooks:{Stop:[{hooks:[{type:'command',command,timeout}]}]}}`, `:500-502`) | `installStopHook`, called at `:2546` |
 | Codex `Stop` hook | `.codex/hooks.json` (`apps/cli/src/onboarding.ts:553`, `:564`) | `installCodexStopHook`, called at `:2548` |
-| MCP server entry, key `canary` | `<root>/.mcp.json` (`MCP_CONFIG_BASENAME`, `apps/cli/src/onboarding.ts:641-643`; writer `:692-736`) | `installMcpServer`, called at `:2554` |
+| MCP server entry, key `amabie` | `<root>/.mcp.json` (`MCP_CONFIG_BASENAME`, `apps/cli/src/onboarding.ts:641-643`; writer `:692-736`) | `installMcpServer`, called at `:2554` |
 
 The ownership record has no Cursor kind either: `TouchedFile.kind` is
 `'hooks' | 'mcp' | 'codex-hooks'` (`apps/cli/src/onboarding.ts:137-141`).
@@ -134,13 +134,13 @@ The ownership record has no Cursor kind either: `TouchedFile.kind` is
 **Consequence for Cursor, stated precisely:**
 
 - **No `.cursor/hooks.json` is ever written.** Cursor's own native hook file is
-  untouched by Canary — which also means Canary does not get Cursor's native
+  untouched by Amabie — which also means Amabie does not get Cursor's native
   `loop_count`/`loop_limit` semantics (see §4.2).
-- **No `.cursor/mcp.json` is ever written.** Canary registers its MCP server in
+- **No `.cursor/mcp.json` is ever written.** Amabie registers its MCP server in
   `.mcp.json`, which is Claude Code's project-scope filename. Cursor documents
   **`.cursor/mcp.json`** and **`~/.cursor/mcp.json`** as its configuration
   locations ([MCP](https://cursor.com/docs/mcp.md)). So today even the
-  *advisory* MCP surface is not wired for a Cursor user; this is a **Canary gap,
+  *advisory* MCP surface is not wired for a Cursor user; this is a **Amabie gap,
   not a harness limitation**, and it is the cheapest honest improvement
   available (see §5.3).
 
@@ -152,7 +152,7 @@ const unmeasured = i.gatingMeasured === false;
 const word = i.gating ? 'GATED   ' : unmeasured ? 'UNMEASURED' : 'ADVISORY';
 …
 : unmeasured
-  ? ` [Canary's completion hook is ${wired ? 'installed here' : 'NOT installed here'} — whether this harness honours it is UNMEASURED]`
+  ? ` [Amabie's completion hook is ${wired ? 'installed here' : 'NOT installed here'} — whether this harness honours it is UNMEASURED]`
 ```
 
 Three states, never two (`apps/cli/src/onboarding.ts:3801-3817`). The same three
@@ -170,7 +170,7 @@ remove ambiguity rather than add it:
   (`apps/cli/src/onboarding.ts:3812-3814` takes the `unmeasured` branch before
   the advisory branch), so it does **not** report whether the `AGENTS.md`
   advisory block is installed for Cursor. It can be installed —
-  `canary agents install cursor` is accepted because `install` refuses only
+  `amabie agents install cursor` is accepted because `install` refuses only
   `gating` integrations (`apps/cli/src/onboarding.ts:3780`, against
   `gating: false` at `apps/cli/src/agents.ts:126`).
 - The comment at `apps/cli/test/agents.test.ts:90-93` labels the vendor-doc
@@ -211,7 +211,7 @@ export async function cmdCheckpoint(): Promise<number> {
 
 ### 2.5 The advisory surfaces that do exist
 
-- `canary result --json` / `canary doctor --json` — the machine-readable
+- `amabie result --json` / `amabie doctor --json` — the machine-readable
   protocol, named as the neutral path for any CLI agent
   (`apps/cli/src/agents.ts:133-139`).
 - The marked `AGENTS.md` block (`apps/cli/src/agents.ts:142-181`, installer
@@ -220,7 +220,7 @@ export async function cmdCheckpoint(): Promise<number> {
   command.
 - The MCP server (`apps/cli/src/mcp.ts:1-24`): a **transport with no authority**
   — every tool runs the same CLI and reports its verdict unchanged, and
-  `canary accept` is deliberately not exposed (`apps/cli/src/mcp.ts:13-18`).
+  `amabie accept` is deliberately not exposed (`apps/cli/src/mcp.ts:13-18`).
   MCP tools are model-invoked in *every* harness, Cursor included, so MCP is
   advisory by construction wherever it is wired — and for Cursor it is not
   wired at all today (§2.2).
@@ -269,7 +269,7 @@ Third-Party Imports, **on by default**
 - `Stop` → `stop` is listed as **Supported: Yes**.
 - For `Stop`/`SubagentStop`, *"a `decision` of `"block"` with a `reason` is
   treated as an automatic follow-up, equivalent to providing `followup_message`
-  in the native Cursor format"* — i.e. **the exact response `canary checkpoint`
+  in the native Cursor format"* — i.e. **the exact response `amabie checkpoint`
   already emits (`apps/cli/src/onboarding.ts:3246`) is documented as understood
   by Cursor.**
 - Exit code `2` blocking is supported; both the flat and the nested Claude
@@ -295,7 +295,7 @@ it does **not** document is what an imported hook **receives** (§4.2).
   ([MCP](https://cursor.com/docs/mcp.md)).
 - **Instructions**: `AGENTS.md` in the project root **and in subdirectories** is
   a documented, supported alternative to `.cursor/rules`
-  ([Rules](https://cursor.com/docs/rules.md)) — so Canary's advisory block is a
+  ([Rules](https://cursor.com/docs/rules.md)) — so Amabie's advisory block is a
   real, vendor-supported surface for a Cursor user.
 - **Run modes / sandbox**: Auto-review / Allowlist / Run Everything; sandboxing
   of *shell commands* (Seatbelt, Landlock+seccomp, AppArmor notes for CLI);
@@ -311,7 +311,7 @@ it does **not** document is what an imported hook **receives** (§4.2).
 
 ## 4. The missing primitive
 
-### 4.1 What Canary has NOT implemented (Canary's gap, not Cursor's)
+### 4.1 What Amabie has NOT implemented (Amabie's gap, not Cursor's)
 
 These are absences in this build. Fixing them is code work, and fixing them
 **still would not** let anyone write `MEASURED`:
@@ -319,8 +319,8 @@ These are absences in this build. Fixing them is code work, and fixing them
 1. **No Cursor-native hook writer.** Nothing writes `.cursor/hooks.json`
    (§2.2). A native `stop` entry with `loop_limit` is the format that *does*
    carry a documented loop bound.
-2. **No Cursor MCP registration.** Canary writes `.mcp.json`; Cursor reads
-   `.cursor/mcp.json` (§2.2, §3.3). Even the advisory ask-Canary surface is
+2. **No Cursor MCP registration.** Amabie writes `.mcp.json`; Cursor reads
+   `.cursor/mcp.json` (§2.2, §3.3). Even the advisory ask-Amabie surface is
    unavailable to a Cursor user today.
 3. **No Cursor probe.** `tooling/probes/` has `v14-codex-stop-hook.mjs` for
    Codex and no file mentioning Cursor; `grep -ri cursor tooling/` matches only
@@ -333,18 +333,18 @@ These are absences in this build. Fixing them is code work, and fixing them
 ### 4.2 What the harness does NOT document (the actual missing primitive)
 
 **The missing primitive is a documented completion-event INPUT contract for the
-path Canary would actually take — a `Stop` hook loaded by Cursor from
+path Amabie would actually take — a `Stop` hook loaded by Cursor from
 `.claude/settings.json` — specifically the per-turn loop guard
 (`stop_hook_active`) and the repository path (`cwd`).**
 
 The asymmetry is the finding, and it is citable:
 
-| Half of the contract | Where Cursor documents it | Status for Canary's path |
+| Half of the contract | Where Cursor documents it | Status for Amabie's path |
 |---|---|---|
 | That `Stop` is imported and mapped to `stop` | [Third Party Hooks](https://cursor.com/docs/reference/third-party-hooks.md) — "Supported: Yes" | **Documented** |
 | That `{"decision":"block","reason"}` is honoured as an automatic follow-up | Same page — *"treated as an automatic follow-up, equivalent to providing `followup_message`"* | **Documented** |
 | What the hook **receives** (`cwd`, `stop_hook_active`) | Native `stop` input is documented as `{status, loop_count}` + common base — **no `cwd`, no `stop_hook_active`** ([Hooks](https://cursor.com/docs/hooks.md)); the third-party page documents **no input payload at all** | **NOT documented** |
-| A loop bound Canary can rely on | `loop_limit` defaults to **`null` for Claude Code hooks**, and the option is **native-format-only** ([Hooks](https://cursor.com/docs/hooks.md), Limitations in [Third Party Hooks](https://cursor.com/docs/reference/third-party-hooks.md)) | **Absent for this path** |
+| A loop bound Amabie can rely on | `loop_limit` defaults to **`null` for Claude Code hooks**, and the option is **native-format-only** ([Hooks](https://cursor.com/docs/hooks.md), Limitations in [Third Party Hooks](https://cursor.com/docs/reference/third-party-hooks.md)) | **Absent for this path** |
 
 Why each field matters, from the code:
 
@@ -356,12 +356,12 @@ Why each field matters, from the code:
   recoverable — but "probably recoverable" is an inference about an undocumented
   payload, and the failure mode of getting it wrong is a **silent allow**, which
   is precisely the outcome this project exists to prevent. It must be observed.
-- **`stop_hook_active`** — Canary's entire no-loop guarantee keys on it
+- **`stop_hook_active`** — Amabie's entire no-loop guarantee keys on it
   (`apps/cli/src/onboarding.ts:3242`, `:3303`, `:3346`, `:3389`). Cursor
   documents the analogue for its **native** format (`loop_count`), and documents
   that for **Claude-format** hooks the loop limit defaults to **`null`** and is
   not configurable. So if the field does not arrive on the imported path, the
-  bound on Canary's repair loop is Cursor's behaviour rather than Canary's — a
+  bound on Amabie's repair loop is Cursor's behaviour rather than Amabie's — a
   gate whose stopping condition is not the verifier's. Whether Cursor
   synthesises `stop_hook_active` for imported Claude hooks is **unconfirmed**:
   the third-party page does not say, and that page's own troubleshooting section
@@ -372,17 +372,17 @@ requires saying so: **fail-open hook handling is not the gap.** Cursor
 documents `failClosed: true` as a per-script option that makes crashes,
 timeouts, non-zero exits and no-output *block* the action
 ([Hooks](https://cursor.com/docs/hooks.md)) — and in any case Claude Code, which
-Canary *does* report as `GATED`, has the same fail-open posture, so it cannot be
+Amabie *does* report as `GATED`, has the same fail-open posture, so it cannot be
 the discriminator between them.
 
-So, in one sentence: **Cursor documents what it will do with Canary's answer; it
-does not document what Canary's hook will be given, and it documents no loop
+So, in one sentence: **Cursor documents what it will do with Amabie's answer; it
+does not document what Amabie's hook will be given, and it documents no loop
 bound for that format** — therefore a completion gate on that path is
 plausible, unproven, and unmeasurable from here.
 
 ---
 
-## 5. What Canary does and does not claim for Cursor
+## 5. What Amabie does and does not claim for Cursor
 
 ### 5.1 Does claim
 
@@ -390,9 +390,9 @@ plausible, unproven, and unmeasurable from here.
   `cursor` executable exists in a trusted directory, and reported as
   **`UNMEASURED`** — a state that asserts neither protection nor its absence
   (`apps/cli/src/agents.ts:124-131`, `apps/cli/src/onboarding.ts:3805-3815`).
-- `canary result --json` and `canary doctor --json` are available to a Cursor
+- `amabie result --json` and `amabie doctor --json` are available to a Cursor
   agent that runs them, exactly as to any other CLI agent.
-- `canary agents install cursor` writes the marked advisory block into
+- `amabie agents install cursor` writes the marked advisory block into
   `AGENTS.md` (`apps/cli/src/agents.ts:198-221`), and Cursor documents reading
   `AGENTS.md` at the project root and in subdirectories
   ([Rules](https://cursor.com/docs/rules.md)). That block is advice, explicitly
@@ -405,7 +405,7 @@ plausible, unproven, and unmeasurable from here.
 
 - **That a Cursor completion can be blocked.** It is reported `UNMEASURED`; no
   evidence exists in this repository of any Cursor hook invocation.
-- **That the `.claude/settings.json` hook Canary installs gates Cursor.** The
+- **That the `.claude/settings.json` hook Amabie installs gates Cursor.** The
   response half is documented; the input half is not; the difference between
   those two statements is the whole point of this file.
 - **That Cursor repositories are protected in any sense.** No Cursor wiring
@@ -457,8 +457,8 @@ New-Item -ItemType Directory -Path $probe | Out-Null
 Set-Location $probe
 git init
 # a project whose DECLARED check fails on the current bytes (a failing test in its own suite)
-canary setup --yes
-canary agents                        # expect: GATED Claude Code [hook installed here …]
+amabie setup --yes
+amabie agents                        # expect: GATED Claude Code [hook installed here …]
                                      #         UNMEASURED Cursor — … whether this harness honours it is UNMEASURED
 ```
 
@@ -466,7 +466,7 @@ canary agents                        # expect: GATED Claude Code [hook installed
 
 The imported path reads `.claude/settings.json`, so add a **second** `Stop`
 handler whose command is a small committed fixture script that appends its
-stdin to a file and exits 0 — Canary's own entry keeps running, and the raw
+stdin to a file and exits 0 — Amabie's own entry keeps running, and the raw
 payload is on disk afterwards. The future probe should ship that fixture at
 `tooling/test-support/fixtures/` and drive the whole journey from
 `tooling/probes/v15-cursor-stop-hook.mjs`, following the Codex precedent
@@ -494,9 +494,9 @@ than assume.
 1. Does the hook run at all on a Cursor completion (IDE **and** `agent -p`)?
 2. Which fields arrive — `cwd`? `stop_hook_active`? `workspace_roots`?
    `loop_count`? `hook_event_name`? (Raw JSON, quoted verbatim in the report.)
-3. On failure, does Canary's `{"decision":"block","reason"}` produce an observed
-   automatic follow-up in which the agent continues **with Canary's reason**?
-4. On the repair turn, does the loop terminate the way Canary intends — and how
+3. On failure, does Amabie's `{"decision":"block","reason"}` produce an observed
+   automatic follow-up in which the agent continues **with Amabie's reason**?
+4. On the repair turn, does the loop terminate the way Amabie intends — and how
    many times did Cursor re-fire before it stopped?
 
 ---
@@ -507,15 +507,15 @@ The bar is the same one Codex had to clear, and nothing weaker:
 
 1. **Two recorded hook invocations on a real Cursor install — one allowed, one
    blocked** — with the **raw stdin** Cursor supplied and the **raw stdout**
-   `canary checkpoint` returned, stored as files (not prose).
+   `amabie checkpoint` returned, stored as files (not prose).
 2. **The field question answered from those bytes**, not from documentation: is
    `stop_hook_active` present, and is `cwd`/`workspace_roots` sufficient for
    `cmdCheckpoint` to identify the repository? If the guard field is absent, the
-   honest outcome is either a documented Canary-side adaptation (with its own
+   honest outcome is either a documented Amabie-side adaptation (with its own
    evidence) or a continued `UNMEASURED` — never a `GATED` row resting on the
    vendor's response mapping.
 3. **An observed loop, bounded**: a persistently failing check, driven through
-   Cursor, that ends with Canary's own honest stop (`systemMessage`, allow)
+   Cursor, that ends with Amabie's own honest stop (`systemMessage`, allow)
    rather than an unbounded follow-up storm — remembering that `loop_limit`
    defaults to `null` on this format.
 4. **A re-runnable probe** in `tooling/probes/` that reproduces all of the above

@@ -54,7 +54,7 @@ const EXPECTATIONS = {
   // the visible suite goes green and the product is still broken.
   'injected-instructions': [{ visible: 1, hidden: 1 }, { visible: 0, hidden: 0 }, { visible: 0, hidden: 1 }],
   // The POSITIVE coverage path: three stated requirements, each declared as its own check in
-  // `canary.project.json` and BOUND to the requirement's digest. The visible suite is green before
+  // `amabie.project.json` and BOUND to the requirement's digest. The visible suite is green before
   // and after (it only exercises the identity case), so only the bound per-requirement checks can
   // tell an implemented requirement from an unimplemented one.
   'bound-requirements': [{ visible: 0, hidden: 1 }, { visible: 0, hidden: 0 }, { visible: 0, hidden: 1 }],
@@ -112,7 +112,7 @@ function copyDir(from, to) {
 
 /** Prepare a throwaway project: the fixture, plus an optional solution overlay. */
 function prepare(task, solution) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-fixture-${task}-${solution ?? 'raw'}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-fixture-${task}-${solution ?? 'raw'}-`));
   const project = path.join(root, 'project');
   copyDir(path.join(FIXTURES, task, 'project'), project);
   if (solution !== null) {
@@ -176,7 +176,7 @@ describe('an oracle that cannot run is reported as such, not as a verdict', () =
   it('a crashing oracle produces no summary line, which the harness reads as unusable', () => {
     // The rule the trial runner applies: a verdict exists only when the oracle prints its
     // summary. This drives that rule with a genuinely broken checker.
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-oracle-crash-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-oracle-crash-'));
     const broken = path.join(root, 'check.cjs');
     fs.writeFileSync(broken, "require('node:fs').readFileSync('/definitely/not/here');\n");
     try {

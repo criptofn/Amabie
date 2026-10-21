@@ -51,7 +51,7 @@ export interface MetricRecord {
 
 /** Where records go, or null when instrumentation is off. */
 export function metricsTarget(env: NodeJS.ProcessEnv = process.env): string | null {
-  const v = env.AMABIE_METRICS?.trim() || env.CANARY_METRICS?.trim();
+  const v = env.AMABIE_METRICS?.trim();
   return v ? path.resolve(v) : null;
 }
 

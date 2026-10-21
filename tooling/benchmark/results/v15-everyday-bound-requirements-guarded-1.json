@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-bound-requirements-guarded-1",
   "task": "bound-requirements",
   "arm": "guarded",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -29,10 +29,10 @@
       "arm": "guarded",
       "registerRequirements": true
     },
-    "benchmarkConfigNote": "THE ONE FIXTURE IN THIS CORPUS WHOSE STATED REQUIREMENTS ARE BOUND, so it is the only place where --register-requirements is the authored configuration rather than a hazard. Its canary.project.json declares one check per requirement and binds all three requirement digests to those checks (measured: manifest.proofs has 3 entries, package.json has none), so registering the three requirements derives duties that MEASUREMENT discharges instead of a Stop-hook refusal of correct work. That makes this the corpus's only positive coverage control, and the harness's 'registered-but-unbound' reading would be a false statement about it. NOT YET PILOTED in either configuration; declared from the fixture's own declaration surface."
+    "benchmarkConfigNote": "THE ONE FIXTURE IN THIS CORPUS WHOSE STATED REQUIREMENTS ARE BOUND, so it is the only place where --register-requirements is the authored configuration rather than a hazard. Its amabie.project.json declares one check per requirement and binds all three requirement digests to those checks (measured: manifest.proofs has 3 entries, package.json has none), so registering the three requirements derives duties that MEASUREMENT discharges instead of a Stop-hook refusal of correct work. That makes this the corpus's only positive coverage control, and the harness's 'registered-but-unbound' reading would be a false statement about it. NOT YET PILOTED in either configuration; declared from the fixture's own declaration surface."
   },
   "startedAt": "2026-09-24T04:22:05.228Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-guarded-KC2Oo5",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-guarded-KC2Oo5",
   "configMismatch": {
     "declared": [
       {
@@ -51,7 +51,7 @@
     "exitCode": 0,
     "secs": 43.7,
     "timedOut": false,
-    "mcpConfig": "fixture .mcp.json (standing Canary payload included)",
+    "mcpConfig": "fixture .mcp.json (standing Amabie payload included)",
     "settingsSources": "project,local",
     "forwardedEnvKeys": [
       "ENABLE_TOOL_SEARCH",
@@ -64,16 +64,16 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Task: normalize text\r\n\r\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\r\nImplement it so that every stated requirement below holds.\r\n\r\n1. Leading and trailing whitespace is trimmed from the result.\r\n2. An empty or whitespace-only input becomes the word `empty`.\r\n3. The result is lower-case.\r\n\r\nThe project's visible test suite covers only the identity case, so it can be green\r\nwhile a requirement is still unmet. The project also declares one check per\r\nrequirement (`canary.project.json`), and each requirement is bound to its check —\r\nthose checks are the proof, and they run as part of the project's sealed plan.\r\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\r\n\r\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\r\nImplement it so that every stated requirement below holds.\r\n\r\n1. Leading and trailing whitespace is trimmed from the result.\r\n2. An empty or whitespace-only input becomes the word `empty`.\r\n3. The result is lower-case.\r\n\r\nThe project's visible test suite covers only the identity case, so it can be green\r\nwhile a requirement is still unmet. The project also declares one check per\r\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\r\nthose checks are the proof, and they run as part of the project's sealed plan.\r\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": {
     "exitCode": 2,
     "secs": 1,
     "readme": "NEEDS ATTENTION",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "\nsmoke test (running your own project scripts):\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 1)\n      FAIL normalize(\"AbC\") -> \"AbC\", want abc\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 1)\n      FAIL normalize(\"\") -> \"\", want \"empty\"\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 1)\n      FAIL trim(\"  ada  \") -> \"  ada  \", want \"ada\"\n\nNEEDS ATTENTION — Canary is wired here, but your project's own checks did not pass (tests, tests, tests). That is your project talking, not Canary.\nnext: fix the failing checks (ask the agent), then: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "\nsmoke test (running your own project scripts):\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 1)\n      FAIL normalize(\"AbC\") -> \"AbC\", want abc\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 1)\n      FAIL normalize(\"\") -> \"\", want \"empty\"\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 1)\n      FAIL trim(\"  ada  \") -> \"  ada  \", want \"ada\"\n\nNEEDS ATTENTION — Amabie is wired here, but your project's own checks did not pass (tests, tests, tests). That is your project talking, not Amabie.\nnext: fix the failing checks (ask the agent), then: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -127,7 +127,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -235,18 +235,18 @@
     "bytes": {
       "toolResultTotal": 4067,
       "largestToolResult": 719,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 2,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

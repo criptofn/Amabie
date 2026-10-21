@@ -70,7 +70,7 @@ describe('KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (off
     }
   });
 
-  it('canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo)', () => {
+  it('amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo)', () => {
     for (const [pkg, pins] of Object.entries(KNOWN_RUNNER_RELEASES)) {
       for (const p of pins) {
         if (p.origin === 'npm') continue;
@@ -86,7 +86,7 @@ describe('KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (off
 // unit tests pin the gate itself; the executor/pipeline e2es pin its wiring.
 describe('post-GLM F5 — findRunnerPin: origin is an execution-authority gate', () => {
   const pins = KNOWN_RUNNER_RELEASES.mocha ?? [];
-  const double = pins.find((p) => p.origin === 'canary-double');
+  const double = pins.find((p) => p.origin === 'amabie-double');
   const npmPin = pins.find((p) => p.origin === 'npm');
   assert.ok(double && npmPin, 'table must carry both origins for the gate to mean anything');
   // findRunnerPin never reads `dir` — the lookup is table-vs-(version, hash, origin).

@@ -53,7 +53,7 @@ if (mode === 'config') {
   fs.mkdirSync(f('task'), { recursive: true });
   fs.writeFileSync(f('task', 'current.json'), JSON.stringify({ schema: 'amabie-task/1', m9planted: true }));
 } else if (mode === 'evidenceplant') {
-  // the §8/§9 attack in one move: forge a AMABIE_OBSERVED-looking PASS bundle
+  // the §8/§9 attack in one move: forge an AMABIE_OBSERVED-looking PASS bundle
   // for this very candidate, inside Amabie's authoritative evidence dir
   const dir = f('evidence', '0-forged-pass-candidate');
   fs.mkdirSync(dir, { recursive: true });

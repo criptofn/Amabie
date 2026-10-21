@@ -1,4 +1,4 @@
-"""Shared helpers for the canary test suite."""
+"""Shared helpers for the amabie test suite."""
 
 import os
 import sys
@@ -7,11 +7,11 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-CANARY_CMD = [sys.executable, "-m", "canary"]
+AMABIE_CMD = [sys.executable, "-m", "amabie"]
 
 
 def cli_env(extra=None):
-    """Env for launching `python -m canary` from a temp workspace."""
+    """Env for launching `python -m amabie` from a temp workspace."""
     env = dict(os.environ)
     env["PYTHONPATH"] = REPO_ROOT
     env.pop("PYTHONHOME", None)

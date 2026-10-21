@@ -1,19 +1,19 @@
 # Product work after the native pilot — 2026-10-04
 
-This batch improves Canary itself. The external projects remain validation fixtures.
+This batch improves Amabie itself. The external projects remain validation fixtures.
 It does not establish an 8/10 rating or close the Windows native-process findings.
 
 ## User-visible changes
 
 | Problem | Delivered behavior | Compatibility and limits |
 | --- | --- | --- |
-| Operators must find executable directories to authorize needed tools | `canary setup --yes --toolchain java --toolchain python` resolves explicitly requested tools and seals their external directories | Missing tools and project-local PATH shadows refuse the complete operation. Existing directory flags remain supported. Authorization covers the directory, not just one binary. |
-| A bare CLI invocation presents the expert command menu before answering project state | `canary` shows compact connection status, measured protection level, and links to `result` and `--help` | Read-only; no project checks run. Existing no-command exit code 3 remains. |
+| Operators must find executable directories to authorize needed tools | `amabie setup --yes --toolchain java --toolchain python` resolves explicitly requested tools and seals their external directories | Missing tools and project-local PATH shadows refuse the complete operation. Existing directory flags remain supported. Authorization covers the directory, not just one binary. |
+| A bare CLI invocation presents the expert command menu before answering project state | `amabie` shows compact connection status, measured protection level, and links to `result` and `--help` | Read-only; no project checks run. Existing no-command exit code 3 remains. |
 | Human output hides the proof scope already available in JSON | `doctor` shows registered requirement count and met/unproven/unmet duty counts; `result` shows historical scope and evidence caveats | Existing statuses and JSON envelopes remain. Zero registered criteria and absent legacy records are explicit. Historical evidence never decides the current verdict. |
 
 ## Executed focused checks
 
-Evidence root: `C:/Users/Johannes/Desktop/canary/_canary-data/evidence`.
+Evidence root: `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence`.
 
 - Named toolchain setup: old behavior fails the new regression; final focused file reports 29/29 passing (`named-toolchain-20261003-green-final.log`). The LTS focused run reports 5/5 passing (`named-toolchain-lts-focused-20261004.log`).
 - Compact entry: old behavior fails the regression. The first implementation also failed because verbose plan output still preceded status; the implementation was corrected. `compact-entry-20261004-green-final.log` reports `lazy-connect-status: ALL PASS`, including byte-preserving read-only behavior and explicit help.
@@ -49,14 +49,14 @@ any agent work, with varying coverage assertions and Vite sourcemap failures.
 Node 24 and Node 26 both exhibited failures. A temporary logging diagnostic
 passed but did not establish a cause; its source was restored byte-exact.
 The restored countercheck again failed. No external project fix, test exclusion
-or baseline substitution is included in Canary's product progress.
+or baseline substitution is included in Amabie's product progress.
 
 Raw captures remain in `product-batch-controls-20261004-envelope-job`,
 `product-batch-controls-20261004-baseline-recheck-job`,
 `refactron-baseline-path-20261004-job`, `refactron-baseline-node26-20261004-job`,
 `refactron-coverage-origin-20261004-job` and
 `refactron-restored-baseline-20261004-job`. The two matrix attempts have
-byte-verified incomplete archives. These failures do not prove a Canary defect.
+byte-verified incomplete archives. These failures do not prove an Amabie defect.
 
 Measurement corrections now parse the top-level validation envelope, refuse
 bad actual baseline receipts before any model/server initialization, only mark
@@ -77,7 +77,7 @@ instead of being counted as successful catches; failed provenance runs preserve
 their real artifacts for diagnosis. Those are measurement fixes, separate from
 the product changes above.
 
-The older native pilot remains the only completed native comparison: Canary
+The older native pilot remains the only completed native comparison: Amabie
 4/6 correct normal completions versus plain 3/6, with 2.30 times the tokens and
 1.86 times the elapsed time. The new batch has no measured replacement result
 yet. A higher rating requires the new comparison, not merely more passing tests.
@@ -146,7 +146,7 @@ solution controls. The native job `check-process-diagnosis-20261004-native-job`
 started and terminated after H1/plain: the independent correctness oracle passed,
 but API request 4 ended without message_stop/final usage, native accounting did
 not match, and no Stop event occurred. This is an incomplete session, not a
-successful completion. The owned model/server were stopped. No Canary arm ran.
+successful completion. The owned model/server were stopped. No Amabie arm ran.
 The local provider charge was $0; Claude's displayed cost is not provider billing.
 
 The next instrument revision retains incomplete independent sessions and
@@ -161,9 +161,9 @@ is running with instrument commit `03a3e88`. Its first completed pair is H1:
 | Arm | Independent correctness | Native completion | Native input/output tokens |
 | --- | --- | --- | --- |
 | plain | pass | success, end_turn, reconciled accounting | 272016 / 11514 |
-| Canary | fail | error_max_turns at 51 reported turns; no Stop | 1136935 / 17680 |
+| Amabie | fail | error_max_turns at 51 reported turns; no Stop | 1136935 / 17680 |
 
-The Canary arm's recorded checkpoint is the **unchanged preparation doctor**
+The Amabie arm's recorded checkpoint is the **unchanged preparation doctor**
 checkpoint, timestamp `2026-10-04T19:29:09.838Z`, before the session began.
 It is not a verification of the final worker state or a completion approval.
 The worker's final implementation incorrectly skips every file when maxAgeDays
@@ -177,7 +177,7 @@ The previous truncated job's worker state and preflight are preserved in
 (129 hashed files). Remaining pairs are still running; no aggregate score is
 derived from this one completed pair.
 
-The continuation stopped after H2/Canary. Its independent oracle passed, native
+The continuation stopped after H2/Amabie. Its independent oracle passed, native
 accounting reconciled, and the actual Stop checkpoint passed. However, the agent
 used Bash `sed` to add `invoice-extensions-tests` to package.json despite the
 trial's Edit/Write denials. The sealed script, local plan, hook settings and MCP
@@ -190,19 +190,19 @@ To avoid repeating completed sessions, the instrument now accepts explicit
 `--sessions` names. It checks supported unique names, matching task selection,
 exact scheduling, and the original pristine HEAD/clean worktree and baseline
 oracles for every selected arm. Existing integrity assertions remain binding.
-The next segment runs only H2/plain, H3/plain+Canary, H5/Canary+plain and
-S1/Canary+plain, preserving the original task order. Instrument hashes differ
+The next segment runs only H2/plain, H3/plain+Amabie, H5/Amabie+plain and
+S1/Amabie+plain, preserving the original task order. Instrument hashes differ
 between segments and must be reported; selected capture completion is not full
-12-session completion. R1/plain and R1/Canary remain unexecuted.
+12-session completion. R1/plain and R1/Amabie remain unexecuted.
 
 All ten runnable native arms are now terminal across the two segments. Four
-Canary arms reached real Stop checkpoints. After separate H3 oracle repair,
-functional correctness plus normal completion is **4/5 Canary versus 5/5 plain**;
-requiring unchanged protected configuration reduces Canary to **3/5**. R1's
+Amabie arms reached real Stop checkpoints. After separate H3 oracle repair,
+functional correctness plus normal completion is **4/5 Amabie versus 5/5 plain**;
+requiring unchanged protected configuration reduces Amabie to **3/5**. R1's
 two planned arms remain blocked. This is not completion of the twelve-session
 plan and does not establish an 8/10 product.
 
-| Task | Plain | Canary | Native total tokens plain / Canary |
+| Task | Plain | Amabie | Native total tokens plain / Amabie |
 | --- | --- | --- | --- |
 | H1 | correct normal completion | incorrect, max-turn abort, no Stop | 283530 / 1154615 |
 | H2 | correct normal completion | correct Stop completion; package.json trial violation | 44981 / 792041 |
@@ -211,7 +211,7 @@ plan and does not establish an 8/10 product.
 | S1 | correct normal completion | correct Stop completion | 174573 / 178757 |
 
 Native API usage reconciles with Claude modelUsage in all ten arms, including
-MCP traffic. Totals: **628080 plain versus 2928764 Canary tokens** (4.66x),
+MCP traffic. Totals: **628080 plain versus 2928764 Amabie tokens** (4.66x),
 **379.052 versus 840.370 seconds** (2.22x). Provider charge remains $0.
 These small local-model trials demonstrate overhead, not token savings.
 The model/server were unloaded/stopped after both terminal segments.
@@ -231,7 +231,7 @@ Two additional product corrections were built after the frozen pilot:
   output distinguishes diagnostic history from hook responses and leaves session
   end unknown. Protocol tests: **8 pass, 0 fail, 0 skip**.
 * The H2 raw baseline log identified an unnecessary block: a sealed smoke test
-  imported `scripts/test-fileOrganizer-invoice-extensions.js`, but Canary's
+  imported `scripts/test-fileOrganizer-invoice-extensions.js`, but Amabie's
   baseline overlay recognized suffix-named tests, not prefix-named tests. The
   overlay now also admits test-/test_/spec-/spec_ files, retaining worker
   provenance. A new regression fails before the fix and passes afterward;
@@ -253,10 +253,10 @@ retained as interrupted, with no completion claim. The corrected standalone
 suite forced a rebuild before running; it is the authoritative observation.
 
 Inspection of the native tool records also limits the overhead diagnosis:
-H1/Canary used 50 tool calls, eight tool errors and zero doctor calls; H2/Canary
+H1/Amabie used 50 tool calls, eight tool errors and zero doctor calls; H2/Amabie
 used 41 calls, seven errors, one doctor call and the unnecessary missing-prefix
-baseline block; H3/Canary used 28 calls, one error and one doctor call. Thus
-repeated full Canary gate calls alone do not explain the token difference.
+baseline block; H3/Amabie used 28 calls, one error and one doctor call. Thus
+repeated full Amabie gate calls alone do not explain the token difference.
 H2/H3/H5 plain arms each made zero smoke/test command calls. Functional oracle
 success is not equivalent to adding and running regression tests. Further
 improvements must reduce avoidable repair steps without dropping that evidence

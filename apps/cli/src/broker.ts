@@ -68,7 +68,7 @@ export interface PromotionIntent {
   subjectDigest: string; verificationDigest: string;
 }
 interface State {
-  schema: typeof BROKER_SCHEMA | 'canary-broker/1'; enrollment: Enrollment;
+  schema: typeof BROKER_SCHEMA | 'amabie-broker/1'; enrollment: Enrollment;
   phase: 'enrolled' | 'running' | 'verified' | 'accepted' | 'promotion-reserved';
   run: RunTicket | null;
   verification: VerificationStatement | null;
@@ -127,18 +127,18 @@ export class LocalAuthorityBroker {
     const copy: Enrollment = JSON.parse(authorityJson(enrollment));
     validateEnrollment(copy);
     const state: State = { schema: BROKER_SCHEMA, enrollment: copy, phase: 'enrolled', run: null, verification: null, verificationReceipt: null, acceptanceReceipt: null };
-    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, canaryVersion: BROKER_SCHEMA }, 0);
+    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, amabieVersion: BROKER_SCHEMA }, 0);
   }
   #load(): { state: State; seq: number } {
     const opened = openSealed(this.#store, { projectId: this.#projectId, kind: 'broker-state' });
     requireThat(opened.status === 'valid' && opened.envelope, `broker authority unavailable: ${opened.status}`);
     const state = opened.envelope.payload as State;
-    requireThat(state?.schema === BROKER_SCHEMA || state?.schema === 'canary-broker/1', 'broker state schema mismatch');
+    requireThat(state?.schema === BROKER_SCHEMA || state?.schema === 'amabie-broker/1', 'broker state schema mismatch');
     validateEnrollment(state.enrollment);
     return { state: { ...state, schema: BROKER_SCHEMA }, seq: opened.envelope.seq };
   }
   #save(state: State, seq: number): void {
-    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, canaryVersion: BROKER_SCHEMA }, seq);
+    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, amabieVersion: BROKER_SCHEMA }, seq);
   }
   #start(state: State, seq: number, purpose: RunTicket['purpose']): RunTicket {
     requireThat(state.phase !== 'promotion-reserved', 'promotion pending reconciliation');

@@ -115,7 +115,7 @@ const STRONG_REQUIREMENTS =
   + 'known-runners-manifest.test.ts), an injected observer whose bytes are '
   + "Amabie's, a validation contract that re-counts what Amabie watched, and "
   + 'mutation-battery coverage proving the gate is pinned — or, for a runner that '
-  + 'is not an npm package, a Amabie-owned channel PLUS an authority that binds it '
+  + 'is not an npm package, an Amabie-owned channel PLUS an authority that binds it '
   + '(the verifying runtime itself, or an operator-sealed identity)';
 
 /**
@@ -131,7 +131,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     capability: 'STRONG',
     // `--require <preload>` expands the test argv with Amabie's own bytes; frames
     // come back on a dedicated fd; the hello pid must equal the pid Amabie spawned.
-    observation: { authority: 'package-pin', pinKey: 'mocha', protocol: 'canary-observer-v1' },
+    observation: { authority: 'package-pin', pinKey: 'mocha', protocol: 'amabie-observer-v1' },
   },
   {
     id: 'node-test',
@@ -151,7 +151,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     observation: {
       authority: 'runtime-identity',
       channelModule: 'packages/runner/executor/src/observers/node-test-reporter.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'node 26.7.0 win32-x64: a real `node --test` run observed end-to-end (hello → pass/pending → bye) with '
       + 'counts agreeing with the runner TAP summary; printed TAP text minted nothing; two same-named tests both counted. '
@@ -166,13 +166,13 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     capability: 'STRONG',
     // A plugin loaded through PYTHONPATH + PYTEST_PLUGINS (an environment door with
     // a fixed Amabie-owned module name), so no argv surface can be used to displace
-    // it; an explicit `-p no:canary_pytest_observer` is refused, and a project that
+    // it; an explicit `-p no:amabie_pytest_observer` is refused, and a project that
     // suppresses it through its own config simply produces no frames and the round
     // fails closed.
     observation: {
       authority: 'operator-identity',
       channelModule: 'packages/runner/executor/src/observers/pytest-observer.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'pytest 9.1.1 / python 3.11.9 win32-x64 in a workspace-local venv (no global Python state touched): '
       + 'phase reports measured per category; the frames agreed with pytest own headline for '
@@ -224,7 +224,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     observation: {
       authority: 'operator-identity',
       channelModule: 'packages/runner/executor/src/observers/python-observer.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'python 3.11.9 win32-x64: a real unittest run observed end-to-end and agreeing with the interpreter own '
       + '"Ran N tests"; printed-summary forgery produced zero counts; a fabricated addSuccess was rejected live; and the '
@@ -255,7 +255,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
       + '"--format json" outside nightly with -Z unstable-options), so per-test outcomes can only come '
       + 'from libtest text — a claim, not an observation. Measured, not assumed; see '
       + 'tooling/probes/runner-channels-rust-go.mjs',
-    requiredToUnblock: STRONG_REQUIREMENTS + '; the real seam is a Amabie-owned test harness '
+    requiredToUnblock: STRONG_REQUIREMENTS + '; the real seam is an Amabie-owned test harness '
       + '(a `[[test]] harness = false` target whose main is Amabie\'s), which turns per-test outcomes into '
       + 'Amabie-emitted events. A nightly-only format is not a supportable pin',
     measuredOn: 'cargo 1.98.1 (GNU target), win32-x64: cargo test ran; --format json refused by the compiler; '
@@ -426,7 +426,7 @@ export function runnerRegistryProblems(): string[] {
           if (o.channelModule !== undefined) problems.push(`${a.id}: package-pin authority must not name a channelModule (the pinned package IS the runner)`);
         } else {
           // The runner is not an npm package, so the pin table cannot vouch for it.
-          // What substitutes is a Amabie-owned channel a reviewer can open PLUS an
+          // What substitutes is an Amabie-owned channel a reviewer can open PLUS an
           // authority, and a measured statement of what was executed.
           if (o.pinKey !== undefined) problems.push(`${a.id}: ${o.authority} authority must not carry a pinKey — nothing in KNOWN_RUNNER_RELEASES binds it`);
           if (o.channelModule === undefined || o.channelModule.trim() === '') {

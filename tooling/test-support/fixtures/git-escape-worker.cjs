@@ -66,7 +66,7 @@ function run(id, argv, env, cwd) {
     stderr: stderr.slice(0, 4000), error: r.error ? (r.error.code || r.error.message) : undefined,
     // Content signal only on a clean exit: a filename inside an error message is not
     // evidence that the content was read.
-    escaped: r.status === 0 && /ESCAPE_CANARY/.test(stdout + stderr) });
+    escaped: r.status === 0 && /ESCAPE_AMABIE/.test(stdout + stderr) });
   rows.push(row); save();
 }
 const git = (id, args, env) => run(id, [cfg.git].concat(args), Object.assign({ GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: 'NUL' }, env || {}));
@@ -96,9 +96,9 @@ if (batch === 'reads') {
 if (batch === 'git-paths') {
   git('git-C', ['-C', OUT, 'config', '--local', '--get', 'amabie.probe']);
   git('git-C-slash', ['-C', OUT_SLASH, 'config', '--local', '--get', 'amabie.probe']);
-  git('git-dir', ['--git-dir=' + OUT_SLASH + '/.git', 'show', 'HEAD:ESCAPE_CANARY']);
+  git('git-dir', ['--git-dir=' + OUT_SLASH + '/.git', 'show', 'HEAD:ESCAPE_AMABIE']);
   git('git-dir-config', ['--git-dir=' + OUT_SLASH + '/.git', 'config', '--local', '--get', 'amabie.probe']);
-  git('GIT_DIR', ['show', 'HEAD:ESCAPE_CANARY'], { GIT_DIR: OUT_SLASH + '/.git' });
+  git('GIT_DIR', ['show', 'HEAD:ESCAPE_AMABIE'], { GIT_DIR: OUT_SLASH + '/.git' });
   git('git-dir-work-tree', ['--git-dir=' + OUT_SLASH + '/.git', '--work-tree=' + OUT_SLASH, 'status', '--porcelain']);
   git('GIT_WORK_TREE', ['ls-files', '--others', '--exclude-standard'], { GIT_WORK_TREE: OUT_SLASH });
   git('GIT_OBJECT_DIRECTORY', ['cat-file', '-p', cfg.secretObject], { GIT_OBJECT_DIRECTORY: OUT_SLASH + '/.git/objects' });

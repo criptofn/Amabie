@@ -1,12 +1,12 @@
 {
-  "schema": "canary-release-validation-solution/1",
+  "schema": "amabie-release-validation-solution/1",
   "label": "H3",
   "probe": "tooling/probes/v15-prepare-validation-solution.mjs",
   "probeSha256": "1d04b923e16f66dd414e96a38a39e3062f78aab6f15d5522ec6a4dcc4b9c0476",
-  "canaryPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "canaryBinarySha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
+  "amabiePath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "amabieBinarySha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
   "publishedArtifactSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H3-quantize-bits-validation.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H3-quantize-bits-validation.md",
   "taskSha256": "7328555e519c70dc73e683a9c2356b89579d5237ce3e6f7ef85aa4168e9f84cf",
   "baselineHead": "b2db9d47dc64da0689712af91729578f33fc7100",
   "operation": {

@@ -30,7 +30,7 @@ function freshRecorder(
   // Tests asserting the UNTRUSTED posture must leave this false.
   trustedDouble = false,
 ) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-exec-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-exec-'));
   const ws = { root, fixture: path.join(root, 'fixture') };
   fs.mkdirSync(ws.fixture, { recursive: true });
   fs.writeFileSync(path.join(root, 'empty.npmrc'), '');
@@ -53,7 +53,7 @@ function freshRecorder(
 // Strong labels (PASS / CONFIRMED_REGRESSION / FLAKY / PRE_EXISTING_FAILURE)
 // are gated by classifier rule 14: every round must carry a VALID execution
 // observation from Amabie's own observer. Offline, the ONLY runner whose
-// bytes hit the pin table (KNOWN_RUNNER_RELEASES, origin 'canary-double') is
+// bytes hit the pin table (KNOWN_RUNNER_RELEASES, origin 'amabie-double') is
 // the Amabie mocha double shipped in apps/cli/test/fixtures/mocha-double.
 // The executor package must NOT import from apps/cli, so the fixture bytes
 // are read-copied here with fs at runtime — no project reference, no import,
@@ -63,7 +63,7 @@ function freshRecorder(
 // ---------------------------------------------------------------------------
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..', '..'); // dist/test -> dist -> executor -> runner -> packages -> repo root
 const MOCHA_DOUBLE_SRC = path.join(REPO_ROOT, 'apps', 'cli', 'test', 'fixtures', 'mocha-double');
-const DOUBLE_VERSION = '0.0.0-canary-double';
+const DOUBLE_VERSION = '0.0.0-amabie-double';
 const SUBS = { dep: 'x', baseline: '1', candidate: '2' };
 
 /** fs-copy the double into a package dir (tamper=true appends a comment to
@@ -877,7 +877,7 @@ describe('round-3 secondary — crash & sweep signals reach the classification',
 // ---------------------------------------------------------------------------
 // POST-GLM AM-1 / Finding A — the executor-level INJECTION DECISION MATRIX.
 // Recorder.expandArgvWithPlan is the ONLY path to a strong label: injection
-// proceeds only when (name, version, treeHash) hits a Amabie-repo pin AND the
+// proceeds only when (name, version, treeHash) hits an Amabie-repo pin AND the
 // package sits at the canonical <fixture>/node_modules/<pkg> anchor; a miss
 // means NO injection at all — the round records an ABSENT observation and
 // rule 14 makes strong labels structurally unreachable. Every case here is
@@ -888,15 +888,15 @@ describe('observation hardening — expandArgvWithPlan injection decision', () =
   const doublePin = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.version === DOUBLE_VERSION);
 
   it('the double fixture is actually pinned (fails if the pin table drifted)', () => {
-    assert.ok(doublePin, 'no KNOWN_RUNNER_RELEASES entry for the canary double');
-    assert.equal(doublePin.origin, 'canary-double');
+    assert.ok(doublePin, 'no KNOWN_RUNNER_RELEASES entry for the amabie double');
+    assert.equal(doublePin.origin, 'amabie-double');
   });
 
-  it('post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority', () => {
+  it('post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority', () => {
     // The double's bytes AND observation seams are public in this repo, so
     // an untrusted spec can stage exactly these bytes at the canonical
     // anchor with its own prepare step. Pin MATCH is not enough: origin
-    // 'canary-double' earns injection only behind an explicit in-process
+    // 'amabie-double' earns injection only behind an explicit in-process
     // authority grant that the production pipeline never makes.
     const { rec, cleanup, ws } = freshRecorder();
     try {
@@ -1294,7 +1294,7 @@ describe('post-sol RB-1 — semantic package-manager policy (equivalence classes
   // when no local npm-cli). These pin WHY the textual denylist failed: npm
   // itself applies abbreviations, negations, and last-wins ordering. ----
   const hostNpmCli = NPM_CLI;
-  const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-rb1-'));
+  const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-rb1-'));
   const spawnProbe = (args: string[]): string => {
     const r = spawnSync(process.execPath, [hostNpmCli, ...args], {
       encoding: 'utf8', timeout: 90_000, windowsHide: true, cwd: probeRoot,

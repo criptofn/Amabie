@@ -52,8 +52,8 @@ const FAKE_BYTES = Buffer.from('amabie-attest-fake-tarball');
 const FAKE_BLOB = { bytes: FAKE_BYTES, sha256: sha256hex(FAKE_BYTES) };
 const STRONG = new Set(['PASS', 'CONFIRMED_REGRESSION', 'PRE_EXISTING_FAILURE']);
 
-const DOUBLE_PIN = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'canary-double');
-assert.ok(DOUBLE_PIN, 'the canary-double pin must exist for these tests to mean anything');
+const DOUBLE_PIN = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.origin === 'amabie-double');
+assert.ok(DOUBLE_PIN, 'the amabie-double pin must exist for these tests to mean anything');
 
 // ───────────────────────────────────────────────────────────────────────────
 // LAYER 1 — the shared validator under hostile frame streams (ii)-(vi).
@@ -539,7 +539,7 @@ describe('post-GLM F4 — infra prose cannot mask an attested regression', () =>
 // mechanism this test file's harness uses) and earn Amabie's observer
 // injection — strong labels included — through a runner it fully controls.
 // The canonical-path check was never a trust boundary: node_modules/mocha is
-// exactly where a real install lands. Repair: origin 'canary-double' is
+// exactly where a real install lands. Repair: origin 'amabie-double' is
 // selectable ONLY behind an explicit in-process authority flag the
 // production CLI never passes — the PipelineDeps/ExecutorDeps seam channel,
 // the same trust channel as fetch/extract.

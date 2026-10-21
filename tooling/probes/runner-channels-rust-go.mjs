@@ -168,7 +168,7 @@ if (rustBuildable) {
   console.log(`-- ${runnerKey}=<shim> (exit ${withRunner.status}) -- shim invoked: ${shimRan}`);
   if (shimRan) console.log(fs.readFileSync(shimLog, 'utf8').trim().split('\n').slice(0, 2).join('\n'));
 
-  check('MEASURED: cargo honors a Amabie-owned runner shim (so Amabie can own the test-binary launch)', () => {
+  check('MEASURED: cargo honors an Amabie-owned runner shim (so Amabie can own the test-binary launch)', () => {
     assert(shimRan, `${runnerKey} was not honored — Amabie cannot intercept the test-binary launch this way`);
     assert(withRunner.status === 0, `the run through the shim must still pass: ${((withRunner.stdout ?? '') + (withRunner.stderr ?? '')).slice(-400)}`);
   });
@@ -231,7 +231,7 @@ const goShimRan = fs.existsSync(goShimLog);
 console.log(`\n-- go test -exec=<shim> (exit ${withExec.status}) -- shim invoked: ${goShimRan}`);
 if (goShimRan) console.log(fs.readFileSync(goShimLog, 'utf8').trim().split('\n').slice(0, 2).join('\n'));
 
-check('MEASURED: go test -exec honors a Amabie-owned shim (Amabie can own the test-binary launch)', () => {
+check('MEASURED: go test -exec honors an Amabie-owned shim (Amabie can own the test-binary launch)', () => {
   assert(goShimRan, '-exec was not honored — Amabie cannot intercept the test-binary launch this way');
   assert(withExec.status === 0, `the run through the shim must still pass: ${((withExec.stdout ?? '') + (withExec.stderr ?? '')).slice(-400)}`);
 });
@@ -244,7 +244,7 @@ const SKIPS = [];
 // else. This is the decisive fact for whether a Rust or Go step can run at all,
 // and it is the same class of question that made bare `git` fail inside a sealed
 // step earlier in this project. Measured, not assumed.
-console.log('\n=== under a sanitized environment (what a Amabie step actually gets) ===');
+console.log('\n=== under a sanitized environment (what an Amabie step actually gets) ===');
 const isolatedHome = path.join(TMP, 'isolated-home');
 fs.mkdirSync(isolatedHome, { recursive: true });
 const sanitized = (extra = {}) => ({
@@ -299,7 +299,7 @@ const fixedEvents = (goJsonFixed?.stdout ?? '').split('\n').filter((l) => l.trim
   .filter((e) => e !== null && e.Action === 'pass' && typeof e.Test === 'string');
 console.log(`-- go test -json with the declared cache (exit ${goJsonFixed?.status ?? 'not run'}) -- per-test pass events: ${fixedEvents.length}`);
 
-check('MEASURED: a workspace-scoped GOCACHE/GOPATH makes Go runnable inside a Amabie step', () => {
+check('MEASURED: a workspace-scoped GOCACHE/GOPATH makes Go runnable inside an Amabie step', () => {
   assert(goFixed.status === 0, 'the proposed Go declaration does not make go runnable under the sanitized env — the adapter fix would not work');
   assert(goJsonFixed !== null && goJsonFixed.status === 0, 'the fixed env must also work with -json');
   assert(fixedEvents.length === 2, `expected 2 per-test pass events with the fixed env, got ${fixedEvents.length}`);

@@ -30,7 +30,7 @@ function fixture(subjective = true, enroll = true) {
   const verifyRun = () => request('request-verification', { subjectDigest: subjectDigest(enrollment.subject) }) as RunTicket;
   const result = (ticket: RunTicket): VerificationStatement => ({ ...ticket, evidenceDigest: '4'.repeat(64), clean: true, objectiveResults: [{ id: 'tests', status: 'met' }, { id: 'negative-numbers', status: 'met' }] });
   const receipt = <T extends RunTicket>(kind: string, payload: T, key = verifier.privateKey): RecordEnvelope => {
-    const body = { schema: RECORD_SCHEMA, projectId, kind, seq: payload.sequence, issuedAt: '2026-09-11T00:00:00.000Z', canaryVersion: 'test', payload };
+    const body = { schema: RECORD_SCHEMA, projectId, kind, seq: payload.sequence, issuedAt: '2026-09-11T00:00:00.000Z', amabieVersion: 'test', payload };
     return { ...body, signature: crypto.sign(null, signedBytes(body), key).toString('base64') };
   };
   const accept = (v: VerificationStatement) => receipt('human-acceptance', { ...pickRun(v), verificationDigest: hash(v), duties: enrollment.subject.subjectiveDuties, decision: 'accept' }, reviewer.privateKey);

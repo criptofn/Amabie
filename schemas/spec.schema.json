@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/criptofn/Canary/main/schemas/spec.schema.json",
-  "title": "Canary experiment spec",
-  "description": "Declarative input to the attested proof pipeline: `canary run <spec.json>`, `canary prove <spec.json>`, `canary check <spec.json>`. Mirrors the strict validator in packages/core/planner/src/index.ts (validateSpec), which is authoritative: this schema is the published, machine-readable contract for authors and tooling; the runtime validator is what actually gates execution. Two rules cannot be expressed in JSON Schema and are enforced only at runtime: dependency.baseline must differ from dependency.candidate, and every argv must be non-empty after placeholder expansion (see docs/SPEC-FORMAT.md).",
+  "title": "Amabie experiment spec",
+  "description": "Declarative input to the attested proof pipeline: `amabie run <spec.json>`, `amabie prove <spec.json>`, `amabie check <spec.json>`. Mirrors the strict validator in packages/core/planner/src/index.ts (validateSpec), which is authoritative: this schema is the published, machine-readable contract for authors and tooling; the runtime validator is what actually gates execution. Two rules cannot be expressed in JSON Schema and are enforced only at runtime: dependency.baseline must differ from dependency.candidate, and every argv must be non-empty after placeholder expansion (see docs/SPEC-FORMAT.md).",
   "type": "object",
   "required": ["schema", "id", "dependency", "downstream", "commands", "repeats"],
   "properties": {

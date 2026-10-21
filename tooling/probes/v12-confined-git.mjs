@@ -149,7 +149,7 @@ const devices = () => dos('list').map;
 const markerNames = () => fs.readdirSync(outside).filter(f => /^ran-.*\.txt$/.test(f)).map(f => f.slice(4, -4));
 const clearMarkers = () => { for (const f of fs.readdirSync(outside)) if (/^ran-.*\.txt$/.test(f)) fs.rmSync(path.join(outside, f)); };
 const markerPath = id => path.join(outside, `ran-${id}.txt`);
-const helperText = id => `#!/bin/sh\necho ESCAPE_CANARY\necho ran > "${slash(markerPath(id))}"\n`;
+const helperText = id => `#!/bin/sh\necho ESCAPE_AMABIE\necho ran > "${slash(markerPath(id))}"\n`;
 
 function buildTemplate() {
   fs.mkdirSync(template);
@@ -255,10 +255,10 @@ try {
   }
   run(git, ['add', '.'], base); run(git, ['commit', '-m', 'base'], base);
   run(git, ['add', '.'], outside); run(git, ['commit', '-m', 'outside base'], outside);
-  fs.writeFileSync(path.join(outside, 'secret.config'), '[amabie]\nprobe = ESCAPE_CANARY\n');
-  fs.writeFileSync(path.join(outside, 'ESCAPE_CANARY'), 'ESCAPE_CANARY\n');
-  run(git, ['config', 'amabie.probe', 'ESCAPE_CANARY'], outside);
-  run(git, ['add', 'ESCAPE_CANARY'], outside);
+  fs.writeFileSync(path.join(outside, 'secret.config'), '[amabie]\nprobe = ESCAPE_AMABIE\n');
+  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE'), 'ESCAPE_AMABIE\n');
+  run(git, ['config', 'amabie.probe', 'ESCAPE_AMABIE'], outside);
+  run(git, ['add', 'ESCAPE_AMABIE'], outside);
   run(git, ['commit', '-m', 'outside secret'], outside);
   for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'sshCommand']) {
     fs.writeFileSync(path.join(helpers, `ran-${id}.sh`), helperText(id));
@@ -266,7 +266,7 @@ try {
   fs.writeFileSync(path.join(helpers, 'pre-commit'), helperText('hooksPath'));
   // A file that exists only OUTSIDE, so a work-tree listing naming it is proof of an
   // outside read even when the outside repo's tracked content is also named.
-  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE_UNTRACKED'), 'ESCAPE_CANARY\n');
+  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE_UNTRACKED'), 'ESCAPE_AMABIE\n');
   buildTemplate();
 
   // ── trusted-side path forms a confined worker could not compute for itself ──
@@ -290,7 +290,7 @@ try {
   const trustedGitConfig = path.resolve(repo, run(git, ['rev-parse', '--git-path', 'config'], repo).trim());
   const cfg = {
     git, base, work, store, repo, outside, outsideSlash: slash(outside), helperDirSlash: slash(helpers),
-    secretObject: run(git, ['hash-object', 'ESCAPE_CANARY'], outside).trim(),
+    secretObject: run(git, ['hash-object', 'ESCAPE_AMABIE'], outside).trim(),
     ntSecret, shortSecret, uncSecret, runTimeout: 6000,
     report: path.join(work, 'escape-report.json'), descendantReport: path.join(work, 'descendant.json'),
     descendantReads: { 'outside-secret': path.join(outside, 'secret.config'), 'trusted-checkout': path.join(repo, 'package.json') },

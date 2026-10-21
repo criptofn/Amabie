@@ -1,19 +1,19 @@
 {
-  "schema": "canary-release-validation/1",
+  "schema": "amabie-release-validation/1",
   "label": "H3",
   "phase": "plain",
   "probe": "tooling/probes/v15-release-validation-task.mjs",
   "probeSha256": "1f9e6291c8cd24565e701bc74b90025d0dc8a7f75e2b0342b3040dc3448b3703",
-  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "cliVersion": "canary 1.5.0",
+  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "cliVersion": "amabie 1.5.0",
   "cliBinarySha256": "ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a",
   "publishedArtifactSha256": "8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H3-quantize-bits-validation.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H3-quantize-bits-validation.md",
   "expectedHead": "7d0eb49c46d83184638fa093b44a15222feb8c51",
   "baselineHead": null,
   "taskSha256": "7328555e519c70dc73e683a9c2356b89579d5237ce3e6f7ef85aa4168e9f84cf",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\H3\\plain",
-  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-validation-trust\\05c1130235fce502c0819d1d779326394a0f4c4dd98cf9e6ccaf6fa635713974",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\H3\\plain",
+  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-validation-trust\\05c1130235fce502c0819d1d779326394a0f4c4dd98cf9e6ccaf6fa635713974",
   "toolchainDirectories": [],
   "toolchainDirectoryCount": 0,
   "startingRepoIdentity": {
@@ -26,7 +26,7 @@
   "environmentKeyNames": [
     "ALLUSERSPROFILE",
     "APPDATA",
-    "CANARY_TRUST_STORE",
+    "AMABIE_TRUST_STORE",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "COLORTERM",
     "COMPUTERNAME",
@@ -89,7 +89,7 @@
         "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
         "test"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\H3\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\H3\\plain",
       "startedAt": "2026-09-27T15:19:00.139Z",
       "elapsedMs": 365,
       "exitCode": 0,
@@ -108,5 +108,5 @@
   },
   "status": "complete",
   "infrastructureFailures": 0,
-  "canaryVerdict": null
+  "amabieVerdict": null
 }

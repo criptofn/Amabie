@@ -172,7 +172,7 @@ interface CandidateIntent {
 }
 
 interface CandidateRecord {
-  schema: 'amabie-candidate/1' | 'canary-candidate/1';
+  schema: 'amabie-candidate/1';
   name: string;
   root: string;
   baseRoot: string;
@@ -240,7 +240,7 @@ function loadRecord(root: string, name: string): CandidateRecord | 'missing' | '
   try {
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<CandidateRecord> | null;
     if (!v || typeof v !== 'object' || Array.isArray(v)) return 'invalid';
-    if ((v.schema !== 'amabie-candidate/1' && v.schema !== 'canary-candidate/1') || v.name !== name || !NAME_RE.test(name)) return 'invalid';
+    if ((v.schema !== 'amabie-candidate/1' && v.schema !== 'amabie-candidate/1') || v.name !== name || !NAME_RE.test(name)) return 'invalid';
     if (typeof v.root !== 'string' || !path.isAbsolute(v.root)) return 'invalid';
     if (typeof v.baseRoot !== 'string' || !path.isAbsolute(v.baseRoot)) return 'invalid';
     if (typeof v.baseRef !== 'string' || !v.baseRef || v.baseRef.length > 200) return 'invalid';
@@ -579,7 +579,7 @@ function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string):
   // F3 post-window edge: the seal re-checked after execution, before the
   // verdict is read. A step that rewrote its sibling's script text executed
   // unsealed words inside a "sealed" window; green output on tampered plan
-  // text is a AMABIE-BLOCKED-COMPLETION, never a CANDIDATE PASS. The
+  // text is an AMABIE-BLOCKED-COMPLETION, never a CANDIDATE PASS. The
   // during/after stamp also sets the quarantine — the next window starts
   // refused, so the mutated plan surface cannot re-baseline to a PASS.
   const postSeal = sealViolation('after execution');

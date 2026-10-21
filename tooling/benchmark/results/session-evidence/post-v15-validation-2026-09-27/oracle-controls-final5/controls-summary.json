@@ -1,10 +1,10 @@
 {
-  "schema": "canary-validation-oracle-controls/1",
+  "schema": "amabie-validation-oracle-controls/1",
   "startedAt": "2026-09-27T02:49:28.556Z",
   "finishedAt": "2026-09-27T02:49:28.557Z",
-  "worktree": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation",
-  "scratchRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927",
-  "archiveRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927",
+  "worktree": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation",
+  "scratchRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927",
+  "archiveRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927",
   "archiveHashes": {
     "H1": {
       "baseline": "080ba032e1784f5d2edce2344a5e8ec83d558ed3acf70312fbf63187b803f4e6",
@@ -31,8 +31,8 @@
       "candidate": "1ef41487bed4bdebb5ea08970442b059267b49f69ddc3e57f9944afa353d92a9"
     }
   },
-  "oracle": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation\\tooling\\probes\\v15-validation-oracle.mjs",
-  "cli": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "oracle": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation\\tooling\\probes\\v15-validation-oracle.mjs",
+  "cli": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
   "artifactSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
   "candidateHeads": {
     "H1": "e6ed172dc22861b90487b3392b859542d53f8d30",
@@ -46,7 +46,7 @@
     {
       "label": "H1",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\H1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\H1",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -57,7 +57,7 @@
     {
       "label": "H1",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\H1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\H1",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,
@@ -68,7 +68,7 @@
     {
       "label": "H2",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\H2",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\H2",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -79,7 +79,7 @@
     {
       "label": "H2",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\H2",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\H2",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,
@@ -90,7 +90,7 @@
     {
       "label": "H3",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\H3",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\H3",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -101,7 +101,7 @@
     {
       "label": "H3",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\H3",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\H3",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,
@@ -112,7 +112,7 @@
     {
       "label": "H5",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\H5",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\H5",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -123,7 +123,7 @@
     {
       "label": "H5",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\H5",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\H5",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,
@@ -134,7 +134,7 @@
     {
       "label": "R1",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\R1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\R1",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -145,7 +145,7 @@
     {
       "label": "R1",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\R1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\R1",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,
@@ -156,7 +156,7 @@
     {
       "label": "S1",
       "role": "baseline",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\baseline\\S1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\baseline\\S1",
       "expected": "fail",
       "exitCode": 0,
       "signal": null,
@@ -167,7 +167,7 @@
     {
       "label": "S1",
       "role": "candidate",
-      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-oracle-archives-20260927\\candidate\\S1",
+      "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-oracle-archives-20260927\\candidate\\S1",
       "expected": "pass",
       "exitCode": 0,
       "signal": null,

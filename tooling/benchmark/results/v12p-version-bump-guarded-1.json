@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12p-version-bump-guarded-1",
   "task": "version-bump",
   "arm": "guarded",
@@ -19,14 +19,14 @@
     "startsGreen": true,
     "what": "the version lives in four places; the visible suite checks one of them",
     "expectedOutcome": "hidden PASS means every place was updated; a green visible suite with a stale README/CHANGELOG is the thoroughness failure this measures",
-    "requiredScopeNote": "The TASK.md states exactly these two requirements, and until now the fixture declared NONE — so `--register-requirements` was a no-op for it and the `per-requirement` duty never existed in its guarded trials. That matters because tooling/benchmark/BENCHMARKS.md credits this fixture with the only false-done class the corpus ever surfaced (the multi-place requirement). See docs/V1.2-PLAN.md open item 5: with the v1.2 REQUIREMENT UNBOUND gate, registering these without a bound check makes `canary work` REFUSE before the worker starts, so the guarded arm would measure a refusal instead of an attempt. The requirements are recorded here because they are what the task states; how the guarded arm should exercise them is a design decision that is still open.",
+    "requiredScopeNote": "The TASK.md states exactly these two requirements, and until now the fixture declared NONE — so `--register-requirements` was a no-op for it and the `per-requirement` duty never existed in its guarded trials. That matters because tooling/benchmark/BENCHMARKS.md credits this fixture with the only false-done class the corpus ever surfaced (the multi-place requirement). See docs/V1.2-PLAN.md open item 5: with the v1.2 REQUIREMENT UNBOUND gate, registering these without a bound check makes `amabie work` REFUSE before the worker starts, so the guarded arm would measure a refusal instead of an attempt. The requirements are recorded here because they are what the task states; how the guarded arm should exercise them is a design decision that is still open.",
     "requirements": [
       "the version is bumped from 1.2.3 to 2.0.0 everywhere it appears, so nothing in the repository still claims the old version",
       "a CHANGELOG entry for 2.0.0 is added"
     ]
   },
   "startedAt": "2026-09-14T03:29:26.801Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-version-bump-guarded-ZasxoP",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-version-bump-guarded-ZasxoP",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -51,10 +51,10 @@
     "secs": 0.9,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 2,
     "verdict": "NOT PROVEN",
     "hookFired": true,
@@ -106,7 +106,7 @@
       }
     ],
     "baseMoved": true,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json canary.proofs and re-run canary setup — or take the work through a candidate (canary work <name> … → canary finish <name>) and have a human accept it there\n  - UNPROVEN [per-requirement] (objective): multi-part task: 2 registered requirement(s), 2 with NO sealed proof — a green plan proves the plan, NOT each part. Bind each uncovered digest in package.json canary.proofs to a script your plan runs and re-run canary setup (acceptance cannot replace measurement for an objective requirement) — until then UNPROVEN, never permanently dead\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json amabie.proofs and re-run amabie setup — or take the work through a candidate (amabie work <name> … → amabie finish <name>) and have a human accept it there\n  - UNPROVEN [per-requirement] (objective): multi-part task: 2 registered requirement(s), 2 with NO sealed proof — a green plan proves the plan, NOT each part. Bind each uncovered digest in package.json amabie.proofs to a script your plan runs and re-run amabie setup (acceptance cannot replace measurement for an objective requirement) — until then UNPROVEN, never permanently dead\n"
   },
   "agentResult": {
     "isError": false,
@@ -193,7 +193,7 @@
   "taskRegistration": {
     "requirements": 2,
     "exit": 0,
-    "stdoutTail": "task registered: multi (2 requirement(s)).\nrequirement [needs proof or acceptance]: 7b52168c4b12444bbed0b236d94d514f38731cf4ed18967b35c279b53cadf5f9 — \"the version is bumped from 1.2.3 to 2.0.0 everywhere it appears, so nothing in the reposit\"\n  bind it: package.json \"canary\": { \"proofs\": { \"7b52168c4b12444bbed0b236d94d514f38731cf4ed18967b35c279b53cadf5f9\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: 06535a16b59d75a7fe3616cb2f6427bb09fd6306bbca5570ed771218065c063f — \"a CHANGELOG entry for 2.0.0 is added\"\n  bind it: package.json \"canary\": { \"proofs\": { \"06535a16b59d75a7fe3616cb2f6427bb09fd6306bbca5570ed771218065c063f\": \"<script name from your plan>\" } }, then: canary setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
+    "stdoutTail": "task registered: multi (2 requirement(s)).\nrequirement [needs proof or acceptance]: 7b52168c4b12444bbed0b236d94d514f38731cf4ed18967b35c279b53cadf5f9 — \"the version is bumped from 1.2.3 to 2.0.0 everywhere it appears, so nothing in the reposit\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"7b52168c4b12444bbed0b236d94d514f38731cf4ed18967b35c279b53cadf5f9\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: 06535a16b59d75a7fe3616cb2f6427bb09fd6306bbca5570ed771218065c063f — \"a CHANGELOG entry for 2.0.0 is added\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"06535a16b59d75a7fe3616cb2f6427bb09fd6306bbca5570ed771218065c063f\": \"<script name from your plan>\" } }, then: amabie setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
   },
   "stream": {
     "lines": 1004,
@@ -228,20 +228,20 @@
     "bytes": {
       "toolResultTotal": 5114,
       "largestToolResult": 1264,
-      "canaryVisible": 221,
+      "amabieVisible": 221,
       "hookOutput": 0
     },
     "commands": {
       "total": 6,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "canary status"
+      "amabieCommands": [
+        "amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

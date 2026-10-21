@@ -23,7 +23,7 @@ import path from 'node:path';
 export const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..'); // dist/test -> dist -> cli -> apps -> repo root
 
 export const MOCHA_DOUBLE_SRC = path.join(REPO, 'apps', 'cli', 'test', 'fixtures', 'mocha-double');
-export const DOUBLE_VERSION = '0.0.0-canary-double';
+export const DOUBLE_VERSION = '0.0.0-amabie-double';
 export const STAGING_REL = 'stub-payload';
 export const STAGER_REL = 'amabie-stub-stage.js';
 

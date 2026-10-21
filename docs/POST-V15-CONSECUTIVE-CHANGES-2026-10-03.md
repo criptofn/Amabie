@@ -2,19 +2,19 @@
 
 ## Observed defect
 
-This is a Canary defect reproduced in a temporary, minimal Git repository, not
+This is an Amabie defect reproduced in a temporary, minimal Git repository, not
 a repair to Hermes or schniedelsmp. The first task fixes leading whitespace and
 adds a test. `doctor --json` correctly reports READY; that change is committed.
 The second task requests trailing whitespace handling. Its implementation still
 only handles leading whitespace, and no trailing whitespace assertion exists.
-Canary nevertheless reports READY and `regression-evidence: met`: the earlier
+Amabie nevertheless reports READY and `regression-evidence: met`: the earlier
 assertion still fails against the original setup commit.
 
 The test independently loads the second implementation and observes that the
 requested trailing whitespace behavior is absent. Requirements are not added to
 the frozen plan or retroactively inferred by a language model.
 
-Raw evidence is under `C:/Users/Johannes/Desktop/canary/_canary-data/evidence/`:
+Raw evidence is under `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/`:
 
 - `consecutive-changes-20261003-red-final.log`: real CLI READY/exit 0 where the
   regression expects NOT PROVEN/exit 2; one failing test.

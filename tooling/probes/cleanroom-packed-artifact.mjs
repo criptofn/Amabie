@@ -135,11 +135,11 @@ try {
     exampleTest.status === 0 && /(?:#|ℹ) pass 1\b/.test(exampleTest.stdout ?? ''), exampleTest.stdout + (exampleTest.stderr ?? ''));
   check(3, 'installed bundle + bin shim present; no nested node_modules (zero-dep footprint)',
   fs.existsSync(INSTALLED) && fs.existsSync(SHIM)
-    && fs.existsSync(path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'canary.cmd' : 'canary'))
+    && fs.existsSync(path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'amabie.cmd' : 'amabie'))
     && !fs.existsSync(path.join(REPO, 'node_modules', '@amabie', 'cli', 'node_modules')));
-const LEGACY_SHIM = path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'canary.cmd' : 'canary');
+const LEGACY_SHIM = path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'amabie.cmd' : 'amabie');
 const legacyVersion = sh(`"${LEGACY_SHIM}" --version`, { cwd: REPO });
-check(3, 'legacy canary bin alias still launches Amabie', legacyVersion.status === 0 && /^amabie \d+\.\d+\.\d+/i.test(legacyVersion.stdout ?? ''), legacyVersion.stdout + (legacyVersion.stderr ?? ''));
+check(3, 'legacy amabie bin alias still launches Amabie', legacyVersion.status === 0 && /^amabie \d+\.\d+\.\d+/i.test(legacyVersion.stdout ?? ''), legacyVersion.stdout + (legacyVersion.stderr ?? ''));
 
   // ---- 4) bin shim execution (spaces in the install path are now live) ----
   const setup = sh(`"${SHIM}" setup --yes`, { cwd: REPO });

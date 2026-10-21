@@ -1,7 +1,7 @@
 {
   "label": "H1",
-  "arm": "canary",
-  "repo": "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\hermes-agent",
+  "arm": "amabie",
+  "repo": "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\hermes-agent",
   "startedAt": "2026-09-24T04:54:20.197Z",
   "wallSeconds": 166.4,
   "agentExitCode": 0,
@@ -55,8 +55,8 @@
   "hookFiredDuringRun": true,
   "seenByModel": {
     "sawStopHookFeedback": true,
-    "sawCanaryBlockText": true,
-    "sawCanarySystemMessage": false
+    "sawAmabieBlockText": true,
+    "sawAmabieSystemMessage": false
   },
   "checkpointDrivenManually": false,
   "manuallyDriven": null,

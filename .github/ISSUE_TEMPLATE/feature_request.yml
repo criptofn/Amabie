@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Canary's core runs with **zero** integrations, and adapters live behind
+        Amabie's core runs with **zero** integrations, and adapters live behind
         optional provider boundaries. A good proposal says what evidence the
         feature produces, and how a reader could re-derive it — not only what it
         would be nice to see.
@@ -36,7 +36,7 @@ body:
     attributes:
       label: What evidence would this produce, and how is it re-derivable?
       description: |
-        State the claim precisely. Which of Canary's existing labels could this
+        State the claim precisely. Which of Amabie's existing labels could this
         route to (PASS / CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE / FLAKY /
         INFRASTRUCTURE_FAILURE / INCONCLUSIVE), and would it ever reach a *strong*
         label? Remember rule 14 — a strong label needs a VALID execution
@@ -55,5 +55,5 @@ body:
       options:
         - label: This does not weaken a gate or make a strong label reachable without a validation path.
           required: true
-        - label: If this changes what Canary *claims*, I am prepared to update the docs/ contract in the same PR.
+        - label: If this changes what Amabie *claims*, I am prepared to update the docs/ contract in the same PR.
           required: true

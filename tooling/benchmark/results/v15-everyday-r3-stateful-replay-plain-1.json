@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-r3-stateful-replay-plain-1",
   "task": "stateful-replay",
   "arm": "plain",
@@ -34,7 +34,7 @@
     "what": "State transitions spanning cache, batch mutation and replay; no implementation paths given in task."
   },
   "startedAt": "2026-09-24T19:25:43.927Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stateful-replay-plain-DBsPeh",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stateful-replay-plain-DBsPeh",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -56,9 +56,9 @@
     ],
     "mcpToolsAdvertised": false
   },
-  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in canary.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
+  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in amabie.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -88,7 +88,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. `node run-tests.js` and `node checks/contract.cjs` (the declared check) both pass.\n\n## What was broken and what I changed\n\n**`src/storage.js`** — `key(tenant, id)` returned just `id`, so tenants shared one namespace (violates tenant isolation). Now returns `JSON.stringify([tenant, id])`, which cannot collide even when tenant/id contain punctuation or delimiters.\n\n**`src/replay.js`** — `replay` filtered to `op === 'put'`, silently dropping deletions during `open(history)`, so replayed ledgers resurrected deleted pairs. Now applies every event in order.\n\n**`src/api.js`**\n- `apply()` now invalidates the read cache for the mutated key, so cached hits *and* cached misses go fresh after every mutation path (put, remove, batch, and replay-time applies).\n- `batch()` previously did `rows.set(...)` directly — it ignored `delete` events, bypassed cache invalidation, and never journaled through `mutate`'s canonical path. It now routes each event through the same `mutate` function, preserving call order and journal integrity.\n\n**`tests/stateful-contract.test.cjs`** (new, wired into `run-tests.js`) — covers the gaps the smoke test missed: cross-tenant isolation with delimiter-hostile names; cached-miss freshness after batch puts; cached-hit staleness after put/batch-delete/remove; batch put/delete ordering; journal order + detached array/events + tamper-resistance; `open(exportJournal())` reproducing deletions; repeated replay equivalence (a→b→c); history preserved for subsequent mutations after replay; and caller's input array not being destructed by `open`.\n\nI left `checks/contract.cjs` and `canary.project.json` untouched so the declared proof hash remains valid. Canary reports the repo as NOT CONNECTED; I did not run `setup` since connecting isn't part of this task, and I haven't committed — say the word if you want a local commit."
+    "finalText": "Everything works now. `node run-tests.js` and `node checks/contract.cjs` (the declared check) both pass.\n\n## What was broken and what I changed\n\n**`src/storage.js`** — `key(tenant, id)` returned just `id`, so tenants shared one namespace (violates tenant isolation). Now returns `JSON.stringify([tenant, id])`, which cannot collide even when tenant/id contain punctuation or delimiters.\n\n**`src/replay.js`** — `replay` filtered to `op === 'put'`, silently dropping deletions during `open(history)`, so replayed ledgers resurrected deleted pairs. Now applies every event in order.\n\n**`src/api.js`**\n- `apply()` now invalidates the read cache for the mutated key, so cached hits *and* cached misses go fresh after every mutation path (put, remove, batch, and replay-time applies).\n- `batch()` previously did `rows.set(...)` directly — it ignored `delete` events, bypassed cache invalidation, and never journaled through `mutate`'s canonical path. It now routes each event through the same `mutate` function, preserving call order and journal integrity.\n\n**`tests/stateful-contract.test.cjs`** (new, wired into `run-tests.js`) — covers the gaps the smoke test missed: cross-tenant isolation with delimiter-hostile names; cached-miss freshness after batch puts; cached-hit staleness after put/batch-delete/remove; batch put/delete ordering; journal order + detached array/events + tamper-resistance; `open(exportJournal())` reproducing deletions; repeated replay equivalence (a→b→c); history preserved for subsequent mutations after replay; and caller's input array not being destructed by `open`.\n\nI left `checks/contract.cjs` and `amabie.project.json` untouched so the declared proof hash remains valid. Amabie reports the repo as NOT CONNECTED; I did not run `setup` since connecting isn't part of this task, and I haven't committed — say the word if you want a local commit."
   },
   "visible": {
     "exitCode": 0,
@@ -166,20 +166,20 @@
     "bytes": {
       "toolResultTotal": 6850,
       "largestToolResult": 1100,
-      "canaryVisible": 206,
+      "amabieVisible": 206,
       "hookOutput": 0
     },
     "commands": {
       "total": 4,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-stateful-replay-plain-DBsPeh/project\" && canary status"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-stateful-replay-plain-DBsPeh/project\" && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

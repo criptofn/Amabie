@@ -152,7 +152,7 @@ export interface EvidenceBundle {
   schemaVersion: number;
   runId: string;
   createdAt: string;
-  canaryVersion: string;
+  amabieVersion: string;
   experimentId: string;
   dependency: {
     package: string;

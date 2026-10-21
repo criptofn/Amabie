@@ -122,32 +122,6 @@ describe('detection (pure)', () => {
 });
 
 describe('setup', () => {
-  it('migrates untracked Canary state and refreshes hooks to the Amabie CLI', () => {
-    const root = makeProject('legacy-state-migration');
-    fs.rmSync(path.join(root, '.git'), { recursive: true, force: true });
-    const init = spawnSync('git', ['-C', root, 'init', '--quiet'], { encoding: 'utf8' });
-    assert.equal(init.status, 0, init.stderr);
-    const first = amabie(['setup', '--yes', root]);
-    assert.equal(first.status, 0, `${first.stdout}${first.stderr}`);
-
-    const currentDir = path.join(root, '.amabie');
-    const legacyDir = path.join(root, '.canary');
-    fs.renameSync(currentDir, legacyDir);
-    const currentConfig = path.join(legacyDir, 'amabie.local.json');
-    const legacyConfig = path.join(legacyDir, 'canary.local.json');
-    fs.renameSync(currentConfig, legacyConfig);
-    const config = JSON.parse(fs.readFileSync(legacyConfig, 'utf8')) as AmabieConfig;
-    config.cliPath = path.join(root, 'node_modules', '@canary-rn', 'cli', 'dist', 'main.js');
-    fs.writeFileSync(legacyConfig, JSON.stringify(config));
-
-    const migrated = amabie(['setup', '--yes', root]);
-    assert.equal(migrated.status, 0, `${migrated.stdout}${migrated.stderr}`);
-    assert.match(migrated.stdout, /migrated existing \.canary state to \.amabie/);
-    assert.ok(!fs.existsSync(legacyDir), 'legacy state directory should be moved');
-    assert.ok(fs.existsSync(cfgFile(root)), 'Amabie config should be present after migration');
-    assert.equal(readCfg(root).cliPath, CLI, 'the managed hooks should point at the Amabie CLI');
-  });
-
   it('explains the task-scope limit when no acceptance criteria were registered', () => {
     const root = makeProject('setup-no-task-criteria');
     const setup = amabie(['setup', '--yes', root]);

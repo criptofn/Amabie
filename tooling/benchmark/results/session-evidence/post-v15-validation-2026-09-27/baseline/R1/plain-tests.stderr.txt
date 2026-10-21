@@ -2,7 +2,7 @@
 ⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
 
  FAIL  tests/unit/cli/help-drift.test.ts [ tests/unit/cli/help-drift.test.ts ]
-Error: dist CLI not found at C:\Users\Johannes\AppData\Local\Temp\canary-v15-baselines-20260927\R1\dist\cli\index.js. Run `npm run build` before `npm test`. This is deliberately a throw and not a skip: every assertion below is about the shipped binary, and skipping on a missing build is how six of them silently stopped running in CI.
+Error: dist CLI not found at C:\Users\Johannes\AppData\Local\Temp\amabie-v15-baselines-20260927\R1\dist\cli\index.js. Run `npm run build` before `npm test`. This is deliberately a throw and not a skip: every assertion below is about the shipped binary, and skipping on a missing build is how six of them silently stopped running in CI.
  ❯ tests/unit/cli/help-drift.test.ts:37:9
      35| 
      36| if (!existsSync(CLI)) {

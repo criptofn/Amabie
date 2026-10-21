@@ -1,9 +1,9 @@
 
-> canary-reliability-network@0.0.0 test
+> amabie-reliability-network@0.0.0 test
 > npm run build && node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js"
 
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 ▶ panel K layer 1 — the validator refuses hostile frame streams
@@ -32,10 +32,10 @@
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✖ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (349.595236ms)
 ✖ post-GLM F4 — infra prose cannot mask an attested regression (349.986487ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✖ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (325.465756ms)
   ✖ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (324.618629ms)
-✖ post-GLM F5 — an untrusted spec cannot select the canary double (650.582047ms)
+✖ post-GLM F5 — an untrusted spec cannot select the amabie double (650.582047ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✖ check on honest evidence exits 0 and prints PASS (653.02325ms)
   ✖ check on a tampered artifact exits 3 and names the tampered file (518.402467ms)
@@ -49,10 +49,10 @@
   ✖ test command node -e printing mocha-shaped prose is never PASS (503.692158ms)
   ✖ a printed failing summary is never CONFIRMED_REGRESSION (484.474667ms)
 ✖ FINDING A — subject text alone can never create a strong verdict (1629.926571ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.548097ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.317132ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (3.833562ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (3.833562ms)
 ✔ intent matching the live authority stays SILENT (the guard must not shout at innocence) (671.148ms)
 ✔ legacy record with no intent field verifies exactly as before (additive) (514.627353ms)
 ✔ dropped plan step since isolation → intent block before identity (531.230781ms)
@@ -80,12 +80,12 @@
   ✔ a fake .git that cannot answer is recorded UNIDENTIFIED, never upgraded (9.494926ms)
   ✔ a fake .git under a REAL parent repo is still UNIDENTIFIED — git never lends ancestor identity (140.119625ms)
 ✔ candidateIdentity (pure): unknown candidate stays unknown (150.13116ms)
-▶ verification bundle: what Canary EXECUTED, recorded from its own run
+▶ verification bundle: what Amabie EXECUTED, recorded from its own run
   ✔ setup writes argv/cwd/runtime/candidate/raw-bytes+digests/counts; empty output hashes truthfully (483.336249ms)
   ✔ a failing check records exit code + observed counts, and the bundle does not change the verdict (693.710111ms)
   ✔ a hostile plan-step kind in config cannot shape a path out of the bundle dir (S3, per-component) (726.818053ms)
   ✔ retention is bounded and owns only its own directory names (703.582099ms)
-✔ verification bundle: what Canary EXECUTED, recorded from its own run (2608.284972ms)
+✔ verification bundle: what Amabie EXECUTED, recorded from its own run (2608.284972ms)
 ▶ claims are hints: never a pass, never a block, at most an annotation
   ✔ claim + green run stays SILENT even when the claim is absurd (622.645557ms)
   ✔ diverging claim annotates an already-decided block with claim-vs-observed, both sides parsed (592.806126ms)
@@ -100,23 +100,23 @@
 ▶ claim intake guards
   ✔ empty claim is misuse (exit 3) and writes nothing (44.34085ms)
   ✔ claims without a usable repo are refused with exit 2, nothing written (46.895746ms)
-  ✔ inside a repo Canary does not trust: NEEDS ATTENTION, no claim written (41.798433ms)
+  ✔ inside a repo Amabie does not trust: NEEDS ATTENTION, no claim written (41.798433ms)
   ✔ a set-up repo stores the claim labeled UNTRUSTED HINT, capped, and says so (267.768605ms)
   ✔ a claims/ dir linked outside the repo refuses the write (S3, exact path) (246.987696ms)
   ✔ a config from another installation refuses claims too (S2) (300.681263ms)
 ✔ claim intake guards (948.807689ms)
 ▶ writers stamp their own class, honestly
-  ✔ every verification bundle Canary writes is CANARY_OBSERVED (setup/doctor/checkpoint) (1341.083169ms)
+  ✔ every verification bundle Amabie writes is AMABIE_OBSERVED (setup/doctor/checkpoint) (1341.083169ms)
   ✔ the claim envelope is stamped AGENT_REPORTED next to its UNTRUSTED HINT authority (490.927085ms)
 ✔ writers stamp their own class, honestly (1833.282771ms)
 ▶ labels are inert as input — no promotion by declaring or copying
-  ✔ a hand-written claim self-declaring CANARY_OBSERVED/"VERIFIED" changes nothing but annotation prose (621.237938ms)
-  ✔ a forged CANARY_OBSERVED pass bundle cannot stop a block and is kept as inert data (553.137903ms)
+  ✔ a hand-written claim self-declaring AMABIE_OBSERVED/"VERIFIED" changes nothing but annotation prose (621.237938ms)
+  ✔ a forged AMABIE_OBSERVED pass bundle cannot stop a block and is kept as inert data (553.137903ms)
   ✔ no side door: extras handed to the bundle writer can never shadow its reserved fields (60.46701ms)
   ✔ doctor re-derives despite a forged pass bundle: NEEDS ATTENTION, never READY (608.274336ms)
 ✔ labels are inert as input — no promotion by declaring or copying (1843.68475ms)
 ▶ class coverage and UX
-  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .canary ever carries it (872.448442ms)
+  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .amabie ever carries it (872.448442ms)
   ✔ trust classes are verbose-only — default output stays simple (827.897734ms)
 ✔ class coverage and UX (1700.790167ms)
 ▶ the bundle answers the M4 questions
@@ -174,11 +174,11 @@
   ✔ a fully-covered refactor with a green sealed plan yields ONLY met obligations (silent path exists) (0.220674ms)
   ✔ kinds never declared still get the diff-implied floor: no kinds + clean signals = no obligations beyond tests-green (0.219107ms)
 ✔ obligationsFor — the one-way obligation engine (4.543334ms)
-▶ canary task — an AGENT_REPORTED hint with zero authority
+▶ amabie task — an AGENT_REPORTED hint with zero authority
   ✔ setup + register: digest-only storage, inferred kinds, explicit zero-authority line (645.504993ms)
   ✔ --kind overrides inference; --requirement forces multi; hostile input is usage, not a crash (744.757499ms)
   ✔ registering a task against no setup / no git says so; nothing is written (92.990224ms)
-✔ canary task — an AGENT_REPORTED hint with zero authority (1483.751944ms)
+✔ amabie task — an AGENT_REPORTED hint with zero authority (1483.751944ms)
 ▶ checkpoint/doctor integration — the sealed plan passes, obligations decide the tone
   ✔ no task record, no prose, fake git: byte-identical pre-M6 silence (additive) (661.201212ms)
   ✔ registered bugfix with no test change: the pass rides an honest UNPROVEN systemMessage, never silence (663.050536ms)
@@ -190,7 +190,7 @@
 ✔ checkpoint/doctor integration — the sealed plan passes, obligations decide the tone (4785.666913ms)
 ✔ built CLI exists (run npm run build first) (1.481158ms)
 ✔ isolate misuse exits 3 with usage, and never touches the repo (1339.911759ms)
-✔ isolate refuses a repo Canary does not verify (no config, exit 2) (88.977237ms)
+✔ isolate refuses a repo Amabie does not verify (no config, exit 2) (88.977237ms)
 ✔ isolate refuses a base whose own config is distrusted (480.300594ms)
 ✔ create refuses under fake git — an unresolvable base cannot be isolated from (and nothing registers) (393.72987ms)
 ✔ verify refuses a malformed or name-mismatched record without executing anything (443.962282ms)
@@ -199,10 +199,10 @@
 ✔ under fake git, verify can NEVER report PASS — the fail-closed ceiling of the whole contract layer (401.7832ms)
 ✔ list is honest with no registry, survives invalid records, and exits 0 (it never executes anything) (381.588256ms)
 ✔ remove refuses unregistered names; a vanished candidate is pruned honestly (record deleted, exit 0) (367.086908ms)
-✔ uninstall refuses to delete .canary while candidates are registered (worker trees stay protectable) (348.482565ms)
+✔ uninstall refuses to delete .amabie while candidates are registered (worker trees stay protectable) (348.482565ms)
 ✔ built CLI exists (run npm run build first) (5.392919ms)
 ✔ isolate --promote misuse exits 3 (name required, flags scoped, one mode) (1055.354281ms)
-✔ promote refuses a repo Canary does not trust (exit 2, before any record read) (80.774241ms)
+✔ promote refuses a repo Amabie does not trust (exit 2, before any record read) (80.774241ms)
 ✔ promote of a missing or malformed record delegates to verify (exit 2, identical refusal) (573.257104ms)
 ✔ promote refuses an impersonated record (different baseRoot) with the canonical guard (434.181109ms)
 ✔ under fake git, promote BLOCKS via live verify and can never apply or accept (555.041845ms)
@@ -225,7 +225,7 @@
 ✔ detection (pure) (17.863888ms)
 ▶ setup
   ✔ happy path: READY, hook registered, evidence written, user repo untouched otherwise (732.120206ms)
-  ✔ re-run is idempotent: one Canary entry, no duplicates, user entry preserved (759.364853ms)
+  ✔ re-run is idempotent: one Amabie entry, no duplicates, user entry preserved (759.364853ms)
   ✔ malformed settings.json: refuse, exit NEEDS ATTENTION, bytes untouched (129.118423ms)
   ✔ S5: valid JSON with a non-list hooks section gets a plain-words refusal, not an internal crash (203.886614ms)
   ✔ failing project checks never print READY (NO PROOF, NO DONE) (723.720986ms)
@@ -237,7 +237,7 @@
   ✔ pass -> silent allow (human never interrupted) (527.330821ms)
   ✔ failure -> decision:block with the reason (agent gets a repair turn) (465.717687ms)
   ✔ loop guard: stop_hook_active allows with an honest systemMessage, never re-blocks (461.928733ms)
-  ✔ repo without Canary wiring: exit 0, silent (stay out of the way) (50.737051ms)
+  ✔ repo without Amabie wiring: exit 0, silent (stay out of the way) (50.737051ms)
   ✔ S2: a config written by a different installation never executes — loud UNVERIFIED instead (314.106348ms)
   ✔ S7: a parseable-but-wrong-shape config is treated as corrupt everywhere, never a crash (633.255782ms)
   ✔ F-1: a half-written (truncated) config is loud UNVERIFIED at checkpoint, never silent; doctor stays NEEDS ATTENTION (293.279373ms)
@@ -252,9 +252,9 @@
   ✔ READY after a green setup; hook deletion is detected loudly; --run still works (now always-on) (1014.233637ms)
   ✔ S4: a FORGED or stale checkpoint file can never produce READY — only this run can (442.341147ms)
   ✔ never set up -> NEEDS ATTENTION with the one command; outside git -> UNSUPPORTED (86.339315ms)
-  ✔ uninstall removes exactly Canary, preserves everything else; repeat is safe (594.695983ms)
+  ✔ uninstall removes exactly Amabie, preserves everything else; repeat is safe (594.695983ms)
   ✔ S1: an out-of-repo touched path in the config is refused, untouched, loudly (284.803069ms)
-  ✔ S6: partial cleanup keeps .canary so the promised retry can actually finish (314.271924ms)
+  ✔ S6: partial cleanup keeps .amabie so the promised retry can actually finish (314.271924ms)
   ✔ S2-adjacent: uninstall of a foreign-cliPath config is refused (cannot prove ownership) (272.628901ms)
 ✔ doctor + uninstall (3009.623326ms)
 ▶ degenerate empty plan (hand-edited config must not fake green)
@@ -265,7 +265,7 @@
   ✔ setup refuses outright when a managed file is a link (dangling included) (46.040615ms)
 ✔ link containment (S3) (474.967848ms)
 ▶ hook entry shape + ownership
-  ✔ hasCanaryEntry matches exact command only (0.185338ms)
+  ✔ hasAmabieEntry matches exact command only (0.185338ms)
 ✔ hook entry shape + ownership (0.299658ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✖ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (633.780936ms)
@@ -321,8 +321,8 @@ Node.js v26.7.0
     at wrappedFn (node:internal/errors:544:14)
     at checkExecSyncError (node:child_process:942:11)
     at execFileSync (node:child_process:978:15)
-    at actualHostFingerprint (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/src/prove.js:40:24)
-    at file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/proof-host.test.js:30:17
+    at actualHostFingerprint (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/src/prove.js:40:24)
+    at file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/proof-host.test.js:30:17
     at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
     at async node:internal/modules/esm/loader:650:26
     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
@@ -479,8 +479,8 @@ Node.js v26.7.0
     at wrappedFn (node:internal/errors:544:14)
     at checkExecSyncError (node:child_process:942:11)
     at execFileSync (node:child_process:978:15)
-    at actualHostFingerprint (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/src/prove.js:40:24)
-    at file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/provenance.test.js:51:17
+    at actualHostFingerprint (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/src/prove.js:40:24)
+    at file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/provenance.test.js:51:17
     at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
     at async node:internal/modules/esm/loader:650:26
     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
@@ -708,7 +708,7 @@ Node.js v26.7.0
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.361124ms)
 ✔ post-GLM — execution-observation gate (rule 14) (4.701758ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.590937ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.590937ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.512789ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.368358ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.289334ms)
@@ -914,7 +914,7 @@ Node.js v26.7.0
 ✔ round-3 secondary — crash & sweep signals reach the classification (53.318583ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.222881ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (8.74778ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (8.74778ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (7.065935ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (10.165525ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (9.297738ms)
@@ -930,7 +930,7 @@ Node.js v26.7.0
   ✔ Sol's accepted forms are now rejected in install-family commands (1.787333ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (43.006989ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (3.539843ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (1.646583ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (1.646583ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.529203ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (3.166002ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.160211ms)
@@ -980,7 +980,7 @@ Node.js v26.7.0
 ✔ audit F6 — child env observation: declared == observed (175.922335ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (7.797506ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.395ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.395ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (11.035404ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.371179ms)
@@ -1018,7 +1018,7 @@ test at apps/cli/dist/test/attested-channel.test.js:268:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:289:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:289:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
@@ -1038,7 +1038,7 @@ test at apps/cli/dist/test/attested-channel.test.js:295:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:330:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:330:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1056,7 +1056,7 @@ test at apps/cli/dist/test/attested-channel.test.js:334:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:348:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:348:16)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: true,
@@ -1075,7 +1075,7 @@ test at apps/cli/dist/test/attested-channel.test.js:441:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:447:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:447:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1095,7 +1095,7 @@ test at apps/cli/dist/test/attested-channel.test.js:462:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:476:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:476:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
@@ -1115,7 +1115,7 @@ test at apps/cli/dist/test/attested-channel.test.js:495:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:525:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:525:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
@@ -1137,7 +1137,7 @@ test at apps/cli/dist/test/attested-channel.test.js:527:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/attested-channel.test.js:535:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/attested-channel.test.js:535:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1157,9 +1157,9 @@ test at apps/cli/dist/test/cli.test.js:103:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at stage (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:74:12)
+      at stage (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:74:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:104:40)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:104:40)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
       at async Suite.run (node:internal/test_runner/test:1889:7)
@@ -1180,9 +1180,9 @@ test at apps/cli/dist/test/cli.test.js:109:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at stage (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:74:12)
+      at stage (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:74:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:110:54)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:110:54)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: true,
@@ -1201,9 +1201,9 @@ test at apps/cli/dist/test/cli.test.js:116:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at stage (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:74:12)
+      at stage (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:74:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:117:44)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:117:44)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: true,
@@ -1222,9 +1222,9 @@ test at apps/cli/dist/test/cli.test.js:141:5
   + 'INCONCLUSIVE'
   - 'CONFIRMED_REGRESSION'
   
-      at stage (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:74:12)
+      at stage (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:74:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/cli.test.js:142:44)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/cli.test.js:142:44)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: true,
@@ -1241,7 +1241,7 @@ test at apps/cli/dist/test/execution-authority.test.js:98:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/execution-authority.test.js:107:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/execution-authority.test.js:107:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
@@ -1261,7 +1261,7 @@ test at apps/cli/dist/test/execution-authority.test.js:115:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/execution-authority.test.js:119:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/execution-authority.test.js:119:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1279,7 +1279,7 @@ test at apps/cli/dist/test/execution-authority.test.js:123:5
   
   10 !== 14
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/execution-authority.test.js:170:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/execution-authority.test.js:170:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1301,7 +1301,7 @@ test at apps/cli/dist/test/pipeline-e2e.test.js:94:5
   + ]
   - []
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/pipeline-e2e.test.js:96:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/pipeline-e2e.test.js:96:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
@@ -1325,7 +1325,7 @@ test at apps/cli/dist/test/pipeline-e2e.test.js:151:5
   + ]
   - []
   
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/pipeline-e2e.test.js:153:16)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/pipeline-e2e.test.js:153:16)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
@@ -1367,8 +1367,8 @@ test at apps/cli/dist/test/prove.test.js:564:5
       at wrappedFn (node:internal/errors:544:14)
       at checkExecSyncError (node:child_process:942:11)
       at execFileSync (node:child_process:978:15)
-      at actualHostFingerprint (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/src/prove.js:40:24)
-      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/prove.test.js:568:24)
+      at actualHostFingerprint (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/src/prove.js:40:24)
+      at TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/prove.test.js:568:24)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Test.start (node:internal/test_runner/test:1257:17)
@@ -1395,9 +1395,9 @@ test at apps/cli/dist/test/verify-tree.test.js:226:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:227:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:227:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)
       at async Suite.run (node:internal/test_runner/test:1889:7)
@@ -1420,9 +1420,9 @@ test at apps/cli/dist/test/verify-tree.test.js:260:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:261:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:261:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1443,9 +1443,9 @@ test at apps/cli/dist/test/verify-tree.test.js:268:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:269:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:269:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1466,9 +1466,9 @@ test at apps/cli/dist/test/verify-tree.test.js:285:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:286:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:286:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1489,9 +1489,9 @@ test at apps/cli/dist/test/verify-tree.test.js:309:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:310:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:310:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1512,9 +1512,9 @@ test at apps/cli/dist/test/verify-tree.test.js:339:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:340:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:340:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1535,9 +1535,9 @@ test at apps/cli/dist/test/verify-tree.test.js:365:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:366:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:366:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1558,9 +1558,9 @@ test at apps/cli/dist/test/verify-tree.test.js:373:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:374:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:374:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1581,9 +1581,9 @@ test at apps/cli/dist/test/verify-tree.test.js:380:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:381:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:381:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1604,9 +1604,9 @@ test at apps/cli/dist/test/verify-tree.test.js:395:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:396:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:396:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1627,9 +1627,9 @@ test at apps/cli/dist/test/verify-tree.test.js:405:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:406:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:406:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,
@@ -1650,9 +1650,9 @@ test at apps/cli/dist/test/verify-tree.test.js:418:5
   + ]
   - []
   
-      at offlineRun (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:222:12)
+      at offlineRun (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:222:12)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/canary/apps/cli/dist/test/verify-tree.test.js:424:42)
+      at async TestContext.<anonymous> (file:///home/jan/qwen-builder-cage/amabie/apps/cli/dist/test/verify-tree.test.js:424:42)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
     generatedMessage: false,

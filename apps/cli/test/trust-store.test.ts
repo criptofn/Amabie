@@ -20,7 +20,7 @@ after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 let n = 0;
 const freshStore = (): store.TrustStore => ({ root: path.join(TMP, `store-${n++}`) });
 const sealTest = (s: store.TrustStore, kind = 'registration', payload: unknown = { root: '/x' }) =>
-  store.sealRecord(s, { projectId: 'proj-a', kind, payload, canaryVersion: 'test' });
+  store.sealRecord(s, { projectId: 'proj-a', kind, payload, amabieVersion: 'test' });
 const recordFile = (s: store.TrustStore, projectId: string, kind: string): string =>
   path.join(s.root, 'records', projectId, `${kind}.json`);
 
@@ -31,7 +31,7 @@ describe('seal/verify roundtrip', () => {
     assert.equal(env.schema, store.RECORD_SCHEMA);
     assert.equal(env.projectId, 'proj-a');
     assert.equal(env.seq, 1);
-    assert.equal(env.canaryVersion, 'test');
+    assert.equal(env.amabieVersion, 'test');
     const opened = store.openSealed(s, { projectId: 'proj-a', kind: 'plan-seal' });
     assert.equal(opened.status, 'valid', opened.reason);
     assert.deepEqual(opened.envelope, env);
@@ -92,7 +92,7 @@ describe('forging routes all fail closed', () => {
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
     fs.writeFileSync(file, JSON.stringify({ nope: true }));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
-    fs.writeFileSync(file, JSON.stringify(store.sealRecord(freshStore(), { projectId: 'proj-x', kind: 'reg-x', payload: {}, canaryVersion: 'test' })));
+    fs.writeFileSync(file, JSON.stringify(store.sealRecord(freshStore(), { projectId: 'proj-x', kind: 'reg-x', payload: {}, amabieVersion: 'test' })));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'forged'); // foreign key, valid shape
     fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), schema: 'amabie-authority/0' }));
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: 'registration' }).status, 'malformed');
@@ -101,7 +101,7 @@ describe('forging routes all fail closed', () => {
   });
   it('path-ish ids and kinds are refused, never resolved', () => {
     const s = freshStore();
-    assert.throws(() => store.sealRecord(s, { projectId: '../evil', kind: 'registration', payload: {}, canaryVersion: 'test' }), /not a safe identifier/);
+    assert.throws(() => store.sealRecord(s, { projectId: '../evil', kind: 'registration', payload: {}, amabieVersion: 'test' }), /not a safe identifier/);
     assert.equal(store.openSealed(s, { projectId: 'a/b', kind: 'registration' }).status, 'malformed');
     assert.equal(store.openSealed(s, { projectId: 'proj-a', kind: '..' }).status, 'malformed');
   });
@@ -188,7 +188,7 @@ describe('1.1 hardening — custody refusals', () => {
 
   it('a reserved Windows device name is refused as an id or a kind', () => {
     const s = freshStore();
-    const seal = (projectId: string) => store.sealRecord(s, { projectId, kind: 'registration', payload: {}, canaryVersion: 'test' });
+    const seal = (projectId: string) => store.sealRecord(s, { projectId, kind: 'registration', payload: {}, amabieVersion: 'test' });
     assert.throws(() => seal('CON'), /reserved Windows device name/);
     assert.throws(() => seal('com1.txt'), /reserved Windows device name/);
     assert.throws(() => seal('Lpt9'), /reserved Windows device name/);

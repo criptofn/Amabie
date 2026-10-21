@@ -1,6 +1,6 @@
 # Ungültiger Ollama-Smoke-Test — 2026-09-28
 
-**Status: INVALID — nicht als Modell- oder Canary-Ergebnis gewertet.**
+**Status: INVALID — nicht als Modell- oder Amabie-Ergebnis gewertet.**
 
 ## Versuchsaufbau
 

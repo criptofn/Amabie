@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const REPO = 'C:/Users/Johannes/Desktop/canary-observation-hardening';
+const REPO = 'C:/Users/Johannes/Desktop/amabie-observation-hardening';
 const require = createRequire(REPO + '/packages/support/package.json');
 const kr = require(REPO + '/packages/support/dist/src/knownRunners.js');
 const { treeSha256, locateRunnerPackage } = kr;

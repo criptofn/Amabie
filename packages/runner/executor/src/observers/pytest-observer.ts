@@ -16,7 +16,7 @@
  * environment through this door. `-p` on argv was REJECTED as the primary
  * mechanism because plugin suppression (`-p no:<name>`) can also be written into a
  * project's `addopts`, so argv would be the weaker door of the two; the round
- * refuses an explicit `-p no:canary_pytest_observer` and a config-suppressed
+ * refuses an explicit `-p no:amabie_pytest_observer` and a config-suppressed
  * observer simply produces no frames, which fails the round closed.
  *
  * WHAT MAKES THE OBSERVATION TRUSTWORTHY, and what does not
@@ -64,10 +64,10 @@ import path from 'node:path';
 import { treeSha256 } from '@amabie/support';
 
 /** Where the observer directory lives inside the workspace (outside artifacts). */
-export const PYTEST_OBSERVER_DIRNAME = 'canary-pytest-observer';
-export const PYTEST_OBSERVER_BASENAME = 'canary_pytest_observer.py';
+export const PYTEST_OBSERVER_DIRNAME = 'amabie-pytest-observer';
+export const PYTEST_OBSERVER_BASENAME = 'amabie_pytest_observer.py';
 /** The module name pytest is told to load — also what a suppression token names. */
-export const PYTEST_PLUGIN_MODULE = 'canary_pytest_observer';
+export const PYTEST_PLUGIN_MODULE = 'amabie_pytest_observer';
 
 /** `hello.runner` for this channel. */
 export const PYTEST_RUNNER_ID = 'pytest';
@@ -166,7 +166,7 @@ import atexit
 import json
 import os
 
-OBSERVER_VERSION = "canary-observer-v1"
+OBSERVER_VERSION = "amabie-observer-v1"
 RUNNER_ID = "pytest"
 _FD = 3
 _open = True

@@ -1,17 +1,17 @@
 {
-  "schema": "canary-release-validation/1",
+  "schema": "amabie-release-validation/1",
   "label": "H2",
   "phase": "baseline",
   "probe": "tooling/probes/v15-release-validation-task.mjs",
   "probeSha256": "64bdc39b9a4b3a13d5c3de6ba8dbcb7f3eef141711dca46b6dcc1ec75d2b6068",
-  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "cliVersion": "canary 1.5.0",
+  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "cliVersion": "amabie 1.5.0",
   "cliBinarySha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
   "publishedArtifactSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H2-invoice-classification.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\H2-invoice-classification.md",
   "taskSha256": "bb30f51c7d3bd0325fed06da89fd50ed0ee1d1bf2e20bfd8f04d5e0d24c76af1",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
-  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-validation-trust\\58fb8b8909fc3372ea31b82dc9be3141d386e0e665559145686887cb0e1a8fd1",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
+  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-validation-trust\\58fb8b8909fc3372ea31b82dc9be3141d386e0e665559145686887cb0e1a8fd1",
   "toolchainDirectories": [],
   "toolchainDirectoryCount": 0,
   "startingRepoIdentity": {
@@ -24,7 +24,7 @@
   "environmentKeyNames": [
     "ALLUSERSPROFILE",
     "APPDATA",
-    "CANARY_TRUST_STORE",
+    "AMABIE_TRUST_STORE",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "COLORTERM",
     "COMPUTERNAME",
@@ -92,7 +92,7 @@
         "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js",
         "test"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:53.745Z",
       "elapsedMs": 367,
       "exitCode": 0,
@@ -103,14 +103,14 @@
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "name": "canary-setup",
+      "name": "amabie-setup",
       "executable": "C:\\Program Files\\nodejs\\node.exe",
       "args": [
-        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
         "setup",
         "--yes"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:54.114Z",
       "elapsedMs": 1343,
       "exitCode": 0,
@@ -126,9 +126,9 @@
       "args": [
         "config",
         "user.name",
-        "Canary Validation"
+        "Amabie Validation"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:55.535Z",
       "elapsedMs": 61,
       "exitCode": 0,
@@ -144,9 +144,9 @@
       "args": [
         "config",
         "user.email",
-        "canary-validation@localhost"
+        "amabie-validation@localhost"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:55.597Z",
       "elapsedMs": 246,
       "exitCode": 0,
@@ -163,7 +163,7 @@
         "add",
         "-A"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:55.844Z",
       "elapsedMs": 77,
       "exitCode": 0,
@@ -180,9 +180,9 @@
         "commit",
         "--allow-empty",
         "-m",
-        "Canary validation setup baseline H2"
+        "Amabie validation setup baseline H2"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:55.922Z",
       "elapsedMs": 117,
       "exitCode": 0,
@@ -193,14 +193,14 @@
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "name": "canary-doctor-baseline",
+      "name": "amabie-doctor-baseline",
       "executable": "C:\\Program Files\\nodejs\\node.exe",
       "args": [
-        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
         "doctor",
         "--json"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\H2",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\H2",
       "startedAt": "2026-09-27T01:07:56.487Z",
       "elapsedMs": 1585,
       "exitCode": 0,
@@ -219,5 +219,5 @@
   },
   "status": "complete",
   "infrastructureFailures": 0,
-  "canaryVerdict": "READY"
+  "amabieVerdict": "READY"
 }

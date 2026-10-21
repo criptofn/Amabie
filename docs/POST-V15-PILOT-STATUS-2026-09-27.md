@@ -1,20 +1,20 @@
-# Canary post-1.5 pilot status — 2026-09-27
+# Amabie post-1.5 pilot status — 2026-09-27
 
 > **Follow-up:** One paired substitute session using Codex CLI was run after this readiness report. It exposed and fixed a user-facing evidence caveat in `doctor`; the small result does not replace the planned twelve-session Claude comparison. See [the practical validation report](POST-V15-PRACTICAL-VALIDATION-2026-09-27.md).
 
 ## What this establishes
 
-This section records the no-model readiness stage and measurement-validity result. At that stage, no model sessions were started. It does **not** establish that Canary improves an agent's work, reduces repair effort, or is worth its runtime and cost; the later single-pair substitute result is documented in the follow-up report above.
+This section records the no-model readiness stage and measurement-validity result. At that stage, no model sessions were started. It does **not** establish that Amabie improves an agent's work, reduces repair effort, or is worth its runtime and cost; the later single-pair substitute result is documented in the follow-up report above.
 
-The measured candidate was built from commit `1b6dc6aae514b7b26773915da314ccf338f73514`, packaged as Canary `1.5.0`, installed in an isolated prefix, and invoked by its explicit path. Package SHA-256: `8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25`. Installed CLI SHA-256: `ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a`.
+The measured candidate was built from commit `1b6dc6aae514b7b26773915da314ccf338f73514`, packaged as Amabie `1.5.0`, installed in an isolated prefix, and invoked by its explicit path. Package SHA-256: `8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25`. Installed CLI SHA-256: `ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a`.
 
 ## No-model results
 
-The twelve prepared workspaces have clean, independent task starts. All six plain-arm project checks passed. All six Canary-arm project checks passed; setup and doctor also completed, with `READY` recorded for each task. Refactron's install, build, typecheck, tests, and build passed in both arms. Schniedelsmp's Gradle tests passed in both arms with the explicitly recorded Java 21 and Gradle 8.13 toolchain paths.
+The twelve prepared workspaces have clean, independent task starts. All six plain-arm project checks passed. All six Amabie-arm project checks passed; setup and doctor also completed, with `READY` recorded for each task. Refactron's install, build, typecheck, tests, and build passed in both arms. Schniedelsmp's Gradle tests passed in both arms with the explicitly recorded Java 21 and Gradle 8.13 toolchain paths.
 
 Each task-specific independent oracle reproduced the target defect on its baseline. A separate positive-control copy with the recorded or reconstructed task fix passed that same oracle. The control fixes were applied only to isolated copies and were never made available to an agent.
 
-| Task | Project | Plain checks | Canary setup and checks | Baseline oracle | Fixed positive control |
+| Task | Project | Plain checks | Amabie setup and checks | Baseline oracle | Fixed positive control |
 |---|---|---|---|---|---|
 | H1 | Hermes_Agent | pass | READY / pass | target defect reproduced | pass |
 | H2 | Hermes_Agent | pass | READY / pass | target defect reproduced | pass |
@@ -33,7 +33,7 @@ High-signal product checks included: the source and packed architecture closure 
 
 The seven skips remain gaps, not passes: five are host-bound (Codex's live Stop-hook session; Go and Rust end-to-end toolchains; and real OS PTYs for two acceptance probes), and two require live Claude sessions with a reliable provider spend cap. The PTY probes still executed all product assertions available through the in-process terminal driver, but their host-level PTY assertions are explicitly unproven. Go/Rust end-to-end checks executed zero assertions because those toolchains were absent. The full gate output and skip reasons are recorded in `evidence-summary.json`.
 
-This materially strengthens evidence for packaging, setup, fail-closed completion, proof provenance, provider routing, and trust-boundary behavior. It still does **not** measure whether real coding agents make fewer mistakes, need fewer repairs, finish faster, or justify Canary's cost. The earlier 6/10 product efficacy rating therefore remains unchanged pending the paired agent pilot.
+This materially strengthens evidence for packaging, setup, fail-closed completion, proof provenance, provider routing, and trust-boundary behavior. It still does **not** measure whether real coding agents make fewer mistakes, need fewer repairs, finish faster, or justify Amabie's cost. The earlier 6/10 product efficacy rating therefore remains unchanged pending the paired agent pilot.
 
 ## Why the agent pilot did not run
 
@@ -45,7 +45,7 @@ Alibaba's [budget-management documentation](https://help.aliyun.com/en/model-stu
 
 ## What remains unproven
 
-These checks validate the task baselines, positive controls, package identity, and local setup. They do not measure natural agent mistakes, whether Canary's hook triggers during actual agent work, helpful or unnecessary blocks, repair turns, manual intervention, elapsed time, token overhead, or value for money. The product's efficacy rating therefore stays unchanged; this result is not grounds to raise the earlier 6/10 product score.
+These checks validate the task baselines, positive controls, package identity, and local setup. They do not measure natural agent mistakes, whether Amabie's hook triggers during actual agent work, helpful or unnecessary blocks, repair turns, manual intervention, elapsed time, token overhead, or value for money. The product's efficacy rating therefore stays unchanged; this result is not grounds to raise the earlier 6/10 product score.
 
 Before the twelve-session comparison can start, configure a dedicated provider endpoint/key permitted for automated Claude Code calls and a verified provider-side auto-stop no higher than the authorized $30 total (in the provider's billing currency). Keep the existing per-session CLI cap at or below $2.50, then verify that native per-session usage and provider billing are both captured. Do not send API secrets through chat; the local settings can be updated on the host.
 

@@ -38,7 +38,7 @@ function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void }
     };
   };
   const bundle = {
-    schemaVersion: 1, runId: 'r', createdAt: '2026-08-30T00:00:00Z', canaryVersion: '0.1.0',
+    schemaVersion: 1, runId: 'r', createdAt: '2026-08-30T00:00:00Z', amabieVersion: '0.1.0',
     experimentId: 'e', dependency: { package: 'p', baselineVersion: '1', candidateVersion: '2' },
     downstream: { repositoryUrl: 'https://github.com/u', commitSha: 'b'.repeat(40), fetchMethod: 'tarball-by-sha', tarballSha256: 'a'.repeat(64) },
     environment: { nodeVersion: 'v', npmVersion: 'n', packageManagerUsed: 'npm', platform: 'x', arch: 'y', toolchainOverrides: {} },
@@ -51,18 +51,6 @@ function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void }
 }
 
 describe('verifyArtifacts — audit F4 (proof must rehash the real artifacts)', () => {
-  it('finds evidence pointers left under the legacy Canary run directory', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-legacy-runs-'));
-    try {
-      const evidence = path.join(root, 'evidence.json');
-      fs.writeFileSync(evidence, '{}');
-      const legacyRuns = path.join(root, '.canary-runs');
-      fs.mkdirSync(legacyRuns);
-      fs.writeFileSync(path.join(legacyRuns, 'latest-old.json'), JSON.stringify({ evidence }));
-      assert.deepEqual(findLatestEvidencePath(root), { experimentId: 'old', evidencePath: evidence });
-    } finally { fs.rmSync(root, { recursive: true, force: true }); }
-  });
-
   it('accepts a bundle whose every recorded hash matches the file on disk', () => {
     const { dir, bundle, cleanup } = harness();
     try {

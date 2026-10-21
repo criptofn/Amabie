@@ -366,8 +366,7 @@ export function assertProof(
 /** Read + VALIDATE the last run's evidence for this experiment (F7). */
 export function readLatestEvidence(repoRoot: string, experimentId: string): { bundle: EvidenceBundle; artifactsDir: string; issues: string[] } {
   const name = `latest-${experimentId}.json`;
-  const current = path.join(repoRoot, '.amabie-runs', name);
-  const pointerPath = fs.existsSync(current) ? current : path.join(repoRoot, '.canary-runs', name);
+  const pointerPath = path.join(repoRoot, '.amabie-runs', name);
   const pointer = JSON.parse(fs.readFileSync(pointerPath, 'utf8')) as { evidence: string };
   const bundle = JSON.parse(fs.readFileSync(pointer.evidence, 'utf8')) as EvidenceBundle;
   const issues = validateBundle(bundle);
@@ -380,7 +379,7 @@ export function readLatestEvidence(repoRoot: string, experimentId: string): { bu
  * documented one-word command actually works after any run.
  */
 export function findLatestEvidencePath(repoRoot: string): { experimentId: string; evidencePath: string } | undefined {
-  const dirs = ['.amabie-runs', '.canary-runs'].map((name) => path.join(repoRoot, name));
+  const dirs = [path.join(repoRoot, '.amabie-runs')];
   const dated = dirs.flatMap((dir) => {
     try {
       return fs.readdirSync(dir).filter((n) => n.startsWith('latest-') && n.endsWith('.json')).map((n) => {
@@ -896,7 +895,7 @@ export function deriveExpectedRoundArgv(
  */
 function recordedClaimsAmabieDouble(bundle: EvidenceBundle): boolean {
   const doubleVersions = new Set(
-    (KNOWN_RUNNER_RELEASES.mocha ?? []).filter((p) => p.origin === 'canary-double').map((p) => p.version),
+    (KNOWN_RUNNER_RELEASES.mocha ?? []).filter((p) => p.origin === 'amabie-double').map((p) => p.version),
   );
   return bundle.rounds.some((r) => doubleVersions.has(r.executionObservation.expectedMochaVersion ?? ''));
 }

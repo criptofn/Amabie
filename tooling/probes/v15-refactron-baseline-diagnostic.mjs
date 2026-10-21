@@ -67,7 +67,7 @@ const metadata = { repo, baseline: attempt.expectedHead, full, workerTrace, sani
   originalTestSha256: hash(original), instrumentedTestSha256: hash(instrumented),
   instrumentSha256: hash(fs.readFileSync(import.meta.filename)), attemptSha256: hash(fs.readFileSync(attemptFile)),
   toolchainDirectories: attempt.toolchainDirectories, environmentKeyNames: Object.keys(env).sort(),
-  startedAt: new Date().toISOString(), scope: 'external project diagnostic, not a Amabie verdict or agent session' };
+  startedAt: new Date().toISOString(), scope: 'external project diagnostic, not an Amabie verdict or agent session' };
 let result, failure = null;
 try {
   fs.writeFileSync(testFile, instrumented);

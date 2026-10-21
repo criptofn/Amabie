@@ -713,10 +713,10 @@ if (agentProtocol === 'ollama-native') {
     'requested ' + agentModel + '; runtime observation ' + JSON.stringify(localModelRuntimeAfter)));
   check('local native tool session ended successfully within its time limit', () => assert(agentSessionOutcome === 'completed' || agentSessionOutcome === 'completed_after_block_and_repair' || agentSessionOutcome === 'completed_after_amabie_stop_guard',
     'agent session outcome is ' + agentSessionOutcome));
-  if (arm === 'amabie') check('local session recorded a Amabie completion decision', () => assert(localCheckpointEvents.length > 0,
+  if (arm === 'amabie') check('local session recorded an Amabie completion decision', () => assert(localCheckpointEvents.length > 0,
     'native local agent did not drive a completion checkpoint'));
 }
-if (arm === 'amabie') check('a Amabie checkpoint decision was obtained (hook or manually driven)', () => {
+if (arm === 'amabie') check('an Amabie checkpoint decision was obtained (hook or manually driven)', () => {
   if (hookFiredDuringRun) return assert(checkpointAfter != null, 'hook fired but no checkpoint file');
   assert(driven != null, 'checkpoint was never driven');
   assert(driven.exitCode === 0, `checkpoint exit ${driven.exitCode}`);

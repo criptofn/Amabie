@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r7-add-validation-guarded-5",
   "task": "add-validation",
   "arm": "guarded",
@@ -25,7 +25,7 @@
     ]
   },
   "startedAt": "2026-09-12T12:26:47.450Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-add-validation-guarded-n8xg7y",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-add-validation-guarded-n8xg7y",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -50,10 +50,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -103,7 +103,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -134,7 +134,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "The single failure was an error in my ad-hoc expectation, not the code: `\"@\"` has exactly one `@`, so per the stated rule order rule 3 (`at_sign`) does not apply and rule 4 (`missing_part` — empty local part) does. The implementation's output is spec-correct. With that expectation fixed, all other 22 rule checks and the project's own suite pass.\n\n**Everything works now.**\n\nWhat I changed:\n- `src/validate.js` — implemented the remaining `validateEmail` rules in the required order:\n  1. `required` — non-string or empty/whitespace-only (kept as-is)\n  2. `whitespace` — any whitespace character in the value (`/\\s/`)\n  3. `at_sign` — zero or more than one `@` (split on `@`)\n  4. `missing_part` — empty local or empty domain\n  5. `bad_domain` — domain with no dot, or any empty dot-label (catches `a@b.`, `a@.b`, `a@b..c`, `a@.`)\n- Updated the doc comment to describe the rules; export shape `{ ok, reason }` unchanged, `normalizeEmail` untouched.\n\nVerification: `npm test` passes (3/3 visible cases), plus my own rule-order sanity checks (e.g. `' a@c.com'` → `whitespace`, `'a@b@c.com'` → `at_sign`, `'@b.com'` → `missing_part`, `'a@b'` → `bad_domain`) all behave per spec. Note: Canary reported this project NOT CONNECTED (config written by a different installation); connecting wasn't part of the task so I did not run `canary setup` or the isolate workflow."
+    "finalText": "The single failure was an error in my ad-hoc expectation, not the code: `\"@\"` has exactly one `@`, so per the stated rule order rule 3 (`at_sign`) does not apply and rule 4 (`missing_part` — empty local part) does. The implementation's output is spec-correct. With that expectation fixed, all other 22 rule checks and the project's own suite pass.\n\n**Everything works now.**\n\nWhat I changed:\n- `src/validate.js` — implemented the remaining `validateEmail` rules in the required order:\n  1. `required` — non-string or empty/whitespace-only (kept as-is)\n  2. `whitespace` — any whitespace character in the value (`/\\s/`)\n  3. `at_sign` — zero or more than one `@` (split on `@`)\n  4. `missing_part` — empty local or empty domain\n  5. `bad_domain` — domain with no dot, or any empty dot-label (catches `a@b.`, `a@.b`, `a@b..c`, `a@.`)\n- Updated the doc comment to describe the rules; export shape `{ ok, reason }` unchanged, `normalizeEmail` untouched.\n\nVerification: `npm test` passes (3/3 visible cases), plus my own rule-order sanity checks (e.g. `' a@c.com'` → `whitespace`, `'a@b@c.com'` → `at_sign`, `'@b.com'` → `missing_part`, `'a@b'` → `bad_domain`) all behave per spec. Note: Amabie reported this project NOT CONNECTED (config written by a different installation); connecting wasn't part of the task so I did not run `amabie setup` or the isolate workflow."
   },
   "visible": {
     "exitCode": 0,
@@ -209,20 +209,20 @@
     "bytes": {
       "toolResultTotal": 2819,
       "largestToolResult": 869,
-      "canaryVisible": 22,
+      "amabieVisible": 22,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-add-validation-guarded-n8xg7y/project\" && canary --version && canary status"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-add-validation-guarded-n8xg7y/project\" && amabie --version && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

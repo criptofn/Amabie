@@ -1,4 +1,4 @@
-# Canary: Abschlussstand am 5. Oktober 2026
+# Amabie: Abschlussstand am 5. Oktober 2026
 
 ## Bewertung
 
@@ -36,20 +36,20 @@ unverändert. Ein dauerhafter HARDENED-Dienst wurde nicht eingerichtet.
 ## Gelieferter Stand
 
 Arbeitsbranch: `codex/product-progress` in
-`C:/Users/Johannes/Desktop/canary/_canary-data/worktrees/canary-product-progress`.
+`C:/Users/Johannes/Desktop/amabie/_canary-data/worktrees/amabie-product-progress`.
 Der gemessene Produktcode ist Commit
 `a77acf9d1a286d605a27c8ff6286785e61b8b5a8`. Danach kam mit `dd74819` nur die
 ausdrückliche CLI-Auswahl für den bestehenden Regressionstest hinzu; dieser
 Messaufbau wurde am installierten Paket geprüft. Der Bericht ändert keinen CLI-Code.
 
 Artefakte und Rohbelege:
-`C:/Users/Johannes/Desktop/canary/_canary-data/evidence/normalized-product-delta-20261005-frozen`.
+`C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/normalized-product-delta-20261005-frozen`.
 
 * Paket: `package/final.tgz`, SHA-256
   `be58e82ef213612edb9899066149caa22572113041022536fa21011c543baf0d`.
 * Installierte CLI: `package/installed/node_modules/@canary-rn/cli/dist/main.js`,
   SHA-256 `1cb802b88186ad04fd15cde857d5e6cbcdf1ead28353001af2727af88c0b730f`.
-* Versionsausgabe: `canary 1.5.0`. Dies ist ein **unveröffentlichter
+* Versionsausgabe: `amabie 1.5.0`. Dies ist ein **unveröffentlichter
   Verbesserungsstand**, nicht das veröffentlichte Archiv mit SHA-256 `cf8f777a...`.
 
 ## Prüfungen dieses Stands
@@ -82,10 +82,10 @@ der dabei gefundene Windows-Fehlblock korrigiert wurde:
 
 | Aufgabe / Variante | Unabhängige Korrektheit | Sitzungsabschluss | Native Tokens | Sekunden |
 | --- | --- | --- | ---: | ---: |
-| H1 ohne Canary | bestanden | normal | 31.795 | 39,761 |
-| H1 mit Canary | bestanden | Turnlimit; realer Hook unproven | 1.395.606 | 398,144 |
-| H2 mit Canary | bestanden | normal; realer Hook pass | 550.676 | 214,924 |
-| H2 ohne Canary | bestanden | normal | 178.070 | 52,595 |
+| H1 ohne Amabie | bestanden | normal | 31.795 | 39,761 |
+| H1 mit Amabie | bestanden | Turnlimit; realer Hook unproven | 1.395.606 | 398,144 |
+| H2 mit Amabie | bestanden | normal; realer Hook pass | 550.676 | 214,924 |
+| H2 ohne Amabie | bestanden | normal | 178.070 | 52,595 |
 
 Alle vier Abrechnungen sind nativ abgeglichen, die geschützte Einrichtung blieb
 unverändert, Eingriffe während der Sitzungen: null, Anbietergebühren: 0 USD.
@@ -94,10 +94,10 @@ Sitzung enthalten, obwohl die Funktion korrekt war und der Fehlblock anschließe
 im Produkt behoben wurde. Die installierte Fehlerfallprüfung repariert nicht
 nachträglich dieses native Ergebnis.
 
-In diesem kleinen Vergleich benötigen die Canary-Arme insgesamt 1.946.282 Tokens
-und 613,068 Sekunden gegenüber 209.865 Tokens und 92,356 Sekunden ohne Canary.
+In diesem kleinen Vergleich benötigen die Amabie-Arme insgesamt 1.946.282 Tokens
+und 613,068 Sekunden gegenüber 209.865 Tokens und 92,356 Sekunden ohne Amabie.
 Das sind ungefähr 9,27-mal so viele Tokens und 6,64-mal so viel Zeit. Ein Teil
-des zusätzlichen Aufwands betrifft Regressionstests, die ohne Canary nicht in
+des zusätzlichen Aufwands betrifft Regressionstests, die ohne Amabie nicht in
 gleichem Umfang geschrieben wurden; eine allgemeine Ersparnis ist nicht belegt.
 Die native Alltagserleichterung des **letzten** korrigierten Pakets wurde nicht
 erneut gemessen. Auf Wunsch folgen jetzt keine weiteren Pilotrunden.
@@ -106,7 +106,7 @@ Offen bleiben insbesondere:
 
 * Der vollständige Vergleich aller sechs Aufgaben mit zwölf Sitzungen ist nicht
   abgeschlossen. Refactrons festgelegte Ausgangstests scheitern bereits ohne
-  Canary; eine funktionierende Einrichtung für diesen Ausgangsstand fehlt.
+  Amabie; eine funktionierende Einrichtung für diesen Ausgangsstand fehlt.
 * Die Ursache des älteren Windows-Prozessüberwachungsfehlers ist weiterhin offen;
   die vereinbarte Grenze von 30 zusätzlichen Diagnoseversuchen wurde eingehalten.
   Grüne Kontrollserien werden nicht als Ursachenklärung ausgegeben.

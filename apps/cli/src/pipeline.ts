@@ -65,7 +65,7 @@ export interface PipelineDeps {
    */
   extract?: (tgzPath: string, wsRoot: string, repo: string, sha: string) => void;
   /**
-   * post-GLM F5: TEST-ONLY execution authority to select the canary-double
+   * post-GLM F5: TEST-ONLY execution authority to select the amabie-double
    * runner pin for observation injection. The double exists ONLY for the
    * offline suite and its bytes are public in-repo (see knownRunners.ts),
    * so a spec that stages them at the canonical anchor must NOT earn
@@ -313,7 +313,7 @@ async function runExperimentInner(
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     runId: path.basename(WS),
     createdAt: new Date().toISOString(),
-    canaryVersion: AMABIE_VERSION,
+    amabieVersion: AMABIE_VERSION,
     experimentId: spec.id,
     dependency: {
       package: spec.dependency.package,

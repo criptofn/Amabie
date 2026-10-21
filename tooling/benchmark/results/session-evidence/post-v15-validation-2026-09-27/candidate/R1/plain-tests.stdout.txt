@@ -3,7 +3,7 @@
 > vitest run
 
 
- RUN  v3.2.7 C:/Users/Johannes/AppData/Local/Temp/canary-v15-baselines-20260927/R1
+ RUN  v3.2.7 C:/Users/Johannes/AppData/Local/Temp/amabie-v15-baselines-20260927/R1
 
  ✓ tests/integration/verify-diff.test.ts (27 tests) 46351ms
    ✓ SAFE requires every coverable changed statement (issue #109) > one exercised statement no longer clears a file of ten unexercised ones  1866ms

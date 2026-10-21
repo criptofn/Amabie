@@ -54,7 +54,7 @@ import path from 'node:path';
 import { AmabieError, type WorkspaceLayout } from '@amabie/support';
 import { OBSERVER_VERSION } from './observation.js';
 
-export const OBSERVER_PRELOAD_BASENAME = 'canary-observer.cjs';
+export const OBSERVER_PRELOAD_BASENAME = 'amabie-observer.cjs';
 
 /**
  * The canonical fixture-relative location of a supported runner. expandArgv
@@ -73,7 +73,7 @@ var fd3Open = true;
 function frame(o) {
   if (!fd3Open) return;
   try { fs.writeSync(3, JSON.stringify(o) + '\\n'); }
-  catch (e) { fd3Open = false; try { process.stderr.write('[canary-observer] fd3 write failed: ' + e.message + '\\n'); } catch (x) {} }
+  catch (e) { fd3Open = false; try { process.stderr.write('[amabie-observer] fd3 write failed: ' + e.message + '\\n'); } catch (x) {} }
 }
 process.on('exit', function () {
   if (fd3Open) { try { fs.closeSync(3); } catch (e) {} fd3Open = false; }

@@ -529,7 +529,7 @@ feature('Protected-provider capability reporting: HARDENED is measured, never de
     // The PROVIDER must not be installed as a side effect of asking about it.
     if (process.platform === 'win32') {
       const q = spawnSync('sc.exe', ['query', 'AmabieBroker'], { encoding: 'utf8', timeout: 30_000, windowsHide: true });
-      assert(q.status !== 0, 'a AmabieBroker service exists — asking about the provider must not install it');
+      assert(q.status !== 0, 'an AmabieBroker service exists — asking about the provider must not install it');
     }
     const call = spawnSync(process.execPath, [cli, 'provider', 'call', 'broker.hello'], { encoding: 'utf8', timeout: 60_000, env });
     assert(call.status !== 0, 'a worker call with no broker running must be refused, not silently done locally');

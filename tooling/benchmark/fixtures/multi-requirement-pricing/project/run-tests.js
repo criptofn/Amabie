@@ -1,9 +1,9 @@
 'use strict';
 /**
  * The project's own (VISIBLE) test runner: no dependencies, no install step, so a
- * trial never spends its budget on npm. It matches the runner-summary shape Canary's
+ * trial never spends its budget on npm. It matches the runner-summary shape Amabie's
  * Node adapter already understands ("N passing" / "N failing"), which is what makes
- * this fixture usable both as a plain repo and as a Canary-verified one.
+ * this fixture usable both as a plain repo and as an Amabie-verified one.
  */
 const fs = require('node:fs');
 const path = require('node:path');

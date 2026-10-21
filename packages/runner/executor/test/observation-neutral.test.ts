@@ -32,7 +32,7 @@ function pythonFrames(over: Record<string, unknown> = {}, body: unknown[] = [
 ]): string {
   const hello = {
     k: 'hello', runner: 'python-unittest', runnerVersion: '3.11.9', pythonVersion: '3.11.9',
-    pid: 4321, ppid: 1234, nonce: NONCE, observerVersion: 'canary-observer-v1', node: 'python-3.11.9',
+    pid: 4321, ppid: 1234, nonce: NONCE, observerVersion: 'amabie-observer-v1', node: 'python-3.11.9',
     ...over,
   };
   const counts = { pass: 0, fail: 0, pending: 0, rejected: 0 };
@@ -186,7 +186,7 @@ describe('neutral channel: an un-attempted round is ABSENT, never a weak VALID',
 describe('the mocha channel keeps its own rules (no silent generalization)', () => {
   const mochaInput = (over: Partial<ValidateInput> = {}): ValidateInput => ({
     raw: [
-      JSON.stringify({ k: 'hello', operatorVersion: 'x', mochaVersion: '10.8.2', node: 'v26.0.0', observerVersion: 'canary-observer-v1', pid: 42 }),
+      JSON.stringify({ k: 'hello', operatorVersion: 'x', mochaVersion: '10.8.2', node: 'v26.0.0', observerVersion: 'amabie-observer-v1', pid: 42 }),
       JSON.stringify({ k: 'pass', id: 'a', file: 'a.js' }),
       JSON.stringify({ k: 'bye', counts: { pass: 1, fail: 0, pending: 0 } }),
     ].join('\n') + '\n',

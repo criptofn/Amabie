@@ -1,7 +1,7 @@
 {
   "label": "R1",
-  "arm": "canary",
-  "repo": "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\refactron",
+  "arm": "amabie",
+  "repo": "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\refactron",
   "startedAt": "2026-09-24T05:02:45.854Z",
   "wallSeconds": 1500.1,
   "agentExitCode": null,
@@ -35,8 +35,8 @@
   "hookFiredDuringRun": true,
   "seenByModel": {
     "sawStopHookFeedback": true,
-    "sawCanaryBlockText": false,
-    "sawCanarySystemMessage": false
+    "sawAmabieBlockText": false,
+    "sawAmabieSystemMessage": false
   },
   "checkpointDrivenManually": false,
   "manuallyDriven": null,

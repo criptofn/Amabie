@@ -45,7 +45,7 @@ function goodBundle(): Record<string, unknown> {
     // Post-GLM panel E/H mirror: the classifier's gate (and this validator's
     // independent mirror of it) refuse a strong label without a VALID Amabie
     // observation on every round — counts/identities agreeing with the text
-    // channel, runner identity equal to a Amabie-pinned release, retained
+    // channel, runner identity equal to an Amabie-pinned release, retained
     // frame bytes. goodBundle is the canonical HONEST strong bundle, so its
     // observation is what a real double/golden run records.
     executionObservation: arm === 'candidate'
@@ -72,7 +72,7 @@ function goodBundle(): Record<string, unknown> {
   });
   const b: Record<string, unknown> = {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
-    runId: 'r1', createdAt: '2026-08-30T00:00:00Z', canaryVersion: '0.1.0', experimentId: 'e1',
+    runId: 'r1', createdAt: '2026-08-30T00:00:00Z', amabieVersion: '0.1.0', experimentId: 'e1',
     dependency: { package: 'axios', baselineVersion: '0.27.2', candidateVersion: '1.0.0' },
     downstream: { repositoryUrl: 'https://github.com/x/y', commitSha: SHA40, fetchMethod: 'tarball-by-sha', tarballSha256: H },
     environment: { nodeVersion: 'v26', npmVersion: '11', packageManagerUsed: 'npm', platform: 'win32', arch: 'x64', toolchainOverrides: {} },

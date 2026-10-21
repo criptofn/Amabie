@@ -30,7 +30,7 @@ const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
 const survivorArgs = ['-e', 'setTimeout(()=>{}, 300000)'];
 
-const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-lifecycle-'));
+const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-lifecycle-'));
 after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
 
 const PROCESS_TREE_FIXTURE = path.resolve(import.meta.dirname, '..', '..', 'test', 'fixtures', 'process-tree-parent.cjs');

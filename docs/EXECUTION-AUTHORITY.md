@@ -51,13 +51,13 @@ PROCESS-LAUNCHED          Amabie spawned this argv with Amabie-derived argv
                           (sanitized-env record; the only tier that is fully
                           Amabie-side by construction).
 PINNED-RUNNER-EXECUTED    that argv ran inside a runner whose ON-DISK BYTES
-                          match a Amabie-pinned release (treeSha256), with a
+                          match an Amabie-pinned release (treeSha256), with a
                           Amabie-authored in-process observer injected via a
                           protected, last-position --require.
 RUNNER-CLAIMED-N          the runner's stdout text summary says "N passing".
                           A claim. Downgrade-only: text may refute the
                           channel, never establish counts.
-CANARY-OBSERVED-N         Amabie's observer, running inside the pinned
+AMABIE-OBSERVED-N         Amabie's observer, running inside the pinned
                           process, watched per-test lifecycle events on a
                           private channel (fd 3) and recounted N itself.
 ```
@@ -65,7 +65,7 @@ CANARY-OBSERVED-N         Amabie's observer, running inside the pinned
 These are **different**: launching a process does not mean a test runner ran
 it; a runner executing does not mean the counts are its; and the runner
 claiming 128 does not mean 128 tests ran. A strong label requires
-**PINNED-RUNNER-EXECUTED + CANARY-OBSERVED-N with cross-channel agreement**
+**PINNED-RUNNER-EXECUTED + AMABIE-OBSERVED-N with cross-channel agreement**
 against RUNNER-CLAIMED-N on every round of both arms (rule 14, §5).
 
 The tier was deliberately *not* called "TEST-RUNNER-EXECUTED": the surviving
@@ -127,7 +127,7 @@ CLAIM, not the mechanism.
   (`mocha-bin-not-executed` → InfraAbort), the same posture as
   `subject-require-refused`: subject-controlled argv is refused, not parsed.
   Then, and only on a pin hit, Amabie appends
-  `--require <canaryPreloadPath>` **last** inside argv, for a Amabie-authored
+  `--require <amabiePreloadPath>` **last** inside argv, for an Amabie-authored
   preload written outside the artifacts dir. **Miss ⇒ no injection at all ⇒
   ABSENT ⇒ strong labels structurally unreachable.** Unpinned is never an
   error — the subject simply cannot earn strength. Any supported future
@@ -139,7 +139,7 @@ CLAIM, not the mechanism.
   are public in-repo and its observation seams are the seams an attacker
   knows best, so `(version, treeSha256)` alone never confers execution
   authority — `findRunnerPin` selects a `amabie-double` pin ONLY behind an
-  explicit in-process grant (`allowCanaryDoubleOrigin`, the
+  explicit in-process grant (`allowAmabieDoubleOrigin`, the
   PipelineDeps/ExecutorDeps seam channel: the same trust channel as
   fetch/extract), which the production CLI never passes and spec files, env,
   and argv cannot reach. An untrusted spec staging these exact bytes at the
@@ -147,7 +147,7 @@ CLAIM, not the mechanism.
   any unpinned runner — `observedRunnerTreeSha256` still records what bytes
   were there (byte observation is trust-independent), and no `expected*`
   field rides a round Amabie never injected into. Prove-side replay parity
-  needs no authority channel: `recordedClaimsCanaryDouble` honors the claim
+  needs no authority channel: `recordedClaimsAmabieDouble` honors the claim
   the retained evidence already makes (a double-named `expectedMochaVersion`
   can only exist if capture held the grant). npm-origin pins stay selectable
   in BOTH postures — the gate is origin-scoped, and the golden proof path is
@@ -254,7 +254,7 @@ CLAIM, not the mechanism.
 What Amabie now proves about a **PASS / CONFIRMED_REGRESSION /
 PRE_EXISTING_FAILURE / FLAKY** verdict is precisely:
 
-> **SUPPORTED TRUSTED MOCHA ADAPTER**: the experiment ran a Amabie-pinned-
+> **SUPPORTED TRUSTED MOCHA ADAPTER**: the experiment ran an Amabie-pinned-
 > bytes mocha release, Amabie injected the observer, and Amabie's in-process
 > watcher counted lifecycle events that agree with the runner's own text
 > summary — with all bytes bound into the evidence and re-derived at prove.
@@ -340,8 +340,8 @@ claims anything.
 > Amabie's execution observation is an **integrity bound, not a trust root**.
 > A strong verdict (PASS / CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE /
 > FLAKY) proves that Amabie spawned the process with Amabie-injected argv,
-> that the runner's on-disk bytes matched a Amabie-pinned release at
-> expansion time, and that a Amabie-authored in-process observer saw per-test
+> that the runner's on-disk bytes matched an Amabie-pinned release at
+> expansion time, and that an Amabie-authored in-process observer saw per-test
 > lifecycle events on a private channel that agree with the runner's own text
 > summary. It does **not** prove honest intent of code running inside that
 > process: test files, `.mocharc.*`/`package.json` mocha config, or a

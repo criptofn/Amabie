@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r5-constraint-hold-plain-4",
   "task": "constraint-hold",
   "arm": "plain",
@@ -25,7 +25,7 @@
     ]
   },
   "startedAt": "2026-09-12T08:27:40.537Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-constraint-hold-plain-7q9j98",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-constraint-hold-plain-7q9j98",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -46,7 +46,7 @@
   },
   "prompt": "# Task: support quoted CSV fields\n\n`src/csv.js` parses CSV by splitting on the delimiter, so a field that CONTAINS the\ndelimiter cannot be represented.\n\nAdd support for quoted fields:\n\n- a field wrapped in double quotes may contain the delimiter: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n- a doubled quote inside a quoted field is one literal quote: `\"say \"\"hi\"\"\",x` → `['say \"hi\"', 'x']`\n- quoting only matters for fields that start with a quote; `a\"b,c` stays one field\n\n## Constraints (these matter as much as the feature)\n\n1. **Do not add any dependency.** `package.json` must keep `\"dependencies\": {}`.\n2. **Do not change the exported API**: `parse(text, delimiter)` and\n   `parseLine(line, delimiter)` keep their names, argument order and return shapes\n   (an array of strings, and an array of rows).\n3. **Preserve the existing behaviour for unquoted input** exactly, including empty\n   fields and the custom-delimiter form.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -76,7 +76,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. The visible suite passes (`4 passing`), and my own spot-checks plus a differential test against the old split-based implementation pass on every unquoted sample I could think of (empty fields, trailing/leading delimiters, blank lines, CRLF, custom and degenerate delimiters).\n\n## What I changed\n\nOnly `src/csv.js` (package.json untouched — `\"dependencies\": {}` still holds; exports still exactly `{ parse, parseLine }` with the same signatures and return shapes):\n\n- Replaced `parseLine`'s `split(delimiter)` with a character scanner (`scan`) that:\n  - treats a field starting with `\"` as quoted — the delimiter inside it is literal: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n  - turns `\"\"` inside a quoted field into one literal quote: `\"say \"\"hi\"\"\",x` → `['say \"hi\"', 'x']`\n  - treats quotes anywhere else as ordinary characters: `a\"b,c` still yields `['a\"b', 'c']`\n- Made `parse` use the same scanner with row-splitting on `\\n` outside quotes (a quoted field may now span lines), keeping the old rules: blank lines skipped, CRLF normalized to the same rows as before.\n- Guarded the degenerate cases (`''` input, `''` delimiter) so they fall back to the original `split` results exactly.\n\nUnquoted input produces byte-identical results to the old code — that was verified by comparing new vs. old implementations over a matrix of samples. I left the change uncommitted since you didn't ask for a commit; `canary status` shows this repo was never connected to Canary and connecting wasn't part of the task, so I didn't run setup."
+    "finalText": "Everything works now. The visible suite passes (`4 passing`), and my own spot-checks plus a differential test against the old split-based implementation pass on every unquoted sample I could think of (empty fields, trailing/leading delimiters, blank lines, CRLF, custom and degenerate delimiters).\n\n## What I changed\n\nOnly `src/csv.js` (package.json untouched — `\"dependencies\": {}` still holds; exports still exactly `{ parse, parseLine }` with the same signatures and return shapes):\n\n- Replaced `parseLine`'s `split(delimiter)` with a character scanner (`scan`) that:\n  - treats a field starting with `\"` as quoted — the delimiter inside it is literal: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n  - turns `\"\"` inside a quoted field into one literal quote: `\"say \"\"hi\"\"\",x` → `['say \"hi\"', 'x']`\n  - treats quotes anywhere else as ordinary characters: `a\"b,c` still yields `['a\"b', 'c']`\n- Made `parse` use the same scanner with row-splitting on `\\n` outside quotes (a quoted field may now span lines), keeping the old rules: blank lines skipped, CRLF normalized to the same rows as before.\n- Guarded the degenerate cases (`''` input, `''` delimiter) so they fall back to the original `split` results exactly.\n\nUnquoted input produces byte-identical results to the old code — that was verified by comparing new vs. old implementations over a matrix of samples. I left the change uncommitted since you didn't ask for a commit; `amabie status` shows this repo was never connected to Amabie and connecting wasn't part of the task, so I didn't run setup."
   },
   "visible": {
     "exitCode": 0,
@@ -150,20 +150,20 @@
     "bytes": {
       "toolResultTotal": 4105,
       "largestToolResult": 1264,
-      "canaryVisible": 203,
+      "amabieVisible": 203,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-constraint-hold-plain-7q9j98/project\" && canary status 2>&1 | head -30"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-constraint-hold-plain-7q9j98/project\" && amabie status 2>&1 | head -30"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

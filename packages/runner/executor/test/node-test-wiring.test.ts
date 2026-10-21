@@ -40,7 +40,7 @@ import {
 import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
 import { classify, type RoundFact } from '@amabie/classification';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-nodetest-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-nodetest-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 /** A workspace whose fixture is a real Node project. */
@@ -276,7 +276,7 @@ describe('node:test observation through the executor round path', () => {
 
   it('8. the observer door adds ONLY Amabie-owned variables (no env-merge)', () => {
     const ws = workspace('env', PASSING);
-    const obsDir = path.join(ws.root, 'canary-node-observer');
+    const obsDir = path.join(ws.root, 'amabie-node-observer');
     fs.mkdirSync(obsDir, { recursive: true });
     const baseKeys = sanitizedEnvKeys(sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath) }));
     const withObserver = sanitizedEnvKeys(sanitizedEnv({
@@ -287,7 +287,7 @@ describe('node:test observation through the executor round path', () => {
       'the node channel adds exactly its nonce binding and nothing else');
     // The door's containment rule is channel-independent: bytes outside the
     // workspace are still refused.
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-outside-'));
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-outside-'));
     assert.throws(
       () => sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath), observer: { kind: 'node', dir: outside, nonce: 'n' } }),
       /must live inside Amabie's workspace root/,

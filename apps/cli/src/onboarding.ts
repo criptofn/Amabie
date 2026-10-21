@@ -115,8 +115,6 @@ export function selfArgv(args: readonly string[]): string[] {
 
 export const CONFIG_DIR = '.amabie';
 const CONFIG_FILE = 'amabie.local.json';
-const LEGACY_CONFIG_DIR = '.canary';
-const LEGACY_CONFIG_FILE = 'canary.local.json';
 const CHECKPOINT_FILE = 'last-checkpoint.json';
 /**
  * v1.4 Gap C — the project-local Codex hook layer.
@@ -287,48 +285,10 @@ function installedDoctorCommand(checkId?: string): string {
 // ---------- config + settings.json plumbing ----------
 
 export function configPath(root: string): string {
-  const current = path.join(root, CONFIG_DIR, CONFIG_FILE);
-  const legacy = path.join(root, LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILE);
-  return fs.existsSync(current) || !fs.existsSync(legacy) ? current : legacy;
+  return path.join(root, CONFIG_DIR, CONFIG_FILE);
 }
 
-function migrateLegacyConfig(root: string): { migrated: boolean; problem?: string } {
-  const legacyDir = path.join(root, LEGACY_CONFIG_DIR);
-  const currentDir = path.join(root, CONFIG_DIR);
-  let stat: fs.Stats;
-  try { stat = fs.lstatSync(legacyDir); }
-  catch (e) { return (e as NodeJS.ErrnoException).code === 'ENOENT' ? { migrated: false } : { migrated: false, problem: 'could not inspect the legacy .canary directory' }; }
-  if (!stat.isDirectory() || stat.isSymbolicLink() || containedRealPath(root, legacyDir) === null) {
-    return { migrated: false, problem: 'legacy .canary is not a plain directory inside the project; nothing was moved' };
-  }
-  try {
-    fs.lstatSync(currentDir);
-    return { migrated: false, problem: 'both .canary and .amabie exist; resolve the two state directories before setup so neither is overwritten' };
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') return { migrated: false, problem: 'could not inspect .amabie before migration; nothing was moved' };
-  }
-  const tracked = gitCommand(root, ['ls-files', '--', LEGACY_CONFIG_DIR]);
-  if (!tracked || tracked.status !== 0) return { migrated: false, problem: 'could not verify whether .canary contains tracked project files; nothing was moved' };
-  if (tracked.stdout.trim()) return { migrated: false, problem: '.canary contains git-tracked files; move or untrack them before setup so migration does not rewrite project history' };
-  const legacyConfig = path.join(legacyDir, LEGACY_CONFIG_FILE);
-  const misplacedCurrentConfig = path.join(legacyDir, CONFIG_FILE);
-  if (fs.existsSync(legacyConfig) && fs.existsSync(misplacedCurrentConfig)) {
-    return { migrated: false, problem: 'both legacy and Amabie config files exist inside .canary; resolve them before setup' };
-  }
-  try {
-    fs.renameSync(legacyDir, currentDir);
-    if (fs.existsSync(path.join(currentDir, LEGACY_CONFIG_FILE))) {
-      fs.renameSync(path.join(currentDir, LEGACY_CONFIG_FILE), path.join(currentDir, CONFIG_FILE));
-    }
-    configTrackedMemo.delete(root);
-    return { migrated: true };
-  } catch (e) {
-    try { if (fs.existsSync(currentDir) && !fs.existsSync(legacyDir)) fs.renameSync(currentDir, legacyDir); } catch { /* preserve whichever complete directory remains */ }
-    return { migrated: false, problem: `could not migrate .canary safely (${String(e).slice(0, 120)}); the existing directory was preserved` };
-  }
-}
-
-function legacyCanaryCliPath(cliPath: string): boolean {
+function retiredPackageCliPath(cliPath: string): boolean {
   return cliPath.replaceAll('\\', '/').toLowerCase().includes('/@canary-rn/cli/');
 }
 
@@ -2074,7 +2034,7 @@ export function cmdSessionStart(): number {
       'Never edit the plan or hooks, or run setup/bind/accept. Keep every unbound criterion NOT PROVEN.',
       'Amabie runs the sealed base comparison itself; do not switch, reset, or restore this branch to reproduce the baseline.',
       'If the Amabie MCP task tool is missing or unavailable, stop and ask the operator to restore Amabie MCP before changing files; shell commands are blocked until registration succeeds.',
-      'Use the project test runner\'s file or case filter for early feedback. The Stop hook runs the full sealed checks at completion; do not rerun the full suite just for a Amabie verdict.',
+      'Use the project test runner\'s file or case filter for early feedback. The Stop hook runs the full sealed checks at completion; do not rerun the full suite just for an Amabie verdict.',
       'If the hook reports a failure, repair that problem and recheck its exact id with amabie_doctor(check). A focused result is PARTIAL.',
       cliPrefix === null
         ? 'This CLI path cannot be safely embedded in a shell command. Use the configured Amabie MCP amabie_doctor(check) tool or ask a human to inspect the installation.'
@@ -2784,12 +2744,12 @@ export function readTaskRecord(root: string): TaskIdentity | null {
     const p = path.join(root, CONFIG_DIR, TASK_FILE);
     if (containedRealPath(root, p) === null) return null;
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
-    return (v?.schema === 'amabie-task/2' || v?.schema === 'canary-task/2') ? canonicalTask(v) : null;
+    return (v?.schema === 'amabie-task/2' || v?.schema === 'amabie-task/2') ? canonicalTask(v) : null;
   } catch { return null; }
 }
 
 interface ClaudeTurnState {
-  schema: 'amabie-turn/1' | 'canary-turn/1';
+  schema: 'amabie-turn/1';
   sessionDigest: string;
   promptId: string;
   registeredPromptId: string | null;
@@ -2806,7 +2766,7 @@ function readClaudeTurnState(root: string, sessionId: string): ClaudeTurnState |
     if (containedRealPath(root, p) === null) return null;
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
     const task = v?.task === null ? null : canonicalTask(v?.task);
-    if ((v?.schema !== 'amabie-turn/1' && v?.schema !== 'canary-turn/1') || v.sessionDigest !== sha256(sessionId)
+    if ((v?.schema !== 'amabie-turn/1' && v?.schema !== 'amabie-turn/1') || v.sessionDigest !== sha256(sessionId)
       || typeof v.promptId !== 'string' || !/^[0-9a-f-]{36}$/i.test(v.promptId)
       || (v.registeredPromptId !== null && v.registeredPromptId !== v.promptId)
       || (v.registeredPromptId === v.promptId && task === null)
@@ -3010,7 +2970,7 @@ function taskFromMcpInput(root: string, input: unknown): TaskIdentity | null {
  *  not look like authority-drift. */
 export const ACCEPTANCE_SUBDIR = 'acceptance';
 export interface AcceptanceRecord {
-  schema: 'amabie-acceptance/3' | 'canary-acceptance/3'; at: string; candidate: string;
+  schema: 'amabie-acceptance/3'; at: string; candidate: string;
   subject: AuthorizationSubject;
   subjectDigest: string;
   acceptedBy: 'tty-human';
@@ -3022,7 +2982,7 @@ export function readAcceptance(root: string, name: string): AcceptanceRecord | n
     if (!fs.existsSync(p)) return null;
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<AcceptanceRecord> | null;
     if (typeof v !== 'object' || v === null) return null;
-    if ((v.schema !== 'amabie-acceptance/3' && v.schema !== 'canary-acceptance/3') || typeof v.at !== 'string' || v.candidate !== name || v.acceptedBy !== 'tty-human') return null;
+    if ((v.schema !== 'amabie-acceptance/3' && v.schema !== 'amabie-acceptance/3') || typeof v.at !== 'string' || v.candidate !== name || v.acceptedBy !== 'tty-human') return null;
     const sub = v.subject;
     if (!sub || sub.candidate !== name || !canonicalTask(sub.frozenTask) || !canonicalTask(sub.liveTask)
       || ![sub.candidateCommit, sub.candidateTree, sub.baseHead, sub.baseTree].every(x => typeof x === 'string' && /^[0-9a-f]{40,64}$/.test(x))
@@ -3378,7 +3338,7 @@ export class Out {
 export interface GlobalOpts { verbose: boolean; yes: boolean; json: boolean; fast: boolean }
 export function parseGlobals(args: string[]): { opts: GlobalOpts; rest: string[] } {
   const opts: GlobalOpts = {
-    verbose: args.includes('--verbose') || !!process.env.AMABIE_VERBOSE || !!process.env.CANARY_VERBOSE,
+    verbose: args.includes('--verbose') || !!process.env.AMABIE_VERBOSE || !!process.env.AMABIE_VERBOSE,
     yes: args.includes('--yes'),
     json: args.includes('--json'),
     fast: args.includes('--fast'),
@@ -3572,16 +3532,6 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.verdict('UNSUPPORTED', 'package.json is not valid JSON — Amabie cannot read your project.', 'fix package.json, then run setup again'); return 2;
   }
 
-  let migratedLegacyState = false;
-  if (!setupArgs.check) {
-    const migration = migrateLegacyConfig(root);
-    if (migration.problem) {
-      o.verdict('NEEDS ATTENTION', migration.problem, 'resolve the named state conflict, then run amabie setup again'); return 2;
-    }
-    migratedLegacyState = migration.migrated;
-    if (migratedLegacyState) o.say('migrated existing .canary state to .amabie; setup will refresh its owned hooks and CLI path');
-  }
-
   // local-state integrity BEFORE any write: a tracked .amabie config arrived
   // from someone else's clone (S1/S2), and a linked .amabie/.claude would send
   // Amabie's writes outside the repo (S3) — refuse both without touching bytes.
@@ -3640,7 +3590,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const prev = readConfig(root);
   const prevUsable = !!prev && prev !== 'corrupt' && (
     !untrustedConfigReason(root, prev)
-    || (legacyCanaryCliPath(prev.cliPath) && configTracked(root) !== true)
+    || (retiredPackageCliPath(prev.cliPath) && configTracked(root) !== true)
   );
   const setupPrevCfg = prevUsable ? prev as AmabieConfig : null;
   const mcpProfile: McpProfile = setupArgs.profile ?? setupPrevCfg?.mcpProfile ?? 'everyday';
@@ -3695,7 +3645,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     // step by the package.json script text (unchanged M5 semantics). The
     // project's fast-path declaration is sealed HERE too, so a check may only be
     // left out on authority the project gave at setup.
-    const amabieBlock = (rootDisc?.source.amabie ?? rootDisc?.source.canary) as { proofs?: unknown; paths?: unknown } | undefined;
+    const amabieBlock = (rootDisc?.source.amabie ?? rootDisc?.source.amabie) as { proofs?: unknown; paths?: unknown } | undefined;
     seal = sealPlanAuthority(plan, planScriptTexts(root, plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>),
       amabieBlock?.proofs, amabieBlock?.paths);
   } catch (e) {
@@ -3882,8 +3832,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const store = storeFromEnv();
   const projectId = projectIdForRoot(root);
   try {
-    sealRecord(store, { projectId, kind: 'registration', canaryVersion: AMABIE_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
-    sealRecord(store, { projectId, kind: 'plan-seal', canaryVersion: AMABIE_VERSION, payload: cfg.planAuthority });
+    sealRecord(store, { projectId, kind: 'registration', amabieVersion: AMABIE_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
+    sealRecord(store, { projectId, kind: 'plan-seal', amabieVersion: AMABIE_VERSION, payload: cfg.planAuthority });
   } catch (e) {
     // v1.4 §E — translated for the everyday path. Same refusal, same exit code, same actionable
     // next step; the ordinary user is no longer asked to know what "sealing authority" means.
@@ -4781,7 +4731,7 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
       : `full evidence: ${evidenceDir} — per-step logs and verification.json`);
   }
   // M3 (verbose-only — trust classes are evidence internals, not default UX):
-  o.detail('trust: this READY is AMABIE_OBSERVED — Amabie executed the checks in this very invocation. Agent words are AGENT_REPORTED and never sufficient for a PASS; no class is promoted by copying bytes into a Amabie-owned file (evidence is never read back for verdicts).');
+  o.detail('trust: this READY is AMABIE_OBSERVED — Amabie executed the checks in this very invocation. Agent words are AGENT_REPORTED and never sufficient for a PASS; no class is promoted by copying bytes into an Amabie-owned file (evidence is never read back for verdicts).');
   if (cfg.planAuthority) o.detail('authority: every command that just ran is one setup sealed — script-text drift is blocked before execution, not excused after it passes.');
   o.detail(sealedCopyReport(root, cfg));
   return 0;
@@ -5283,21 +5233,20 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
   }
   const pkgPath = path.join(root, 'package.json');
   const manifestPath = path.join(root, 'amabie.project.json');
-  const legacyManifestPath = path.join(root, 'canary.project.json');
   /**
    * WHICH DECLARATION SURFACE? A Node project carries `package.json` `amabie.proofs`; every other
    * project (Python, Rust, Go, anything the universal contract covers) has no package.json at all, so
    * the binding goes into `amabie.project.json` `proofs`. MEASURED: before this, a non-Node project
    * could not bind a requirement anywhere, so its only reachable end state was human acceptance.
    */
-  const targetPath = fs.existsSync(manifestPath) ? manifestPath : fs.existsSync(legacyManifestPath) ? legacyManifestPath : pkgPath;
+  const targetPath = fs.existsSync(manifestPath) ? manifestPath : pkgPath;
   const isNode = targetPath === pkgPath;
   const surface = isNode ? 'package.json' : 'amabie.project.json';
   let doc: Record<string, unknown>;
   try { doc = JSON.parse(fs.readFileSync(targetPath, 'utf8')) as Record<string, unknown>; }
   catch (e) { o.verdict('NEEDS ATTENTION', `cannot read ${surface} to record the binding (${String(e).slice(0, 120)}).`, 'fix the file, then re-run'); return 2; }
   const amabieSection = isNode ? {
-    ...(isRecord(doc.canary) ? doc.canary as Record<string, unknown> : {}),
+    ...(isRecord(doc.amabie) ? doc.amabie as Record<string, unknown> : {}),
     ...(isRecord(doc.amabie) ? doc.amabie as Record<string, unknown> : {}),
   } : {};
   const existingProofs = isNode ? amabieSection.proofs : doc.proofs;
@@ -5309,7 +5258,7 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
     written.push({ digest: d, text: canonicalText(r).slice(0, 90) });
   }
   const sortedProofs = Object.fromEntries(Object.entries(proofs).sort(([a], [b]) => a.localeCompare(b)));
-  if (isNode) { doc.amabie = { ...amabieSection, proofs: sortedProofs }; delete doc.canary; }
+  if (isNode) { doc.amabie = { ...amabieSection, proofs: sortedProofs }; delete doc.amabie; }
   else doc.proofs = sortedProofs;
   try { writeFileAtomic(targetPath, `${JSON.stringify(doc, null, 2)}\n`); }
   catch (e) { o.verdict('NEEDS ATTENTION', `could not write the binding into ${surface} (${String(e).slice(0, 120)}).`, 'close whatever holds the file, then re-run'); return 2; }

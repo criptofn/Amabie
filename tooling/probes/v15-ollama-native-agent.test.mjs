@@ -41,7 +41,7 @@ test('native Ollama usage needs actual token counts and a model digest', () => {
   assert.throws(() => ollamaResponseUsage({ prompt_eval_count: NaN, eval_count: 4 }), /incomplete/);
 });
 
-test('a Amabie one-repair stop guard ends the agent session without claiming a pass', () => {
+test('an Amabie one-repair stop guard ends the agent session without claiming a pass', () => {
   assert.equal(isAmabieStopGuard({ systemMessage: 'Amabie: NOT PROVEN — after one repair attempt. Stopping anyway.' }), true);
   assert.equal(isAmabieStopGuard({ decision: 'allow', systemMessage: 'Checks passed.' }), false);
 });

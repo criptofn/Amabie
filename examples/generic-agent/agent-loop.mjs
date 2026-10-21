@@ -2,28 +2,28 @@
 /**
  * The GENERIC agent loop, in about fifty lines.
  *
- * Any agent that can run a command can drive Canary through its protocol — no
+ * Any agent that can run a command can drive Amabie through its protocol — no
  * hook, no harness-specific integration, no parsing of prose. This script is the
  * whole contract:
  *
- *   1. `canary result --json`  — what Canary knows right now (free, runs nothing)
- *   2. `canary doctor --json`  — actually run the sealed checks and report
+ *   1. `amabie result --json`  — what Amabie knows right now (free, runs nothing)
+ *   2. `amabie doctor --json`  — actually run the sealed checks and report
  *
  * It exits with doctor's exit code, so a caller (or a CI step) can use it as a
- * gate. Nothing here can mint a verdict: it only reports what Canary decided.
+ * gate. Nothing here can mint a verdict: it only reports what Amabie decided.
  *
  * usage:  node agent-loop.mjs [project-dir]
  * env:    AMABIE_CLI  absolute path to apps/cli/dist/src/main.js (run from a
- *                     checkout, where `canary` is not on PATH)
- *         CANARY_BIN  the installed `canary` executable (default: `canary`)
+ *                     checkout, where `amabie` is not on PATH)
+ *         AMABIE_BIN  the installed `amabie` executable (default: `amabie`)
  */
 import { spawnSync } from 'node:child_process';
 
 const dir = process.argv[2] ?? process.cwd();
-const cli = process.env.AMABIE_CLI ?? process.env.CANARY_CLI;
-const bin = process.env.CANARY_BIN ?? 'canary';
+const cli = process.env.AMABIE_CLI ?? process.env.AMABIE_CLI;
+const bin = process.env.AMABIE_BIN ?? 'amabie';
 
-function canary(args) {
+function amabie(args) {
   const argv = cli ? [process.execPath, cli, ...args] : [bin, ...args];
   const r = spawnSync(argv[0], argv.slice(1), { encoding: 'utf8', timeout: 600_000 });
   if (r.error) throw r.error;
@@ -50,11 +50,11 @@ function show(label, r) {
   if (e.evidencePath) console.log(`  evidence: ${e.evidencePath}`);
 }
 
-const state = canary(['result', '--json', dir]);
+const state = amabie(['result', '--json', dir]);
 show('state', state);
 
-const gate = canary(['doctor', '--json', dir]);
+const gate = amabie(['doctor', '--json', dir]);
 show('gate', gate);
 
-// The agent should repair exactly this and re-run. Exit code is Canary's.
+// The agent should repair exactly this and re-run. Exit code is Amabie's.
 process.exit(gate.code ?? 1);

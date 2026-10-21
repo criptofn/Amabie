@@ -61,7 +61,7 @@ export const BUNDLE_CONTRACT: Field = obj('always', {
   schemaVersion: num(),
   runId: s(),
   createdAt: iso(),
-  canaryVersion: s(),
+  amabieVersion: s(),
   experimentId: s(),
   dependency: obj('always', {
     package: s(), baselineVersion: s(), candidateVersion: s(),

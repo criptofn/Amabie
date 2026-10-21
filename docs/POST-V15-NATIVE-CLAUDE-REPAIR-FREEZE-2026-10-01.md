@@ -2,9 +2,9 @@
 
 Erfasst: 2026-09-30T23:43:06.211Z bis 2026-09-30T23:45:59.126Z. Status: **complete**.
 
-Rohbelege: `C:/Users/Johannes/Desktop/canary/_canary-data/evidence/claude-local-tools-20261001-freeze-final`. 166 Dateien anhand SHA-256 erneut geprüft.
+Rohbelege: `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/claude-local-tools-20261001-freeze-final`. 166 Dateien anhand SHA-256 erneut geprüft.
 
-CLI: `canary 1.5.0`, SHA-256 `22810c904c340d57156f3a8497daa0548b24fbcead7c683b142fb762fabed68b`. Claude: `2.1.278 (Claude Code)`. Ollama: `0.33.2`.
+CLI: `amabie 1.5.0`, SHA-256 `22810c904c340d57156f3a8497daa0548b24fbcead7c683b142fb762fabed68b`. Claude: `2.1.278 (Claude Code)`. Ollama: `0.33.2`.
 
 Modell: `qwen3.5:9b`, Digest `6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7`; tatsächlicher Kontext pro Sitzung im record.json. Instrument: `1a42710c176e93b1b0afe23bb2981374c0262360bd70fd4f9acf7f885a199086`.
 
@@ -17,6 +17,6 @@ Modell: `qwen3.5:9b`, Digest `6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a
 
 Anbieterrechnung: **0 USD**, ausschließlich lokales Modell. Claude-interne USD-Schätzung mit unbekannter Preisbasis ist keine Rechnung. Native Input/Output umfassen den tatsächlich übertragenen Werkzeug- und MCP-Kontext; geschätzte thinking_tokens werden nicht addiert.
 
-Grenzen: gleicher Benutzer im LOCAL-Modus; keine Betriebssystem-Isolation. Kontrollreparaturen sind künstlich eingebracht. Ein kleiner Pilot auf drei Projekten beweist keine allgemeine Tokenersparnis oder breite 9/10-Alltagstauglichkeit. Korrektheit, Canary-Nachweis und Sitzungsende sind getrennt.
+Grenzen: gleicher Benutzer im LOCAL-Modus; keine Betriebssystem-Isolation. Kontrollreparaturen sind künstlich eingebracht. Ein kleiner Pilot auf drei Projekten beweist keine allgemeine Tokenersparnis oder breite 9/10-Alltagstauglichkeit. Korrektheit, Amabie-Nachweis und Sitzungsende sind getrennt.
 
 Bereinigung: `{"unloaded":true,"ps":{"models":[]},"serverStopped":true}`. Fehler: `none`.

@@ -148,7 +148,7 @@ package suites run; one commit per independent repair.
   438/64 here — stale-copied from the Sept-2 index at a different HEAD;
   see Errata.)
 - **Golden proof:** run on the canonical pinned toolchain
-  (`~/.canary-pinned-host/node-v26.3.0-win-x64`, Node **v26.3.0** /
+  (`~/.amabie-pinned-host/node-v26.3.0-win-x64`, Node **v26.3.0** /
   npm **11.16.0**, PATH-prefixed so child processes resolve pinned — no
   global config changed): `npm run prove` on
   `fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json` →

@@ -1,22 +1,22 @@
 {
-  "schema": "canary-release-validation/1",
+  "schema": "amabie-release-validation/1",
   "label": "R1",
   "phase": "remediate",
   "probe": "tooling/probes/v15-release-validation-task.mjs",
   "probeSha256": "0c2767c70f2f3e1ba7675407bfad62c34478e71f0b964f6f239aaca78cd0fc28",
-  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "cliVersion": "canary 1.5.0",
+  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "cliVersion": "amabie 1.5.0",
   "cliBinarySha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
   "publishedArtifactSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
   "expectedHead": "685145ca33d5e24a11aee9d717b98056e5b8bff6",
   "baselineHead": null,
   "taskSha256": "5a596c667197f13cb39092f9ab41ea7e2fd272c18642c4a0d82898e4ebab0efa",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
-  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-validation-trust\\5df897fc18a2441bc83ff563b0bcf589ef405e80a4f182322dc99ba927f0a4b0",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
+  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-validation-trust\\5df897fc18a2441bc83ff563b0bcf589ef405e80a4f182322dc99ba927f0a4b0",
   "toolchainDirectories": [
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311",
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311\\Scripts",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311\\Scripts",
     "C:\\Program Files\\Git\\cmd",
     "C:\\Program Files\\Git\\usr\\bin"
   ],
@@ -31,7 +31,7 @@
   "environmentKeyNames": [
     "ALLUSERSPROFILE",
     "APPDATA",
-    "CANARY_TRUST_STORE",
+    "AMABIE_TRUST_STORE",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "COLORTERM",
     "COMPUTERNAME",
@@ -100,7 +100,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:19:08.934Z",
       "elapsedMs": 1878,
       "exitCode": 0,
@@ -118,7 +118,7 @@
         "run",
         "typecheck"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:19:10.815Z",
       "elapsedMs": 1475,
       "exitCode": 0,
@@ -136,7 +136,7 @@
         "run",
         "test"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:19:12.291Z",
       "elapsedMs": 119668,
       "exitCode": 0,
@@ -154,7 +154,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:21:11.960Z",
       "elapsedMs": 1946,
       "exitCode": 0,
@@ -165,23 +165,23 @@
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "name": "canary-setup",
+      "name": "amabie-setup",
       "executable": "C:\\Program Files\\nodejs\\node.exe",
       "args": [
-        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
         "setup",
         "--yes",
         "--clear-toolchain-dirs",
         "--toolchain-dir",
-        "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311",
+        "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311",
         "--toolchain-dir",
-        "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311\\Scripts",
+        "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311\\Scripts",
         "--toolchain-dir",
         "C:\\Program Files\\Git\\cmd",
         "--toolchain-dir",
         "C:\\Program Files\\Git\\usr\\bin"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:21:13.907Z",
       "elapsedMs": 118411,
       "exitCode": 0,
@@ -197,9 +197,9 @@
       "args": [
         "config",
         "user.name",
-        "Canary Validation"
+        "Amabie Validation"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:23:12.396Z",
       "elapsedMs": 57,
       "exitCode": 0,
@@ -215,9 +215,9 @@
       "args": [
         "config",
         "user.email",
-        "canary-validation@localhost"
+        "amabie-validation@localhost"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:23:12.454Z",
       "elapsedMs": 57,
       "exitCode": 0,
@@ -234,7 +234,7 @@
         "add",
         "-A"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:23:12.512Z",
       "elapsedMs": 63,
       "exitCode": 0,
@@ -251,9 +251,9 @@
         "commit",
         "--allow-empty",
         "-m",
-        "Canary validation setup baseline R1"
+        "Amabie validation setup baseline R1"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:23:12.576Z",
       "elapsedMs": 125,
       "exitCode": 0,
@@ -264,14 +264,14 @@
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "name": "canary-doctor-baseline",
+      "name": "amabie-doctor-baseline",
       "executable": "C:\\Program Files\\nodejs\\node.exe",
       "args": [
-        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
         "doctor",
         "--json"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T01:23:13.104Z",
       "elapsedMs": 119459,
       "exitCode": 0,
@@ -290,5 +290,5 @@
   },
   "status": "complete",
   "infrastructureFailures": 0,
-  "canaryVerdict": "READY"
+  "amabieVerdict": "READY"
 }

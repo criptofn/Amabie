@@ -57,7 +57,7 @@ const records = [];
 for (const f of fs.readdirSync(dir).filter((x) => /^v15-everyday.*\.json$/.test(x))) {
   let j;
   try { j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
-  if (!['canary-benchmark-trial/2', 'amabie-benchmark-trial/2'].includes(j.schema)) continue;
+  if (j.schema !== 'amabie-benchmark-trial/2') continue;
   const run = f.replace(new RegExp(`-${j.task}-${j.arm}-\\d+\\.json$`), '');
   const judged = cellEligibility(j);
   records.push({ file: f, run, task: j.task, arm: j.arm, mcp: j.agent?.mcpToolsAdvertised, instrument: instrumentOf(j), ...judged });

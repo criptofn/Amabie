@@ -1,11 +1,11 @@
-﻿CANARY UNATTENDED F6 HARDENING NIGHT RUN
+﻿AMABIE UNATTENDED F6 HARDENING NIGHT RUN
 
 AUTHORITATIVE START:
 34cf515b50ebab3eb68cb10859eef3a67e0e57f3
 
 ROLE:
 You are the Qwen BUILDER.
-Work only on Canary Reliability Network.
+Work only on Amabie Reliability Network.
 Do not invoke any other LLM/model provider.
 Do not launch subagents, dynamic workflows, or agent swarms.
 Do not push anything.
@@ -45,7 +45,7 @@ cannot become PASS solely through the fallback.
 Prove the prior forged/no-proofHost case cannot PASS.
 
 F6e — empty .npmrc re-verification
-Confirmed issue: Canary creates the controlled empty .npmrc once but does not
+Confirmed issue: Amabie creates the controlled empty .npmrc once but does not
 re-verify it immediately before every install/use.
 Target: re-establish or verify the controlled file immediately before install.
 Add a tamper-between-creation-and-use regression test.
@@ -86,7 +86,7 @@ Prefer relevant tests after each repair and the complete repository suite once
 at the end.
 
 If existing host capabilities permit it, also run the canonical final build,
-typecheck, full test suite, and Canary proof/check appropriate to this branch.
+typecheck, full test suite, and Amabie proof/check appropriate to this branch.
 If something requires unavailable network, privileges, or infrastructure,
 record the limitation accurately. Never disable a security check to proceed.
 

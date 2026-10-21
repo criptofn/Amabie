@@ -1,5 +1,5 @@
 {
-  "schema": "canary-post-v15-cost-control/1",
+  "schema": "amabie-post-v15-cost-control/1",
   "date": "2026-09-27",
   "model": "qwen3.8-flash",
   "cli": "Claude Code 2.1.278",

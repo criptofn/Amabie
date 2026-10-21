@@ -1,22 +1,22 @@
 {
-  "schema": "canary-release-validation/1",
+  "schema": "amabie-release-validation/1",
   "label": "R1",
   "phase": "candidate",
   "probe": "tooling/probes/v15-release-validation-task.mjs",
   "probeSha256": "85b18c598613010245eba3c76254f7d46e35895ae1baa9ee1853f617997de0ef",
-  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "cliVersion": "canary 1.5.0",
+  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "cliVersion": "amabie 1.5.0",
   "cliBinarySha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
   "publishedArtifactSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-post-v15-product-validation\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
   "expectedHead": "d906039823003ce78b089b377d732e7d3aab1702",
   "baselineHead": "781054136c9e279a40ac6caada1a0972ca200d9c",
   "taskSha256": "5a596c667197f13cb39092f9ab41ea7e2fd272c18642c4a0d82898e4ebab0efa",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
-  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-validation-trust\\5df897fc18a2441bc83ff563b0bcf589ef405e80a4f182322dc99ba927f0a4b0",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
+  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-validation-trust\\5df897fc18a2441bc83ff563b0bcf589ef405e80a4f182322dc99ba927f0a4b0",
   "toolchainDirectories": [
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311",
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311\\Scripts",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311\\Scripts",
     "C:\\Program Files\\Git\\cmd",
     "C:\\Program Files\\Git\\usr\\bin"
   ],
@@ -31,7 +31,7 @@
   "environmentKeyNames": [
     "ALLUSERSPROFILE",
     "APPDATA",
-    "CANARY_TRUST_STORE",
+    "AMABIE_TRUST_STORE",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "COLORTERM",
     "COMPUTERNAME",
@@ -95,7 +95,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T02:14:11.232Z",
       "elapsedMs": 2221,
       "exitCode": 0,
@@ -113,7 +113,7 @@
         "run",
         "typecheck"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T02:14:13.456Z",
       "elapsedMs": 1508,
       "exitCode": 0,
@@ -131,7 +131,7 @@
         "run",
         "test"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T02:14:14.965Z",
       "elapsedMs": 127765,
       "exitCode": 0,
@@ -149,7 +149,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T02:16:22.731Z",
       "elapsedMs": 3186,
       "exitCode": 0,
@@ -160,13 +160,13 @@
       "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "name": "canary-checkpoint-candidate",
+      "name": "amabie-checkpoint-candidate",
       "executable": "C:\\Program Files\\nodejs\\node.exe",
       "args": [
-        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+        "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-release-validation\\installed\\node_modules\\@canary-rn\\cli\\dist\\main.js",
         "checkpoint"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-baselines-20260927\\R1",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-baselines-20260927\\R1",
       "startedAt": "2026-09-27T02:16:25.918Z",
       "elapsedMs": 118887,
       "exitCode": 0,
@@ -185,5 +185,5 @@
   },
   "status": "complete",
   "infrastructureFailures": 0,
-  "canaryVerdict": "passed_with_worker_authored_evidence_caveat"
+  "amabieVerdict": "passed_with_worker_authored_evidence_caveat"
 }

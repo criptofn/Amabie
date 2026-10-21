@@ -56,7 +56,7 @@ import { OBSERVER_VERSION } from '../observation.js';
 import { canonicalPath } from '@amabie/support';
 
 /** Where the observer directory lives inside the workspace (outside artifacts). */
-export const PYTHON_OBSERVER_DIRNAME = 'canary-python-observer';
+export const PYTHON_OBSERVER_DIRNAME = 'amabie-python-observer';
 export const PYTHON_OBSERVER_BASENAME = 'sitecustomize.py';
 
 /** The directory Amabie puts on the child's PYTHONPATH. */
@@ -119,7 +119,7 @@ import json
 import os
 import sys
 
-OBSERVER_VERSION = "canary-observer-v1"
+OBSERVER_VERSION = "amabie-observer-v1"
 RUNNER_ID = "python-unittest"
 _FD = 3
 _open = True

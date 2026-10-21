@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Amabie (formerly Canary) are documented here.
+All notable changes to Amabie are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -13,9 +13,9 @@ changed*; the evidence ledgers record *what was observed*.
 ### Changed
 
 - Renamed the product, CLI, workspace packages, project files and local state paths to Amabie 2.0. Existing
-  `.canary` state and Canary project records are migrated or read compatibly; the `canary` executable remains
+  `.amabie` state and Amabie project records are migrated or read compatibly; the `amabie` executable remains
   an alias so installed v1.5 hooks keep working during the upgrade.
-- MCP now reports a completed Canary verdict such as `NOT PROVEN` as a normal tool result while preserving
+- MCP now reports a completed Amabie verdict such as `NOT PROVEN` as a normal tool result while preserving
   its nonzero CLI exit code; process launch failures remain MCP errors.
 - Agent intake now requires task registration before edits. Objective criteria without sealed proofs stay
   `NOT PROVEN` at completion, while implementation and regression-test work can proceed.
@@ -24,19 +24,19 @@ changed*; the evidence ledgers record *what was observed*.
   foreign hooks and reports missing guard wiring.
 - Pre-bound workflow probe now clears its transport timeout when the worker exits, so the probe process
   exits after the assertions finish.
-- Top-level `canary --help` and `canary -h` now exit successfully and show help without appending
+- Top-level `amabie --help` and `amabie -h` now exit successfully and show help without appending
   a repository-status answer; bare invocation and unknown commands keep their misuse exit code.
 - Everyday MCP descriptions and instructions remove repeated wording; the initialized four-tool payload
   has a 3,600-byte base budget, and the standard configured project measured 3,846 bytes against its
   3,900-byte budget with the test-command hint. The completion-hook and authority rules remain included.
 - Claude startup and MCP guidance now recommend runner-native file/case filters for quick feedback,
   leaving the full sealed plan to the completion hook.
-- Canary's unproven-regression guidance explains that the starting commit is compared automatically
+- Amabie's unproven-regression guidance explains that the starting commit is compared automatically
   and tells agents to stay on the same branch; the doctor tool also clarifies that `check` takes a
   check id from the plan, not task or requirement text.
-- `canary doctor` and the completion hook now advise restoring deleted verification files from the
+- `amabie doctor` and the completion hook now advise restoring deleted verification files from the
   sealed base, including staged, unstaged, and already committed deletions. Already committed
-  restorations must be committed before Canary can clear the block.
+  restorations must be committed before Amabie can clear the block.
 - Subjective UI classification recognizes explicitly evaluative phrases such as “feels calmer” and
   “the spacing is calmer”; a functional requirement such as “the calm mode persists after restart”
   still needs sealed proof.
@@ -44,19 +44,19 @@ changed*; the evidence ledgers record *what was observed*.
   directory, so repeated permission errors fail closed instead of spinning indefinitely.
 - CLI help now labels `work`/`finish` as the isolated expert path, matching setup's everyday hook workflow.
 - Subcommand `--help`/`-h` now prints usage before running checks or setup; MCP retains its own help output.
-- Hook and doctor repair commands now name the installed CLI path, preventing a global Canary
+- Hook and doctor repair commands now name the installed CLI path, preventing a global Amabie
   installation from being used for a focused recheck.
 - Hook setup now refuses CLI paths with shell expansion characters, and unsafe paths cannot fall
-  back to a global `canary` command in agent repair guidance.
-- `canary setup` now explains that `READY` covers the configured checks and hooks, and shows how to
+  back to a global `amabie` command in agent repair guidance.
+- `amabie setup` now explains that `READY` covers the configured checks and hooks, and shows how to
   register and bind task-specific acceptance criteria before handing work to an agent.
-- The everyday `canary_task` MCP tool now requires exact user criteria, rejects generic placeholders,
+- The everyday `amabie_task` MCP tool now requires exact user criteria, rejects generic placeholders,
   labels binding guidance as trusted-operator work and discloses LOCAL's same-UID CLI limit; unbound work stays `NOT PROVEN` while code work can continue.
-- `canary task` now reports existing sealed requirement bindings instead of asking the operator to
+- `amabie task` now reports existing sealed requirement bindings instead of asking the operator to
   bind them again. Numeric bench/E2E targets require a proof binding to the matching check type.
 - Expert handoff and the confined model transport now stop before execution when a numeric target
   lacks a matching sealed check, including targets stated only in the task intent.
-- Task, setup, doctor, and hook guidance now point to the operator's `canary bind --reseal` path;
+- Task, setup, doctor, and hook guidance now point to the operator's `amabie bind --reseal` path;
   binding a numeric target to the wrong check type is refused before the declaration is written.
 - Subjective acceptance eligibility is now recorded per requirement digest. A subjective criterion
   cannot make a separate unmeasured objective requirement acceptance-eligible; older records without
@@ -74,7 +74,7 @@ changed*; the evidence ledgers record *what was observed*.
 
 ## [1.4.0] — release candidate, NOT published
 
-**CANARY v1.4.0 — "last known-gaps release".** Candidate bytes frozen on branch
+**AMABIE v1.4.0 — "last known-gaps release".** Candidate bytes frozen on branch
 `codex/v14-last-known-gaps`. **NOT published:** no tag, no GitHub release, no push.
 The release closes the concrete product gaps that were already known on 2026-09-20; it invents no
 new roadmap. Every gap and its classification is in
@@ -83,17 +83,17 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
 
 ### Added
 
-- **OpenAI Codex CLI is a MEASURED second completion gate.** `canary setup` now writes a `Stop`
+- **OpenAI Codex CLI is a MEASURED second completion gate.** `amabie setup` now writes a `Stop`
   hook into the project's `.codex/hooks.json` that runs the same `checkpoint` implementation
   Claude Code uses — one implementation, no fork, no new authority. This is the first evidence
-  that Canary is a safety engine with thin adapters rather than a Claude Code product: a real
+  that Amabie is a safety engine with thin adapters rather than a Claude Code product: a real
   `codex exec` session (`codex-cli 0.154.0`) executed the hook **twice** — once blocking
   (`{"decision":"block","reason":…}`, exit 0), then, with `stop_hook_active:true`, allowing, with
-  the harness **continuing the turn** on Canary's reason. Measured by
+  the harness **continuing the turn** on Amabie's reason. Measured by
   `tooling/probes/v14-codex-stop-hook.mjs` (15/15 observations). Two measured caveats travel with
   it: Codex runs a project hook only after a **one-time review and trust** (`/hooks`), so an
   untrusted hook is written and **gates nothing** — stated on the capability row itself — and
-  Codex **rejects an entire `hooks.json` that carries an unknown top-level field**, so Canary's
+  Codex **rejects an entire `hooks.json` that carries an unknown top-level field**, so Amabie's
   writer emits only `hooks` and preserves everything else.
 - **`tooling/sea-capability.mjs`** — the single-executable build now knows, before spawning,
   whether the running Node can perform it, and refuses with WHAT/WHY/WHAT TO DO instead of the
@@ -110,7 +110,7 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
   turn** — 5,726 bytes (1,475 B instructions + 4,251 B tool definitions), of which 1,923 B is
   expert-only ceremony. `README.md` now says plainly that **the true current everyday footprint is
   somewhat worse than 92.7 %**, that **"7.3 % fewer tokens" must not be quoted as the current
-  complete result**, and that removing Canary's entire standing footprint would return about
+  complete result**, and that removing Amabie's entire standing footprint would return about
   2 points — which is why ≤ 75 % is not claimed. **No replacement percentage is offered**, because
   stating one requires a new fair measurement that has not been run.
   > **SUPERSEDED IN v1.5 — that measurement has now been run.** It is kept here as the record of the
@@ -120,7 +120,7 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
   > session** — not the ~1,432 that `bytes ÷ 4` implied, which **overstated it 3.3×** — and the
   > everyday path measured **83.21 % of Plain (−16.79 %)** across two full runs at equal correctness
   > with no false done in either arm. Per task the range is **+43.8 % MORE expensive to −38.7 %
-  > cheaper**; `bug-sum` cost more with Canary in **both** runs; the plain arm itself drifted **27 %**
+  > cheaper**; `bug-sum` cost more with Amabie in **both** runs; the plain arm itself drifted **27 %**
   > between the two runs on identical configuration, so the *direction* is measured and the *size* is
   > not stable (**n=1 per cell**). The ≤ 75 % target remains **not met**. See
   > [`docs/BENCHMARK-EVERYDAY-1.5.md`](docs/BENCHMARK-EVERYDAY-1.5.md).
@@ -136,8 +136,8 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
   that line and print a generic refusal. It is printed before the verdict now, and both no-check
   refusals name the **universal contract** (Makefile / Taskfile / Justfile, a shipped `gradlew` or
   `mvnw`, configured CMake/Meson/Zig/Swift/Elixir/Crystal/Rake/Composer/PHPUnit, or a check the
-  project's CI already runs) instead of understating what Canary reads. **Discovery still declares;
-  authority still does not move** — binding remains an operator act in `package.json` `canary`.
+  project's CI already runs) instead of understating what Amabie reads. **Discovery still declares;
+  authority still does not move** — binding remains an operator act in `package.json` `amabie`.
 
 ### Fixed
 
@@ -147,7 +147,7 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
     History table). The job was asking an incapable runtime to build the artifact and then
     reporting the artifact as broken. Pinned to 26.3.0 — the version this workflow's `golden-proof`
     job already runs.
-  - Three test files asserted `canary setup` exits 0 while their fixtures never declared a harness;
+  - Three test files asserted `amabie setup` exits 0 while their fixtures never declared a harness;
     `detectHarnesses` reads `<root>/.claude` **or the operator's `~/.claude`**, so they passed on a
     developer machine and failed on every runner. **The same defect was in the benchmark harness
     and 32 probe files.** All fixtures now declare their own harness, and the fix was verified
@@ -212,7 +212,7 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
 - **Two stale public statements that had become false.** `README.md` still told readers that
   `v1.2.0` was the newest published artifact and that **no `v1.3.0` artifact existed** — v1.3.0 was
   tagged, released and verified on 2026-09-20; the Install block now points at
-  `canary-rn-cli-1.3.0.tgz` and the release note says what is true. `AGENTS.md` and
+  `amabie-rn-cli-1.3.0.tgz` and the release note says what is true. `AGENTS.md` and
   `apps/cli/src/agents.ts` described Codex as having **"no reliable blocking hook exists yet"** —
   stale prose that hid a mechanism which exists, and a stale apology is as wrong as an overclaim.
 
@@ -220,11 +220,11 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
 
 **Published 2026-09-20.** Tag `v1.3.0` → `540393a8d3d964102aa4b2859445a1623abac9a2`, with the
 GitHub release [`v1.3.0`](https://github.com/criptofn/Canary/releases/tag/v1.3.0) carrying
-`canary-rn-cli-1.3.0.tgz` and its `.sha256`. (This note replaces the pre-release wording
+`amabie-rn-cli-1.3.0.tgz` and its `.sha256`. (This note replaces the pre-release wording
 "Prepared, not published", which stopped being true when the release was cut; the numbers below
 are unchanged.)
 
-Canary v1.3 makes the everyday path the ordinary way to use Canary: set it up **once**, then
+Amabie v1.3 makes the everyday path the ordinary way to use Amabie: set it up **once**, then
 work normally and let the completion gate run itself. It adds no authority to any worker,
 weakens no gate, and states a token target it did **not** reach rather than redefining the
 target. The expert surfaces (`work` → `finish`, confined transport) are unchanged in
@@ -232,13 +232,13 @@ semantics and are now documented as the expert surfaces they are.
 
 ### Added
 
-- **The everyday path, documented first.** `canary setup --yes` once per repository seals the
+- **The everyday path, documented first.** `amabie setup --yes` once per repository seals the
   plan and wires the Claude Code `Stop` hook; from then on a finished turn runs the sealed
   checks itself and can **block** a completion. There is nothing to run per task and no
   vocabulary to learn. `README.md` and `AGENTS.md` now open with this path, and the candidate
-  path (`canary work` → commit in the candidate → `canary finish`) is presented as the
+  path (`amabie work` → commit in the candidate → `amabie finish`) is presented as the
   isolation surface you choose deliberately, not the default.
-- **`CANARY_CONFINED_CHECK=1` — the per-batch check inside confined transport, OPT-IN and
+- **`AMABIE_CONFINED_CHECK=1` — the per-batch check inside confined transport, OPT-IN and
   default-off.** Measured on the two bound fixtures where it applies, it moves cost in
   **opposite** directions: on `bound-requirements` it helps (32,362 tokens / 25.5 % of plain
   with the flag, 51,050 / 40.2 % without) and on `bug-sum` it hurts (42,800 / 61.1 % with,
@@ -248,7 +248,7 @@ semantics and are now documented as the expert surfaces they are.
 ### Changed
 
 - **The `README` token paragraph and the arm map now match the harness.** An earlier revision of
-  the release audit claimed `canary setup --yes` runs for *every* benchmark arm. It does not:
+  the release audit claimed `amabie setup --yes` runs for *every* benchmark arm. It does not:
   `tooling/benchmark/run-trial.mjs` deliberately excludes the `plain` arm from the setup block,
   which is exactly what makes it the untreated control. The audit, the arm map and the README
   were corrected; the plain arm's numbers were never affected, only the sentence describing them.
@@ -279,14 +279,14 @@ parity (+0.02 %)**; this release does not claim the everyday path is never more 
 task. The **≤ 75 % aggregate target was not met**: the confined
 replications measured 86.8 % median / 110.5 % mean, and the long stateful cell was repeatedly
 *more* expensive than plain. v1.3 therefore claims only what was measured: on the authored
-everyday benchmark Canary used 92.7 % of plain tokens at equal correctness **and** added an
-independent completion gate. It does not claim "Canary saves 25 % of tokens" or "Canary always
+everyday benchmark Amabie used 92.7 % of plain tokens at equal correctness **and** added an
+independent completion gate. It does not claim "Amabie saves 25 % of tokens" or "Amabie always
 saves tokens".
 
 ### What v1.3 does NOT claim
 
 - **Confined coverage is partial: 5 of 20 fixtures.** For the 15 where no sealed check is bound
-  to a declared requirement, Canary **refuses before any model execution** — the recorded
+  to a declared requirement, Amabie **refuses before any model execution** — the recorded
   evidence shows 0 worker launches, 0 worker tokens spent, and **no delivered-correctness
   credit** for those cells. They are refusals, not results. No binding was invented to raise
   the count.
@@ -303,21 +303,21 @@ saves tokens".
 
 ## [1.2.0] — 2026-09-19
 
-Canary v1.2 makes the requirement workflow fail **early** instead of expensively, benchmarks
+Amabie v1.2 makes the requirement workflow fail **early** instead of expensively, benchmarks
 the false-done question honestly, and states plainly what it could not establish.
 
 ### Added
 
-- **`canary bind --reseal` — the operator's binding act in ONE command.** It writes the declaration,
+- **`amabie bind --reseal` — the operator's binding act in ONE command.** It writes the declaration,
   commits **that file alone** (refusing when any other path is dirty, so the sealed base is exactly
   what you reviewed) and re-runs the seal. It saves two commands and adds no authority: the script
-  must already be part of the sealed plan, and `canary setup` never enforced who may run it. Verified
+  must already be part of the sealed plan, and `amabie setup` never enforced who may run it. Verified
   end to end, `--json` included (still exactly one envelope).
-- **`REQUIREMENT UNBOUND` fails at the handoff.** `canary work` now refuses (exit 2) and opens
+- **`REQUIREMENT UNBOUND` fails at the handoff.** `amabie work` now refuses (exit 2) and opens
   **no** candidate when a declared requirement has no sealed check to measure it, naming the
   digest and the plan scripts that could bind it. v1.1 discovered the same fact at the END of a
   session — measured at 1.5–1.85M tokens over 41–53 turns, and reproduced at +133% tokens by
-  v1.2's own pilot. `canary setup` prints the same note, so the two commands no longer appear
+  v1.2's own pilot. `amabie setup` prints the same note, so the two commands no longer appear
   to disagree.
 - **A five-outcome benchmark instrument** (`DELIVERED_CORRECT` / `TRUE_DONE` / `FALSE_DONE` /
   `FALSE_GREEN` / `NOT_DONE`) that keeps "what the agent said" separate from "what is true",
@@ -344,9 +344,9 @@ the false-done question honestly, and states plainly what it could not establish
   now reserved for duties the worker can discharge with evidence in the repository. Measured on
   the configuration that exposed it: **537,583 → 308,879 tokens, 39 → 21 turns, timeout →
   161.6 s**.
-- `canary accept` refuses to sign an acceptance that covers **nothing**, and the acceptance
+- `amabie accept` refuses to sign an acceptance that covers **nothing**, and the acceptance
   subject now filters on duty status, so the snapshot and its consumer describe the same set.
-- `canary bind` tells the operator to **commit before re-sealing**, with the exact command — an
+- `amabie bind` tells the operator to **commit before re-sealing**, with the exact command — an
   uncommitted binding makes the sealed base dirty, and a dirty base cannot establish
   discrimination.
 - **Every benchmark fixture now declares the configuration it is authored for**
@@ -360,7 +360,7 @@ the false-done question honestly, and states plainly what it could not establish
 
 ### Fixed
 
-- **A stated requirement is no longer silently dropped at intake.** `canary task` accepted a
+- **A stated requirement is no longer silently dropped at intake.** `amabie task` accepted a
   `--requirement` value only if it did **not** start with `--`, and then skipped every remaining
   `--` token — so a requirement whose TEXT begins with a dash-like token was neither registered nor
   reported. Measured on this repository's own corpus: fixture `cli-exit-codes` states eight
@@ -390,18 +390,18 @@ was **correct on all seven fixtures measured** — the completion path working e
 
 Four of these are paired same-session trials totalling **+115.1%** (539,419 → 1,160,170 tokens); the
 other three are compared against plain means from earlier batches and are weaker evidence. **The plain
-agent was correct in every trial, and there were zero false dones in either arm.** Canary's own KPI
+agent was correct in every trial, and there were zero false dones in either arm.** Amabie's own KPI
 report therefore reads *FAILS THE TOKEN REQUIREMENT (no saving)*. **No correctness advantage was
 demonstrated**, for three measured reasons recorded in
 [`docs/V1.2-BENCHMARK.md`](docs/V1.2-BENCHMARK.md). n = 1 per cell is not a rate. The `workflow`
-arm — the one that actually drives `canary work` → candidate → `finish` — was separately run
+arm — the one that actually drives `amabie work` → candidate → `finish` — was separately run
 against `plain` on `bound-requirements`, the corpus's only fixture whose stated requirements are
 **bound**: both arms produced correct work, **zero false dones**, and the workflow arm cost
 **+50.5%** tokens. That is the same negative result on the arm the claim is about.
 
 ### Added — the confined worker (v1.2 production trust repair)
 
-- **The model's only capability is a confined executor.** `canary provider model-transport` runs
+- **The model's only capability is a confined executor.** `amabie provider model-transport` runs
   the real Claude CLI with native tools, skills, hooks, project settings discovery and Chrome
   integration disabled, and advertises exactly one tool. Every file edit, shell command and Git
   operation crosses a restricted, low-integrity AppContainer with **zero capabilities**: measured
@@ -418,7 +418,7 @@ against `plain` on `bound-requirements`, the corpus's only fixture whose stated 
   `diff --cached`, `add`, and a trusted-side readback of the worker's staged index.
 - **The broker owns review and promotion, and refuses worker-authored proof authority.** A
   proposal that creates, replaces, modifies or removes proof-binding declarations in
-  `package.json` or `canary.project.json` — including Windows case aliases — is refused (403),
+  `package.json` or `amabie.project.json` — including Windows case aliases — is refused (403),
   and the worker cannot write the authority source or the sealed plan (EPERM).
 
 ### Measured token effect (the honest number)
@@ -429,26 +429,26 @@ same model, same fixtures, same starting bytes, same hidden oracle, the CLI's ow
 accounting — **two of three fixtures used 61–84% fewer tokens than Plain, while the stateful
 workload remained more expensive: aggregate token use was +54.4% at equal measured correctness**
 (bound-requirements −83.9%, bug-sum −61.5%, stateful-replay +175.1%; 12/12, 15/15 and 406/406
-correctness in both arms). **Canary does not generally save tokens**, and nothing here claims it
+correctness in both arms). **Amabie does not generally save tokens**, and nothing here claims it
 does. Carrying several operations per call is what produced the reduction (stateful-replay:
 45 → 22 model turns, 917,504 → 585,337 tokens).
 
 ### Fixed — packaging
 
-- **The released artifact now ships its licence.** `canary-rn-cli-*.tgz` declared
+- **The released artifact now ships its licence.** `amabie-rn-cli-*.tgz` declared
   `"license": "Apache-2.0"` but contained no licence text; `LICENSE` is now staged into the
   tarball and asserted by the cleanroom packaging probe, which installs the exact artifact and
   exercises it end to end.
 
 ### Unbound requirements fail before any worker runs
 
-`canary work` refuses a declared requirement that no sealed check measures **before** launching a
+`amabie work` refuses a declared requirement that no sealed check measures **before** launching a
 worker: measured **0 worker launches and 0 worker tokens**, and the refusal is a separate record
 schema with no delivery verdict, so it can never read as completed work.
 
 ## [1.1.0] — 2026-09-13
 
-Canary v1.1 widens verification from one well-understood project to **any
+Amabie v1.1 widens verification from one well-understood project to **any
 project, with its proof measured** — and closes two pre-release holes in the
 completion path. The release overview is
 [`docs/RELEASE-1.1.md`](docs/RELEASE-1.1.md); the detailed implementation record
@@ -458,7 +458,7 @@ verified for this release follows below.
 
 - **Language / project support** — native discovery and toolchain handling for
   **Node/JS/TS, Python, Rust, Go**, plus a **universal command-driven project
-  contract** (`canary.project.json`, or discovery from CI / Makefile / CMake /
+  contract** (`amabie.project.json`, or discovery from CI / Makefile / CMake /
   Gradle anchors) for everything else. Capability is reported separately as
   UNIVERSAL / NATIVE / OBSERVED / STRONG, and an unknown runner stays
   `INCONCLUSIVE_ONLY`.
@@ -466,11 +466,11 @@ verified for this release follows below.
   commit**; a check that passes on both sides is `NOT PROVEN`, not `READY`. A
   required comparison that cannot be established is an objective **`UNPROVEN`**
   obligation naming the reason — never an accidental PASS.
-- **Requirement coverage** — `canary task --requirement "<text>"` prints each
-  requirement's digest, and the operator's `canary bind <script> --requirement
+- **Requirement coverage** — `amabie task --requirement "<text>"` prints each
+  requirement's digest, and the operator's `amabie bind <script> --requirement
   "<text>"` attaches it to a check the sealed plan really runs. An objective
   requirement with no bound proof stays `NOT PROVEN`.
-- **Candidate workflow** — `canary work` / `canary finish`: an isolated candidate
+- **Candidate workflow** — `amabie work` / `amabie finish`: an isolated candidate
   off a frozen base, committed work, verification from outside, and promotion of
   the exact verified committed bytes only.
 - **Subjective acceptance** — technical proof and human judgment are separate;
@@ -478,12 +478,12 @@ verified for this release follows below.
   never close an objective duty.
 - **Agent support** — Claude Code **GATED** (a completion hook can block), Codex
   and other command-line agents **ADVISORY** (a marked, removable `AGENTS.md`
-  block that cannot block, and says so), plus `canary mcp` as a transport with no
+  block that cannot block, and says so), plus `amabie mcp` as a transport with no
   extra authority.
 - **Observation channels** — `node --test`, pytest and unittest, each bound to an
   authority (a repo pin, the verifying runtime itself, or an operator-sealed
   identity), so printed output can never mint a strong verdict.
-- **Machine interface** — global `--json`, `canary result --json` (free, writes
+- **Machine interface** — global `--json`, `amabie result --json` (free, writes
   nothing), and compact failure payloads that name the failing check and point at
   the full log on disk instead of pasting it into a model's context.
 
@@ -526,33 +526,33 @@ verified for this release follows below.
 
 **Known limitations** — `LOCAL` has documented same-UID limits; `HARDENED` is
 **not** available and requires measured OS-level controls; bindings are declared
-proof coverage inside Canary's model, not semantic truth. See
+proof coverage inside Amabie's model, not semantic truth. See
 [`docs/RELEASE-1.1.md`](docs/RELEASE-1.1.md#known-limitations).
 
 ---
 
 The detailed implementation record for this release follows.
 
-### Added — Canary is language-agnostic at the project contract level
+### Added — Amabie is language-agnostic at the project contract level
 
 One generic adapter, `universal`, reaches any command-driven repository through two
 doors, and it is bounded on purpose: no per-language adapters, no shell mode, no new
 environment door.
 
-- **Discovery (the normal path).** `canary setup` proposes a plan from the repository's
+- **Discovery (the normal path).** `amabie setup` proposes a plan from the repository's
   existing, executable truth: CI workflow commands, Makefile / Taskfile / justfile
   targets, a CONFIGURED CMake+CTest or Meson tree, shipped Gradle/Maven wrappers,
   `pom.xml`, `build.gradle*`, `*.sln`/`*.csproj`, `Package.swift`, `build.zig`,
   `phpunit.xml`, `composer.json`, `Rakefile`, `mix.exs`, `shard.yml`. Every proposed
   check carries the artifact that anchors it, and the anchor's strength is recorded
   (`declared` / `configured` / `observed` / `convention`) rather than flattened.
-- **The escape hatch.** `canary.project.json` states the commands exactly, as argv
+- **The escape hatch.** `amabie.project.json` states the commands exactly, as argv
   arrays. It REFUSES a project-supplied `env`, a per-check `cwd` (a working directory
-  is a sealed SCOPE instead), shell wrappers, Canary's own `$` spec tokens, escaping
+  is a sealed SCOPE instead), shell wrappers, Amabie's own `$` spec tokens, escaping
   scope paths and unknown check kinds — each with a test.
 - **Nothing is invented.** An unanchored repository produces an EMPTY plan, which setup
   reports as `NEEDS ATTENTION`; two equally-anchored interpretations produce ONE
-  concise clarification (naming the `canary.project.json` resolution) instead of a
+  concise clarification (naming the `amabie.project.json` resolution) instead of a
   preference.
 - **Sealed and pinned exactly like a native plan**: argv digested per step, programs
   resolved to absolute paths at setup, scopes validated and sealed, drift detected, and
@@ -563,17 +563,17 @@ environment door.
   CLAIM it is and cannot upgrade a verdict — asserted through a real executor round.
 - Docs now state the four levels separately: **UNIVERSAL** (any command-driven project),
   **NATIVE** (node, python, rust, go), **OBSERVED** and **STRONG** (mocha,
-  `node --test`, pytest, `unittest`). Canary does not claim to understand every
+  `node --test`, pytest, `unittest`). Amabie does not claim to understand every
   language.
 
 ### Added — three more observation channels, and the authority that binds them
 
 `STRONG` used to mean one thing: mocha's bytes match a pin in this repository. It now
-means "a Canary-owned channel AND an authority", and the authority is one of three
+means "an Amabie-owned channel AND an authority", and the authority is one of three
 kinds — a repo pin (`mocha`), the verifying runtime itself (`node --test`, so a
 foreign Node is refused), or an operator-sealed identity (`pytest`, `unittest`).
 
-- **`node --test`**: Canary's reporter is injected as a SECOND `--test-reporter`, so the
+- **`node --test`**: Amabie's reporter is injected as a SECOND `--test-reporter`, so the
   ordinary TAP summary stays on stdout while the frames go to fd 3. Measured, not
   assumed: `data.testName` does not exist, a skip arrives as `test:pass` with `skip:`,
   no file-level events exist, and Node stops reading its own options at the first
@@ -602,14 +602,14 @@ different OS identity installed.
 
 Both ecosystems could be discovered, planned and sealed, and then never execute,
 because a sealed step runs in a **sanitized** environment that the toolchains did
-not survive. Found by measuring them inside Canary's own environment rather than
+not survive. Found by measuring them inside Amabie's own environment rather than
 on a developer shell — the same class as the earlier bare-`git`-inside-a-sealed-step
 defect.
 
 - **Go** aborted with `build cache is required, but could not be located: GOCACHE
   is not defined and %LocalAppData% is not defined` (HOME is redirected). Fixed by
   an adapter-declared, workspace-scoped `GOCACHE`/`GOPATH`, injected through a
-  narrow, allowlisted door whose path values must resolve inside Canary's
+  narrow, allowlisted door whose path values must resolve inside Amabie's
   workspace (`ProjectAdapter.toolchainEnv`).
 - **Rust** sealed the rustup PATH PROXY, which cannot choose a toolchain under the
   sanitized env, while the real toolchain binary needs no environment at all.
@@ -624,7 +624,7 @@ defect.
 
 ### Added — the HARDENED provider (implemented; activation is the owner's)
 
-- **`canary provider status|install-plan|uninstall-plan|serve|call`.** The
+- **`amabie provider status|install-plan|uninstall-plan|serve|call`.** The
   provider is real code: a boundary MEASUREMENT (account, elevation, store
   writers via an `icacls` decision that cannot mistake a read ACE for a write
   grant, the broker service and its account, and what a restricted runner could
@@ -650,7 +650,7 @@ defect.
   an optional neutral channel (runner id, required version, required runner-bytes
   digest, per-round nonce) and keeps the mocha path byte-for-byte unchanged when
   no channel is named. A neutral round that states no requirement is refused.
-- **A real Python observation channel.** Canary's `sitecustomize` bytes on the
+- **A real Python observation channel.** Amabie's `sitecustomize` bytes on the
   child's `PYTHONPATH` hook `unittest.TestResult` and write the same NDJSON
   frames on fd 3 as the mocha observer. Executed here: a real
   `python -m unittest discover` is WATCHED (3 pass, 1 pending, agreeing with the
@@ -658,7 +658,7 @@ defect.
   result is rejected live.
 - **Rust and Go channels MEASURED, not assumed**: stable libtest exposes no
   per-test event stream (the compiler refuses `--format json` outside nightly),
-  while `go test -json` does and `-exec`/`CARGO_TARGET_*_RUNNER` let Canary own
+  while `go test -json` does and `-exec`/`CARGO_TARGET_*_RUNNER` let Amabie own
   the test-binary launch. Both remain `INCONCLUSIVE_ONLY` with the exact blocker
   and the fix named.
 - **Workspace-local Rust and Go toolchains** (`tooling/toolchains.mjs`): no
@@ -716,7 +716,7 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Added — explicit nested ecosystem scopes
 
-- **`canary.scopes.json`** declares `{ path, ecosystem }` scopes such as
+- **`amabie.scopes.json`** declares `{ path, ecosystem }` scopes such as
   `web` Node, `backend` Python, `service` Go. Declared ⇒ exactly those scopes;
   undeclared ⇒ root only. Nothing is discovered by walking, so an undeclared
   `vendor/`, `archive/` or `examples/` tree can never add a check. An unusable
@@ -725,11 +725,11 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Added — MCP
 
-- **`canary mcp`** serves six tools over stdio JSON-RPC (result, status, agents,
+- **`amabie mcp`** serves six tools over stdio JSON-RPC (result, status, agents,
   doctor, work, finish), each a fixed argv template over an operation the CLI
   already had. It is a transport with no authority of its own: every call runs
   the same CLI and relays its verdict and exit code unchanged, no tool accepts an
-  argument that could influence a verdict, and `canary accept` is deliberately
+  argument that could influence a verdict, and `amabie accept` is deliberately
   not exposed — a machine channel must not reach the human terminal act.
 
 ### Added — Node-free distribution (host-target only)
@@ -750,7 +750,7 @@ were previously reported as pre-existing host-bound failures are now **closed**
   of `.py` files, or a tool named only in a comment, declares nothing.
 - **Deterministic polyglot composition** across ecosystems that declare checks at
   a repository root, with each step carrying its adapter and scope. Nested scopes
-  are discovered only when the project declares them in `canary.scopes.json`, so
+  are discovered only when the project declares them in `amabie.scopes.json`, so
   an `archive/` or `examples/` directory cannot silently add checks to the
   project containing it (see "Added — explicit nested ecosystem scopes").
 - **Toolchain pinning**: at setup, each declared program is resolved once and
@@ -758,9 +758,9 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Added — agents
 
-- `canary agents` — every integration with its REAL capability: `GATED` (a
+- `amabie agents` — every integration with its REAL capability: `GATED` (a
   completion can be blocked; Claude Code only) versus `ADVISORY` (the agent is
-  told and may ignore it). `canary agents install codex` writes a marked,
+  told and may ignore it). `amabie agents install codex` writes a marked,
   removable block into the project's `AGENTS.md`; nothing is installed unless
   asked for by name.
 - `AGENTS.md` — harness-neutral agent instructions (Claude Code reads the same
@@ -768,13 +768,13 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Added — machine interface and cost
 
-- `canary result [--json]` — the state answer for programs: sealed checks, where
+- `amabie result [--json]` — the state answer for programs: sealed checks, where
   evidence lives, the measured custody level, harness capability and the last
   recorded completion. Never runs the plan, writes nothing.
 - A global `--json` on the everyday commands: stdout carries exactly **one**
   versioned envelope, prose moves to stderr, and exit codes and status words are
   identical with and without the flag.
-- **Metrics** (`CANARY_METRICS=<file.jsonl>`) — one model-neutral record per
+- **Metrics** (`AMABIE_METRICS=<file.jsonl>`) — one model-neutral record per
   invocation (command, flag names, exit code, duration, output sizes). Off by
   default, fail-open so a measurement can never change a verdict, and free text,
   paths and flag values are never recorded. Token counts are deliberately absent:
@@ -782,12 +782,12 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Added — workflow
 
-- `canary work <name> "<intent>"` and `canary finish <name>` — the ordinary path.
+- `amabie work <name> "<intent>"` and `amabie finish <name>` — the ordinary path.
   `work` registers the intent and opens the candidate in one step (the intent is
   frozen into the candidate's record at isolation, so registering later can only
   add duties). `finish` verifies the committed candidate from outside it and
   promotes only if every objective duty holds; a subjective duty still needs
-  `canary accept` in a terminal, and the command says so.
+  `amabie accept` in a terminal, and the command says so.
 
 ### Added — trust kernel (architecture)
 
@@ -819,7 +819,7 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ### Changed
 
-- `canary setup` and `canary doctor` are no longer Node-shaped: they discover
+- `amabie setup` and `amabie doctor` are no longer Node-shaped: they discover
   every ecosystem that declares checks, and a project with no `package.json` is
   set up from its own manifest. `doctor` now distinguishes "nothing here I can
   model" (`UNSUPPORTED`) from "a project is here but not wired" (`NEEDS
@@ -850,7 +850,7 @@ were previously reported as pre-existing host-bound failures are now **closed**
 
 ## [1.0.0] — 2026-09-10
 
-Initial public release: `canary setup` auto-wiring for Claude Code projects, the
+Initial public release: `amabie setup` auto-wiring for Claude Code projects, the
 candidate workflow (`task` / `isolate` / `--verify` / `--promote` / `accept`), and
 the attested proof pipeline (`run` / `prove` / `check` / `report`) demonstrated on
 the committed axios 0.27.2 → 1.0.0 fixture.

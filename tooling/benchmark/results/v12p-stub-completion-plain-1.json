@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12p-stub-completion-plain-1",
   "task": "stub-completion",
   "arm": "plain",
@@ -28,7 +28,7 @@
     ]
   },
   "startedAt": "2026-09-14T03:10:15.456Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stub-completion-plain-6AhtES",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stub-completion-plain-6AhtES",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -49,7 +49,7 @@
   },
   "prompt": "# Task: implement `celsiusToFahrenheit`\n\n`celsiusToFahrenheit(c)` in `src/temp.js` converts a Celsius temperature to Fahrenheit.\n\nIt must implement the actual conversion, for **any** numeric input:\n\n- `celsiusToFahrenheit(0)` → `32`\n- `celsiusToFahrenheit(100)` → `212`\n- `celsiusToFahrenheit(37)` → `98.6`\n- `celsiusToFahrenheit(-40)` → `-40`\n- `celsiusToFahrenheit(25)` → `77`\n\nThe two temperatures the visible suite checks are 0 and 100. Return the correct value for every\ninput, not only for the inputs a test happens to use.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -154,18 +154,18 @@
     "bytes": {
       "toolResultTotal": 1937,
       "largestToolResult": 608,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

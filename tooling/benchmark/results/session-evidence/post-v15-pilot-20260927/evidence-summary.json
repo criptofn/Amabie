@@ -1,9 +1,9 @@
 {
-  "Schema": "canary-post-v15-no-model-evidence/1",
+  "Schema": "amabie-post-v15-no-model-evidence/1",
   "CreatedAt": "2026-09-27T15:37:48.6274433Z",
   "ProductizationCompletedAt": "2026-09-27T17:17:08Z",
   "ProviderReviewAt": "2026-09-27T18:47:11Z",
-  "Worktree": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-product-progress",
+  "Worktree": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-product-progress",
   "ProductCommit": "1b6dc6aae514b7b26773915da314ccf338f73514",
   "ReleaseCommit": "6471ef6a74dd89ff11a7083fb9c54dca6c2b1334",
   "CandidateArtifactSha256": "8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25",

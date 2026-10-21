@@ -1,4 +1,4 @@
-# Canary v1.0.0 authorization contract
+# Amabie v1.0.0 authorization contract
 
 Completion authorizes only the exact clean committed candidate against its
 frozen base and applicable sealed authority, for the exact declared task and
@@ -8,12 +8,12 @@ remaining subjective duty requires terminal acceptance of that same subject.
 The agent's normal flow is:
 
 ```sh
-canary setup
-canary task "Fix the TypeError"
-canary isolate fix
+amabie setup
+amabie task "Fix the TypeError"
+amabie isolate fix
 # Work and commit in the displayed candidate directory.
-canary isolate --verify fix
-canary isolate --promote fix
+amabie isolate --verify fix
+amabie isolate --promote fix
 ```
 
 Setup is reused across tasks. Promotion repeats verification and fast-forwards
@@ -23,7 +23,7 @@ registration: register the task and open a new candidate.
 
 For "make my game prettier", technical tests can pass while completion remains
 NOT PROVEN. A functional e2e does not prove aesthetics. Review the exact committed
-candidate, then run `canary accept fix` yourself in an interactive terminal.
+candidate, then run `amabie accept fix` yourself in an interactive terminal.
 Commit all intended changes before review; acceptance refuses dirty or unresolved
 state and rechecks the full subject after the typed confirmation. Mixed work,
 such as "fix the crash and make the dialog prettier", needs both regression
@@ -35,17 +35,17 @@ evidence and subjective acceptance. A red technical check always blocks.
 script is insufficient; human acceptance cannot waive the missing measurement.
 Use a script that asserts the threshold, and bind it explicitly:
 
-1. Run `canary task "render latency under 100ms"`. Copy the printed target digest.
-2. Add `"canary": {"proofs": {"<that 64-character digest>": "bench"}}` to
+1. Run `amabie task "render latency under 100ms"`. Copy the printed target digest.
+2. Add `"amabie": {"proofs": {"<that 64-character digest>": "bench"}}` to
    `package.json`. `scripts.bench` must assert this exact target. For an objective
    UI specification such as "button must be #D94141 and width 240px", use an
    e2e script that asserts those properties and bind its printed digest to `e2e`.
-3. Commit the script and mapping; run `canary setup` to inspect and seal the
+3. Commit the script and mapping; run `amabie setup` to inspect and seal the
    selected plan and binding, then isolate the candidate.
 
 Bindings reference selected plan scripts of the matching kind. Setup rejects
 malformed mappings. A candidate cannot replace the sealed script text; replacing
-frozen proof authority requires re-isolation. Canary checks this explicit mapping
+frozen proof authority requires re-isolation. Amabie checks this explicit mapping
 and command success. It does not infer that arbitrary test code measures the
 declared threshold. The human-approved mapping is the semantic trust boundary.
 Non-numeric subjective performance requests, such as "make scrolling feel faster",
@@ -57,7 +57,7 @@ may require human judgment even when a generic benchmark exists.
 acceptance subject digest. Registration, isolation, review and consumption share
 these functions. There is no separate legacy acceptance-scope hash.
 
-`canary-task/2` contains the request digest, conservative union of task kinds,
+`amabie-task/2` contains the request digest, conservative union of task kinds,
 requirement count and digests, subjective visual/performance flags, and explicit
 objective target identities. Text is trimmed and whitespace runs collapse to a
 space before hashing the entire UTF-8 value. There is no 4000-character prefix
@@ -65,7 +65,7 @@ limit. There are at most 64 requirements; the 65th refuses the whole registratio
 without changing the prior record. Requirements form a sorted multiset: reordering
 is inert; duplicates retain multiplicity.
 
-`canary-acceptance/3` stores a canonical subject and its SHA-256 digest, candidate
+`amabie-acceptance/3` stores a canonical subject and its SHA-256 digest, candidate
 name, timestamp and `acceptedBy: tty-human`. The subject binds candidate commit
 and tree, frozen base commit/tree, applicable sealed plan/script/proof authority
 and Git store, full frozen/live task identities, and subjective duty IDs.
@@ -81,7 +81,7 @@ revocation. Invalid or old incomplete records fail closed at candidate completio
 
 ## Claims and limits
 
-Status and bare Canary perform the same read-only recognition checks, with no
+Status and bare Amabie perform the same read-only recognition checks, with no
 project commands or project writes. CONNECTED and past checkpoint output are
 not claims of present code health. Candidate PASS is a live observation; evidence
 persistence is best-effort. Failed storage is not a durable proof artifact.

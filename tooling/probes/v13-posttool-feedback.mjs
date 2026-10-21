@@ -223,7 +223,7 @@ try {
     // NO MCP server (`--strict-mcp-config` with no `--mcp-config`), so the tool surface's token cost is
     // UNMEASURED rather than zero.
     const withLedger = rows.filter((r) => typeof r.amabie === 'number');
-    assert(withLedger.length > 0, 'no record carried a amabie command count');
+    assert(withLedger.length > 0, 'no record carried an amabie command count');
     const called = withLedger.filter((r) => r.amabie > 0);
     assert(called.length === 0,
       `${called.length} everyday record(s) now call Amabie tools (${called.map((c) => c.n).join(', ')}). That `

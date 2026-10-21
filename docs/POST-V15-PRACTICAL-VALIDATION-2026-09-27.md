@@ -1,14 +1,14 @@
-# Canary 1.5: praktische Validierung, 27.09.2026
+# Amabie 1.5: praktische Validierung, 27.09.2026
 
 ## Ergebnis in einem Satz
 
-Ein echter Vergleich auf einer Aufgabe belegt keinen Korrektheitsvorteil durch Canary: beide Varianten lieferten die richtige Änderung. Er hat aber einen konkreten Produktfehler offengelegt: `doctor` zeigte `READY`, ohne den im Nachweis gespeicherten Hinweis sichtbar zu machen, dass der Agent den entscheidenden Test selbst umgeschrieben hatte. Diese Anzeige ist korrigiert.
+Ein echter Vergleich auf einer Aufgabe belegt keinen Korrektheitsvorteil durch Amabie: beide Varianten lieferten die richtige Änderung. Er hat aber einen konkreten Produktfehler offengelegt: `doctor` zeigte `READY`, ohne den im Nachweis gespeicherten Hinweis sichtbar zu machen, dass der Agent den entscheidenden Test selbst umgeschrieben hatte. Diese Anzeige ist korrigiert.
 
 ## Vergleich
 
-Beide Sitzungen bearbeiteten unabhängig voneinander `refactor-preserve` vom selben Fixture-Commit (`4e274ae4418b63c96a087afad19c1615ff3e738d`). Eingabe, Modell (`gpt-5.6-sol`), Reasoning-Stufe (`low`) und Schreibrechte waren gleich. Der Agent arbeitete einmal ohne Canary und einmal mit Canarys Codex-Stop-Hook.
+Beide Sitzungen bearbeiteten unabhängig voneinander `refactor-preserve` vom selben Fixture-Commit (`4e274ae4418b63c96a087afad19c1615ff3e738d`). Eingabe, Modell (`gpt-5.6-sol`), Reasoning-Stufe (`low`) und Schreibrechte waren gleich. Der Agent arbeitete einmal ohne Amabie und einmal mit Amabies Codex-Stop-Hook.
 
-| Messwert | Ohne Canary | Canary-Stop-Hook |
+| Messwert | Ohne Amabie | Amabie-Stop-Hook |
 |---|---:|---:|
 | Laufzeit | 101 s | 90 s |
 | sichtbare Projekttests | 6/6 | 5/5 |
@@ -19,9 +19,9 @@ Beide Sitzungen bearbeiteten unabhängig voneinander `refactor-preserve` vom sel
 | Reasoning-Ausgabe | 931 | 811 |
 | Fertigmeldung | ja | ja |
 
-Die Testzahlen unterscheiden sich, weil die Agenten ihre neuen Fälle unterschiedlich aufteilten. Beide änderten Tests; keiner entfernte die vorhandenen Testfälle. Das unabhängige Orakel ist in beiden Läufen identisch bestanden. Damit gibt es in diesem Paar keinen nachgewiesenen Korrektheitsgewinn. Die niedrigeren Tokenzahlen der Canary-Sitzung sind eine Einzelmessung und kein belastbarer Sparnachweis.
+Die Testzahlen unterscheiden sich, weil die Agenten ihre neuen Fälle unterschiedlich aufteilten. Beide änderten Tests; keiner entfernte die vorhandenen Testfälle. Das unabhängige Orakel ist in beiden Läufen identisch bestanden. Damit gibt es in diesem Paar keinen nachgewiesenen Korrektheitsgewinn. Die niedrigeren Tokenzahlen der Amabie-Sitzung sind eine Einzelmessung und kein belastbarer Sparnachweis.
 
-In der Canary-Sitzung lief der Hook. Der gespeicherte Befund war `status=pass`, `hookResponse=message-and-continue`, `sessionEnd=unknown`. Der Hinweis zur Herkunft des umgeschriebenen Tests war im `doctor`-Ergebnis vor dem Fix nicht sichtbar. Das erzeugte ein unnötig starkes `READY`-Signal.
+In der Amabie-Sitzung lief der Hook. Der gespeicherte Befund war `status=pass`, `hookResponse=message-and-continue`, `sessionEnd=unknown`. Der Hinweis zur Herkunft des umgeschriebenen Tests war im `doctor`-Ergebnis vor dem Fix nicht sichtbar. Das erzeugte ein unnötig starkes `READY`-Signal.
 
 ## Produktkorrektur
 
@@ -41,8 +41,8 @@ Der neue Regressionstest wurde zuerst gegen den unveränderten Code ausgeführt 
 - Es ist ein Aufgabenpaar (`n=1`), keine Aussage über breite Alltagstauglichkeit.
 - Der Live-Vergleich verwendete Codex CLI 0.154.0 mit `gpt-5.6-sol`, als Ersatz für den geplanten Claude-Code-Pilot. Benutzer-MCPs und Plugins waren für die gewerteten Läufe ausgeschaltet. Ponytail war über die globale Benutzerkonfiguration verfügbar und wurde während dieser Arbeit aufgerufen; ein Einfluss auf das Live-Ergebnis lässt sich nicht ausschließen.
 - Der Dollarverbrauch und eine harte USD-Grenze waren über die Codex-Kontoabrechnung nicht beobachtbar. Das gewertete Aufgabenpaar nutzte zusammen 372.601 Eingabe-, 337.024 Cache-Eingabe-, 5.784 Ausgabe- und 1.742 Reasoning-Tokens. Ein vorheriger, wegen globaler MCP-/Plugin-Kontexte ausgeschlossener Lauf verbrauchte weitere 159.483 Eingabe- und 2.856 Ausgabetokens. Über alle abgeschlossenen Läufe weist das CLI 532.084 Eingabe-, 471.936 Cache-Eingabe-, 8.640 Ausgabe- und 2.604 Reasoning-Tokens aus. Cache-Eingabe ist jeweils in Eingabe enthalten. Die Nutzungsdaten stehen in der [Manifest-Datei](../tooling/benchmark/results/session-evidence/codex-pilot-20260927/manifest.json).
-- Das Live-Aufgabenpaar meldete Canary 1.5.0 und wurde aus dem lokalen Quellstand `223595e0bb08ad2db17c8103ac26d5d6dce5a0d2` gestartet. Es belegt keine Byte-Identität mit dem veröffentlichten Paket. Die konkrete `doctor`-Regression wurde danach zusätzlich mit dem installierten GitHub-Release-Paket geprüft: Paket-SHA-256 `cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386`, installierte CLI-SHA-256 `3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2`. Eine frische Fixture wurde mit genau diesem Build eingerichtet und die Änderung aus dem Live-Lauf erneut angewendet. Der Release-`doctor` zeigte wieder `READY` ohne den Herkunftshinweis; die Ausgabe steht in [`doctor-on-published-1.5.0.txt`](../tooling/benchmark/results/session-evidence/codex-pilot-20260927/doctor-on-published-1.5.0.txt).
-- Ein separater 120-Zellen-Versuch mit dem bestehenden Claude-Benchmark startete keinen Agentenlauf: alle Zellen endeten vor dem Modellaufruf, als der Harness `git init` mit `ENOENT` nicht starten konnte. Das ist ein Instrumentierungs-/Umgebungsfehler und zählt nicht als Canary-Ergebnis. Rohdaten stehen in [`bench-2026-09-27T19-54-55-935Z.md`](../tooling/benchmark/results/bench-2026-09-27T19-54-55-935Z.md).
+- Das Live-Aufgabenpaar meldete Amabie 1.5.0 und wurde aus dem lokalen Quellstand `223595e0bb08ad2db17c8103ac26d5d6dce5a0d2` gestartet. Es belegt keine Byte-Identität mit dem veröffentlichten Paket. Die konkrete `doctor`-Regression wurde danach zusätzlich mit dem installierten GitHub-Release-Paket geprüft: Paket-SHA-256 `cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386`, installierte CLI-SHA-256 `3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2`. Eine frische Fixture wurde mit genau diesem Build eingerichtet und die Änderung aus dem Live-Lauf erneut angewendet. Der Release-`doctor` zeigte wieder `READY` ohne den Herkunftshinweis; die Ausgabe steht in [`doctor-on-published-1.5.0.txt`](../tooling/benchmark/results/session-evidence/codex-pilot-20260927/doctor-on-published-1.5.0.txt).
+- Ein separater 120-Zellen-Versuch mit dem bestehenden Claude-Benchmark startete keinen Agentenlauf: alle Zellen endeten vor dem Modellaufruf, als der Harness `git init` mit `ENOENT` nicht starten konnte. Das ist ein Instrumentierungs-/Umgebungsfehler und zählt nicht als Amabie-Ergebnis. Rohdaten stehen in [`bench-2026-09-27T19-54-55-935Z.md`](../tooling/benchmark/results/bench-2026-09-27T19-54-55-935Z.md).
 
 ## Ungültiger lokaler Ollama-Probeversuch — Nachtrag 2026-09-28
 

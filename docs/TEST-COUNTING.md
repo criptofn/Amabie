@@ -55,7 +55,7 @@ security regression is UNKNOWN, and UNKNOWN never becomes PASS).
 | Tree | tests | suites | pass | fail | skipped | Proof |
 |---|---|---|---|---|---|---|
 | `34cf515` (pre-F6 baseline) | 465 | 71 | 465 | 0 | 0 | clean detached worktree re-run: `docs/night-evidence/2026-09-05-F6/reverify-baseline-34cf515-suite.log` (self-proves via `TREE:` line); cross-check: `git show -s --format=%B 34cf515` records "Full suite 465/465 pass." |
-| `d327e71` (night F6 final) | 472 | 71 | 472 | 0 | 0 | TREE-pinned clean-worktree re-derivation `reverify-head-d327e71-treepinned-suite.log` (first line `TREE: d327e71… @ canary-head-d327e71`, EXIT:0); agrees with night log `final-full-suite.log` and un-pinned re-run `reverify-head-suite.log` |
+| `d327e71` (night F6 final) | 472 | 71 | 472 | 0 | 0 | TREE-pinned clean-worktree re-derivation `reverify-head-d327e71-treepinned-suite.log` (first line `TREE: d327e71… @ amabie-head-d327e71`, EXIT:0); agrees with night log `final-full-suite.log` and un-pinned re-run `reverify-head-suite.log` |
 | `d327e71` + F6a sentinel | 473 | 71 | 473 | 0 | 0 | `reverify-postchange-suite.log` (sentinel adds one test) |
 
 The earlier `438 tests / 64 suites` figure was from the **Sept-2**

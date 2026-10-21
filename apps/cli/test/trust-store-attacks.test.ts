@@ -12,7 +12,7 @@ let n = 0;
 const want = { projectId: 'project', kind: 'state' };
 function fixture() {
   const store = { root: path.join(tmp, String(n++)) };
-  const input = { ...want, payload: { allowed: false }, canaryVersion: 'test' };
+  const input = { ...want, payload: { allowed: false }, amabieVersion: 'test' };
   const first = sealRecord(store, input);
   return { store, input, first, record: path.join(store.root, 'records', 'project', 'state.json'), ledger: path.join(store.root, 'ledger.json') };
 }

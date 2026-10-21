@@ -1,22 +1,22 @@
 {
-  "schema": "canary-release-validation/1",
+  "schema": "amabie-release-validation/1",
   "label": "R1",
   "phase": "plain",
   "probe": "tooling/probes/v15-release-validation-task.mjs",
   "probeSha256": "1f9e6291c8cd24565e701bc74b90025d0dc8a7f75e2b0342b3040dc3448b3703",
-  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "cliVersion": "canary 1.5.0",
+  "cliPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "cliVersion": "amabie 1.5.0",
   "cliBinarySha256": "ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a",
   "publishedArtifactSha256": "8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\R1-pytest-id-collision.md",
   "expectedHead": "1fe40d8505bbb0cac703c976401c17213abf1e9d",
   "baselineHead": null,
   "taskSha256": "5a596c667197f13cb39092f9ab41ea7e2fd272c18642c4a0d82898e4ebab0efa",
-  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
-  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-validation-trust\\a6aac72afa21e7ae55645c34d0a7f609adaf76795adb7b67b26b0c6adef3736a",
+  "repo": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+  "trustStore": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-validation-trust\\a6aac72afa21e7ae55645c34d0a7f609adaf76795adb7b67b26b0c6adef3736a",
   "toolchainDirectories": [
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311",
-    "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\python311\\Scripts",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311",
+    "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\python311\\Scripts",
     "C:\\Program Files\\Git\\cmd",
     "C:\\Program Files\\Git\\usr\\bin"
   ],
@@ -31,7 +31,7 @@
   "environmentKeyNames": [
     "ALLUSERSPROFILE",
     "APPDATA",
-    "CANARY_TRUST_STORE",
+    "AMABIE_TRUST_STORE",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "COLORTERM",
     "COMPUTERNAME",
@@ -97,7 +97,7 @@
         "--no-audit",
         "--no-fund"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
       "startedAt": "2026-09-27T15:19:18.576Z",
       "elapsedMs": 7680,
       "exitCode": 0,
@@ -115,7 +115,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
       "startedAt": "2026-09-27T15:19:26.259Z",
       "elapsedMs": 1963,
       "exitCode": 0,
@@ -133,7 +133,7 @@
         "run",
         "typecheck"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
       "startedAt": "2026-09-27T15:19:28.223Z",
       "elapsedMs": 1187,
       "exitCode": 0,
@@ -151,7 +151,7 @@
         "run",
         "test"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
       "startedAt": "2026-09-27T15:19:29.411Z",
       "elapsedMs": 137422,
       "exitCode": 0,
@@ -169,7 +169,7 @@
         "run",
         "build"
       ],
-      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
+      "cwd": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-v15-pilot-preflight2-20260927\\projects\\R1\\plain",
       "startedAt": "2026-09-27T15:21:46.834Z",
       "elapsedMs": 1567,
       "exitCode": 0,
@@ -188,5 +188,5 @@
   },
   "status": "complete",
   "infrastructureFailures": 0,
-  "canaryVerdict": null
+  "amabieVerdict": null
 }

@@ -491,7 +491,7 @@ const METRICS_BYTES = streamSnapshot();
 const METRICS_TARGET = metricsTarget();
 function finish(code: number): never {
   const problem = appendMetric(metricFor(process.argv.slice(2), code, Date.now() - METRICS_START, METRICS_BYTES, AMABIE_VERSION), METRICS_TARGET);
-  if (problem !== null && (process.env.AMABIE_VERBOSE || process.env.CANARY_VERBOSE)) console.error(problem);
+  if (problem !== null && process.env.AMABIE_VERBOSE) console.error(problem);
   process.exit(code);
 }
 

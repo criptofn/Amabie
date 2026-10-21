@@ -4,7 +4,7 @@ Unpublished local candidate; evidence rechecked 17 October 2026. NOT READY: exac
 
 ## What this release changes
 
-Canary becomes Amabie: package identity `@amabie/cli`, executable `amabie`, renamed MCP tools and project documentation. The `canary` executable and legacy project formats/data discovery remain where needed for migration. Existing global Canary packages can conflict with the compatibility bin; follow the tested upgrade procedure rather than forcing an overwrite.
+Amabie becomes Amabie: package identity `@amabie/cli`, executable `amabie`, renamed MCP tools and project documentation. The `amabie` executable and legacy project formats/data discovery remain where needed for migration. Existing global Amabie packages can conflict with the compatibility bin; follow the tested upgrade procedure rather than forcing an overwrite.
 
 The mission also fixes linked project scopes escaping the declared repository, inherited ecosystem names being treated as adapters, and everyday checks leaving descendant processes after normal exit or timeout. Scope discovery and execution now validate canonical containment; unavailable cleanup measurement cannot produce a successful check. This is user-space cleanup, not an OS sandbox.
 

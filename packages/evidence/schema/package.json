@@ -2,7 +2,7 @@
   "name": "@amabie/evidence-schema",
   "version": "0.0.1",
   "private": true,
-  "description": "Evidence Bundle: types, canonical shape, and a structural validator. The artifact that makes a Amabie conclusion auditable without trusting Amabie.",
+  "description": "Evidence Bundle: types, canonical shape, and a structural validator. The artifact that makes an Amabie conclusion auditable without trusting Amabie.",
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",

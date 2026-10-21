@@ -86,7 +86,7 @@ function makePoison(tag) {
   const clean = () => { for (const p of Object.values(logs)) try { fs.unlinkSync(p); } catch { /* absent = clean */ } };
   return { env, logs, clean };
 }
-/** If the preload EVER ran in a Amabie child, that child's script path shows
+/** If the preload EVER ran in an Amabie child, that child's script path shows
  *  up. The CLI process itself (attacker-launched) is allowed: only main.js. */
 function assertPreloadNeverReachedChildren(p) {
   if (!fs.existsSync(p)) return;

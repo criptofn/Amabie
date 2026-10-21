@@ -1,11 +1,11 @@
-# Canary v1.1
+# Amabie v1.1
 
-**Released 2026-09-13.** Artifact: `canary-rn-cli-1.1.0.tgz` (+ `.sha256`) ·
+**Released 2026-09-13.** Artifact: `amabie-rn-cli-1.1.0.tgz` (+ `.sha256`) ·
 [GitHub release](https://github.com/criptofn/Canary/releases/tag/v1.1.0) ·
 [CHANGELOG](../CHANGELOG.md) · [README](../README.md)
 
-> Canary is an independent verification layer for coding agents.
-> **The agent builds. Canary verifies. NO PROOF, NO DONE.**
+> Amabie is an independent verification layer for coding agents.
+> **The agent builds. Amabie verifies. NO PROOF, NO DONE.**
 
 This page is the human-readable overview of the current release: what the product
 is, what changed, what was actually verified, what the benchmarks really show, and
@@ -14,32 +14,32 @@ each section links to the file that carries the raw evidence.
 
 ---
 
-## What Canary is
+## What Amabie is
 
-A coding agent saying "done" is not evidence. Canary binds completion to proof.
+A coding agent saying "done" is not evidence. Amabie binds completion to proof.
 
-**Everyday path.** `canary setup` reads the checks your project *already declares*
-and wires itself into your agent. When the agent finishes, Canary runs those
+**Everyday path.** `amabie setup` reads the checks your project *already declares*
+and wires itself into your agent. When the agent finishes, Amabie runs those
 checks: all pass → total silence; a check fails → the agent is blocked once and
 sent back to repair it, and if it still fails, you are told in plain words.
 
 **Task-aware path.** For work that must be *proven* rather than merely green, the
 agent registers the intent, works in an isolated candidate, commits there, and
-asks Canary to verify and promote. Canary promotes only the exact verified
+asks Amabie to verify and promote. Amabie promotes only the exact verified
 committed bytes, and only when the proof holds.
 
 **The rule that makes it different from a test runner.** A green suite is useful
 evidence, not proof. If the checks pass on the base commit too, they say nothing
 about the change. If a stated requirement is covered by no check, it is not
-proven. Canary reports **`NOT PROVEN`** in both cases instead of `READY`.
+proven. Amabie reports **`NOT PROVEN`** in both cases instead of `READY`.
 
 **Why isn't it just "run tests"?**
 
-| A green suite can be green because… | Canary's answer |
+| A green suite can be green because… | Amabie's answer |
 |---|---|
 | the checks were already green **before** the change | proof must **discriminate**: fail without the change, pass with it, measured against the sealed base |
 | a **stated requirement** has no check at all | each authorized requirement needs a sealed proof binding, or it stays `NOT PROVEN` |
-| the requirement was never machine-checkable ("prettier") | subjective duties are a separate human act (`canary accept`, in a terminal) |
+| the requirement was never machine-checkable ("prettier") | subjective duties are a separate human act (`amabie accept`, in a terminal) |
 | the only evidence is a test **the worker wrote** | the verdict says so (worker-authored-evidence caveat) |
 
 Fail-closed outcomes are first-class, not errors: `NOT PROVEN`,
@@ -59,11 +59,11 @@ proof measured" — and closes two pre-release holes in the completion path
 |---|---|---|
 | **Languages** | Node-based projects | native **Node/JS/TS, Python, Rust, Go** + a **universal** command-driven contract for everything else |
 | **Proof** | sealed plan green → READY | sealed plan is re-run against the **sealed base**; a non-discriminating plan is `NOT PROVEN`; an unestablishable comparison is `UNPROVEN`, never a PASS |
-| **Requirements** | numeric objective targets could be bound | `canary task --requirement` + the operator's `canary bind` attach **any** stated requirement to a sealed check; uncovered ⇒ `NOT PROVEN` |
-| **Candidate path** | verify + promote | `canary work` / `canary finish` with **frozen authority** at isolation, and promotion gated on the same measured discrimination `doctor` uses |
+| **Requirements** | numeric objective targets could be bound | `amabie task --requirement` + the operator's `amabie bind` attach **any** stated requirement to a sealed check; uncovered ⇒ `NOT PROVEN` |
+| **Candidate path** | verify + promote | `amabie work` / `amabie finish` with **frozen authority** at isolation, and promotion gated on the same measured discrimination `doctor` uses |
 | **Observation** | mocha (repo-pinned) | `node --test`, pytest, unittest channels, each bound to an authority (repo pin, the verifying runtime, or an operator-sealed identity) |
-| **Agents** | Claude Code hook | + advisory Codex/generic-agent path, and `canary mcp` as a transport with no extra authority |
-| **Interface** | human output | global `--json`, `canary result --json`, compact failure payloads that keep evidence **out of the model's context** |
+| **Agents** | Claude Code hook | + advisory Codex/generic-agent path, and `amabie mcp` as a transport with no extra authority |
+| **Interface** | human output | global `--json`, `amabie result --json`, compact failure payloads that keep evidence **out of the model's context** |
 | **Security** | `LOCAL` | still `LOCAL` — **honest**, with the provider/broker architecture implemented but `HARDENED` reachable only by measurement |
 
 Upgrading an existing 1.0 installation: [`MIGRATION-1.0-TO-1.1.md`](MIGRATION-1.0-TO-1.1.md).
@@ -72,7 +72,7 @@ Upgrading an existing 1.0 installation: [`MIGRATION-1.0-TO-1.1.md`](MIGRATION-1.
 
 ## Supported projects
 
-Canary discovers the checks your project already declares — it never invents one.
+Amabie discovers the checks your project already declares — it never invents one.
 
 | Project | Discovered from | What runs |
 |---|---|---|
@@ -80,7 +80,7 @@ Canary discovers the checks your project already declares — it never invents o
 | Python | `pyproject.toml`, `setup.py`, `setup.cfg`, `tox.ini`, `requirements*.txt` | `pytest`, `tox`, `unittest`, plus `mypy` / `pyright` / `ruff` |
 | Rust | `Cargo.toml` | `cargo test`, `cargo check`, `cargo build` |
 | Go | `go.mod`, `go.work` | `go test ./...`, `go vet ./...` |
-| **Any other command-driven project** | CI workflow commands, `Makefile`/`Taskfile`/`justfile` targets, CMake+CTest / Meson, `gradlew`/`mvnw`, `pom.xml`, `build.gradle*`, `*.sln`/`*.csproj`, `Package.swift`, `build.zig`, `phpunit.xml`, `composer.json`, `Rakefile`, `mix.exs`, `shard.yml` — or your own `canary.project.json` | those commands, sealed and pinned to absolute paths |
+| **Any other command-driven project** | CI workflow commands, `Makefile`/`Taskfile`/`justfile` targets, CMake+CTest / Meson, `gradlew`/`mvnw`, `pom.xml`, `build.gradle*`, `*.sln`/`*.csproj`, `Package.swift`, `build.zig`, `phpunit.xml`, `composer.json`, `Rakefile`, `mix.exs`, `shard.yml` — or your own `amabie.project.json` | those commands, sealed and pinned to absolute paths |
 
 Four capability levels are reported **separately**, so nothing is inflated
 ([`COMPATIBILITY.md`](COMPATIBILITY.md)):
@@ -89,7 +89,7 @@ Four capability levels are reported **separately**, so nothing is inflated
 |---|---|
 | **UNIVERSAL** | any command-driven project: the command really ran, at the authorized absolute path, in the authorized sealed directory, with that exit status, bound to the candidate's bytes — **and the runner's internals were not observed** |
 | **NATIVE** | ecosystem-specific discovery and toolchain handling: **node, python, rust, go** |
-| **OBSERVED** | Canary watched the runner's own lifecycle from inside the process: **mocha, `node --test`, pytest, unittest** — printed text becomes refutable |
+| **OBSERVED** | Amabie watched the runner's own lifecycle from inside the process: **mocha, `node --test`, pytest, unittest** — printed text becomes refutable |
 | **STRONG** | a strong verdict may rest on it: an observed runner, bound to an authority |
 
 An unknown runner is `INCONCLUSIVE_ONLY` by construction: a universal check can
@@ -121,7 +121,7 @@ output into a strong verdict.
    nothing is discharged by silence. A changed test *filename* is not regression
    proof by itself.
 6. **Only a human can waive a human duty**, and only from a terminal
-   (`canary accept`) — and never an objective one.
+   (`amabie accept`) — and never an objective one.
 7. **Precedence is fixed:** `fail` > `unmet` > `unproven` > `pass`. A red plan is
    never softened into "not proven", and a missing authority is never laundered by
    a split verdict.
@@ -131,12 +131,12 @@ output into a strong verdict.
 ## Candidate workflow
 
 ```bash
-canary task "make the dialog prettier" --requirement "the button is #D94141"
-canary bind e2e --requirement "the button is #D94141"
-canary setup                                  # re-seal: the binding becomes frozen authority
-canary work fix "make the dialog prettier"    # register + open an ISOLATED candidate
-#   ...work and commit only inside the candidate directory Canary printed...
-canary finish fix                             # verify from outside; promote only if the proof holds
+amabie task "make the dialog prettier" --requirement "the button is #D94141"
+amabie bind e2e --requirement "the button is #D94141"
+amabie setup                                  # re-seal: the binding becomes frozen authority
+amabie work fix "make the dialog prettier"    # register + open an ISOLATED candidate
+#   ...work and commit only inside the candidate directory Amabie printed...
+amabie finish fix                             # verify from outside; promote only if the proof holds
 ```
 
 - The candidate is a detached worktree of the **exact** base commit; the base
@@ -146,27 +146,27 @@ canary finish fix                             # verify from outside; promote onl
   is refused.
 - Promotion applies committed bytes only, is idempotent (a second run reports
   `ALREADY APPLIED`), and never deletes the candidate.
-- `canary finish` refuses to promote what was not proven, and the Stop hook blocks
+- `amabie finish` refuses to promote what was not proven, and the Stop hook blocks
   the same way, so a worker cannot end a turn on an unproven claim.
 
 ---
 
 ## Requirement coverage
 
-**A green plan proves the plan, not the task.** A requirement Canary knows about
+**A green plan proves the plan, not the task.** A requirement Amabie knows about
 becomes a **duty**; a requirement it does not know about is prose nobody checks.
 
-- Declare: `canary task "<intent>" --requirement "<one per requirement>"` — it
+- Declare: `amabie task "<intent>" --requirement "<one per requirement>"` — it
   prints each requirement's digest, because that digest is what gets bound.
-- Bind (the **operator's** act): `canary bind <script> --requirement "<text>"`
-  writes the declaration (`package.json` `canary.proofs`, or
-  `canary.project.json` for a non-Node project) and refuses a script the sealed
+- Bind (the **operator's** act): `amabie bind <script> --requirement "<text>"`
+  writes the declaration (`package.json` `amabie.proofs`, or
+  `amabie.project.json` for a non-Node project) and refuses a script the sealed
   plan does not run.
-- Re-seal: `canary setup`. The declaration alone is not proof — the sealed
+- Re-seal: `amabie setup`. The declaration alone is not proof — the sealed
   authority must contain it.
 - Result: a bound digest is credited by the exit code of the script the sealed
   plan really runs. An unbound requirement stays **`NOT PROVEN`** with the exact
-  closing path printed (`canary bind …`, or a human `canary accept`).
+  closing path printed (`amabie bind …`, or a human `amabie accept`).
 
 **The measured trap: declared but unbound.** In one benchmark, five requirements
 declared but never bound cost the guarded arm **1.5–1.7M tokens over 41–45 turns**,
@@ -175,7 +175,7 @@ the same requirements were **cheaper than the unprotected arm** at 100% delivere
 correctness. So the recommended order is:
 
 ```
-operator declares requirements → canary bind → canary setup → worker handoff
+operator declares requirements → amabie bind → amabie setup → worker handoff
 ```
 
 ---
@@ -183,12 +183,12 @@ operator declares requirements → canary bind → canary setup → worker hando
 ## Subjective vs objective completion
 
 Some results cannot be machine-proven: "make it prettier", "make scrolling feel
-faster". Canary separates those from technical evidence instead of faking them.
+faster". Amabie separates those from technical evidence instead of faking them.
 
 | Duty | Closed by | Never closed by |
 |---|---|---|
 | **Objective** (a test, a benchmark target, a numeric threshold, a bound requirement) | the measurement — the sealed plan's exit code | human acceptance, a greener suite, a split verdict, an env var or flag |
-| **Subjective / aesthetic** | a human running `canary accept` **in a terminal**, bound to that exact candidate tree | an agent's claim, a pipe, a copied acceptance file, an outdated acceptance |
+| **Subjective / aesthetic** | a human running `amabie accept` **in a terminal**, bound to that exact candidate tree | an agent's claim, a pipe, a copied acceptance file, an outdated acceptance |
 
 An acceptance is bound to the exact candidate tree and to a **scope digest** (the
 frozen kinds *and* the requirement identities, not their count): a new commit, a
@@ -203,11 +203,11 @@ promotion locked.
 
 | Agent | Capability | What that means |
 |---|---|---|
-| **Claude Code** | **GATED** | `canary setup` installs a completion hook; a failing check **blocks** the agent, and the block reason is delivered to the model |
-| **Codex**, and any other command-line agent | **ADVISORY** | `canary agents install codex` writes a marked, removable block into this project's `AGENTS.md` telling the agent to consult `canary result --json`. It **cannot block anything**, and it says so |
-| **Any MCP client** | **TRANSPORT** | `canary mcp` speaks the Model Context Protocol on stdio, exposing the same operations as tools — every tool runs the same CLI and relays its verdict and exit code unchanged, and `canary accept` is deliberately **not** exposed, because acceptance is a human act |
+| **Claude Code** | **GATED** | `amabie setup` installs a completion hook; a failing check **blocks** the agent, and the block reason is delivered to the model |
+| **Codex**, and any other command-line agent | **ADVISORY** | `amabie agents install codex` writes a marked, removable block into this project's `AGENTS.md` telling the agent to consult `amabie result --json`. It **cannot block anything**, and it says so |
+| **Any MCP client** | **TRANSPORT** | `amabie mcp` speaks the Model Context Protocol on stdio, exposing the same operations as tools — every tool runs the same CLI and relays its verdict and exit code unchanged, and `amabie accept` is deliberately **not** exposed, because acceptance is a human act |
 
-`canary agents` prints the real table for the repository in front of you. An
+`amabie agents` prints the real table for the repository in front of you. An
 advisory integration is never described as a gate.
 
 ---
@@ -228,17 +228,17 @@ an OS isolation boundary.
   provider/broker architecture exists in the tree and refuses to start without a
   proven separation, but `HARDENED` is produced by exactly one thing: a boundary
   **measurement** in which every required control is observed present
-  (`canary provider status`; the privileged steps are printed by
-  `canary provider install-plan` and executed by nobody automatically). On this
+  (`amabie provider status`; the privileged steps are printed by
+  `amabie provider install-plan` and executed by nobody automatically). On this
   host all six controls measure unavailable, so `HARDENED` stays unreachable
   ([`TRUST-ARCHITECTURE.md`](TRUST-ARCHITECTURE.md)).
 - **Evidence is tiered.** Only observed runners bound to an authority can carry a
-  strong verdict; a byte-pinned runner with a Canary-injected observer must agree
+  strong verdict; a byte-pinned runner with an Amabie-injected observer must agree
   with the printed summary, so fabricated output (`node -e "console.log('128
   passing')"`) is `INCONCLUSIVE`, never `PASS`.
-- **Bindings are declared coverage inside Canary's model, not semantic truth.**
+- **Bindings are declared coverage inside Amabie's model, not semantic truth.**
   Binding a requirement to a check says the sealed plan measures something for it.
-  It does not make Canary understand what the requirement *means*, and it is not
+  It does not make Amabie understand what the requirement *means*, and it is not
   an independent proof of semantic correctness.
 
 ---
@@ -394,7 +394,7 @@ product's earlier headline, and was retracted in the file where it was made).
 | `plain` | **36/36** | 0 | 0 | 136,402 |
 | `guarded` | **33/33** | 0 | 0 | 193,519 (**+40.2%**) |
 
-**This corpus did not demonstrate a general correctness advantage for Canary.**
+**This corpus did not demonstrate a general correctness advantage for Amabie.**
 The plain model already hit the ceiling at 36/36 on these small fixtures. What the
 matrix does discriminate is raw token cost and the gate's own mechanics.
 
@@ -408,11 +408,11 @@ matrix does discriminate is raw token cost and the gate's own mechanics.
 | `guarded` | **100,812** | **−19.6%** | 5/5 | 0 | 0 |
 | `invisible` | **91,439** | **−27.1%** | 5/5 | 0 | 0 |
 
-**The safe public claim, verbatim:** *in one bound-requirement benchmark, Canary
+**The safe public claim, verbatim:** *in one bound-requirement benchmark, Amabie
 reduced model-token use by **19.6%** while maintaining **100% delivered
 correctness**.*
 
-That is **not** "Canary saves 19.6% of tokens", **not** a correctness claim, and
+That is **not** "Amabie saves 19.6% of tokens", **not** a correctness claim, and
 **not** a universal result.
 
 ### Declared but unbound — the failure mode to avoid
@@ -445,18 +445,18 @@ consolidated matrix and the three corrected defects:
 
 ## Known limitations
 
-- **`LOCAL` has documented same-UID / local-root-of-trust limitations.** Canary
+- **`LOCAL` has documented same-UID / local-root-of-trust limitations.** Amabie
   does not claim to prevent a same-UID worker from replacing the root of trust on
   this security level.
 - **`HARDENED` requires actual measured OS-level controls** and is **not**
   available in this release. It is not an installation step away, and the
   provider/broker architecture is not marketed as established isolation.
-- **A bound check establishes declared proof coverage inside Canary's model; it is
-  not magical independent semantic truth.** Canary does not claim that a bound
+- **A bound check establishes declared proof coverage inside Amabie's model; it is
+  not magical independent semantic truth.** Amabie does not claim that a bound
   check proves the semantic meaning of a requirement.
-- Canary does **not** claim it "never fails open" universally, and does **not**
+- Amabie does **not** claim it "never fails open" universally, and does **not**
   claim that every promoted change is independently semantically proven.
-- Canary does **not** universally reduce tokens or universally improve
+- Amabie does **not** universally reduce tokens or universally improve
   correctness. The measured saving is configuration-specific (−19.6% in one
   bound-requirement benchmark); the correctness corpus showed a **ceiling effect**
   (plain 36/36).
@@ -473,26 +473,26 @@ consolidated matrix and the three corrected defects:
 
 ```bash
 # first use
-canary setup [--yes]          # detect project + agents, pin toolchain, wire, smoke-run
-canary doctor                 # run the checks NOW: READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED
-canary status                 # read-only state, runs nothing: CONNECTED / NEEDS ATTENTION / NOT CONNECTED
-canary result [--json]        # the same state as one compact JSON object — free, for agents
+amabie setup [--yes]          # detect project + agents, pin toolchain, wire, smoke-run
+amabie doctor                 # run the checks NOW: READY / NOT PROVEN / NEEDS ATTENTION / UNSUPPORTED
+amabie status                 # read-only state, runs nothing: CONNECTED / NEEDS ATTENTION / NOT CONNECTED
+amabie result [--json]        # the same state as one compact JSON object — free, for agents
 
 # task-aware proof
-canary task "<intent>" [--requirement "…"]   # declare the parts that must be proven separately
-canary bind <script> --requirement "…"       # operator: attach a requirement to a sealed check
-canary work <name> "<intent>"                # register + open an isolated candidate
-canary finish <name>                         # verify from outside; promote only if the proof holds
-canary accept <name>                         # human, in a terminal: close a subjective duty
+amabie task "<intent>" [--requirement "…"]   # declare the parts that must be proven separately
+amabie bind <script> --requirement "…"       # operator: attach a requirement to a sealed check
+amabie work <name> "<intent>"                # register + open an isolated candidate
+amabie finish <name>                         # verify from outside; promote only if the proof holds
+amabie accept <name>                         # human, in a terminal: close a subjective duty
 
 # integrations and lifecycle
-canary agents [install|uninstall <id>]       # which agents work here, at what capability
-canary mcp                                   # MCP server on stdio
-canary provider <status|install-plan|…>      # the HARDENED provider lifecycle (measured, not claimed)
-canary uninstall                             # remove exactly Canary's own changes
+amabie agents [install|uninstall <id>]       # which agents work here, at what capability
+amabie mcp                                   # MCP server on stdio
+amabie provider <status|install-plan|…>      # the HARDENED provider lifecycle (measured, not claimed)
+amabie uninstall                             # remove exactly Amabie's own changes
 
 # release-grade proof pipeline (a different, stronger promise)
-canary run | prove | check <spec.json> · canary report · canary version
+amabie run | prove | check <spec.json> · amabie report · amabie version
 ```
 
 Exit codes: `0` READY / proof holds · `1` a proof assertion diverged (or `run`

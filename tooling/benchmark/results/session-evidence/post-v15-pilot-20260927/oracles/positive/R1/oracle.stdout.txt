@@ -1,5 +1,5 @@
 
- RUN  v3.2.7 C:/Users/Johannes/AppData/Local/Temp/canary-v15-pilot-positive-controls-20260927/oracle-fixed/R1
+ RUN  v3.2.7 C:/Users/Johannes/AppData/Local/Temp/amabie-v15-pilot-positive-controls-20260927/oracle-fixed/R1
 
  ✓ failure-ids.oracle.test.ts > distinguishes parametrized pytest ids across the delta and preserves repr stability 2ms
 

@@ -1,8 +1,8 @@
 {
-  "schema": "canary-codex-pilot/1",
+  "schema": "amabie-codex-pilot/1",
   "createdAtUtc": "2026-09-27T19:53:05.0729641Z",
   "repoCommit": "223595e0bb08ad2db17c8103ac26d5d6dce5a0d2",
-  "cliVersion": "canary 1.5.0",
+  "cliVersion": "amabie 1.5.0",
   "publishedRelease": {
     "packageSha256": "cf8f777a68f3646df0cf0228b245a8084f56329c2999bb082134a20de0b89386",
     "installedCliSha256": "3cfdfece2581b1036e1b01905be39d97161d03f683110cf40910570a5235d5e2",
@@ -37,7 +37,7 @@
   "frozenBaseline": "4e274ae4418b63c96a087afad19c1615ff3e738d",
   "arms": [
     "plain-isolated",
-    "canary-stop-hook-isolated"
+    "amabie-stop-hook-isolated"
   ],
   "limits": {
     "sessionTimeoutMinutes": 15,
@@ -51,7 +51,7 @@
     "userPluginsEnabled": false,
     "ponytailSkill": "Ponytail was available through global user config and invoked during this task; its effect on the live result cannot be excluded"
   },
-  "hookTrust": "Reviewed and trusted only Canary's Stop hook interactively with Codex /hooks. No hook-trust bypass was used in either counted session; Ponytail hooks stayed untrusted.",
+  "hookTrust": "Reviewed and trusted only Amabie's Stop hook interactively with Codex /hooks. No hook-trust bypass was used in either counted session; Ponytail hooks stayed untrusted.",
   "results": {
     "plain-isolated": {
       "transcript": "plain-isolated.jsonl",
@@ -68,7 +68,7 @@
         "reasoningOutputTokens": 931
       }
     },
-    "canary-stop-hook-isolated": {
+    "amabie-stop-hook-isolated": {
       "transcript": "guarded-isolated.jsonl",
       "stderr": "guarded-isolated.stderr.txt",
       "exitCode": 0,
@@ -82,7 +82,7 @@
         "outputTokens": 2794,
         "reasoningOutputTokens": 811
       },
-      "canary": {
+      "amabie": {
         "hookInvoked": true,
         "checkpointStatus": "pass",
         "hookResponse": "message-and-continue",

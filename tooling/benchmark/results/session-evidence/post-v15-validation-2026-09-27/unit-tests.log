@@ -1,9 +1,9 @@
 
-> canary-reliability-network@1.5.0 test
+> amabie-reliability-network@1.5.0 test
 > npm run build:force && node --test --test-concurrency=8 "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js" "tooling/**/*.test.mjs"
 
 
-> canary-reliability-network@1.5.0 build:force
+> amabie-reliability-network@1.5.0 build:force
 > tsc -b --force
 
 ▶ subjectDigest — canonical authorization identity
@@ -31,7 +31,7 @@
   ✔ a record whose candidate field disagrees with the file is unreadable (no cross-candidate borrowing) (6.4878ms)
 ✔ readAcceptance — v2 fail-closed shapes (32.5995ms)
 ▶ 1.1 agents: the capability table is honest by construction
-  ✔ an integration claims GATED only for a mechanism Canary has measured, and every other labels itself honestly (2.6201ms)
+  ✔ an integration claims GATED only for a mechanism Amabie has measured, and every other labels itself honestly (2.6201ms)
   ✔ the advisory text tells an agent what to run and claims no gate (0.1798ms)
   ✔ agents --json lists the integrations with their real capability (177.1067ms)
   ✔ v1.3: Cursor is reported as UNMEASURED, never as protection (384.5822ms)
@@ -48,7 +48,7 @@
   ✔ the machine channel reports the same fact: hooked means the hook is installed (178.924ms)
   ✔ after setup installs the hook, both the claim and the machine channel flip together (2836.3233ms)
   ✔ v1.4: a Codex project layer with no hook is a capability, never a protected repository (150.5269ms)
-  ✔ v1.4: an installed Codex hook is reported WITH the trust step Canary does not own (2072.5421ms)
+  ✔ v1.4: an installed Codex hook is reported WITH the trust step Amabie does not own (2072.5421ms)
 ✔ v1.3 agents: a detected agent is not a gated repository (5795.4186ms)
 ▶ panel K layer 1 — the validator refuses hostile frame streams
   ✔ CONTROL: an honest watched lifecycle validates VALID (the battery needs a standing baseline) (1.8737ms)
@@ -76,10 +76,10 @@
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (9392.721ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (9392.9006ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (10140.1775ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (10200.5665ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (20341.0323ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (20341.0323ms)
 ✔ signed zero-attack record is refused (31.6344ms)
 ✔ signed future evidence is refused (10.2612ms)
 ✔ signed failed evidence is refused (9.5102ms)
@@ -112,9 +112,9 @@
   ✔ round-3 secondary: an infrastructure abort exits 2 (environment fault), never 3 (misuse) (416.6614ms)
 ✔ audit M8 — CLI subprocess exit-code contract (47899.393ms)
 ▶ v1.4 Codex wiring: the Stop hook is written into the project layer, once
-  ✔ writes exactly one Stop handler running THIS Canary, with a bounded timeout and a status message (11.9954ms)
+  ✔ writes exactly one Stop handler running THIS Amabie, with a bounded timeout and a status message (11.9954ms)
   ✔ preserves a user's other hooks, groups and top-level keys untouched, and adds ours beside them (10.7959ms)
-  ✔ a re-run is byte-identical and never stacks a second Canary handler (17.3723ms)
+  ✔ a re-run is byte-identical and never stacks a second Amabie handler (17.3723ms)
   ✔ an earlier installation command is pruned on re-setup, so a moved CLI never leaves a stale handler (19.8565ms)
   ✔ refuses invalid JSON, a non-object hooks section and a non-list Stop — writing nothing (18.5197ms)
   ✔ backs up the file it is about to change (17.0988ms)
@@ -125,7 +125,7 @@
   ✔ refuses when .codex exists as a plain file instead of a directory (1.8238ms)
 ✔ v1.4 Codex wiring: nothing is written through a link, and never outside the repo (8.1219ms)
 ▶ v1.4 Codex wiring: uninstall undoes exactly what setup did
-  ✔ removes Canary's handler and keeps the user's, leaving the file in place (15.24ms)
+  ✔ removes Amabie's handler and keeps the user's, leaving the file in place (15.24ms)
   ✔ deletes the file it created when nothing else is left in it (5.9798ms)
   ✔ keeps a file the USER already had, even when our handler was the only thing in it (10.9792ms)
   ✔ ownership is the recorded COMMAND, not the file: a stranger running the same tool is untouched (9.6719ms)
@@ -219,11 +219,11 @@
   ✔ test command node -e printing mocha-shaped prose is never PASS (11394.1182ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (11072.9382ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (33580.4871ms)
-▶ failure identities are read from the runners Canary supports
+▶ failure identities are read from the runners Amabie supports
   ✔ TAP (node:test), mocha, pytest and a plain "file :: test" report (1.3453ms)
   ✔ caps the identities and does not repeat one (0.1926ms)
   ✔ reads assertion-shaped detail lines and ignores stack frames (0.5133ms)
-✔ failure identities are read from the runners Canary supports (3.0777ms)
+✔ failure identities are read from the runners Amabie supports (3.0777ms)
 ▶ the payload is compact, actionable and points at the full log
   ✔ names the check, the identity, the detail and the log path (0.5164ms)
   ✔ stays far below the payload it replaced (4000 chars of raw output) (2.6005ms)
@@ -236,7 +236,7 @@
   ✔ the JSON envelope carries the skips, so a machine cannot read a fast run as a full one (5418.3651ms)
   ✔ without --fast the full plan runs (the fast path is opt-in) (5191.5051ms)
   ✔ a change INSIDE the declaration runs the check as usual (and gets no READY without regression evidence) (6569.3254ms)
-  ✔ editing canary.paths after setup is reported as drift — the sealed copy still governs (3977.3989ms)
+  ✔ editing amabie.paths after setup is reported as drift — the sealed copy still governs (3977.3989ms)
   ✔ a malformed declaration is refused at setup rather than quietly ignored (1248.404ms)
 ✔ 1.1 fast path: sealed declaration, opt-in skipping (27351.8389ms)
 ▶ 1.1 fast path: the glob containment check
@@ -257,10 +257,10 @@
   ✔ an empty change set runs everything: a skip needs a reason it can show (0.224ms)
   ✔ a declaration for a different scope or label does not leak onto another step (0.1761ms)
 ✔ 1.1 fast path: it can only remove work a declaration justifies (1.5643ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.5434ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.2972ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (3.7935ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (3.7935ms)
 ▶ v1.5 audit — the UI tells the truth about who chose what is checked
   ✔ a same-user host reports LOCAL, with the same-user limit and the re-seal route in the text it prints (234.4239ms)
   ✔ doctor prints the same LOCAL limit (the gate a worker meets most often says who selected the plan) (1059.863ms)
@@ -304,12 +304,12 @@
   ✔ a fake .git that cannot answer is recorded UNIDENTIFIED, never upgraded (92.2815ms)
   ✔ a fake .git under a REAL parent repo is still UNIDENTIFIED — git never lends ancestor identity (1154.9986ms)
 ✔ candidateIdentity (pure): unknown candidate stays unknown (1247.4934ms)
-▶ verification bundle: what Canary EXECUTED, recorded from its own run
+▶ verification bundle: what Amabie EXECUTED, recorded from its own run
   ✔ setup writes argv/cwd/runtime/candidate/raw-bytes+digests/counts; empty output hashes truthfully (1063.9203ms)
   ✔ a failing check records exit code + observed counts, and the bundle does not change the verdict (1781.5767ms)
   ✔ a hostile plan-step kind in config cannot shape a path out of the bundle dir (S3, per-component) (1896.036ms)
   ✔ retention is bounded and owns only its own directory names (1686.1167ms)
-✔ verification bundle: what Canary EXECUTED, recorded from its own run (6428.0391ms)
+✔ verification bundle: what Amabie EXECUTED, recorded from its own run (6428.0391ms)
 ▶ claims are hints: never a pass, never a block, at most an annotation
   ✔ claim + green run stays SILENT even when the claim is absurd (1939.6945ms)
   ✔ diverging claim annotates an already-decided block with claim-vs-observed, both sides parsed (1852.657ms)
@@ -324,23 +324,23 @@
 ▶ claim intake guards
   ✔ empty claim is misuse (exit 3) and writes nothing (354.9919ms)
   ✔ claims without a usable repo are refused with exit 2, nothing written (161.0765ms)
-  ✔ inside a repo Canary does not trust: NEEDS ATTENTION, no claim written (159.0826ms)
+  ✔ inside a repo Amabie does not trust: NEEDS ATTENTION, no claim written (159.0826ms)
   ✔ a set-up repo stores the claim labeled UNTRUSTED HINT, capped, and says so (1812.4556ms)
   ✔ a claims/ dir linked outside the repo refuses the write (S3, exact path) (1375.2923ms)
   ✔ a config from another installation refuses claims too (S2) (1126.2207ms)
 ✔ claim intake guards (4989.5308ms)
 ▶ writers stamp their own class, honestly
-  ✔ every verification bundle Canary writes is CANARY_OBSERVED (setup/doctor/checkpoint) (2533.1766ms)
+  ✔ every verification bundle Amabie writes is AMABIE_OBSERVED (setup/doctor/checkpoint) (2533.1766ms)
   ✔ the claim envelope is stamped AGENT_REPORTED next to its UNTRUSTED HINT authority (1602.1331ms)
 ✔ writers stamp their own class, honestly (4136.1703ms)
 ▶ labels are inert as input — no promotion by declaring or copying
-  ✔ a hand-written claim self-declaring CANARY_OBSERVED/"VERIFIED" changes nothing but annotation prose (1789.4077ms)
-  ✔ a forged CANARY_OBSERVED pass bundle cannot stop a block and is kept as inert data (2061.9201ms)
+  ✔ a hand-written claim self-declaring AMABIE_OBSERVED/"VERIFIED" changes nothing but annotation prose (1789.4077ms)
+  ✔ a forged AMABIE_OBSERVED pass bundle cannot stop a block and is kept as inert data (2061.9201ms)
   ✔ no side door: extras handed to the bundle writer can never shadow its reserved fields (297.0291ms)
   ✔ doctor re-derives despite a forged pass bundle: NEEDS ATTENTION, never READY (1981.2529ms)
 ✔ labels are inert as input — no promotion by declaring or copying (6130.0033ms)
 ▶ class coverage and UX
-  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .canary ever carries it (3550.6698ms)
+  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .amabie ever carries it (3550.6698ms)
   ✔ trust classes are verbose-only — default output stays simple (2939.7771ms)
 ✔ class coverage and UX (6490.7077ms)
 ▶ the bundle answers the M4 questions
@@ -400,12 +400,12 @@
   ✔ a fully-covered refactor with a green sealed plan yields ONLY met obligations (silent path exists) (0.0922ms)
   ✔ kinds never declared still get the diff-implied floor: no kinds + clean signals = no obligations beyond tests-green (0.0915ms)
 ✔ obligationsFor — the one-way obligation engine (2.5341ms)
-▶ canary task — an AGENT_REPORTED hint with zero authority
+▶ amabie task — an AGENT_REPORTED hint with zero authority
   ✔ setup + register: digest-only storage, inferred kinds, explicit zero-authority line (1215.6748ms)
   ✔ --kind ADDS to inference and never removes it; --requirement forces multi; hostile input is usage, not a crash (2497.2697ms)
   ✔ a requirement whose TEXT begins with "--" is registered verbatim; a misuse is REFUSED (2164.6493ms)
   ✔ registering a task against no setup / no git says so; nothing is written (152.5034ms)
-✔ canary task — an AGENT_REPORTED hint with zero authority (6030.3514ms)
+✔ amabie task — an AGENT_REPORTED hint with zero authority (6030.3514ms)
 ▶ checkpoint/doctor integration — the sealed plan passes, obligations decide the tone
   ✔ no task record, no prose, fake git: byte-identical pre-M6 silence (additive) (1478.6931ms)
   ✔ registered bugfix with no test change: an open OBJECTIVE obligation now FAILS CLOSED (block), not a note (2177.8172ms)
@@ -417,7 +417,7 @@
 ✔ checkpoint/doctor integration — the sealed plan passes, obligations decide the tone (15924.054ms)
 ✔ built CLI exists (run npm run build first) (1.0034ms)
 ✔ isolate misuse exits 3 with usage, and never touches the repo (3108.8518ms)
-✔ isolate refuses a repo Canary does not verify (no config, exit 2) (155.2829ms)
+✔ isolate refuses a repo Amabie does not verify (no config, exit 2) (155.2829ms)
 ✔ isolate refuses a base whose own config is distrusted (1290.1344ms)
 ✔ create refuses under fake git — an unresolvable base cannot be isolated from (and nothing registers) (1379.0476ms)
 ✔ verify refuses a malformed or name-mismatched record without executing anything (1708.6658ms)
@@ -426,11 +426,11 @@
 ✔ under fake git, verify can NEVER report PASS — the fail-closed ceiling of the whole contract layer (1296.0021ms)
 ✔ list is honest with no registry, survives invalid records, and exits 0 (it never executes anything) (1890.785ms)
 ✔ remove refuses unregistered names; a vanished candidate is pruned honestly (record deleted, exit 0) (1838.6112ms)
-✔ uninstall refuses to delete .canary while candidates are registered (worker trees stay protectable) (1646.9912ms)
+✔ uninstall refuses to delete .amabie while candidates are registered (worker trees stay protectable) (1646.9912ms)
 ✔ Windows reserved device names are rejected as candidate names (misuse exit 3, before any git or filesystem work) (1570.7824ms)
 ✔ built CLI exists (run npm run build first) (1.1234ms)
 ✔ isolate --promote misuse exits 3 (name required, flags scoped, one mode) (2134.4458ms)
-✔ promote refuses a repo Canary does not trust (exit 2, before any record read) (235.0127ms)
+✔ promote refuses a repo Amabie does not trust (exit 2, before any record read) (235.0127ms)
 ✔ promote of a missing or malformed record delegates to verify (exit 2, identical refusal) (1727.7107ms)
 ✔ promote refuses an impersonated record (different baseRoot) with the canonical guard (1250.5283ms)
 ✔ under fake git, promote BLOCKS via live verify and can never apply or accept (1469.9287ms)
@@ -446,7 +446,7 @@
 ✔ the containment pre-gate stays grudgeless: a before-execution mandate stamps NO marker, and restoring bytes recovers cleanly (1591.3769ms)
 ✔ a config that promised nothing runs no containment gate (hand-written touched: []) (1470.9202ms)
 ▶ v1.3 MCP wiring: setup registers the server without owning anything it did not write
-  ✔ writes one entry that runs THIS Canary as an MCP server, and records it as an mcp touch (5.2432ms)
+  ✔ writes one entry that runs THIS Amabie as an MCP server, and records it as an mcp touch (5.2432ms)
   ✔ preserves a stranger's server entry byte-for-byte (7.322ms)
   ✔ REFUSES to replace a server under our key that we did not write, and changes nothing (2.2773ms)
   ✔ replaces its OWN previous entry, so a re-run is idempotent and never stacks (7.8248ms)
@@ -470,12 +470,12 @@
   ✔ does not expose acceptance, and says why when asked for it (318.1693ms)
   ✔ rejects an unknown tool and missing required arguments (489.7295ms)
 ✔ tools: a fixed template over operations the CLI already had (1823.3884ms)
-▶ a real call relays Canary own words and exit code, unmodified
-  ✔ canary_result returns the CLI envelope and tracks the child exit code (508.6694ms)
-  ✔ a cancelled/unknown candidate in canary_finish relays the refusal, not a verdict of its own (515.217ms)
-✔ a real call relays Canary own words and exit code, unmodified (1024.0674ms)
+▶ a real call relays Amabie own words and exit code, unmodified
+  ✔ amabie_result returns the CLI envelope and tracks the child exit code (508.6694ms)
+  ✔ a cancelled/unknown candidate in amabie_finish relays the refusal, not a verdict of its own (515.217ms)
+✔ a real call relays Amabie own words and exit code, unmodified (1024.0674ms)
 ▶ 1.1 metrics: off by default, one record per invocation
-  ✔ writes nothing when CANARY_METRICS is unset or empty (146.1903ms)
+  ✔ writes nothing when AMABIE_METRICS is unset or empty (146.1903ms)
   ✔ appends exactly one record per invocation with the outcome the process reported (304.9042ms)
   ✔ records flag NAMES and never a value, a path, or free text (304.3321ms)
   ✔ never changes a verdict — with or without instrumentation, and when the target is unwritable (609.53ms)
@@ -521,7 +521,7 @@
 ✔ detection (pure) (7.9359ms)
 ▶ setup
   ✔ happy path: READY, hook registered, evidence written, user repo untouched otherwise (1365.697ms)
-  ✔ re-run is idempotent: one Canary entry, no duplicates, user entry preserved (1878.0192ms)
+  ✔ re-run is idempotent: one Amabie entry, no duplicates, user entry preserved (1878.0192ms)
   ✔ malformed settings.json: refuse, exit NEEDS ATTENTION, bytes untouched (195.4095ms)
   ✔ S5: valid JSON with a non-list hooks section gets a plain-words refusal, not an internal crash (522.3494ms)
   ✔ failing project checks never print READY (NO PROOF, NO DONE) (2359.7566ms)
@@ -534,7 +534,7 @@
   ✔ pass -> silent allow (human never interrupted) (2247.116ms)
   ✔ failure -> decision:block with the reason (agent gets a repair turn) (1941.1438ms)
   ✔ loop guard: stop_hook_active allows with an honest systemMessage, never re-blocks (2073.9819ms)
-  ✔ repo without Canary wiring: exit 0, silent (stay out of the way) (155.2141ms)
+  ✔ repo without Amabie wiring: exit 0, silent (stay out of the way) (155.2141ms)
   ✔ S2: a config written by a different installation never executes — loud UNVERIFIED instead (1194.3542ms)
   ✔ S7: a parseable-but-wrong-shape config is treated as corrupt everywhere, never a crash (3253.0055ms)
   ✔ F-1: a half-written (truncated) config is loud UNVERIFIED at checkpoint, never silent; doctor stays NEEDS ATTENTION (1558.6844ms)
@@ -550,9 +550,9 @@
   ✔ S4: a FORGED or stale checkpoint file can never produce READY — only this run can (2153.0314ms)
   ✔ never set up -> NEEDS ATTENTION with the one command; outside git -> UNSUPPORTED (453.4332ms)
   ✔ 1.1: a project with NO package.json is set up from its own ecosystem and pinned (2147.9934ms)
-  ✔ uninstall removes exactly Canary, preserves everything else; repeat is safe (2867.6152ms)
+  ✔ uninstall removes exactly Amabie, preserves everything else; repeat is safe (2867.6152ms)
   ✔ S1: an out-of-repo touched path in the config is refused, untouched, loudly (1616.2864ms)
-  ✔ S6: partial cleanup keeps .canary so the promised retry can actually finish (1838.6996ms)
+  ✔ S6: partial cleanup keeps .amabie so the promised retry can actually finish (1838.6996ms)
   ✔ S2-adjacent: uninstall of a foreign-cliPath config is refused (cannot prove ownership) (1634.3709ms)
 ✔ doctor + uninstall (17721.4517ms)
 ▶ degenerate empty plan (hand-edited config must not fake green)
@@ -563,7 +563,7 @@
   ✔ setup refuses outright when a managed file is a link (dangling included) (322.5653ms)
 ✔ link containment (S3) (2814.8222ms)
 ▶ hook entry shape + ownership
-  ✔ hasCanaryEntry matches exact command only (0.2285ms)
+  ✔ hasAmabieEntry matches exact command only (0.2285ms)
 ✔ hook entry shape + ownership (0.3071ms)
 ▶ 1.1 workflow: work registers and opens in one step
   ✔ opens the candidate with the intent frozen into its record (4429.9222ms)
@@ -612,8 +612,8 @@
 ✔ builder binding alternative is refused (0.2027ms)
 ✔ builder binding malformed is refused (0.6399ms)
 
-NOT CONNECTED — Canary's local config (.canary/canary.local.json) is unreadable.
-next: run: canary setup --yes (rewrites it; your other settings are untouched)
+NOT CONNECTED — Amabie's local config (.amabie/amabie.local.json) is unreadable.
+next: run: amabie setup --yes (rewrites it; your other settings are untouched)
 ▶ Node detection/discovery unchanged behind the adapter
   ✔ detects package.json presence as the same plain fact 1.0 reported (3.17ms)
   ✔ discoverChecks answers with the 1.0 pm/note/plan, lockfiles first (6.6762ms)
@@ -979,7 +979,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ recognizes the LOCALIZED cmd.exe sentence this host actually printed, and the exit-code door (0.2006ms)
   ✔ does not fire on ordinary test output (an assertion failure is not a missing program) (0.1009ms)
 ✔ notFoundPrograms reads the loaders' published failure text (1.1317ms)
-▶ attribution: is Canary's environment the cause, or the project?
+▶ attribution: is Amabie's environment the cause, or the project?
   ✔ ENVIRONMENT: the child named a program that genuinely does not resolve in its directories (0.8582ms)
   ✔ PROJECT: the same text when the program DOES resolve (a project cannot print its way out of blame) (2.3322ms)
   ✔ ENVIRONMENT: a step that could not run at all (nothing about the project was measured) (0.095ms)
@@ -987,7 +987,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ PROJECT: a vanished directory alone never blames the environment for a real failure (0.105ms)
   ✔ PROJECT: a project-local tool npm provides is not an environment question (2.0033ms)
   ✔ aggregates a run: the environment cause wins, and EVERY remediation is printed (1.0449ms)
-✔ attribution: is Canary's environment the cause, or the project? (7.3442ms)
+✔ attribution: is Amabie's environment the cause, or the project? (7.3442ms)
 ▶ npm's own script PATH is part of the resolution walk
   ✔ includes node_modules/.bin for the step directory and its ancestors (0.8186ms)
 ✔ npm's own script PATH is part of the resolution walk (0.881ms)
@@ -1126,7 +1126,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.0821ms)
 ✔ post-GLM — execution-observation gate (rule 14) (1.86ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.1337ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.1337ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.0848ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.0919ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.0865ms)
@@ -1349,7 +1349,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
 ✔ round-3 secondary — crash & sweep signals reach the classification (610.3086ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.205ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (15.2887ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (15.2887ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (14.6036ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (12.2891ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (13.8775ms)
@@ -1365,7 +1365,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ Sol's accepted forms are now rejected in install-family commands (4.0983ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (36.9721ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (2.6652ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (4.2617ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (4.2617ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.3434ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (4.2098ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1471ms)
@@ -1398,9 +1398,9 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ 4. a subject-supplied test-reporter is refused (the reporter set stays closed) (2.2616ms)
   ✔ 5. printed TAP-shaped text cannot mint observation counts (835.2036ms)
      measured: the subject's write to fd 3 returned "EBADF"
-  ✔ 6. a subject cannot reach Canary fd 3 — or, if it can, the round fails closed (858.642ms)
+  ✔ 6. a subject cannot reach Amabie fd 3 — or, if it can, the round fails closed (858.642ms)
   ✔ 7. an absent observation routes the verdict to INCONCLUSIVE (strong labels unreachable) (0.4011ms)
-  ✔ 8. the observer door adds ONLY Canary-owned variables (no env-merge) (5.6355ms)
+  ✔ 8. the observer door adds ONLY Amabie-owned variables (no env-merge) (5.6355ms)
 ✔ node:test observation through the executor round path (3718.0767ms)
 ▶ node:test runner detection is narrow
   ✔ only an EXECUTED node running --test is a runner (0.2397ms)
@@ -1413,13 +1413,13 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ 1. the required runner must be the runner that reported (0.344ms)
   ✔ 1b. a round that states NO requirement is refused (not merely weak) (0.1367ms)
   ✔ 2. the required version must match what the observer reported (0.1546ms)
-  ✔ 3. bye.counts may not replace what Canary re-counted (0.1791ms)
+  ✔ 3. bye.counts may not replace what Amabie re-counted (0.1791ms)
   ✔ 3b. a live reject (a result for a test never watched run) fails the round closed (0.1454ms)
   ✔ 4. the per-round nonce must round-trip (0.1554ms)
   ✔ 4b. neither pid nor ppid belonging to this spawn is refused (0.1892ms)
   ✔ 5. printed text alone cannot establish counts (0.2121ms)
   ✔ 5b. no summary text at all is refused, even with a clean frame stream (0.163ms)
-  ✔ identity drift between what Canary hashed and what is required is refused (0.1216ms)
+  ✔ identity drift between what Amabie hashed and what is required is refused (0.1216ms)
   ✔ an exit code contradicting the watched lifecycle is refused in both directions (0.1835ms)
   ✔ a killed round claims nothing about tests, so it is not an exit contradiction (0.1099ms)
 ✔ neutral channel: every required property is enforced (2.5442ms)
@@ -1431,7 +1431,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ a mocha round with no `runner` field validates on mocha's rules (0.2386ms)
   ✔ a broken mocha hello still reports the mocha-specific reason (0.1555ms)
 ✔ the mocha channel keeps its own rules (no silent generalization) (0.4725ms)
-﹣ pytest observation through the executor round path (0.3667ms) # no workspace-local pytest interpreter (create _toolchains/py and pip install pytest, or set CANARY_PYTEST_PYTHON)
+﹣ pytest observation through the executor round path (0.3667ms) # no workspace-local pytest interpreter (create _toolchains/py and pip install pytest, or set AMABIE_PYTEST_PYTHON)
 ▶ Python observation through the executor round path
   ✔ 1. a real project run yields observed counts that AGREE with the interpreter summary (1098.9817ms)
   ✔ 2/4. the identity and the nonce are RE-DERIVABLE, so prove replays a real validation (1146.8803ms)
@@ -1440,7 +1440,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ 5. printed stdout cannot mint observation counts (1115.7347ms)
   ✔ 6. a FABRICATED unittest callback is rejected live, and the verdict downgrades (1133.3375ms)
   ✔ 7. an absent observation routes the verdict to INCONCLUSIVE (strong labels unreachable) (0.3064ms)
-  ✔ 8. the observer door adds ONLY Canary-owned variables (no env-merge) (3.1787ms)
+  ✔ 8. the observer door adds ONLY Amabie-owned variables (no env-merge) (3.1787ms)
 ✔ Python observation through the executor round path (4686.3276ms)
 ▶ runner detection is narrow
   ✔ only an EXECUTED python running a known test module is a runner (0.1616ms)
@@ -1493,7 +1493,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
 ▶ S1 — a caller-PATH "ps" liar cannot control the sweep
   ﹣ resolvePsBinary never returns a PATH-found binary; the sweep env has no caller PATH (0.5413ms) # POSIX liar harness
   ✔ the production fallback reads a REAL table (trusted default, sanitized env) (2.5545ms)
-  ﹣ the SPAWN SITE itself never inherits caller env — leak canary (wiring, not just the helper) (0.0761ms) # win32: no sh harness; win32 sites pinned by native env shape + trusted resolution
+  ﹣ the SPAWN SITE itself never inherits caller env — leak amabie (wiring, not just the helper) (0.0761ms) # win32: no sh harness; win32 sites pinned by native env shape + trusted resolution
   ﹣ a forged binary given EXPLICITLY is parsed as inert data, never trusted as a source (0.075ms) # POSIX sh harness
 ✔ S1 — a caller-PATH "ps" liar cannot control the sweep (4.2907ms)
 ▶ S2 — trusted resolution for Windows tools (injected SystemRoot, any platform)
@@ -1514,7 +1514,7 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
 ✔ audit F6 — child env observation: declared == observed (1958.0359ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (2.6931ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.241ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.241ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (3.704ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.2023ms)
@@ -1653,15 +1653,15 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ counts tokens per turn and in total (2.943ms)
   ✔ records WHICH model served the run, and where the token figure came from (0.9286ms)
   ✔ measures the bytes the model was SHOWN, which is the context cost (0.3006ms)
-  ✔ attributes Canary-visible bytes separately from everything else (1.1672ms)
-  ✔ counts how many times the MODEL ran the project checks (the work Canary takes over) (0.228ms)
+  ✔ attributes Amabie-visible bytes separately from everything else (1.1672ms)
+  ✔ counts how many times the MODEL ran the project checks (the work Amabie takes over) (0.228ms)
   ✔ counts shell commands issued through whichever tool the CLI exposes (0.2006ms)
   ✔ measures the tail: turns spent after the last file edit (0.2167ms)
   ✔ tolerates shape drift instead of throwing (0.2474ms)
   ✔ handles an empty stream without inventing anything (0.1757ms)
 ✔ stream ledger (8.1359ms)
-▶ stream ledger: what counts as "the model invoked Canary"
-  ✔ does not count: a quoted path that merely contains "canary" (0.3146ms)
+▶ stream ledger: what counts as "the model invoked Amabie"
+  ✔ does not count: a quoted path that merely contains "amabie" (0.3146ms)
   ✔ does not count: same, in a compound command the plain arm really ran (0.0807ms)
   ✔ does not count: a file whose name contains it (0.0726ms)
   ✔ does not count: an environment variable, not an invocation (0.0541ms)
@@ -1669,15 +1669,15 @@ next: run: canary setup --yes (rewrites it; your other settings are untouched)
   ✔ counts: invoked through a package runner (0.0924ms)
   ✔ counts: chained after another command (0.1009ms)
   ✔ counts: the repository CLI entry point directly (0.0819ms)
-  ✔ counts: a canary binary addressed by path (0.0752ms)
-  ✔ keeps a plain-arm stream free of Canary bytes even though the path says canary (0.1505ms)
-✔ stream ledger: what counts as "the model invoked Canary" (1.5115ms)
+  ✔ counts: an amabie binary addressed by path (0.0752ms)
+  ✔ keeps a plain-arm stream free of Amabie bytes even though the path says amabie (0.1505ms)
+✔ stream ledger: what counts as "the model invoked Amabie" (1.5115ms)
 ▶ stream ledger: the measured wire format (partial per-message usage)
   ✔ does not count one message twice when the CLI emits it one content block per event (0.3587ms)
   ✔ refuses to sum partial per-message usage into a token total (0.1657ms)
   ✔ marks the tail as unavailable instead of attributing tokens it cannot attribute (0.1094ms)
   ✔ measures hook output, which is context the model was given for free (0.0929ms)
-  ✔ recognises Canary's own Stop hook from the stream, not by inference (0.1407ms)
+  ✔ recognises Amabie's own Stop hook from the stream, not by inference (0.1407ms)
   ✔ detects a refusal that reached the model, separately from hook events (0.327ms)
 ✔ stream ledger: the measured wire format (partial per-message usage) (1.392ms)
 ▶ verdict: an oracle that could not run is never a verdict about the code

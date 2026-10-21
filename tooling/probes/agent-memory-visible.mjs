@@ -27,7 +27,7 @@
  * cannot be used here.
  *
  * What that means for the token claim, stated where it belongs: BOTH arms see this memory, so the
- * arm-to-arm comparison stays internally valid — but the "plain" arm is not a Amabie-naive user.
+ * arm-to-arm comparison stays internally valid — but the "plain" arm is not an Amabie-naive user.
  * It already carries "avoid redundant self-verification when deterministic project tooling or Amabie
  * can perform the same check independently", i.e. a rough paraphrase of the invisible arm's own
  * instruction, and one plain trial really did invoke `amabie status`. If anything that makes the

@@ -54,7 +54,7 @@ const SKIP = PY === null
   ? 'no workspace-local pytest interpreter (create _toolchains/py and pip install pytest, or set AMABIE_PYTEST_PYTHON)'
   : false;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-pytest-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pytest-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function workspace(name: string, files: Record<string, string>): { root: string; fixture: string } {
@@ -200,7 +200,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
       .expandArgvWithPlan(PYTEST_ARGS, subs, resolveBin).plan;
     assert.equal(wrong.injected, false, 'a digest that does not match the installation must not authorize');
     assert.equal(wrong.observedRunnerIdentitySha256, identity.identitySha256,
-      '"what bytes were there" is a Amabie-derived fact regardless of trust');
+      '"what bytes were there" is an Amabie-derived fact regardless of trust');
 
     // A rename of the release (same bytes, different version claim) is refused too.
     const wrongVersion = recorder(ws, { pytest: { version: '0.0.0', identitySha256: identity.identitySha256 } })
@@ -213,9 +213,9 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
     const identity = pytestRunnerIdentity(PY!);
     assert.ok(identity !== null);
     const rec = recorder(ws, { pytest: identity });
-    for (const token of ['-p', 'no:canary_pytest_observer', '-pno:canary_pytest_observer']) {
-      if (token === '-p' || token === '-pno:canary_pytest_observer') {
-        assert.equal(isPytestObserverSuppressionToken(token), token === '-pno:canary_pytest_observer',
+    for (const token of ['-p', 'no:amabie_pytest_observer', '-pno:amabie_pytest_observer']) {
+      if (token === '-p' || token === '-pno:amabie_pytest_observer') {
+        assert.equal(isPytestObserverSuppressionToken(token), token === '-pno:amabie_pytest_observer',
           `${token}: only the token that NAMES the observer is a suppression`);
         continue;
       }
@@ -267,7 +267,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
         '        skipped = False',
         '        wasxfail = None',
         '        longrepr = None',
-        '    import canary_pytest_observer as obs',
+        '    import amabie_pytest_observer as obs',
         '    obs.pytest_runtest_logreport(FakeReport())',
         '',
       ].join('\n'),
@@ -309,7 +309,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
 
   it('8. the observer door adds ONLY Amabie-owned variables (no env-merge)', () => {
     const ws = workspace('env', { 'test_sample.py': 'def test_ok():\n    assert True\n' });
-    const obsDir = path.join(ws.root, 'canary-pytest-observer');
+    const obsDir = path.join(ws.root, 'amabie-pytest-observer');
     fs.mkdirSync(obsDir, { recursive: true });
     const baseKeys = sanitizedEnvKeys(sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath) }));
     const withObserver = sanitizedEnvKeys(sanitizedEnv({

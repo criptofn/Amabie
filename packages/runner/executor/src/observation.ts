@@ -30,7 +30,7 @@
  *            lifecycle Amabie watched end-to-end, agreeing with its own text.
  *
  * TRUST TIER (docs/exec-authority.md keeps the canonical list): VALID frames
- * are a AMABIE-CONTROLLED OBSERVATION bound to (a) argv re-derivable as
+ * are an AMABIE-CONTROLLED OBSERVATION bound to (a) argv re-derivable as
  * Amabie's injection, (b) runner bytes matching a pin, (c) hello.pid equal to
  * the PID Amabie spawned, (d) the preload's own version marker. They are NOT
  * authenticated provenance: there is no cryptographic trust root, and code
@@ -51,7 +51,7 @@ import type { ExecutionObservation, AbsentKind } from '@amabie/classification';
 
 /** Bumped ONLY if the frame protocol changes incompatibly; prove compares the
  * retained preload bytes against the current source, so drift is caught twice. */
-export const OBSERVER_VERSION = 'canary-observer-v1';
+export const OBSERVER_VERSION = 'amabie-observer-v1';
 
 /** A VALID observation's frame kinds may never include these appearing. */
 const KNOWN_KINDS = ['hello', 'pass', 'pending', 'fail', 'retry', 'reject', 'bye', 'adapter-error'];

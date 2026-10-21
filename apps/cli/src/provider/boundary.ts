@@ -253,8 +253,8 @@ export function observeConfinedDeployment(
 ): ConfinedDeploymentState {
   const digest = toolsDigest();
   const state: RecordState = readConfinedMeasurement(store.root, {
-    ...((env.AMABIE_CONFINED_MAX_AGE_MS ?? env.CANARY_CONFINED_MAX_AGE_MS) !== undefined && /^\d+$/.test(env.AMABIE_CONFINED_MAX_AGE_MS ?? env.CANARY_CONFINED_MAX_AGE_MS ?? '')
-      ? { maxAgeMs: Number(env.AMABIE_CONFINED_MAX_AGE_MS ?? env.CANARY_CONFINED_MAX_AGE_MS) }
+    ...(env.AMABIE_CONFINED_MAX_AGE_MS !== undefined && /^\d+$/.test(env.AMABIE_CONFINED_MAX_AGE_MS ?? '')
+      ? { maxAgeMs: Number(env.AMABIE_CONFINED_MAX_AGE_MS) }
       : {}),
     ...(now !== undefined ? { now } : {}),
     digest,

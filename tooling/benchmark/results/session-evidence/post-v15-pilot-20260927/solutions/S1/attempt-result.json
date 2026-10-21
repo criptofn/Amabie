@@ -1,12 +1,12 @@
 {
-  "schema": "canary-release-validation-solution/1",
+  "schema": "amabie-release-validation-solution/1",
   "label": "S1",
   "probe": "tooling/probes/v15-prepare-validation-solution.mjs",
   "probeSha256": "ff2e3a8a458fed45573618d635526ccb13c77f380316b277d64c04c322ca12be",
-  "canaryPath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
-  "canaryBinarySha256": "ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a",
+  "amabiePath": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-post-v15-improved-install-20260927\\node_modules\\@canary-rn\\cli\\dist\\main.js",
+  "amabieBinarySha256": "ba741bbeaa5d513b50e96385b999c7b0cf82392f9ae85e5f046f45f360e4ed7a",
   "publishedArtifactSha256": "8243f3fc0c1f15fd5ec9977ba4ba240af5aeea1a4ff4d2c3027dd89fac8caf25",
-  "taskPath": "C:\\Users\\Johannes\\Desktop\\canary\\_canary-data\\worktrees\\canary-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\S1-idlookup-ambiguity.md",
+  "taskPath": "C:\\Users\\Johannes\\Desktop\\amabie\\_canary-data\\worktrees\\amabie-product-progress\\tooling\\benchmark\\results\\session-evidence\\v15-realworld\\tasks\\S1-idlookup-ambiguity.md",
   "taskSha256": "a06a666f8d7674b266d5d721c1872b38b48c2cd4071ec3cc8fc36f7bcd5ec57b",
   "baselineHead": "4255fa14049b479b479be1148df20bf0d097926c",
   "operation": {

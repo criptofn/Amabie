@@ -1,8 +1,8 @@
-# Canary: unvollständige Anforderungsbindungen vor dem Schreiben ablehnen
+# Amabie: unvollständige Anforderungsbindungen vor dem Schreiben ablehnen
 
 ## Nachgewiesener Fehler
 
-`canary bind` sammelte ausschließlich erkannte `--requirement`-Werte und
+`amabie bind` sammelte ausschließlich erkannte `--requirement`-Werte und
 übersprang den Rest. Nach einer gültigen Anforderung führten ein Tippfehler,
 eine fehlende zweite Angabe, leerer Text und zusätzliche unmarkierte Texte zu
 Exit 0 und einer teilweise geschriebenen Erklärung. Ein abschließendes
@@ -17,7 +17,7 @@ Schreibwirkungen, keine vollständige semantische Aufgabenabdeckung.
 ## Korrektur
 
 Commit `0245268c98ef0fa20bf1c3642b74fcf4dbef2cf0` auf `codex/bind-intake`,
-aufbauend auf dem Canary-Produktstand `bfa7feb`.
+aufbauend auf dem Amabie-Produktstand `bfa7feb`.
 
 Die gesamte Eingabe wird vor jedem Schreibzugriff geprüft. Unbekannte Optionen,
 zusätzliche Positionsargumente, fehlende oder leere Anforderungen und genaue
@@ -28,7 +28,7 @@ Gültige Texte mit Dash-Präfix sowie der bestehende Reseal-Ablauf bleiben nutzb
 
 ## Ausgeführter Vergleich
 
-Evidenzwurzel: `C:/Users/Johannes/Desktop/canary/_canary-data/evidence`.
+Evidenzwurzel: `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence`.
 
 | Stand | Instrument | Ergebnis |
 |---|---|---|
@@ -51,5 +51,5 @@ identische Anforderungsdigests, echte Versiegelung, Ablehnung fremder Änderunge
 genau ein JSON-Ergebnis beim Reseal und Nicht-Node-Projekte.
 
 Die vollständigen Prüfungen des kombinierten Produktstands stehen noch aus.
-Die laufende Productization-Prüfung im anderen Canary-Checkout prüft ausdrücklich
+Die laufende Productization-Prüfung im anderen Amabie-Checkout prüft ausdrücklich
 `bfa7feb`, nicht diese Korrektur. Diese Änderung allein belegt keine allgemeine 8/10.

@@ -182,9 +182,9 @@ public static class AmabieConfined {
       // changes: Git's GetLongPathName fallback can resolve this root directly.
       // Never overwrite an existing device; absence or allocation failure is fatal.
       if (gitDirectoryAlias) {
-        // Keep the mutex name stable so an older Canary launcher shares this lock during upgrades.
+        // Keep the mutex name stable so an older Amabie launcher shares this lock during upgrades.
         // A contended/unavailable namespace fails closed, never uses a real cwd.
-        aliasLock = new Mutex(false, "Local\\Canary.SandboxDrive." + WindowsIdentity.GetCurrent().User.Value);
+        aliasLock = new Mutex(false, "Local\\Amabie.SandboxDrive." + WindowsIdentity.GetCurrent().User.Value);
         try { ownsAliasLock = aliasLock.WaitOne(10000); }
         catch (AbandonedMutexException) { ownsAliasLock = true; }
         if (!ownsAliasLock) throw new InvalidOperationException("sandbox drive allocation busy; no fallback");
@@ -231,7 +231,7 @@ public static class AmabieConfined {
       var startup = new SIX(); startup.info.cb = (uint)Marshal.SizeOf(startup); startup.attributes = attributes;
       // A diagnostic channel: the exact command line and cwd handed to the kernel, so a launch
       // failure can be attributed to the boundary or to the tool without guessing.
-      string record = Environment.GetEnvironmentVariable("AMABIE_LAUNCH_RECORD") ?? Environment.GetEnvironmentVariable("CANARY_LAUNCH_RECORD");
+      string record = Environment.GetEnvironmentVariable("AMABIE_LAUNCH_RECORD") ?? Environment.GetEnvironmentVariable("AMABIE_LAUNCH_RECORD");
       if (!String.IsNullOrEmpty(record))
         File.WriteAllText(record, "cwd=" + directory + "\ncmd=" + command + "\n");
       Check(CreateProcessAsUserW(restricted, null, new StringBuilder(command), IntPtr.Zero, IntPtr.Zero, false,

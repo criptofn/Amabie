@@ -15,7 +15,7 @@
  *     against the plain arm. "Tokens per successful task" alone would hide a raw regression.
  *
  * Usage:
- *   node tooling/benchmark/bench.mjs [--tasks a,b] [--arms plain,canary,invisible,workflow]
+ *   node tooling/benchmark/bench.mjs [--tasks a,b] [--arms plain,amabie,invisible,workflow]
  *                                    [--trials N] [--variant normal|adversarial]
  *                                    [--timeout-min N] [--label name] [--keep]
  *   node tooling/benchmark/bench.mjs --from <label>        # aggregate stored trials only
@@ -104,7 +104,7 @@ if (aggregateOnly !== null) {
           '--label', name, '--out', outFile, '--timeout-min', String(timeoutMin), '--variant', variant];
         if (keep) args.push('--keep');
         // The operator-declared configuration: register the fixture's own stated requirements before
-        // the worker starts, so Canary has authorized requirements to hold the work to.
+        // the worker starts, so Amabie has authorized requirements to hold the work to.
         if (registerRequirements) args.push('--register-requirements');
         const r = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: (timeoutMin + 8) * 60_000, windowsHide: true });
         done += 1;
@@ -169,17 +169,17 @@ function summarise(rs) {
   const totals = all('totalTokens');
   const stream = (j) => j.record.stream ?? null;
   const bytes = usable.map((j) => stream(j)?.bytes?.toolResultTotal).filter((v) => typeof v === 'number');
-  const canaryBytes = usable.map((j) => stream(j)?.bytes?.canaryVisible).filter((v) => typeof v === 'number');
+  const amabieBytes = usable.map((j) => stream(j)?.bytes?.amabieVisible).filter((v) => typeof v === 'number');
   const checks = usable.map((j) => stream(j)?.commands?.checks).filter((v) => typeof v === 'number');
-  const canaryCmds = usable.map((j) => stream(j)?.commands?.canary).filter((v) => typeof v === 'number');
+  const amabieCmds = usable.map((j) => stream(j)?.commands?.amabie).filter((v) => typeof v === 'number');
   const tailTokens = usable.map((j) => stream(j)?.tail?.tokensAfterLastEdit).filter((v) => typeof v === 'number');
-  const canaryHookFromStream = usable.map((j) => stream(j)?.hooks?.canaryCount).filter((v) => typeof v === 'number');
+  const amabieHookFromStream = usable.map((j) => stream(j)?.hooks?.amabieCount).filter((v) => typeof v === 'number');
   const withBefore = usable.filter((j) => typeof j.record.visibleBefore?.exitCode === 'number');
-  // Canary's own honesty, per arm: READY while the correctness oracle failed is the product's
+  // Amabie's own honesty, per arm: READY while the correctness oracle failed is the product's
   // worst failure mode, so it is summarised beside the token numbers (the KPI verdict needs it).
-  const canaryRows = judged.filter((j) => j.record.canary !== null && j.v.oracleKind === 'correctness' && j.v.oracleUsable);
+  const amabieRows = judged.filter((j) => j.record.amabie !== null && j.v.oracleKind === 'correctness' && j.v.oracleUsable);
   /**
-   * FALSE RED IS ONLY MEANINGFUL WHEN CANARY ACTUALLY JUDGED THE WORK.
+   * FALSE RED IS ONLY MEANINGFUL WHEN AMABIE ACTUALLY JUDGED THE WORK.
    *
    * MEASURED (v1.2): a trial run with `--register-requirements` on a NON-workflow arm registers
    * requirements that nothing binds, and the Stop hook then refuses work the correctness oracle says
@@ -193,10 +193,10 @@ function summarise(rs) {
    * reported so a reader can see what was set aside and why.
    */
   const verdictIsAboutTheCode = (j) => j.record.requirementConfiguration === undefined && j.record.configMismatch == null;
-  const excludedFromAgreement = canaryRows.filter((j) => !verdictIsAboutTheCode(j));
-  const judgeable = canaryRows.filter(verdictIsAboutTheCode);
-  const falseGreen = judgeable.filter((j) => j.record.canary?.doctorExitCode === 0 && !j.v.deliveredCorrect);
-  const falseRed = judgeable.filter((j) => j.record.canary?.doctorExitCode !== 0 && j.v.deliveredCorrect);
+  const excludedFromAgreement = amabieRows.filter((j) => !verdictIsAboutTheCode(j));
+  const judgeable = amabieRows.filter(verdictIsAboutTheCode);
+  const falseGreen = judgeable.filter((j) => j.record.amabie?.doctorExitCode === 0 && !j.v.deliveredCorrect);
+  const falseRed = judgeable.filter((j) => j.record.amabie?.doctorExitCode !== 0 && j.v.deliveredCorrect);
   return {
     trials: rs.length,
     usable: usable.length,
@@ -214,7 +214,7 @@ function summarise(rs) {
     deliveredCorrectPct: pct(delivered.length, usable.length),
     states: usable.reduce((acc, j) => { acc[j.v.state] = (acc[j.v.state] ?? 0) + 1; return acc; }, {}),
     regressions: withBefore.filter((j) => j.record.visibleBefore.exitCode === 0 && j.record.visible.exitCode !== 0).length,
-    canaryTrials: canaryRows.length,
+    amabieTrials: amabieRows.length,
     falseGreen: falseGreen.length,
     falseRed: falseRed.length,
     // Trials whose verdict reflects a registration configuration rather than a judgement of the code,
@@ -250,15 +250,15 @@ function summarise(rs) {
     turnsMean: round(mean(usable.map((j) => j.record.agentResult?.numTurns).filter((v) => typeof v === 'number')), 1),
     wallSecsMean: round(mean(usable.map((j) => j.record.agent.secs).filter((v) => typeof v === 'number'))),
     agentVisibleBytesMean: round(mean(bytes)),
-    canaryVisibleBytesMean: round(mean(canaryBytes)),
+    amabieVisibleBytesMean: round(mean(amabieBytes)),
     checkRunsByModelMean: round(mean(checks), 1),
-    canaryCommandsByModelMean: round(mean(canaryCmds), 1),
+    amabieCommandsByModelMean: round(mean(amabieCmds), 1),
     tokensAfterCodeCorrect: round(mean(tailTokens)),
     // How many trials could attribute tokens to the post-edit tail AT ALL. On this CLI's wire
     // format per-message usage is partial, so `null` here is an honest measurement limit, not a
     // zero — the difference is reported so a null can never be read as "no tokens were spent".
     tokensAfterCodeCorrectTrials: tailTokens.length,
-    canaryHookSeenInStream: canaryHookFromStream.filter((c) => c > 0).length,
+    amabieHookSeenInStream: amabieHookFromStream.filter((c) => c > 0).length,
     assistantEventsMean: round(mean(usable.map((j) => stream(j)?.assistantEvents).filter((v) => typeof v === 'number')), 1),
     hookOutputBytesMean: round(mean(usable.map((j) => stream(j)?.bytes?.hookOutput).filter((v) => typeof v === 'number'))),
     tokenSource: [...new Set(ledgerEligible.map((j) => j.record.agentResult?.usage?.source).filter(Boolean))],
@@ -289,7 +289,7 @@ for (const task of tasks) {
   for (const arm of arms) taskSummary[task][arm] = summarise(counted.filter((r) => r.task === task && r.arm === arm));
 }
 
-/** The KPI the owner set: raw model tokens WITH Canary minus WITHOUT, per comparable task. */
+/** The KPI the owner set: raw model tokens WITH Amabie minus WITHOUT, per comparable task. */
 const tokenDelta = {};
 if (armSummary.plain !== undefined) {
   for (const arm of arms) {
@@ -349,43 +349,43 @@ if (armSummary.plain !== undefined) {
   }
 }
 
-const canaryAgreement = counted
-  .filter((r) => r.arm !== 'plain' && r.canary !== null)
+const amabieAgreement = counted
+  .filter((r) => r.arm !== 'plain' && r.amabie !== null)
   .map((r) => {
     const v = judgeTrial(r, classifyText);
     return {
       label: r.label, task: r.task, arm: r.arm, oracleKind: v.oracleKind,
-      canaryVerdict: r.canary?.verdict ?? null,
-      canaryGreen: r.canary?.doctorExitCode === 0,
+      amabieVerdict: r.amabie?.verdict ?? null,
+      amabieGreen: r.amabie?.doctorExitCode === 0,
       hiddenGreen: v.deliveredCorrect,
-      falseGreen: v.oracleKind === 'correctness' && r.canary?.doctorExitCode === 0 && !v.deliveredCorrect,
+      falseGreen: v.oracleKind === 'correctness' && r.amabie?.doctorExitCode === 0 && !v.deliveredCorrect,
       // Excluded when the verdict reflects a registration configuration rather than a judgement of the
       // code — see summarise(). `run-trial.mjs` records `requirementConfiguration` on those trials and
       // warns on stderr; without this, every one of them inflated the false-red headline.
-      falseRed: v.oracleKind === 'correctness' && r.canary?.doctorExitCode !== 0 && v.deliveredCorrect
+      falseRed: v.oracleKind === 'correctness' && r.amabie?.doctorExitCode !== 0 && v.deliveredCorrect
         && r.requirementConfiguration === undefined && r.configMismatch == null,
       verdictNotAboutTheCode: r.requirementConfiguration !== undefined || r.configMismatch != null,
-      hookFired: v.canary.hookFired, hookBlocked: v.canary.hookBlocked,
+      hookFired: v.amabie.hookFired, hookBlocked: v.amabie.hookBlocked,
       // "The gate ran" has one authoritative source: the checkpoint file the hook wrote during the
       // run. The stream is a SECONDARY source, and it has a MEASURED limit — this CLI emits no
       // hook events for the project-level Stop hook (a trial whose hook demonstrably fired had an
       // empty hook list), so a stream with no hook events is "not observable", never "disagrees".
       // What the stream can show is that a refusal REACHED the model, which is recorded separately.
-      hookSeenInStream: r.stream === undefined ? null : (r.stream.hooks?.canaryCount ?? 0) > 0,
+      hookSeenInStream: r.stream === undefined ? null : (r.stream.hooks?.amabieCount ?? 0) > 0,
       refusalReachedModel: r.stream === undefined ? null : (r.stream.gate?.messages ?? 0) > 0,
-      hookSourcesAgree: r.stream === undefined || (r.stream.hooks?.canaryCount ?? 0) === 0
+      hookSourcesAgree: r.stream === undefined || (r.stream.hooks?.amabieCount ?? 0) === 0
         ? null
-        : v.canary.hookFired === ((r.stream.hooks?.canaryCount ?? 0) > 0),
-      promotions: v.canary.promotions, baseMoved: v.canary.baseMoved,
+        : v.amabie.hookFired === ((r.stream.hooks?.amabieCount ?? 0) > 0),
+      promotions: v.amabie.promotions, baseMoved: v.amabie.baseMoved,
     };
   });
-const correctnessOnly = canaryAgreement.filter((x) => x.oracleKind === 'correctness');
+const correctnessOnly = amabieAgreement.filter((x) => x.oracleKind === 'correctness');
 
 const excluded = invalidated
   .map((x) => ({ label: x.record.label, task: x.record.task, arm: x.record.arm, reason: x.inv.reason }));
 
 const report = redactDeep({
-  schema: 'canary-benchmark/2',
+  schema: 'amabie-benchmark/2',
   label,
   generatedAt: new Date().toISOString(),
   instrument: { version: instrument.version, hash: instrument.hash, files: instrument.files, product: instrument.product },
@@ -400,19 +400,19 @@ const report = redactDeep({
   tasks: taskSummary,
   tokenDelta,
   kpi,
-  canaryAgreement: {
-    trials: canaryAgreement.length,
+  amabieAgreement: {
+    trials: amabieAgreement.length,
     correctnessTrials: correctnessOnly.length,
     falseGreen: correctnessOnly.filter((x) => x.falseGreen).length,
     falseRed: correctnessOnly.filter((x) => x.falseRed).length,
-    hookFired: canaryAgreement.filter((x) => x.hookFired).length,
-    hookBlocked: canaryAgreement.filter((x) => x.hookBlocked).length,
-    hookSeenInStream: canaryAgreement.filter((x) => x.hookSeenInStream === true).length,
-    refusalReachedModel: canaryAgreement.filter((x) => x.refusalReachedModel === true).length,
-    hookSourceDisagreements: canaryAgreement.filter((x) => x.hookSourcesAgree === false).map((x) => x.label),
-    hookSourceUnknown: canaryAgreement.filter((x) => x.hookSourcesAgree === null).length,
-    promotions: canaryAgreement.filter((x) => x.promotions > 0).length,
-    detail: canaryAgreement,
+    hookFired: amabieAgreement.filter((x) => x.hookFired).length,
+    hookBlocked: amabieAgreement.filter((x) => x.hookBlocked).length,
+    hookSeenInStream: amabieAgreement.filter((x) => x.hookSeenInStream === true).length,
+    refusalReachedModel: amabieAgreement.filter((x) => x.refusalReachedModel === true).length,
+    hookSourceDisagreements: amabieAgreement.filter((x) => x.hookSourcesAgree === false).map((x) => x.label),
+    hookSourceUnknown: amabieAgreement.filter((x) => x.hookSourcesAgree === null).length,
+    promotions: amabieAgreement.filter((x) => x.promotions > 0).length,
+    detail: amabieAgreement,
   },
   invalidated: excluded,
   unusable,
@@ -426,9 +426,9 @@ const report = redactDeep({
     }; })(),
     tokens: r.agentResult?.usage ?? null, turns: r.agentResult?.numTurns ?? null, secs: r.agent.secs,
     checkRunsByModel: r.stream?.commands?.checks ?? null,
-    canaryCommandsByModel: r.stream?.commands?.canary ?? null,
+    amabieCommandsByModel: r.stream?.commands?.amabie ?? null,
     agentVisibleBytes: r.stream?.bytes?.toolResultTotal ?? null,
-    canaryHookInStream: r.stream?.hooks?.canaryCount ?? null,
+    amabieHookInStream: r.stream?.hooks?.amabieCount ?? null,
     tokensAfterLastEdit: r.stream?.tail?.tokensAfterLastEdit ?? null,
     invalidated: invalidationFor(r) !== null ? true : undefined,
   })),
@@ -478,7 +478,7 @@ lines.push('repository whose own suite is red is not a delivery. `UNDISCLOSED` i
 lines.push('about: a success claim, code not in the required state, and no word about what was left undone.');
 lines.push('');
 
-lines.push('## Raw token cost (the KPI: Canary must not ADD model tokens)');
+lines.push('## Raw token cost (the KPI: Amabie must not ADD model tokens)');
 lines.push('');
 lines.push('| Arm | mean | median | p75 | p90 | output (mean) | turns (mean) | wall (mean s) | tokens/candidate-correct | tokens/delivered-correct | delivered per M tokens |');
 lines.push('|---|---|---|---|---|---|---|---|---|---|---|');
@@ -499,15 +499,15 @@ if (Object.keys(tokenDelta).length > 0) {
 
 lines.push('## What the model was shown, and what it spent time on');
 lines.push('');
-lines.push('| Arm | stream coverage | agent-visible bytes (mean) | Canary-visible bytes (mean) | checks run BY THE MODEL (mean) | Canary commands BY THE MODEL (mean) | tokens after the last edit (mean) |');
+lines.push('| Arm | stream coverage | agent-visible bytes (mean) | Amabie-visible bytes (mean) | checks run BY THE MODEL (mean) | Amabie commands BY THE MODEL (mean) | tokens after the last edit (mean) |');
 lines.push('|---|---|---|---|---|---|---|');
 for (const arm of arms) {
   const s = armSummary[arm];
-  lines.push(`| ${arm} | ${s.streamCoverage}/${s.usable} | ${fmt(s.agentVisibleBytesMean)} | ${fmt(s.canaryVisibleBytesMean)} | ${fmt(s.checkRunsByModelMean)} | ${fmt(s.canaryCommandsByModelMean)} | ${fmt(s.tokensAfterCodeCorrect)} (${s.tokensAfterCodeCorrectTrials}/${s.usable} attributable) |`);
+  lines.push(`| ${arm} | ${s.streamCoverage}/${s.usable} | ${fmt(s.agentVisibleBytesMean)} | ${fmt(s.amabieVisibleBytesMean)} | ${fmt(s.checkRunsByModelMean)} | ${fmt(s.amabieCommandsByModelMean)} | ${fmt(s.tokensAfterCodeCorrect)} (${s.tokensAfterCodeCorrectTrials}/${s.usable} attributable) |`);
 }
 lines.push('');
-lines.push('A successful verification should add ~zero model-visible bytes; the Canary-visible column');
-lines.push('measures exactly that, and `checks run BY THE MODEL` measures the work Canary is supposed to');
+lines.push('A successful verification should add ~zero model-visible bytes; the Amabie-visible column');
+lines.push('measures exactly that, and `checks run BY THE MODEL` measures the work Amabie is supposed to');
 lines.push('take over.');
 lines.push('');
 lines.push(`Token accounting (named per arm, because it is a measurement decision): ${report.arms[arms[0]]?.tokenSource?.join(', ') || 'n/a — these records predate the stream ledger'}.`);
@@ -540,14 +540,14 @@ lines.push('assistant event while the session total reports output), so it is re
 lines.push('a total; "tokens after the last edit" is attributed only for trials where it is trustworthy.');
 lines.push('');
 
-lines.push('## Canary\'s verdict vs the independent oracle');
+lines.push('## Amabie\'s verdict vs the independent oracle');
 lines.push('');
-lines.push(`- trials with a Canary verdict: **${report.canaryAgreement.trials}** (${report.canaryAgreement.correctnessTrials} correctness, ${report.canaryAgreement.trials - report.canaryAgreement.correctnessTrials} integrity)`);
-lines.push(`- hook fired inside the agent run: **${report.canaryAgreement.hookFired}** (checkpoint file — the authoritative source); a refusal visibly reached the model in **${report.canaryAgreement.refusalReachedModel}**; blocked a completion: **${report.canaryAgreement.hookBlocked}**`);
-lines.push(`- stream hook-events as a second source: **${report.canaryAgreement.hookSeenInStream}** seen, **${report.canaryAgreement.hookSourceUnknown}** trial(s) where the stream did not report hooks (measured: this CLI emits no hook events for the project-level Stop hook, so that is "not observable", not disagreement), **${report.canaryAgreement.hookSourceDisagreements.length}** disagreement(s)`);
-lines.push(`- promotions applied: **${report.canaryAgreement.promotions}**`);
-lines.push(`- **false green** (Canary READY while the correctness oracle failed): **${report.canaryAgreement.falseGreen}** of ${report.canaryAgreement.correctnessTrials}`);
-lines.push(`- false red (Canary refused while the oracle passed): **${report.canaryAgreement.falseRed}** of ${report.canaryAgreement.correctnessTrials}`);
+lines.push(`- trials with an Amabie verdict: **${report.amabieAgreement.trials}** (${report.amabieAgreement.correctnessTrials} correctness, ${report.amabieAgreement.trials - report.amabieAgreement.correctnessTrials} integrity)`);
+lines.push(`- hook fired inside the agent run: **${report.amabieAgreement.hookFired}** (checkpoint file — the authoritative source); a refusal visibly reached the model in **${report.amabieAgreement.refusalReachedModel}**; blocked a completion: **${report.amabieAgreement.hookBlocked}**`);
+lines.push(`- stream hook-events as a second source: **${report.amabieAgreement.hookSeenInStream}** seen, **${report.amabieAgreement.hookSourceUnknown}** trial(s) where the stream did not report hooks (measured: this CLI emits no hook events for the project-level Stop hook, so that is "not observable", not disagreement), **${report.amabieAgreement.hookSourceDisagreements.length}** disagreement(s)`);
+lines.push(`- promotions applied: **${report.amabieAgreement.promotions}**`);
+lines.push(`- **false green** (Amabie READY while the correctness oracle failed): **${report.amabieAgreement.falseGreen}** of ${report.amabieAgreement.correctnessTrials}`);
+lines.push(`- false red (Amabie refused while the oracle passed): **${report.amabieAgreement.falseRed}** of ${report.amabieAgreement.correctnessTrials}`);
 lines.push('');
 
 lines.push('## Verdict states (A wrong · B verify refused · C promotion refused · D delivered · E claimed-undelivered)');

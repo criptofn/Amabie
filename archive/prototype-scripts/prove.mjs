@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * canary prove — the end-to-end regression proof of Canary itself.
+ * amabie prove — the end-to-end regression proof of Amabie itself.
  *
  * Re-runs the golden experiment from scratch (fresh fetch, fresh install,
  * fresh workspace) and asserts the outcome matches the committed expectation
@@ -37,7 +37,7 @@ function main() {
   }
 
   const pointer = JSON.parse(fs.readFileSync(
-    path.join(REPO_ROOT, '.canary-runs', `latest-${spec.id}.json`), 'utf8'));
+    path.join(REPO_ROOT, '.amabie-runs', `latest-${spec.id}.json`), 'utf8'));
   const ev = JSON.parse(fs.readFileSync(pointer.evidence, 'utf8'));
 
   const checks = [];
@@ -76,8 +76,8 @@ function main() {
   }
   console.log(`\n${'='.repeat(60)}`);
   console.log(failed === 0
-    ? 'CANARY REGRESSION PROOF: PASS — fresh run reproduced the committed evidence exactly'
-    : `CANARY REGRESSION PROOF: FAIL — ${failed}/${checks.length} assertions diverged`);
+    ? 'AMABIE REGRESSION PROOF: PASS — fresh run reproduced the committed evidence exactly'
+    : `AMABIE REGRESSION PROOF: FAIL — ${failed}/${checks.length} assertions diverged`);
   console.log('='.repeat(60));
   process.exit(failed === 0 ? 0 : 1);
 }

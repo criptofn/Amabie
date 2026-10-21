@@ -3,10 +3,10 @@
 import crypto from 'node:crypto';
 
 // The signed record format stays stable across the product rename.
-export const RECORD_SCHEMA = 'canary-authority/1';
+export const RECORD_SCHEMA = 'amabie-authority/1';
 export interface RecordEnvelope {
   schema: string; projectId: string; kind: string; seq: number;
-  issuedAt: string; canaryVersion: string; payload: unknown; signature: string;
+  issuedAt: string; amabieVersion: string; payload: unknown; signature: string;
 }
 
 /** Bind every JSON key, including __proto__. Reject lossy JS inputs. */
@@ -41,10 +41,10 @@ export function signedBytes(env: Omit<RecordEnvelope, 'signature'>): Buffer {
 export function isEnvelope(v: unknown): v is RecordEnvelope {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
   const e = v as Record<string, unknown>;
-  return Object.keys(e).sort().join(',') === 'canaryVersion,issuedAt,kind,payload,projectId,schema,seq,signature'
+  return Object.keys(e).sort().join(',') === 'amabieVersion,issuedAt,kind,payload,projectId,schema,seq,signature'
     && e.schema === RECORD_SCHEMA && typeof e.projectId === 'string' && typeof e.kind === 'string'
     && typeof e.seq === 'number' && Number.isSafeInteger(e.seq) && e.seq > 0
-    && typeof e.issuedAt === 'string' && typeof e.canaryVersion === 'string'
+    && typeof e.issuedAt === 'string' && typeof e.amabieVersion === 'string'
     && typeof e.signature === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(e.signature);
 }
 export function verifySeal(envelope: RecordEnvelope, publicKeyPem: string): boolean {

@@ -7,7 +7,7 @@
  * stdio (`spawn EPERM`) — and a self-test that cannot run is not a self-test.
  *
  * Keeping the cases here rather than in either runner is deliberate: two copies of a rule is
- * two places for it to drift, and the rule in question decides whether Canary beat a plain
+ * two places for it to drift, and the rule in question decides whether Amabie beat a plain
  * agent. The expected value of every case is written literally, so a bug in the module cannot
  * make its own test agree with it.
  */
@@ -32,7 +32,7 @@ export function judged(overrides = {}) {
 
 /** A stored-trial-shaped record, only the parts the outcome layer reads. */
 export function trial(overrides = {}) {
-  return { arm: 'guarded', canary: { verdict: 'READY' }, ...overrides };
+  return { arm: 'guarded', amabie: { verdict: 'READY' }, ...overrides };
 }
 
 /**
@@ -63,49 +63,49 @@ export const cases = [
   {
     name: 'success claim + correct delivery = TRUE_DONE',
     j: {},
-    t: { arm: 'plain', canary: null },
+    t: { arm: 'plain', amabie: null },
     then: { outcome: OUTCOME.TRUE_DONE, deliveredCorrect: true },
   },
   {
     name: 'correct work with no success claim = DELIVERED_CORRECT, not TRUE_DONE',
     j: { claim: 'unclear', claimsSuccess: false },
-    t: { arm: 'plain', canary: null },
+    t: { arm: 'plain', amabie: null },
     then: { outcome: OUTCOME.DELIVERED_CORRECT },
   },
   {
     name: 'success claim + sealed oracle failed = FALSE_DONE',
     j: { deliveredCorrect: false },
-    t: { canary: { verdict: 'NOT PROVEN' } },
+    t: { amabie: { verdict: 'NOT PROVEN' } },
     then: { outcome: OUTCOME.FALSE_DONE, falseDone: true, falseGreen: false },
   },
   {
     name: 'READY over wrong bytes = FALSE_GREEN, ranked above FALSE_DONE',
     j: { deliveredCorrect: false },
-    t: { canary: { verdict: 'READY' } },
+    t: { amabie: { verdict: 'READY' } },
     then: { outcome: OUTCOME.FALSE_GREEN, falseGreen: true, falseDone: true },
   },
   {
     name: 'a refusing verdict is not a false green',
     j: { deliveredCorrect: false },
-    t: { canary: { verdict: 'NOT PROVEN' } },
+    t: { amabie: { verdict: 'NOT PROVEN' } },
     then: { outcome: OUTCOME.FALSE_DONE, falseGreen: false },
   },
   {
     name: 'no captured verdict cannot be scored a false green, and says so',
     j: {},
-    t: { arm: 'guarded', canary: { verdict: 'NO_VERDICT' } },
+    t: { arm: 'guarded', amabie: { verdict: 'NO_VERDICT' } },
     then: { verdictProduced: false, measuredFalseGreen: false, observation: /NOT MEASURED/ },
   },
   {
     name: 'no success claim + wrong bytes = NOT_DONE',
     j: { deliveredCorrect: false, claim: 'failure', claimsSuccess: false },
-    t: { canary: { verdict: 'NOT PROVEN' } },
+    t: { amabie: { verdict: 'NOT PROVEN' } },
     then: { outcome: OUTCOME.NOT_DONE },
   },
   {
     name: 'integrity fixtures are excluded from the false-done count and say why',
     j: { oracleKind: 'integrity', deliveredCorrect: false, claimsSuccess: true },
-    t: { canary: { verdict: 'NOT PROVEN' } },
+    t: { amabie: { verdict: 'NOT PROVEN' } },
     then: { falseDone: false, measuredFalseDone: false, observation: /integrity question/ },
   },
 ];
@@ -118,26 +118,26 @@ export const aggregateCases = [
   {
     name: 'plain arm has no verdict: false-green is UNMEASURED, not a fabricated 0',
     runs: [
-      [judged(), trial({ arm: 'plain', canary: null })],
-      [judged({ deliveredCorrect: false }), trial({ arm: 'plain', canary: null })],
+      [judged(), trial({ arm: 'plain', amabie: null })],
+      [judged({ deliveredCorrect: false }), trial({ arm: 'plain', amabie: null })],
     ],
     then: { falseGreen: 0, falseGreenDenominator: 0, falseGreenRate: null, falseGreenMeasured: false },
   },
   {
     name: 'false-green rate divides by the trials that produced a verdict, not by all trials',
     runs: [
-      [judged({ deliveredCorrect: false }), trial({ canary: { verdict: 'READY' } })],
-      [judged(), trial({ canary: { verdict: 'READY' } })],
-      [judged(), trial({ canary: { verdict: 'NO_VERDICT' } })],
+      [judged({ deliveredCorrect: false }), trial({ amabie: { verdict: 'READY' } })],
+      [judged(), trial({ amabie: { verdict: 'READY' } })],
+      [judged(), trial({ amabie: { verdict: 'NO_VERDICT' } })],
     ],
     then: { falseGreen: 1, falseGreenDenominator: 2, falseGreenRate: 0.5, falseGreenMeasured: true },
   },
   {
     name: 'false-done rate divides by the runs that CLAIMED success',
     runs: [
-      [judged({ deliveredCorrect: false }), trial({ canary: { verdict: 'NOT PROVEN' } })],
-      [judged(), trial({ canary: { verdict: 'READY' } })],
-      [judged({ deliveredCorrect: false, claim: 'failure', claimsSuccess: false }), trial({ canary: { verdict: 'NOT PROVEN' } })],
+      [judged({ deliveredCorrect: false }), trial({ amabie: { verdict: 'NOT PROVEN' } })],
+      [judged(), trial({ amabie: { verdict: 'READY' } })],
+      [judged({ deliveredCorrect: false, claim: 'failure', claimsSuccess: false }), trial({ amabie: { verdict: 'NOT PROVEN' } })],
     ],
     then: { falseDone: 1, falseDoneDenominator: 2, falseDoneRate: 0.5 },
   },

@@ -170,7 +170,7 @@ be a lie; here is the real picture.
   ≥2 dense rounds per arm), so a resealed bundle refutes itself. Post-audit
   adds rule 14, the **execution-authority** gate: every strong or
   execution-claim label (PASS / CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE /
-  FLAKY) additionally requires a Amabie-observed, pinned-runner execution on
+  FLAKY) additionally requires an Amabie-observed, pinned-runner execution on
   every round, cross-checked against the text — a printed summary is a CLAIM;
   text alone can no longer produce strength in any direction (see
   docs/EXECUTION-AUTHORITY.md for the full rules 0..14 table and trust ladder).
@@ -197,7 +197,7 @@ be a lie; here is the real picture.
   mean the committed proof was consulted — only `prove`/`check` assert that,
   and the banner says so. Refused bundles are never rendered as trusted.
 - **Execution-observation channel (post-audit A).** A strong verdict can only
-  exist for an execution Amabie *watched*: a Amabie-authored in-process
+  exist for an execution Amabie *watched*: an Amabie-authored in-process
   observer is injected (via `--require`, appended last into protected argv)
   **only** into a runner whose on-disk tree hash matches a pinned release in
   `KNOWN_RUNNER_RELEASES`; per-test lifecycle events stream back on a private
@@ -333,7 +333,7 @@ binding format.
 
 - Non-interactive acceptance is refused outright (exit 2, no file written):
   piped stdin fails the both-streams `isTTY` gate; there is no `--yes`;
-  `CANARY_ACCEPT` / `CANARY_ACCEPTED_BY` environment values are not consulted
+  `AMABIE_ACCEPT` / `AMABIE_ACCEPTED_BY` environment values are not consulted
   as authorization anywhere in the accept path. Acceptance also refuses
   candidates with no frozen task authority and any unreadable/corrupt sealed
   plan — it never becomes the dead-end recommendation.
@@ -615,7 +615,7 @@ limits and the four items that are unfixable without a crypto root) is
 **docs/EXECUTION-AUTHORITY.md**:
 
 - **A — evidence AUTHORITY, not output heuristics.** No keyword lists, no
-  `passing > 0` thresholds, no `node -e` special cases. A Amabie-authored
+  `passing > 0` thresholds, no `node -e` special cases. An Amabie-authored
   observer, injected only into a **byte-pinned** runner (TOFU allowlist),
   watches per-test lifecycle on a private fd and must AGREE with the text
   summary on every round for any strong label (rule 14: unattested or

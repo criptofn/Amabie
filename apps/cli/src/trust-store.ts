@@ -37,11 +37,8 @@ export type TrustLevel = 'HARDENED' | 'LOCAL' | 'ADVISORY' | 'UNSUPPORTED';
 /** Broker installation configuration, NEVER a worker request parameter. */
 export interface TrustStore { root: string }
 export function defaultStoreRoot(home: string = os.userInfo().homedir): string {
-  const current = process.platform === 'win32' ? path.join(home, 'AppData', 'Local', 'amabie', 'trust')
+  return process.platform === 'win32' ? path.join(home, 'AppData', 'Local', 'amabie', 'trust')
     : path.join(home, '.local', 'share', 'amabie', 'trust');
-  const legacy = process.platform === 'win32' ? path.join(home, 'AppData', 'Local', 'canary', 'trust')
-    : path.join(home, '.local', 'share', 'canary', 'trust');
-  return fs.existsSync(current) || !fs.existsSync(legacy) ? current : legacy;
 }
 
 /**
@@ -54,7 +51,7 @@ export function defaultStoreRoot(home: string = os.userInfo().homedir): string {
  * pointer named them.
  */
 export function storeFromEnv(env: NodeJS.ProcessEnv = process.env): TrustStore {
-  const v = env.AMABIE_TRUST_STORE?.trim() || env.CANARY_TRUST_STORE?.trim();
+  const v = env.AMABIE_TRUST_STORE?.trim();
   return { root: v ? path.resolve(v) : defaultStoreRoot() };
 }
 
@@ -230,7 +227,7 @@ function readLedger(s: TrustStore): Record<string, number> {
 /** Reserve seq BEFORE record publication. Interrupted writes deny, never pass.
  * CAS is optional for legacy callers; mandatory for broker state transitions. */
 export function sealRecord(s: TrustStore, input: {
-  projectId: string; kind: string; payload: unknown; canaryVersion: string;
+  projectId: string; kind: string; payload: unknown; amabieVersion: string;
 }, expectedSeq?: number): RecordEnvelope {
   const projectId = safeSegment(input.projectId, 'project id'), kind = safeSegment(input.kind, 'record kind');
   const payload = JSON.parse(authorityJson(input.payload));
@@ -243,7 +240,7 @@ export function sealRecord(s: TrustStore, input: {
     if (expectedSeq !== undefined && expectedSeq !== previous) throw new Error('authority compare-and-swap conflict');
     const seq = previous + 1;
     if (!Number.isSafeInteger(seq)) throw new Error('authority sequence exhausted');
-    const body = { schema: RECORD_SCHEMA, projectId, kind, seq, issuedAt: new Date().toISOString(), canaryVersion: input.canaryVersion, payload };
+    const body = { schema: RECORD_SCHEMA, projectId, kind, seq, issuedAt: new Date().toISOString(), amabieVersion: input.amabieVersion, payload };
     const signature = crypto.sign(null, signedBytes(body), crypto.createPrivateKey(read(s, keyPath(s)))).toString('base64');
     const envelope = { ...body, signature };
     ledger[lane] = seq;

@@ -1,14 +1,14 @@
-# Additional Canary product work, 2026-10-04
+# Additional Amabie product work, 2026-10-04
 
 ## Implemented and targeted runtime checks passed
 
-* Bare `canary` now includes the last recorded verification in its compact
+* Bare `amabie` now includes the last recorded verification in its compact
   read-only status. It explicitly labels the result historical and leaves session
   end unknown. The current CONNECTED verdict still refers only to wiring.
   Missing or malformed history cannot become a successful verification.
   History values are bounded by the existing decoder and escaped for terminal
   output. Existing JSON envelopes and the bare-command exit code remain intact.
-* `canary --version --verbose` identifies Node version, platform, architecture,
+* `amabie --version --verbose` identifies Node version, platform, architecture,
   runtime executable, actual CLI entry and the SHA-256 of that entry. Default
   version output remains one line. This is an entry-file hash, not a hash of
   every dependency in a development installation. SEA uses its actual executable
@@ -25,7 +25,7 @@ successfully, these changes were integrated into `codex/product-progress`.
 
 The Node 24.21.0 TypeScript no-emit check succeeded after both product changes.
 `git diff --check` succeeded. Three malformed probe invocations were rejected
-before starting any fixture or Canary process. These observations do not verify
+before starting any fixture or Amabie process. These observations do not verify
 the compact history runtime behavior by themselves.
 
 A forced build of this isolated branch then succeeded. The two focused CLI
@@ -38,7 +38,7 @@ stress ran alongside the primary gate. Raw logs are
 `compact-version-20261004-targeted.log` in the external evidence directory.
 
 Direct read-only version calls also compare the old installed frozen package
-with the new built CLI: both exit zero and report Canary 1.5.0, but the old package
+with the new built CLI: both exit zero and report Amabie 1.5.0, but the old package
 prints only that line while the new build adds the observed runtime and entry
 identity. Logs: `verbose-version-20261004-old-installed.log` and
 `verbose-version-20261004-new-built.log`. This is not a newly installed artifact

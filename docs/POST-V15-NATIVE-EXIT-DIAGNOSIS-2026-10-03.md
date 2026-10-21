@@ -3,7 +3,7 @@
 ## Observed evidence
 
 The productization run for `d4c34d5` failed two cases when project check processes
-returned `3221225501` (`0xc000001d`) and `3221225477` (`0xc0000005`). Canary's
+returned `3221225501` (`0xc000001d`) and `3221225477` (`0xc0000005`). Amabie's
 failure message called these the project's own failure and advised fixing its
 check. That attribution was stronger than the observed evidence.
 
@@ -27,7 +27,7 @@ Missing authorized tools still use the measured environment classification.
 Printed crash prose with an ordinary exit code cannot trigger unknown attribution.
 The internal attribution union gains `unknown`; this is not a new verdict status.
 
-Targeted evidence under `C:/Users/Johannes/Desktop/canary/_canary-data/evidence/`:
+Targeted evidence under `C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/`:
 
 - `native-exit-attribution-20261003-red.log`: the regression failed because the
   observed exit value was classified `project`.
@@ -48,7 +48,7 @@ raw stdout/stderr, invocation and hashes before deleting the installation fixtur
 A successful audit additionally requires the report's CLI and instrument hashes
 to match the executed bytes. It does not read the globally shared legacy file.
 
-`CANARY_PROBE_REPORT_DIR` selects a durable evidence parent for the measurement
+`AMABIE_PROBE_REPORT_DIR` selects a durable evidence parent for the measurement
 script. Without it, the path is a separate directory under OS temp and is printed
 as `PROVIDER EVIDENCE`. The legacy default report path remains for older direct
 callers. These are experiment options, not new product CLI options. Syntax checks

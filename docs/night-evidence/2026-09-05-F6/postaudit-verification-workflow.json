@@ -10,11 +10,11 @@
         "claim": "Errata: \"Beads: children 88x.1–88x.6 all closed with evidence; epic 88x closed at run end\"",
         "problem": "The tracker contains exactly FIVE children (88x.1–88x.5); no issue 88x.6 ever existed. bd show of the epic lists 5 closed children and bd show of 88x.6 errors out. All 5 that exist are genuinely closed (and the epic's close reason matches the run), so this is a count/typo overstatement, not a fabricated closure — but the stated range is disproven by the tracker itself. Note the beads store lives in the main repo's .beads/embeddeddolt and is untracked in the reviewed worktree, so no reader of the tracked repo can verify this line at all.",
         "severity": "MINOR",
-        "evidence": "cd canary-reliability-network && bd show 88x -> tree lists only 88x.1..88x.5 (all ✓ CLOSED); bd show 88x.6 -> \"Error fetching 88x.6: no issue found matching \\\"88x.6\\\"\"; git grep -l '88x' HEAD in the worktree -> docs/NIGHT-F6-HARDENING-2026-09-05.md only",
+        "evidence": "cd amabie-reliability-network && bd show 88x -> tree lists only 88x.1..88x.5 (all ✓ CLOSED); bd show 88x.6 -> \"Error fetching 88x.6: no issue found matching \\\"88x.6\\\"\"; git grep -l '88x' HEAD in the worktree -> docs/NIGHT-F6-HARDENING-2026-09-05.md only",
         "lens": "report-honesty",
         "verdict": {
           "refuted": false,
-          "reasoning": "Discrepancy reproduced in full. docs/NIGHT-F6-HARDENING-2026-09-05.md line 167 claims \"Beads: children 88x.1–88x.6 all closed with evidence\". In canary-reliability-network, `bd show 88x` lists exactly five children (88x.1–88x.5, all CLOSED), `bd show 88x.6` errors (\"no issue found matching 88x.6\"), and no trace of 88x.6 exists anywhere — not in bd list --all, not in .beads/interactions.jsonl, not even in the raw .beads/embeddeddolt binary store, so no deleted 88x.6 ever existed. The doc is internally inconsistent: the same Corrections section lists exactly five commits (F6c/F6f/F6e/F6a/F6b) and the epic's close reason names the same five. The finding's characterization (count/typo overstatement, not fabricated closure; five real children genuinely closed) is accurate, and the claim sits inside the post-audit corrections diff under review, so the report-honesty lens applies. The worktree indeed has no .beads directory, confirming the reviewer's verifiability caveat. Refutation attempts (charitable reading of the range, deleted-issue history, alternate store) all fail."
+          "reasoning": "Discrepancy reproduced in full. docs/NIGHT-F6-HARDENING-2026-09-05.md line 167 claims \"Beads: children 88x.1–88x.6 all closed with evidence\". In amabie-reliability-network, `bd show 88x` lists exactly five children (88x.1–88x.5, all CLOSED), `bd show 88x.6` errors (\"no issue found matching 88x.6\"), and no trace of 88x.6 exists anywhere — not in bd list --all, not in .beads/interactions.jsonl, not even in the raw .beads/embeddeddolt binary store, so no deleted 88x.6 ever existed. The doc is internally inconsistent: the same Corrections section lists exactly five commits (F6c/F6f/F6e/F6a/F6b) and the epic's close reason names the same five. The finding's characterization (count/typo overstatement, not fabricated closure; five real children genuinely closed) is accurate, and the claim sits inside the post-audit corrections diff under review, so the report-honesty lens applies. The worktree indeed has no .beads directory, confirming the reviewer's verifiability caveat. Refutation attempts (charitable reading of the range, deleted-issue history, alternate store) all fail."
         }
       },
       {
@@ -58,7 +58,7 @@
         "lens": "retention-completeness",
         "verdict": {
           "refuted": false,
-          "reasoning": "Finding reproduced exactly; cannot refute. In C:/Users/Johannes/Desktop/canary-observation-hardening: (1) `git check-ignore -v .holdthegoblin` -> no output, exit 1 (no committed .gitignore rule, no .git/info/exclude match, no core.excludesFile set). (2) `git add -n -A` lists \"add '.holdthegoblin/events.jsonl'\" and \"add '.holdthegoblin/policy/audit.jsonl'\" alongside the intended evidence-layer files — a blanket add for the correction commit would sweep ~1.2 MB of machine-local hook state (638,213 + 620,091 bytes) into the tracked tree. (3) `git status --porcelain` shows `?? .holdthegoblin/` untracked; `git ls-files .holdthegoblin` empty. The report's line-176 parenthetical \"(Untracked .holdthegoblin/ is hook-local state, left as-is.)\" is technically true of the current state, but the finding is in-scope for the retention-completeness lens and hits the correction's own logic: the same diff commits `.night-run/` to .gitignore precisely because per-worktree local exclusion is not a durable clean state — yet `.holdthegoblin/` is worse off than `.night-run/` was pre-fix (not even in .git/info/exclude), while being described as safely \"left as-is\". The remedy is trivial (one .gitignore line, matching the .night-run/ precedent) or explicit-path commits; as written the next `git add -A` audit will flag local-state pollution. No production code involved; not a residual-risk-ceiling caveat. Refuted=false."
+          "reasoning": "Finding reproduced exactly; cannot refute. In C:/Users/Johannes/Desktop/amabie-observation-hardening: (1) `git check-ignore -v .holdthegoblin` -> no output, exit 1 (no committed .gitignore rule, no .git/info/exclude match, no core.excludesFile set). (2) `git add -n -A` lists \"add '.holdthegoblin/events.jsonl'\" and \"add '.holdthegoblin/policy/audit.jsonl'\" alongside the intended evidence-layer files — a blanket add for the correction commit would sweep ~1.2 MB of machine-local hook state (638,213 + 620,091 bytes) into the tracked tree. (3) `git status --porcelain` shows `?? .holdthegoblin/` untracked; `git ls-files .holdthegoblin` empty. The report's line-176 parenthetical \"(Untracked .holdthegoblin/ is hook-local state, left as-is.)\" is technically true of the current state, but the finding is in-scope for the retention-completeness lens and hits the correction's own logic: the same diff commits `.night-run/` to .gitignore precisely because per-worktree local exclusion is not a durable clean state — yet `.holdthegoblin/` is worse off than `.night-run/` was pre-fix (not even in .git/info/exclude), while being described as safely \"left as-is\". The remedy is trivial (one .gitignore line, matching the .night-run/ precedent) or explicit-path commits; as written the next `git add -A` audit will flag local-state pollution. No production code involved; not a residual-risk-ceiling caveat. Refuted=false."
         }
       }
     ]
@@ -87,7 +87,7 @@
       "lastProgressAt": 1788628814742,
       "cached": true,
       "resultPreview": "{\"findings\":[{\"claim\":\"\\\"every RED/GREEN/mutant/probe log cited below is tracked at docs/night-evidence/2026-09-05-F6/\\\" and errata #1: \\\"all 20 attempt-1 files exported to tracked docs/night-evidence/2026-09-05-F6/; a real committed .gitignore entry added\\\"\",\"problem\":\"At the reviewed state NOTHING under docs/night-evidence/ is tracked and the .gitignore entry is NOT committed — the report assert…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
     },
     {
       "type": "workflow_agent",
@@ -102,7 +102,7 @@
       "lastProgressAt": 1788628814743,
       "cached": true,
       "resultPreview": "{\"findings\":[{\"claim\":\"docs/NIGHT-F6-HARDENING-2026-09-05.md:231-238: an F6a coverage sentinel \\\"so a link-denying platform can no longer look green while silently not exercising the link-escape regression … A platform that cannot exercise the guard is now distinguishable from one that passed it\\\" — and docs/TEST-COUNTING.md's green rule: \\\"A run may be called green only if fail = 0 and cancelled …",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
     },
     {
       "type": "workflow_agent",
@@ -117,7 +117,7 @@
       "lastProgressAt": 1788628814743,
       "cached": true,
       "resultPreview": "{\"findings\":[{\"claim\":\"SECURITY.md F6e residual bullet: \\\"the empty `empty.npmrc` is re-established at EVERY point of use — pipeline init and the executor `$npm` injection, immediately before the isolation flags are appended\\\" (the dash-clause as an enumeration of the re-establishment points).\",\"problem\":\"The enumeration contradicts the code in both slots it names. (1) \\\"pipeline init\\\" (apps/cli/…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
     },
     {
       "type": "workflow_agent",
@@ -132,7 +132,7 @@
       "lastProgressAt": 1788628814743,
       "cached": true,
       "resultPreview": "{\"findings\":[{\"claim\":\"reverify-commands.txt:17-18 — \\\"That is why every log here self-proves its tree with a TREE: line.\\\" (and by extension TEST-COUNTING.md's \\\"all re-derived at their stated tree\\\")\",\"problem\":\"Mechanically false as written. Only 2 of 27 logs in docs/night-evidence/2026-09-05-F6/ contain a TREE: line (reverify-baseline-34cf515-suite.log:1 and reverify-postchange-suite.log:1). M…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…"
     },
     {
       "type": "workflow_agent",
@@ -148,12 +148,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Raw git state reproduced (cd C:/Users/Johannes/Desktop/cana…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628949416,
       "tokens": 23466,
       "toolCalls": 8,
       "durationMs": 125791,
-      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Raw git state reproduced (cd C:/Users/Johannes/Desktop/canary-observation-hardening): `git ls-files docs/night-evidence/` -> 0; `git status --short` -> `M .gitignore`, `?? docs/night-evidence/`; `git show HEAD:.gitignore | grep night-run` -> exit 1. So yes, at HEAD the files are untracked and the ignore is uncommitted. But this does NOT establish a report-honesty defec…"
+      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Raw git state reproduced (cd C:/Users/Johannes/Desktop/amabie-observation-hardening): `git ls-files docs/night-evidence/` -> 0; `git status --short` -> `M .gitignore`, `?? docs/night-evidence/`; `git show HEAD:.gitignore | grep night-run` -> exit 1. So yes, at HEAD the files are untracked and the ignore is uncommitted. But this does NOT establish a report-honesty defec…"
     },
     {
       "type": "workflow_agent",
@@ -169,7 +169,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Reproducible verification in the worktree confirms the find…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628945317,
       "tokens": 23621,
       "toolCalls": 11,
@@ -190,12 +190,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Discrepancy reproduced in full. docs/NIGHT-F6-HARDENING-202…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628937235,
       "tokens": 23602,
       "toolCalls": 11,
       "durationMs": 110162,
-      "resultPreview": "{\"refuted\":false,\"reasoning\":\"Discrepancy reproduced in full. docs/NIGHT-F6-HARDENING-2026-09-05.md line 167 claims \\\"Beads: children 88x.1–88x.6 all closed with evidence\\\". In canary-reliability-network, `bd show 88x` lists exactly five children (88x.1–88x.5, all CLOSED), `bd show 88x.6` errors (\\\"no issue found matching 88x.6\\\"), and no trace of 88x.6 exists anywhere — not in bd list --all, not …"
+      "resultPreview": "{\"refuted\":false,\"reasoning\":\"Discrepancy reproduced in full. docs/NIGHT-F6-HARDENING-2026-09-05.md line 167 claims \\\"Beads: children 88x.1–88x.6 all closed with evidence\\\". In amabie-reliability-network, `bd show 88x` lists exactly five children (88x.1–88x.5, all CLOSED), `bd show 88x.6` errors (\\\"no issue found matching 88x.6\\\"), and no trace of 88x.6 exists anywhere — not in bd list --all, not …"
     },
     {
       "type": "workflow_agent",
@@ -211,7 +211,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Reproduced the finding's grep (the exact string \"64 -> 71\" …",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628935599,
       "tokens": 23451,
       "toolCalls": 7,
@@ -232,7 +232,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Discrepancy fully reproduced. docs/night-evidence/2026-09-0…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628925379,
       "tokens": 23509,
       "toolCalls": 9,
@@ -253,7 +253,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Refuted. I reproduced every mechanic the finding claims, an…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629214949,
       "tokens": 23877,
       "toolCalls": 13,
@@ -274,12 +274,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "REPRODUCED THE FINDING'S MEASUREMENTS AND THEY CONFIRM THE …",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629156054,
       "tokens": 23865,
       "toolCalls": 17,
       "durationMs": 315327,
-      "resultPreview": "{\"refuted\":true,\"reasoning\":\"REPRODUCED THE FINDING'S MEASUREMENTS AND THEY CONFIRM THE DOCUMENTED BEHAVIOR, NOT A DISCREPANCY. In C:/Users/Johannes/Desktop/canary-observation-hardening with the ESM symlink-scrub import (fs.symlinkSync throws EPERM) running node --test packages/runner/executor/dist/test/executor.test.js: (1) CI unset -> exit 0, stderr \\\"!! F6a link-escape regression NOT exercised …"
+      "resultPreview": "{\"refuted\":true,\"reasoning\":\"REPRODUCED THE FINDING'S MEASUREMENTS AND THEY CONFIRM THE DOCUMENTED BEHAVIOR, NOT A DISCREPANCY. In C:/Users/Johannes/Desktop/amabie-observation-hardening with the ESM symlink-scrub import (fs.symlinkSync throws EPERM) running node --test packages/runner/executor/dist/test/executor.test.js: (1) CI unset -> exit 0, stderr \\\"!! F6a link-escape regression NOT exercised …"
     },
     {
       "type": "workflow_agent",
@@ -295,12 +295,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "REFUTED — every component of the claim under attack re-veri…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629082345,
       "tokens": 23644,
       "toolCalls": 13,
       "durationMs": 236200,
-      "resultPreview": "{\"reasoning\":\"REFUTED — every component of the claim under attack re-verified true, and the finding attacks a reading the docs explicitly disclaim.\\n\\nRe-runs at C:/Users/Johannes/Desktop/canary-observation-hardening (read-only):\\n1. Claim \\\"CI + link-denied => sentinel fails (node exit 1)\\\": `CI=true NODE_OPTIONS=\\\"--import file:///C:/Users/Johannes/.claude/scratchpad/scrub-symlink.mjs\\\" node --t…"
+      "resultPreview": "{\"reasoning\":\"REFUTED — every component of the claim under attack re-verified true, and the finding attacks a reading the docs explicitly disclaim.\\n\\nRe-runs at C:/Users/Johannes/Desktop/amabie-observation-hardening (read-only):\\n1. Claim \\\"CI + link-denied => sentinel fails (node exit 1)\\\": `CI=true NODE_OPTIONS=\\\"--import file:///C:/Users/Johannes/.claude/scratchpad/scrub-symlink.mjs\\\" node --t…"
     },
     {
       "type": "workflow_agent",
@@ -316,12 +316,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Attempted refutation failed — every element of the skeptic'…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629320829,
       "tokens": 25489,
       "toolCalls": 19,
       "durationMs": 485469,
-      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Attempted refutation failed — every element of the skeptic's non-finding reproduced exactly on independent re-runs in C:/Users/Johannes/Desktop/canary-observation-hardening (node v26.7.0; dist/test/executor.test.js built 16:53, newer than test/executor.test.ts 16:48, sentinel present at JS lines 962-1043). (1) Baseline `node --test dist/test/executor.test.js` → 68 test…"
+      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Attempted refutation failed — every element of the skeptic's non-finding reproduced exactly on independent re-runs in C:/Users/Johannes/Desktop/amabie-observation-hardening (node v26.7.0; dist/test/executor.test.js built 16:53, newer than test/executor.test.ts 16:48, sentinel present at JS lines 962-1043). (1) Baseline `node --test dist/test/executor.test.js` → 68 test…"
     },
     {
       "type": "workflow_agent",
@@ -337,7 +337,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Reproduced; the finding's two factual sub-claims both check…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628929464,
       "tokens": 23672,
       "toolCalls": 7,
@@ -358,7 +358,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Discrepancy reproduced; finding stands. (1) Re-ran `grep -r…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628983705,
       "tokens": 23537,
       "toolCalls": 8,
@@ -379,12 +379,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Finding fails on its own cited evidence; refuted on all thr…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628895308,
       "tokens": 23487,
       "toolCalls": 9,
       "durationMs": 71387,
-      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Finding fails on its own cited evidence; refuted on all three legs after direct inspection of C:/Users/Johannes/Desktop/canary-observation-hardening:\\n\\n1. \\\"Neither log self-documents that the scrub was applied or that CI=1 was set\\\" — FALSE. docs/night-evidence/2026-09-05-F6/reverify-f6a-skip-probe.log is a two-run log with explicit labeled headers: line 1 \\\"=== RUN …"
+      "resultPreview": "{\"refuted\":true,\"reasoning\":\"Finding fails on its own cited evidence; refuted on all three legs after direct inspection of C:/Users/Johannes/Desktop/amabie-observation-hardening:\\n\\n1. \\\"Neither log self-documents that the scrub was applied or that CI=1 was set\\\" — FALSE. docs/night-evidence/2026-09-05-F6/reverify-f6a-skip-probe.log is a two-run log with explicit labeled headers: line 1 \\\"=== RUN …"
     },
     {
       "type": "workflow_agent",
@@ -400,7 +400,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Finding's raw greps reproduce, but its attack on the doc cl…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629006802,
       "tokens": 23513,
       "toolCalls": 12,
@@ -421,7 +421,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "REFUTED. (1) The underlying claim independently re-verified…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788629270451,
       "tokens": 23686,
       "toolCalls": 18,
@@ -442,12 +442,12 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Finding reproduced exactly; cannot refute. In C:/Users/Joha…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628920256,
       "tokens": 23427,
       "toolCalls": 6,
       "durationMs": 88001,
-      "resultPreview": "{\"refuted\":false,\"reasoning\":\"Finding reproduced exactly; cannot refute. In C:/Users/Johannes/Desktop/canary-observation-hardening: (1) `git check-ignore -v .holdthegoblin` -> no output, exit 1 (no committed .gitignore rule, no .git/info/exclude match, no core.excludesFile set). (2) `git add -n -A` lists \\\"add '.holdthegoblin/events.jsonl'\\\" and \\\"add '.holdthegoblin/policy/audit.jsonl'\\\" alongsid…"
+      "resultPreview": "{\"refuted\":false,\"reasoning\":\"Finding reproduced exactly; cannot refute. In C:/Users/Johannes/Desktop/amabie-observation-hardening: (1) `git check-ignore -v .holdthegoblin` -> no output, exit 1 (no committed .gitignore rule, no .git/info/exclude match, no core.excludesFile set). (2) `git add -n -A` lists \\\"add '.holdthegoblin/events.jsonl'\\\" and \\\"add '.holdthegoblin/policy/audit.jsonl'\\\" alongsid…"
     },
     {
       "type": "workflow_agent",
@@ -463,7 +463,7 @@
       "attempt": 1,
       "lastToolName": "StructuredOutput",
       "lastToolSummary": "Finding is wrong/irrelevant. It attacks errata item 1 (\"a r…",
-      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/canary-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
+      "promptPreview": "Repository worktree: C:/Users/Johannes/Desktop/amabie-observation-hardening (run all commands there; chain cd with && because tool cwd can reset).\nUncommitted working state being reviewed (post GLM re-audit corrections of a night-run report):\n- docs/NIGHT-F6-HARDENING-2026-09-05.md — report corrected inline + new \"Errata & post-audit corrections\" section\n- docs/night-evidence/2026-09-05-F6/ — expo…",
       "lastProgressAt": 1788628901748,
       "tokens": 23411,
       "toolCalls": 7,

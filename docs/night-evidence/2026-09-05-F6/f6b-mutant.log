@@ -89,7 +89,7 @@
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.0767ms)
 ✖ post-GLM — execution-observation gate (rule 14) (2.5726ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.1375ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.1375ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.0943ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.0842ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.0698ms)
@@ -118,7 +118,7 @@ test at packages\core\classification\dist\test\classify.test.js:786:5
   
   'recognized infrastructure-failure signature in output'
   
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/packages/core/classification/dist/test/classify.test.js:802:16)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/packages/core/classification/dist/test/classify.test.js:802:16)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)
@@ -141,7 +141,7 @@ test at packages\core\classification\dist\test\classify.test.js:806:5
   + 'CONFIRMED_REGRESSION'
   - 'INFRASTRUCTURE_FAILURE'
   
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/packages/core/classification/dist/test/classify.test.js:821:16)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/packages/core/classification/dist/test/classify.test.js:821:16)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)
@@ -164,7 +164,7 @@ test at packages\core\classification\dist\test\classify.test.js:832:5
   + 'CONFIRMED_REGRESSION'
   - 'INFRASTRUCTURE_FAILURE'
   
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/packages/core/classification/dist/test/classify.test.js:851:16)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/packages/core/classification/dist/test/classify.test.js:851:16)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)

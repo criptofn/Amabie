@@ -137,9 +137,9 @@ describe('task record — requirementDigests identity, prose never stored', () =
     const raw = fs.readFileSync(path.join(root, CONFIG_DIR, TASK_FILE), 'utf8');
     assert.ok(!raw.includes('improve icon spacing'), 'requirement prose must NOT be persisted — digests only');
     const stored = JSON.parse(raw) as Record<string, unknown>;
-    stored.schema = 'canary-task/2';
+    stored.schema = 'amabie-task/2';
     fs.writeFileSync(path.join(root, CONFIG_DIR, TASK_FILE), JSON.stringify(stored));
-    assert.ok(readTaskRecord(root), 'Amabie must retain task authority from a migrated Canary record');
+    assert.ok(readTaskRecord(root), 'Amabie must retain task authority from a migrated Amabie record');
   });
 
   it('legacy records fail closed to missing authority', () => {
@@ -200,9 +200,9 @@ describe('readAcceptance — v2 fail-closed shapes', () => {
     assert.equal(rec.subjectDigest, subjectDigest(rec.subject));
   });
 
-  it('reads current acceptance records from migrated Canary state', () => {
+  it('reads current acceptance records from migrated Amabie state', () => {
     const root = makeProject('acc-legacy-brand');
-    put(root, { ...valid('c'), schema: 'canary-acceptance/3' });
+    put(root, { ...valid('c'), schema: 'amabie-acceptance/3' });
     assert.ok(readAcceptance(root, 'c'));
   });
 

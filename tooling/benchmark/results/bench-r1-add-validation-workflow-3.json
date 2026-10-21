@@ -1,10 +1,10 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r1-add-validation-workflow-3",
   "task": "add-validation",
   "arm": "workflow",
   "startedAt": "2026-09-12T03:17:01.601Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-add-validation-workflow-lV0J9c",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-add-validation-workflow-lV0J9c",
   "agent": {
     "command": "claude",
     "model": null,
@@ -18,10 +18,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -51,7 +51,7 @@
     "promotionBundles": [],
     "acceptedPromotionBundles": [],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Canary checks\nproof obligations open: 2 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Amabie checks\nproof obligations open: 2 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
   },
   "agentResult": {
     "isError": false,
@@ -66,7 +66,7 @@
       "cacheCreationTokens": 26582,
       "totalTokens": 428779
     },
-    "finalText": "Done as far as an agent may go — everything works, and the only remaining step is yours by design.\n\n**Status:** The candidate is committed and Canary's `finish` reports **TECHNICAL EVIDENCE: PROVEN** (sealed plan `npm test` green, all objective duties met, 2/3 obligations). Promotion is locked only on the 6 per-requirement obligations, which Canary classifies as non-objective and reserves for human review — and I'm explicitly forbidden from automating or forging `canary accept`. Run this from an interactive terminal when you've reviewed the work:\n\n```\ncanary accept email-rules\n```\n\n**What I changed** (all in the candidate `.canary\\candidates\\email-rules`, commit `ed322ac`; base tree untouched):\n\n- `src/validate.js` — completed `validateEmail` as an early-return chain in the exact rule order: `required` → `whitespace` (`/\\s/`) → `at_sign` (`split('@')` length ≠ 2) → `missing_part` (empty local or domain) → `bad_domain` (domain `split('.')` with < 2 labels or any empty label, covering `a@b`, `a@b.`, `a@.b`, `a@b..c`). Export shape `{ ok, reason }` and `normalizeEmail` unchanged.\n- `tests/validate.test.js` — added one table-driven test covering every reason plus ordering edge cases (`a@b@c.com` → `at_sign`, not `missing_part`).\n\n**Workflow notes:** First `finish` refused because the task was registered with no derivable obligations (\"NO task-obligation authority FROZEN at isolation\") — I re-registered with one `--requirement` per rule, re-isolated, and re-verified. One real bug caught en route: I'd written the test expectation `a@c → at_sign`, but one `@` with a dotless domain is correctly `bad_domain`; the implementation was right, I fixed the test."
+    "finalText": "Done as far as an agent may go — everything works, and the only remaining step is yours by design.\n\n**Status:** The candidate is committed and Amabie's `finish` reports **TECHNICAL EVIDENCE: PROVEN** (sealed plan `npm test` green, all objective duties met, 2/3 obligations). Promotion is locked only on the 6 per-requirement obligations, which Amabie classifies as non-objective and reserves for human review — and I'm explicitly forbidden from automating or forging `amabie accept`. Run this from an interactive terminal when you've reviewed the work:\n\n```\namabie accept email-rules\n```\n\n**What I changed** (all in the candidate `.amabie\\candidates\\email-rules`, commit `ed322ac`; base tree untouched):\n\n- `src/validate.js` — completed `validateEmail` as an early-return chain in the exact rule order: `required` → `whitespace` (`/\\s/`) → `at_sign` (`split('@')` length ≠ 2) → `missing_part` (empty local or domain) → `bad_domain` (domain `split('.')` with < 2 labels or any empty label, covering `a@b`, `a@b.`, `a@.b`, `a@b..c`). Export shape `{ ok, reason }` and `normalizeEmail` unchanged.\n- `tests/validate.test.js` — added one table-driven test covering every reason plus ordering edge cases (`a@b@c.com` → `at_sign`, not `missing_part`).\n\n**Workflow notes:** First `finish` refused because the task was registered with no derivable obligations (\"NO task-obligation authority FROZEN at isolation\") — I re-registered with one `--requirement` per rule, re-isolated, and re-verified. One real bug caught en route: I'd written the test expectation `a@c → at_sign`, but one `@` with a dotless domain is correctly `bad_domain`; the implementation was right, I fixed the test."
   },
   "visible": {
     "exitCode": 0,

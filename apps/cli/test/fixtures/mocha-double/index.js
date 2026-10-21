@@ -4,7 +4,7 @@
 // happy path must be testable OFFLINE, without an npm install of real mocha.
 // This is the only runner the offline suite lets Amabie inject into — it is
 // authored in THIS repo and pinned by CONTENT HASH (KNOWN_RUNNER_RELEASES,
-// origin 'canary-double'). It implements exactly the surfaces the observer
+// origin 'amabie-double'). It implements exactly the surfaces the observer
 // preload binds to, and nothing more:
 //   * exports Runner + Runnable (and Test/Mocha/describe/it/hooks) so the
 //     preload's isMochaShape() finds it under its require.cache path anchor;

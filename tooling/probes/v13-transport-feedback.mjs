@@ -30,7 +30,7 @@ const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const read = (name) => {
   try { return JSON.parse(fs.readFileSync(path.join(evidence, name), 'utf8')); } catch { return null; }
 };
-const CONFINED = ['v13edit-stateful-replay-canary-1.json', 'v12p4-forced-stateful-replay-canary-1.json'];
+const CONFINED = ['v13edit-stateful-replay-amabie-1.json', 'v12p4-forced-stateful-replay-amabie-1.json'];
 const PLAIN_LONG = 'v12tok-main-stateful-replay-plain-1.json';
 
 const records = CONFINED.map((n) => ({ name: n, doc: read(n) })).filter((r) => r.doc !== null);
@@ -185,14 +185,14 @@ check('C1-the-per-batch-check-HALVED-the-long-task-with-correctness-intact', () 
   // The measured outcome of the one permitted pilot, pinned so the audit's headline stays checkable rather
   // than becoming a number nobody can reproduce. The record is a historical artifact, so it does not drift;
   // a REGRESSION in the feature is caught behaviourally by v13-confin-check.mjs, not here.
-  const treated = read('v13check-stateful-replay-canary-1.json');
+  const treated = read('v13check-stateful-replay-amabie-1.json');
   if (!treated) {
     console.log('INFO the per-batch treatment record is absent: C1 reports rather than asserts');
     return;
   }
   const baselines = [
-    read('v13edit-stateful-replay-canary-1.json'),
-    read('v12p4-forced-stateful-replay-canary-1.json'),
+    read('v13edit-stateful-replay-amabie-1.json'),
+    read('v12p4-forced-stateful-replay-amabie-1.json'),
   ].filter(Boolean);
   assert(baselines.length > 0, 'no confined baseline record to compare the treatment against');
 
@@ -234,7 +234,7 @@ check('A5-the-pilot-record-says-whether-a-model-session-ACTUALLY-happened', () =
     .split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
   assert(!/workerLaunches:\s*1\b/.test(pilotCode),
     'v12-token-pilot.mjs hardcodes workerLaunches: 1 again. A refused fixture (0 tokens, no model call) '
-    + 'would then be recorded as a worker launch, and an aggregator could score it as a Amabie correctness '
+    + 'would then be recorded as a worker launch, and an aggregator could score it as an Amabie correctness '
     + 'failure rather than as a fixture outside confined mode\'s coverage');
   assert(/workerLaunches:\s*workerRan\s*\?\s*1\s*:\s*0/.test(pilotCode),
     'the pilot no longer derives workerLaunches from whether a model session really happened');

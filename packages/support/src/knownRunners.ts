@@ -41,8 +41,8 @@ export interface KnownRunnerRelease {
   version: string;
   /** Canonical content hash of the installed package directory (treeSha256). */
   treeSha256: string;
-  /** Where the bytes came from; 'canary-double' exists ONLY for offline tests. */
-  origin: 'npm' | 'canary-double';
+  /** Where the bytes came from; 'amabie-double' exists ONLY for offline tests. */
+  origin: 'npm' | 'amabie-double';
   note: string;
 }
 
@@ -57,13 +57,13 @@ export const KNOWN_RUNNER_RELEASES: Readonly<Record<string, readonly KnownRunner
         'golden-era tree and a clean npm install hash identically',
     },
     {
-      version: '0.0.0-canary-double',
+      version: '0.0.0-amabie-double',
       // Amabie-authored mocha-API double in apps/cli/test/fixtures/mocha-double
-      // (offline e2e only — origin 'canary-double' exists ONLY so tests can
+      // (offline e2e only — origin 'amabie-double' exists ONLY so tests can
       // exercise the injection mechanism without a network install). A unit
       // test pins table==disk: editing the double without re-pinning fails.
-      treeSha256: '10e2f8d17e8fd727f177419fedf2c66e445aaf53a6a72313da24f7133573bb0f',
-      origin: 'canary-double',
+      treeSha256: 'ea55501ff8ecd454c5a54363d2b7baab20ca12425058ba17c90b2428ae824b6f',
+      origin: 'amabie-double',
       note: 'offline-test double; .gitattributes forces eol=lf so checkout bytes == hash bytes',
     },
   ],
@@ -148,11 +148,11 @@ export function locateRunnerPackage(binAbsPath: string, expectedName: string): L
  *  match one entry (AM-1 — a version string alone never earns trust).
  *
  *  post-GLM F5 — ORIGIN IS AN EXECUTION-AUTHORITY BOUNDARY, not metadata.
- *  The 'canary-double' pin's bytes are PUBLIC in this repo and its
+ *  The 'amabie-double' pin's bytes are PUBLIC in this repo and its
  *  observation seams are exactly what an attacker knows best, so a
  *  (version, treeSha256) match alone let an untrusted spec stage those
  *  bytes at the canonical anchor in its own prepare step and earn observer
- *  injection through a runner it fully controls. Selecting a canary-double
+ *  injection through a runner it fully controls. Selecting an amabie-double
  *  pin therefore requires the explicit ctx.allowAmabieDoubleOrigin grant —
  *  the in-process test-authority channel (ExecutorDeps/PipelineDeps, the
  *  same channel as fetch/extract), which the production CLI never passes.
@@ -167,7 +167,7 @@ export function findRunnerPin(
 ): KnownRunnerRelease | null {
   const pin = (KNOWN_RUNNER_RELEASES[located.name] ?? []).find(
     (p) => p.version === located.version && p.treeSha256 === located.treeSha256
-      && (p.origin !== 'canary-double' || ctx.allowAmabieDoubleOrigin === true),
+      && (p.origin !== 'amabie-double' || ctx.allowAmabieDoubleOrigin === true),
   );
   return pin ?? null;
 }
@@ -177,7 +177,7 @@ export interface PinnedRunner {
   name: string;
   version: string;
   treeSha256: string;
-  origin: 'npm' | 'canary-double';
+  origin: 'npm' | 'amabie-double';
 }
 
 /**

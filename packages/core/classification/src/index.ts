@@ -456,7 +456,7 @@ export function classify(rounds: readonly RoundFact[]): ClassificationResult {
   return {
     classification: 'INCONCLUSIVE',
     rule: 14,
-    reason: `execution unattested / channel contradicted: ${gate} — no strong or execution-claim label without a Amabie-observed, pinned-runner execution on every round (previously rule ${inner.rule} ${inner.classification})`,
+    reason: `execution unattested / channel contradicted: ${gate} — no strong or execution-claim label without an Amabie-observed, pinned-runner execution on every round (previously rule ${inner.rule} ${inner.classification})`,
     details: {
       baselinePass: view.filter((r) => r.arm === 'baseline').every(pass),
       baselineUnanimous: unanimous(view.filter((r) => r.arm === 'baseline')),

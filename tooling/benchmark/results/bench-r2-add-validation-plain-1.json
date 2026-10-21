@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r2-add-validation-plain-1",
   "task": "add-validation",
   "arm": "plain",
@@ -11,7 +11,7 @@
     "expectedOutcome": "hidden PASS means every stated rule is implemented; the visible suite cannot tell the difference, so this is the 'green tests, incomplete work' case"
   },
   "startedAt": "2026-09-12T04:13:38.609Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-add-validation-plain-LnjbCm",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-add-validation-plain-LnjbCm",
   "agent": {
     "command": "claude",
     "model": null,
@@ -21,7 +21,7 @@
   },
   "prompt": "# Task: implement the rest of the email validation rules\n\n`validateEmail(value)` in `src/validate.js` must return `{ ok, reason }` and enforce\nthese rules, in this order:\n\n1. a missing value (not a string, or empty/whitespace only) → `required`\n2. a value containing whitespace → `whitespace`\n3. no `@`, or more than one `@` → `at_sign`\n4. an empty local part or an empty domain → `missing_part`\n5. a domain without a dot, or with an empty label (e.g. `a@b.`, `a@.b`) → `bad_domain`\n6. otherwise → `{ ok: true, reason: '' }`\n\nKeep the existing export shape exactly (`{ ok, reason }`, `reason` is `''` when the\nvalue is accepted) and do not change `normalizeEmail`.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "subtype": "success",

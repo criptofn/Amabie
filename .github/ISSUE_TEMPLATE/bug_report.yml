@@ -1,12 +1,12 @@
 name: Bug report
-description: Something Canary did that it should not have done — or failed to do.
+description: Something Amabie did that it should not have done — or failed to do.
 title: "bug: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Canary is an evidence-first project, so the report format is the same as
+        Amabie is an evidence-first project, so the report format is the same as
         the product's: **the command you ran, and its full output.** A description
         of what "should" happen is useful; a reproduced command is what makes it
         actionable.
@@ -15,9 +15,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: Canary version and how it was installed
-      description: Output of `canary version`. If installed from a tarball, say which release asset.
-      placeholder: "canary 1.0.0 — npm install -g ./canary-rn-cli-1.0.0.tgz"
+      label: Amabie version and how it was installed
+      description: Output of `amabie version`. If installed from a tarball, say which release asset.
+      placeholder: "amabie 1.0.0 — npm install -g ./amabie-rn-cli-1.0.0.tgz"
     validations:
       required: true
   - type: input
@@ -58,9 +58,9 @@ body:
       options:
         - "Tier A — enforced in code (docs/SECURITY.md)"
         - "Tier B — structural convention (docs/SECURITY.md)"
-        - "The everyday tier (canary setup / doctor / checkpoint)"
-        - "The attested pipeline (canary run / prove / check / report)"
-        - "The candidate workflow (canary isolate / accept)"
+        - "The everyday tier (amabie setup / doctor / checkpoint)"
+        - "The attested pipeline (amabie run / prove / check / report)"
+        - "The candidate workflow (amabie isolate / accept)"
         - "Not sure"
     validations:
       required: true

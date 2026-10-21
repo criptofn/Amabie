@@ -26,7 +26,7 @@
 test at packages\support\dist\test\lifecycle.test.js:177:5
 ✖ sweepDescendants finds and kills a live parent's child process (1825.8021ms)
   AssertionError [ERR_ASSERTION]: sweep killed [61128] but not 40712 | result={"killed":[61128],"failed":false} | platform=win32 | diagnostic: sweepInputParentPid=61128 | expectedChildPid=40712 | spawnedAtMs=1790473792095 | cutUsedBySweep=2026-09-27T01:48:52.095Z | aliveAtAssertionParent=false | aliveAtAssertionChild=false | cimObservation snapshotCount=348 | cimObservation row=61128;present=false | cimObservation row=40712;present=false | shape: absent from the fresh snapshot and not alive (it exited before the sweep)
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary/_canary-data/worktrees/canary-post-v15-product-validation/packages/support/dist/test/lifecycle.test.js:225:20)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie/_canary-data/worktrees/amabie-post-v15-product-validation/packages/support/dist/test/lifecycle.test.js:225:20)
       at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
       at async Test.run (node:internal/test_runner/test:1404:7)
       at async Promise.all (index 0)

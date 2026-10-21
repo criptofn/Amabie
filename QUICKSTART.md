@@ -26,13 +26,13 @@ amabie --version
 amabie --help
 ```
 
-Expected version: `amabie 2.0.0`. The bundle has no runtime npm dependencies. The `canary` command remains a compatibility alias; existing Canary global installations need the upgrade steps below before replacement.
+Expected version: `amabie 2.0.0`. The bundle has no runtime npm dependencies. The `amabie` command remains a compatibility alias; existing Amabie global installations need the upgrade steps below before replacement.
 
 For a source checkout, `npm ci` and `npm run build:force` build the CLI but do not create a global executable. Use `node apps/cli/dist/src/main.js --help` or prepare and install the tarball with `node tooling/pack.mjs`.
 
-## Upgrade an existing Canary npm installation
+## Upgrade an existing Amabie npm installation
 
-Stop active agent sessions and record the repositories using Canary hooks. Back
+Stop active agent sessions and record the repositories using Amabie hooks. Back
 up their integration settings and local state without deleting them. Verify the
 new tarball checksum before replacing anything, then identify the old package:
 
@@ -47,18 +47,18 @@ that package and install the verified Amabie tarball:
 npm uninstall -g @canary-rn/cli
 npm install -g ./amabie-cli-2.0.0.tgz
 amabie --version
-canary --version
+amabie --version
 ```
 
 Both commands should print `amabie 2.0.0`. A direct install while the historical
-package owns the `canary` bin can fail with `EEXIST`; do not use `--force` or delete
+package owns the `amabie` bin can fail with `EEXIST`; do not use `--force` or delete
 an unidentified global executable. For another installation method or package
 name, inspect it before removing it.
 
 In each recorded repository, inspect your current work and run `amabie setup`.
 Review the checks before accepting this operator reseal, then run
 `amabie doctor --json` for a fresh verdict. Setup preserves unrelated hooks and
-migrates safe untracked `.canary` state; tracked or conflicting legacy state
+migrates safe untracked `.amabie` state; tracked or conflicting legacy state
 needs the explicit recovery instruction it prints. Preserve legacy trust stores,
 keys and evidence directories. Upgrading the executable does not prove your
 project passes, and old hooks need setup to point at the new installation.

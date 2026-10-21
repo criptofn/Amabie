@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12clean-multi-requirement-pricing-guarded-1",
   "task": "multi-requirement-pricing",
   "arm": "guarded",
@@ -28,7 +28,7 @@
     ]
   },
   "startedAt": "2026-09-14T07:18:55.799Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-guarded-qvQaEQ",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-guarded-qvQaEQ",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -54,10 +54,10 @@
     "secs": 0.9,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -107,7 +107,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -138,7 +138,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "The work and its proof are complete; I'll stop here rather than run `canary setup --yes`, since that rewrites the repo's trusted-state config and connection isn't part of this task.\n\n**Response to the gate — what I added:**\n\n- **`tests/tiered-discount.test.js`** — 8 new checks picked up automatically by the sealed runner (`run-tests.js` loads every `tests/*.test.js`), covering the rules the base suite never exercised:\n  - tier selection at both paid bands (10000→9000, 49999→44999, 50000→40000, 123456→98765)\n  - half-**up** rounding (10005→9005, 10050→9045, 8.5→9 — never round-to-even)\n  - result always a whole number of cents\n  - fail-closed with a descriptive `Error` for missing/`null`/non-object config, missing/empty/non-array `tiers`, tiers lacking numeric `min`/`rate`, and non-strictly-increasing (out-of-order or repeated) boundaries — with an explicit assertion that `discountedTotal(0, null)` throws rather than returning the subtotal\n  - the README `Discount rates` table parsed from the file and compared **exactly** against `config/pricing.json` (same rows, same boundaries, same rates — stale or missing rows fail)\n\n**Proof that the checks discriminate, per the gate's requirement:**\n\n- Against my current tree: **11 passing** (`npm test`).\n- Against the base commit `3372ec8` (its `src/pricing.js` and `README.md`, run in a throwaway sandbox that leaves the working tree untouched): **7 failing, 4 passing** — every rule-bearing check fails there, including the README comparison showing the stale `0.05`/`0.25` rows. The 4 base-passes are the original happy-path tests plus the whole-cents guard, which exist to protect preserved behaviour, not to certify the change.\n\nSo the change to `src/pricing.js` and `README.md` is now bound to checks that fail without it and pass with it. Everything works; `config/pricing.json`, `src/format.js`, and the original suite are unchanged, and no Canary trusted state was modified."
+    "finalText": "The work and its proof are complete; I'll stop here rather than run `amabie setup --yes`, since that rewrites the repo's trusted-state config and connection isn't part of this task.\n\n**Response to the gate — what I added:**\n\n- **`tests/tiered-discount.test.js`** — 8 new checks picked up automatically by the sealed runner (`run-tests.js` loads every `tests/*.test.js`), covering the rules the base suite never exercised:\n  - tier selection at both paid bands (10000→9000, 49999→44999, 50000→40000, 123456→98765)\n  - half-**up** rounding (10005→9005, 10050→9045, 8.5→9 — never round-to-even)\n  - result always a whole number of cents\n  - fail-closed with a descriptive `Error` for missing/`null`/non-object config, missing/empty/non-array `tiers`, tiers lacking numeric `min`/`rate`, and non-strictly-increasing (out-of-order or repeated) boundaries — with an explicit assertion that `discountedTotal(0, null)` throws rather than returning the subtotal\n  - the README `Discount rates` table parsed from the file and compared **exactly** against `config/pricing.json` (same rows, same boundaries, same rates — stale or missing rows fail)\n\n**Proof that the checks discriminate, per the gate's requirement:**\n\n- Against my current tree: **11 passing** (`npm test`).\n- Against the base commit `3372ec8` (its `src/pricing.js` and `README.md`, run in a throwaway sandbox that leaves the working tree untouched): **7 failing, 4 passing** — every rule-bearing check fails there, including the README comparison showing the stale `0.05`/`0.25` rows. The 4 base-passes are the original happy-path tests plus the whole-cents guard, which exist to protect preserved behaviour, not to certify the change.\n\nSo the change to `src/pricing.js` and `README.md` is now bound to checks that fail without it and pass with it. Everything works; `config/pricing.json`, `src/format.js`, and the original suite are unchanged, and no Amabie trusted state was modified."
   },
   "visible": {
     "exitCode": 0,
@@ -221,20 +221,20 @@
     "bytes": {
       "toolResultTotal": 7118,
       "largestToolResult": 1264,
-      "canaryVisible": 1264,
+      "amabieVisible": 1264,
       "hookOutput": 0
     },
     "commands": {
       "total": 6,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "canary --version && canary status 2>&1 | head -40"
+      "amabieCommands": [
+        "amabie --version && amabie status 2>&1 | head -40"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

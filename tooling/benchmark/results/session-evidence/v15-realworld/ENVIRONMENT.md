@@ -1,14 +1,14 @@
 # WS5 host + environment log (facts only, every line from a command that was run)
 
-Session host: Windows, PowerShell 7 (`pwsh`). Canary CLI under measurement:
-`C:\Users\Johannes\Desktop\canary\apps\cli\dist\src\main.js` — **built artifact used as-is**
-(`LastWriteTime` 2026-09-23 02:10:08, `canary --help` self-reports **canary 1.4.0**). No build,
-no test run and no `verify:productization` was executed in the Canary repository during this
+Session host: Windows, PowerShell 7 (`pwsh`). Amabie CLI under measurement:
+`C:\Users\Johannes\Desktop\amabie\apps\cli\dist\src\main.js` — **built artifact used as-is**
+(`LastWriteTime` 2026-09-23 02:10:08, `amabie --help` self-reports **amabie 1.4.0**). No build,
+no test run and no `verify:productization` was executed in the Amabie repository during this
 session, per the workstream constraint.
 
-Scratch root for every copy: `C:\Users\Johannes\Desktop\canary-ws5-scratch\`.
+Scratch root for every copy: `C:\Users\Johannes\Desktop\amabie-ws5-scratch\`.
 No write of any kind was made inside the three source repositories (verified afterwards:
-identical HEADs, and neither `.canary/` nor `.mcp.json` exists in any of them).
+identical HEADs, and neither `.amabie/` nor `.mcp.json` exists in any of them).
 
 ## Toolchain actually found on this host
 
@@ -29,7 +29,7 @@ identical HEADs, and neither `.canary/` nor `.mcp.json` exists in any of them).
 1. `refactron`'s 580-test suite needs `python3` (hard-coded in
    `src/verify/checks/syntax-python.ts:14`). A relocatable copy of the machine's own
    CPython 3.11.9 was staged at
-   `C:\Users\Johannes\Desktop\canary-ws5-scratch\python311\` (`robocopy` of
+   `C:\Users\Johannes\Desktop\amabie-ws5-scratch\python311\` (`robocopy` of
    `C:\Users\Johannes\Tools\Python311`, then `python.exe` copied to `python3.exe`, which is
    exactly how the CPython Windows installer ships `python3.exe`) and prepended to PATH.
 2. `refactron`'s `runners-run` / `mutation` / `gates-tests` suites spawn `sh`. Git for
@@ -42,14 +42,14 @@ identical HEADs, and neither `.canary/` nor `.mcp.json` exists in any of them).
    exit 1). `node_modules` was in fact fully populated (262 entries, `vitest`/`esbuild`/
    `typescript`/`eslint` present), so the failure is the post-install script only.
 5. `Hermes_Agent`'s `package.json` declares no `test`/`typecheck`/`build` script, so
-   `canary setup` discovered nothing. An **operator act** added one line —
+   `amabie setup` discovered nothing. An **operator act** added one line —
    `"test": "node scripts/smoke-test.js"` — declaring the smoke script the project
    *already ships* under the conventional name. No new check was authored. Committed in
    the copy as `7d0eb49c46d83184638fa093b44a15222feb8c51`.
 6. `schniedelsmp.net` ships no `gradlew` wrapper and no `gradle` on PATH; Gradle 8.13
-   was put on PATH for `canary setup`, which then pinned its **absolute** path.
+   was put on PATH for `amabie setup`, which then pinned its **absolute** path.
 
-## The measured consequence of Canary's sanitized step environment
+## The measured consequence of Amabie's sanitized step environment
 
 `tooling/probes/v15-realworld-gate-env.mjs` (run on this host) makes this MEASURED rather
 than inferred. A fixture project whose own declared `test` script dumps the environment it

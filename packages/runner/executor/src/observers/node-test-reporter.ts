@@ -60,13 +60,13 @@ import { pathToFileURL } from 'node:url';
 // legitimate run is refused; a genuinely different program still differs.
 import { canonicalPath } from '@amabie/support';
 
-export const NODE_TEST_REPORTER_BASENAME = 'canary-node-test-reporter.cjs';
+export const NODE_TEST_REPORTER_BASENAME = 'amabie-node-test-reporter.cjs';
 
 /** `hello.runner` for this channel. */
 export const NODE_TEST_RUNNER_ID = 'node-test';
 
 /** Directory inside the workspace (outside artifacts) holding Amabie's bytes. */
-export const NODE_TEST_OBSERVER_DIRNAME = 'canary-node-observer';
+export const NODE_TEST_OBSERVER_DIRNAME = 'amabie-node-observer';
 
 /** The absolute path of Amabie's reporter bytes for this workspace. */
 export function nodeTestReporterPath(wsRoot: string): string {
@@ -135,7 +135,7 @@ export const NODE_TEST_REPORTER_SOURCE = `'use strict';
 // Amabie node:test reporter. See packages/runner/executor/src/observers/node-test-reporter.ts
 const { Transform } = require('node:stream');
 const fs = require('node:fs');
-const OBSERVER_VERSION = 'canary-observer-v1';
+const OBSERVER_VERSION = 'amabie-observer-v1';
 const RUNNER_ID = 'node-test';
 
 const FD = 3;

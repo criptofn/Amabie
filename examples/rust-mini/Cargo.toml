@@ -1,8 +1,8 @@
 [package]
-name = "canary-example-rust"
+name = "amabie-example-rust"
 version = "0.0.0"
 edition = "2021"
-description = "The smallest Rust crate Canary can verify: Cargo.toml IS the declaration."
+description = "The smallest Rust crate Amabie can verify: Cargo.toml IS the declaration."
 publish = false
 
 [lib]

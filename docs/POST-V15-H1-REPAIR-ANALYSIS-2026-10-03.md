@@ -1,7 +1,7 @@
 # H1: Ursache des nicht abgeschlossenen nativen Versuchs
 
-Auswertung der unveränderten `capture/H1-canary/record.json` unter
-`C:/Users/Johannes/Desktop/canary/_canary-data/evidence/claude-build-order-native-20261003-six-job`.
+Auswertung der unveränderten `capture/H1-amabie/record.json` unter
+`C:/Users/Johannes/Desktop/amabie/_canary-data/evidence/claude-build-order-native-20261003-six-job`.
 SHA-256: `aa0edf184d4bcca2af1442f09fba64e7d08a06fdcdce6ab63102a1d493d6243c`.
 
 Der Verlauf enthält 51 Toolaufrufe: 23 Edit, 16 Bash, 11 Read und einen Glob.
@@ -11,7 +11,7 @@ fehlender fs-Import, falscher Methodenname fs.utime, ungültige Zeitwerte, Annah
 das Alter gerade angelegter Dateien und Vergleiche der Dateizahlen verschiedener Verzeichnisse.
 Erst der vorletzte Bash-Aufruf meldet einen bestandenen Smoke-Test.
 
-Der letzte Aufruf verwendet `canary doctor --check "previewOrganization-maxAgeDays-fix"`:
+Der letzte Aufruf verwendet `amabie doctor --check "previewOrganization-maxAgeDays-fix"`:
 eine erfundene Check-ID und einen globalen CLI-Namen. Die aufgerufene Installation
 verweigert die Konfiguration der eingefrorenen Installation. Der Versuchsagent verdeckt
 den Fehler mit `|| echo`. Es gibt danach keinen normalen Abschluss und keinen Stop-Nachweis.
@@ -19,12 +19,12 @@ Dieser Aufruf ist kein Nachweis über `doctor` des eingefrorenen Pakets. Die sep
 Hook-/MCP-Konfiguration und die übrigen Pilotwerte werden dadurch nicht umgeschrieben.
 
 Der eingefrorene Stand enthielt bereits die SessionStart-Anweisung, die konkrete installierte
-CLI anstelle eines globalen Canary-Befehls zu verwenden, die berichtete Check-ID zu übernehmen
+CLI anstelle eines globalen Amabie-Befehls zu verwenden, die berichtete Check-ID zu übernehmen
 und ohne erneutes Setup normal abzuschließen (Commit b4c3530d). Derselbe Mechanismus steht
 im aktuellen Produkt. Eine Wiederholung dieser Anleitung wäre keine neue Produktkorrektur.
 
 Die beobachtete Schleife liegt vor einer Blockentscheidung des Stop-Hooks. Sie beweist weder
-eine unnötige Canary-Blockade noch, dass Canary den Verlauf verhindert hat. Testaufbaufehler
+eine unnötige Amabie-Blockade noch, dass Amabie den Verlauf verhindert hat. Testaufbaufehler
 des lokalen Modells und der falsche CLI-Aufruf bleiben sichtbar. Keine Hermes-Datei wurde
 für diese Analyse verändert; keine historische Lösung oder Oracle wurde nachträglich angepasst.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Canary experiment runner v2 — spec-driven, security-contracted,
+ * Amabie experiment runner v2 — spec-driven, security-contracted,
  * evidence-producing. Seed of the full pipeline (apps/cli will wrap this).
  *
  *   node scripts/run-experiment.mjs <spec.json> [--relabel <artifactsDir>]
@@ -27,7 +27,7 @@ const NODE_DIR = path.dirname(NODE);
 const NPM_CLI = path.join(NODE_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const SYSTEMROOT = process.env.SystemRoot ?? 'C:\\WINDOWS';
 const YARN_PIN = 'yarn@1.22.22';
-const CANARY_VERSION = '0.1.0';
+const AMABIE_VERSION = '0.1.0';
 
 const RUNNER_SUMMARY = /\b\d+ (?:tests? )?(?:passed|failed|passing|failing)\b/i;
 const INFRA_PATTERNS = [
@@ -42,7 +42,7 @@ const specArg = process.argv[2];
 if (!specArg) { console.error('usage: run-experiment.mjs <spec.json>'); process.exit(3); }
 const spec = JSON.parse(fs.readFileSync(specArg, 'utf8'));
 
-const WS = path.join(REPO_ROOT, '.canary-runs',
+const WS = path.join(REPO_ROOT, '.amabie-runs',
   `exp-${spec.id}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
 const FIXTURE = path.join(WS, 'fixture');
 const ART = path.join(WS, 'artifacts');
@@ -251,7 +251,7 @@ async function main() {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     runId: path.basename(WS),
     createdAt: new Date().toISOString(),
-    canaryVersion: CANARY_VERSION,
+    amabieVersion: AMABIE_VERSION,
     experimentId: spec.id,
     dependency: {
       package: spec.dependency.package,
@@ -296,7 +296,7 @@ async function main() {
   fs.writeFileSync(path.join(ART, 'evidence.json'), JSON.stringify(bundle, null, 2));
   fs.writeFileSync(path.join(ART, 'tree-drift.json'), JSON.stringify(drift, null, 2));
   // Pointer for the prove step (machine-local convenience artifact).
-  fs.writeFileSync(path.join(REPO_ROOT, '.canary-runs', `latest-${spec.id}.json`),
+  fs.writeFileSync(path.join(REPO_ROOT, '.amabie-runs', `latest-${spec.id}.json`),
     JSON.stringify({ evidence: path.join(ART, 'evidence.json'), workspace: WS }, null, 2));
 
   console.log('\n' + '='.repeat(66));

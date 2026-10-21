@@ -1,16 +1,16 @@
-# v1.3 §A — the arm map: which Canary SHAPE is cheaper, measured from the recorded corpus
+# v1.3 §A — the arm map: which Amabie SHAPE is cheaper, measured from the recorded corpus
 
 **This cost nothing to produce.** Every number below was already recorded; the v1.2 documents reported
-the confined transport as *the* Canary arm and never compared the shapes against each other. Doing that
+the confined transport as *the* Amabie arm and never compared the shapes against each other. Doing that
 comparison changes what v1.3 should build, so it is recorded here before anything else is measured.
 
 All three arms run the same fixture, the same model, the same starting bytes and the same hidden oracle.
-**CORRECTION (v1.3 §22): this file originally said `canary setup --yes` runs for EVERY arm
-(`run-trial.mjs:255`), "so Canary is wired in all of them and the difference between `plain` and `guarded`
+**CORRECTION (v1.3 §22): this file originally said `amabie setup --yes` runs for EVERY arm
+(`run-trial.mjs:255`), "so Amabie is wired in all of them and the difference between `plain` and `guarded`
 is one paragraph of instruction, not wiring". That is FALSE** — the setup block at `run-trial.mjs:254`
 lists the protected arms and `plain` is not among them (`run-trial.mjs:803` says so again: "the plain arm
-HAS no Canary"). `plain` gets no seal, no Stop hook and no MCP entry, so the ratios below are
-**Canary versus genuinely not using Canary** — which is the comparison the token target asks for. The
+HAS no Amabie"). `plain` gets no seal, no Stop hook and no MCP entry, so the ratios below are
+**Amabie versus genuinely not using Amabie** — which is the comparison the token target asks for. The
 correction strengthens the result and removes an explanation: `plain` was never gated, so "no false done in
 any arm" cannot be credited to a gate that was present everywhere.
 
@@ -29,7 +29,7 @@ records `v12p4-forced-*` / `v13edit-*`.
 
 ## What this says
 
-**1. The everyday shape is the ONLY Canary configuration cheaper than plain — and it is the one v1.3
+**1. The everyday shape is the ONLY Amabie configuration cheaper than plain — and it is the one v1.3
 promises.** The `guarded` arm tells the agent: *verification in this repository is automatic; when you
 believe the work is complete, simply finish; you will be told exactly what to fix, so do not re-read
 output you have already seen and do not repeat a check you have just run* — and then leaves the decision
@@ -37,17 +37,17 @@ to verify with the model (`run-trial.mjs:506-514`, deliberately, because the agg
 a false done). Result: **92.7 % of plain, equal correctness, no false done.**
 
 **2. The ceremony is what costs, not the verification.** `workflow` — the documented
-`canary work` → `finish` path — is **+77.8 %**, nearly twice the everyday shape, *with identical
+`amabie work` → `finish` path — is **+77.8 %**, nearly twice the everyday shape, *with identical
 correctness*. So v1.3's "zero ceremony" goal and its token goal are the same goal. This is the strongest
 evidence yet that `work`/`finish` are an EXPERT surface, not the ordinary path.
 
 **3. The long task does not explode on the everyday shape.** The `guarded` arm takes **17 turns and
 96.1 % of plain** on `stateful-replay`, where the confined transport takes 24 turns and 180 %. The
-explosion belongs to the transport configuration, not to "Canary on a long task".
+explosion belongs to the transport configuration, not to "Amabie on a long task".
 
 **4. The confined transport is a trade, not a win.** It is dramatically cheaper on short, well-specified
 changes (−84 % and −62 %) and much more expensive on the long one (+180 %). That is a shape, not a bug,
-and it should be documented as one rather than presented as the Canary number.
+and it should be documented as one rather than presented as the Amabie number.
 
 ## The honest position on the v1.3 token target
 
@@ -58,12 +58,12 @@ floor for an agent that must read a repository and think.
 
 Two consequences, stated rather than glossed:
 
-- **The claim that ships must be the measured one:** Canary's everyday shape costs about the same as
+- **The claim that ships must be the measured one:** Amabie's everyday shape costs about the same as
   working without it (−7.3 %), while catching work a green suite cannot discriminate; its confined
   transport makes short tasks 2–6× cheaper and long ones more expensive. Anything stronger is not
   supported.
 - **What would move the number is not more primitive work**, it is the agent doing fewer turns at a
   smaller context — and the `invisible` arm's recorded false done is the standing proof that buying that
   with "stop verifying" is the wrong trade unless a real gate backs the instruction. In the v1.3 product
-  a real gate DOES back it, which is exactly why shipping the instruction through Canary's own channels
+  a real gate DOES back it, which is exactly why shipping the instruction through Amabie's own channels
   is the next step rather than another primitive.
