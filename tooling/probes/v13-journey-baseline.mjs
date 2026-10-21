@@ -89,7 +89,7 @@ function journey(label, intent, extraFlags) {
   amabie(['setup', '--yes'], root, 0);
   const w = amabie(['work', 'task1', intent, ...extraFlags], root, null);
   const wText = out(w);
-  const printed = [...wText.matchAll(/[A-Za-z]:\\[^\s"']+/g)].map((m) => m[0].replace(/[.,)]+$/, ''));
+  // Windows drive paths and POSIX absolute paths: the candidate is reported in whichever form the host uses.
   const printed = [...wText.matchAll(/(?:[A-Za-z]:\\|\/)[^\s"']+/g)].map((m) => m[0].replace(/[.,)]+$/, ''));
   const cand = printed.find((p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } }) ?? null;
   let fStatus = null; let fText = '(candidate never opened — finish not attempted)';
