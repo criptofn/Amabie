@@ -507,6 +507,8 @@ const STEPS = [
   ['P0:28 parallel workers hold separate areas; overlap, overshoot, moved baseline and expired lease are refused before release', process.execPath, ['tooling/probes/mission-assignments.mjs'], {}],
   // P0:29 — evidence is bound to the exact snapshot (incl. dirty bytes), goes stale per dimension, and an open mission keeps it through retention (T18).
   ['P0:29 evidence binds exact dirty bytes, goes stale when task/oracle/policy/env/subject change, and survives retention while a mission needs it', process.execPath, ['tooling/probes/evidence-binding.mjs'], {}],
+  // P0:30 — Checkpoint C: one small real workflow; statuses stay separate, evidence goes stale, budget/scope survive restart and agent switch, sessions cannot overwrite each other.
+  ['P0:30 checkpoint C: separate statuses, bound evidence, no budget reset on restart/agent switch, no silent overwrite between sessions', process.execPath, ['tooling/probes/checkpoint-c-workflow.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53
