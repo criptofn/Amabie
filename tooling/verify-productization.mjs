@@ -499,6 +499,8 @@ const STEPS = [
   ['P0:24 a rewritten fixture the sealed check reads cannot self-approve', process.execPath, ['tooling/probes/oracle-fixture-authority.mjs'], {}],
   // P0:25 — an approved routine profile is a proposal until every prerequisite is met (T13).
   ['P0:25 an approved routine profile binds a matching task; anything short of every prerequisite stays a proposal', process.execPath, ['tooling/probes/routine-profile.mjs'], {}],
+  // P0:26 — a mission survives a restart, a torn write and a concurrent writer without a silent default or budget reset (T15).
+  ['P0:26 the mission journal keeps order, attempts and limit across restart; a torn tail heals, corruption blocks', process.execPath, ['tooling/probes/mission-journal.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53
