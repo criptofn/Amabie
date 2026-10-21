@@ -149,6 +149,15 @@ const APPROVE = { type: 'approve', mission: 'm-1', goal: 'Fix the greeting', app
   fs.writeFileSync(path.join(d, 'journal.lock'), '99999999'); // a dead holder
   check((() => { try { J.transact(d, [{ type: 'revise', goal: 'after stale lock', approvedBy: 'operator' }]); return true; } catch { return false; } })(),
     'LOCK: a lock left by a dead process does not wedge the journal');
+  // a holder that has created the lock but not yet written its pid is alive: its (empty) lock must be waited for
+  const before = J.readJournal(d).seq;
+  fs.writeFileSync(path.join(d, 'journal.lock'), '');
+  const late = new Promise(resolve => spawn(process.execPath, [fileURLToPath(import.meta.url), '--child', 'tx', d, JSON.stringify([{ type: 'revise', goal: 'after empty lock', approvedBy: 'operator' }])], { stdio: 'ignore' }).on('exit', resolve));
+  await new Promise(r => setTimeout(r, 600));
+  const stolen = J.readJournal(d).seq !== before;
+  fs.unlinkSync(path.join(d, 'journal.lock'));
+  const lateCode = await late;
+  check(!stolen && lateCode === 0 && J.readJournal(d).seq === before + 1, 'LOCK: a freshly created, still-empty lock is waited for, not stolen', JSON.stringify({ stolen, lateCode }));
 }
 
 fs.rmSync(root, { recursive: true, force: true });

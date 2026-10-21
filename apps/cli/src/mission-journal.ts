@@ -39,6 +39,8 @@ export interface MissionState {
   assignments: Assignment[];
   fence: number;
   clock: number;
+  /** Evidence ids this mission still depends on (T18); retention must not remove an open one. */
+  evidence: { id: string; open: boolean }[];
 }
 export interface Assignment {
   id: string; worker: string; paths: string[]; baseHead: string;
@@ -60,6 +62,8 @@ export type MissionEvent =
   | { type: 'renew'; id: string; token: number; at: number; ttlMs: number }
   | { type: 'rebase'; id: string; token: number; baseHead: string; at: number }
   | { type: 'release'; id: string; token: number; at: number; changed: string[]; baseMoved: string[] }
+  | { type: 'evidence'; id: string }
+  | { type: 'evidence-release'; id: string }
   | { type: 'attempt'; note?: string }
   | { type: 'transition'; to: MissionStatus };
 
@@ -68,7 +72,9 @@ const NEXT: Record<MissionStatus, MissionStatus[]> = {
   none: [], approved: ['working', 'blocked'], working: ['verifying', 'blocked'],
   verifying: ['done', 'working', 'blocked'], done: [], blocked: [],
 };
-export const emptyState = (): MissionState => ({ mission: null, revision: 0, goal: null, status: 'none', attemptsUsed: 0, attemptLimit: DEFAULT_ATTEMPT_LIMIT, approvedBy: null, subgoals: [], duties: [], rootVerified: false, agent: null, assignments: [], fence: 0, clock: 0 });
+export const emptyState = (): MissionState => ({ mission: null, revision: 0, goal: null, status: 'none', attemptsUsed: 0, attemptLimit: DEFAULT_ATTEMPT_LIMIT, approvedBy: null, subgoals: [], duties: [], rootVerified: false, agent: null, assignments: [], fence: 0, clock: 0, evidence: [] });
+/** Evidence a live mission still depends on. A finished mission holds nothing back. */
+export const openEvidence = (s: MissionState): Set<string> => new Set(s.status === 'done' ? [] : s.evidence.filter(e => e.open).map(e => e.id));
 
 /** Repo-relative, forward-slash, lower-cased (a case-insensitive filesystem makes `Src` and `src` ONE resource). */
 export function normPath(p: string): string {
@@ -156,6 +162,14 @@ export function reduce(state: MissionState, event: MissionEvent): MissionState {
       if (moved.length) throw new Error(`assignment ${a.id}: the baseline moved under the assigned work: ${moved.join(', ')} — rebase first`);
       return put({ ...a, status: 'released' });
     }
+    case 'evidence':
+      if (s.status === 'none' || s.status === 'done') throw new Error(`cannot reference evidence in status ${s.status}`);
+      if (!/^[0-9a-f]{64}$/.test(event.id)) throw new Error('evidence is referenced by its 64-hex id');
+      if (s.evidence.some(e => e.id === event.id)) throw new Error(`evidence ${event.id.slice(0, 12)} is already referenced`);
+      return { ...s, evidence: [...s.evidence, { id: event.id, open: true }] };
+    case 'evidence-release':
+      if (!s.evidence.some(e => e.id === event.id && e.open)) throw new Error(`no open evidence reference ${String(event.id).slice(0, 12)}`);
+      return { ...s, evidence: s.evidence.map(e => e.id === event.id ? { ...e, open: false } : e) };
     case 'attempt':
       if (s.status !== 'working') throw new Error(`an attempt needs status working, not ${s.status}`);
       if (s.attemptsUsed >= s.attemptLimit) throw new Error(`attempt limit ${s.attemptLimit} is used up`);
@@ -223,6 +237,15 @@ function withLock<T>(dir: string, action: () => T): T {
       // A dead holder's lock is stale; a live one is waited for, never stolen.
       let holder = NaN;
       try { holder = Number(fs.readFileSync(lock, 'utf8')); } catch { continue; }
+      // 'wx' creates the file empty before the pid is written: an empty or unparsable lock is a holder mid-acquire,
+      // not a dead one. Only an old such file (the holder died between create and write) may be stolen.
+      if (!Number.isInteger(holder) || holder <= 0) {
+        let old = false;
+        try { old = Date.now() - fs.statSync(lock).mtimeMs > 2000; } catch { continue; }
+        if (!old) { if (Date.now() > deadline) throw new Error('mission journal is busy (lock being acquired)'); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10); continue; }
+        try { fs.unlinkSync(lock); } catch { /* another process took it first */ }
+        continue;
+      }
       let alive = true;
       try { process.kill(holder, 0); } catch (k) { alive = (k as NodeJS.ErrnoException).code === 'EPERM'; }
       if (!alive) { try { fs.unlinkSync(lock); } catch { /* another process took it first */ } continue; }
