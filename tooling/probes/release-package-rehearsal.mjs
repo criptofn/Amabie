@@ -35,6 +35,9 @@ function project(name) {
   for (const file of ['package.json', 'greeting.js', 'greeting.test.js']) {
     fs.copyFileSync(path.join(prefix, 'node_modules/@amabie/cli/examples/quickstart', file), path.join(root, file));
   }
+  // The sealed check also loads sibling *.test.js files, so a worker ADDS a test file instead of rewriting the sealed one (P0:21).
+  fs.appendFileSync(path.join(root, 'greeting.test.js'),
+    "\nimport { readdirSync } from 'node:fs';\nfor (const f of readdirSync(import.meta.dirname)) if (f !== 'greeting.test.js' && f.endsWith('.test.js')) await import('./' + f);\n");
   for (const args of [['init', '-b', 'main'], ['config', 'user.name', 'Release rehearsal'],
     ['config', 'user.email', 'release-test@example.invalid'], ['add', '--all'], ['commit', '-m', 'Sealed example']]) {
     succeeds(run('git', args, root));
@@ -93,9 +96,8 @@ try {
   const root = project('discriminating-change');
   succeeds(amabie(root, ['task', 'Trim whitespace around greeting names', '--kind', 'bugfix']));
   const source = fs.readFileSync(path.join(root, 'greeting.js'), 'utf8');
-  const tests = fs.readFileSync(path.join(root, 'greeting.test.js'), 'utf8');
   fs.writeFileSync(path.join(root, 'greeting.js'), source.replace('String(name)', 'String(name).trim()'));
-  fs.writeFileSync(path.join(root, 'greeting.test.js'), tests + "\ntest('trims whitespace', () => { assert.equal(greeting('  Ada  '), 'Hello, Ada!'); });\n");
+  fs.writeFileSync(path.join(root, 'greeting-trim.test.js'), "import assert from 'node:assert/strict';\nimport test from 'node:test';\nimport { greeting } from './greeting.js';\ntest('trims whitespace', () => { assert.equal(greeting('  Ada  '), 'Hello, Ada!'); });\n");
   succeeds(amabie(root, ['claim', 'The greeting change is done']));
   const passing = doctor(root, 'READY');
   assert(passing.proof, 'The current record must carry proof scope.');
