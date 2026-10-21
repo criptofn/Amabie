@@ -18,7 +18,7 @@ if ($actual -ne $expected.ToLowerInvariant()) { throw 'Amabie package checksum m
 'Checksum verified.'
 ```
 
-On Linux, `sha256sum --check amabie-cli-2.0.0.tgz.sha256` performs the comparison. Stop if the files do not match.
+On Linux or in Git Bash (the `sh` snippets below also run in Git Bash on Windows), `sha256sum --check amabie-cli-2.0.0.tgz.sha256` performs the comparison. Stop if the files do not match.
 
 ```sh
 npm install -g ./amabie-cli-2.0.0.tgz
@@ -26,7 +26,7 @@ amabie --version
 amabie --help
 ```
 
-Expected version: `amabie 2.0.0`. The bundle has no runtime npm dependencies. The `amabie` command remains a compatibility alias; existing Amabie global installations need the upgrade steps below before replacement.
+Expected version: `amabie 2.0.0`. If `amabie` was already on your PATH, check which one runs (`where amabie` in PowerShell, `which -a amabie` on Linux) and that it is the one you just installed (the first `where` entry runs; compare it with `npm prefix -g`, because `--version` is identical for both). The bundle has no runtime npm dependencies. An existing global installation of an earlier release needs the upgrade steps below before replacement.
 
 For a source checkout, `npm ci` and `npm run build:force` build the CLI but do not create a global executable. Use `node apps/cli/dist/src/main.js --help` or prepare and install the tarball with `node tooling/pack.mjs`.
 
@@ -47,10 +47,9 @@ that package and install the verified Amabie tarball:
 npm uninstall -g @canary-rn/cli
 npm install -g ./amabie-cli-2.0.0.tgz
 amabie --version
-amabie --version
 ```
 
-Both commands should print `amabie 2.0.0`. A direct install while the historical
+The command should print `amabie 2.0.0`. A direct install while the historical
 package owns the `amabie` bin can fail with `EEXIST`; do not use `--force` or delete
 an unidentified global executable. For another installation method or package
 name, inspect it before removing it.
@@ -126,9 +125,13 @@ Register the new request:
 amabie task "Trim whitespace around greeting names" --kind bugfix
 ```
 
-In greeting.js, change `String(name)` to `String(name).trim()`. Add this case to greeting.test.js:
+In greeting.js, change `String(name)` to `String(name).trim()`. Add this case in a **new file**, greeting-trim.test.js (the example's `npm test` runs every `*.test.js`). Do not edit the sealed greeting.test.js: an existing check rewritten by the worker is reported as NOT PROVEN:
 
 ```js
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { greeting } from './greeting.js';
+
 test('trims whitespace', () => {
   assert.equal(greeting('  Ada  '), 'Hello, Ada!');
 });
@@ -146,18 +149,21 @@ Because this task command has no explicit acceptance criterion, it may also say
 that no obligation was derived. That is expected here: task registration records
 intent, while the new regression test supplies the discriminating evidence. The
 explicit-requirement example below shows how to register and bind a criterion.
-Amabie's verdict comes from its own checks, not the claim. A test authored in the
+Amabie's verdict comes from its own checks, not the claim. A test file created in the
 same worker session remains worker-authored evidence, which Amabie reports as a
 provenance caveat; READY is not an independent review of that test's completeness.
-Inspect the evidence path printed by doctor. This everyday workflow uses
+If you instead rewrite the existing sealed greeting.test.js, doctor says NOT PROVEN
+(`regression-evidence`) until an operator-bound check or a human `amabie accept`
+covers the change.
+`--json` prints only the JSON envelope on stdout; the human-readable text goes to stderr. `amabie claim` is recorded as an untrusted hint and never changes the verdict. The `regression-evidence` caveat on a READY verdict is expected here. Inspect the evidence path printed by doctor. This everyday workflow uses
 READY / NEEDS ATTENTION / NOT PROVEN; the attested experiment pipeline has its own
 classification labels and Evidence Bundle contract.
 
-Explicit acceptance criteria need sealed proof bindings. For example, register `--requirement "greeting trims surrounding whitespace"` and have the operator bind the exact text to the declared test script with `amabie bind test --requirement "greeting trims surrounding whitespace" --reseal` before handing off work. Read the bind output: resealing requires an otherwise clean project and commits the binding declaration. Unbound requirements stay NOT PROVEN.
+Explicit acceptance criteria need sealed proof bindings. For example, register `--requirement "greeting trims surrounding whitespace"` and have the operator bind the exact text to the declared test script with `amabie bind test --requirement "greeting trims surrounding whitespace" --reseal` **before** you edit any other file. Read the bind output: resealing requires an otherwise clean project and commits the binding declaration; on a dirty tree it is refused and the declaration is still written to package.json, so commit or revert that file yourself. When you are the only user, you are the operator. Unbound requirements stay NOT PROVEN.
 
 ## Verify failure and false-green behavior
 
-Change greeting.js to return the wrong greeting and run `amabie doctor --json`. It must report NEEDS ATTENTION and exit nonzero. Restore the implementation and rerun the full doctor gate; a focused `amabie doctor --check <id>` returns PARTIAL and cannot certify completion.
+Change greeting.js to return the wrong greeting and run `amabie doctor --json`. It must report NEEDS ATTENTION and exit nonzero. Restore the implementation and rerun the full doctor gate; a focused `amabie doctor --check <id>` (the id of the example's check is `test`) returns PARTIAL and cannot certify completion.
 
 For the false-green demonstration, use a **second fresh copy** rather than
 restoring and resealing the changed first example. This avoids uncommitted

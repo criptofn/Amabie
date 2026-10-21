@@ -103,7 +103,7 @@ The installed package includes the same guide and its three-file example.
 > run `npm ci` and `npm run build:force`, then use `node apps/cli/dist/src/main.js`;
 > building does not put `amabie` on PATH. Prepare an installable local package
 > with `node tooling/pack.mjs`, then install `./pack/npm/amabie-cli-2.0.0.tgz`.
-> The `amabie` executable remains as a compatibility alias for existing v1.5 hooks and scripts.
+> Hooks installed by v1.5 need `amabie setup` to point at the new installation.
 > v1.3's own bytes are described in [`docs/RELEASE-1.3.md`](docs/RELEASE-1.3.md).
 
 ## Use your coding agent normally

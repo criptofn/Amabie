@@ -13,8 +13,8 @@ changed*; the evidence ledgers record *what was observed*.
 ### Changed
 
 - Renamed the product, CLI, workspace packages, project files and local state paths to Amabie 2.0. Existing
-  `.amabie` state and Amabie project records are migrated or read compatibly; the `amabie` executable remains
-  an alias so installed v1.5 hooks keep working during the upgrade.
+  `.amabie` state and Amabie project records are migrated or read compatibly; hooks installed by v1.5 need
+  `amabie setup` to point at the new installation.
 - MCP now reports a completed Amabie verdict such as `NOT PROVEN` as a normal tool result while preserving
   its nonzero CLI exit code; process launch failures remain MCP errors.
 - Agent intake now requires task registration before edits. Objective criteria without sealed proofs stay

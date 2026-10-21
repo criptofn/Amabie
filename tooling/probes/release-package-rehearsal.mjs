@@ -35,9 +35,6 @@ function project(name) {
   for (const file of ['package.json', 'greeting.js', 'greeting.test.js']) {
     fs.copyFileSync(path.join(prefix, 'node_modules/@amabie/cli/examples/quickstart', file), path.join(root, file));
   }
-  // The sealed check also loads sibling *.test.js files, so a worker ADDS a test file instead of rewriting the sealed one (P0:21).
-  fs.appendFileSync(path.join(root, 'greeting.test.js'),
-    "\nimport { readdirSync } from 'node:fs';\nfor (const f of readdirSync(import.meta.dirname)) if (f !== 'greeting.test.js' && f.endsWith('.test.js')) await import('./' + f);\n");
   for (const args of [['init', '-b', 'main'], ['config', 'user.name', 'Release rehearsal'],
     ['config', 'user.email', 'release-test@example.invalid'], ['add', '--all'], ['commit', '-m', 'Sealed example']]) {
     succeeds(run('git', args, root));
