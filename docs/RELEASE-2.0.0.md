@@ -4,7 +4,7 @@ Unpublished local candidate; evidence rechecked 17 October 2026. NOT READY: exac
 
 ## What this release changes
 
-Amabie becomes Amabie: package identity `@amabie/cli`, executable `amabie`, renamed MCP tools and project documentation. The `amabie` executable and legacy project formats/data discovery remain where needed for migration. Existing global Amabie packages can conflict with the compatibility bin; follow the tested upgrade procedure rather than forcing an overwrite.
+The product is renamed to Amabie: package identity `@amabie/cli`, executable `amabie`, renamed MCP tools and project documentation. Legacy project formats and data discovery remain where needed for migration. An existing global installation of the historical package (`@canary-rn/cli`) owns the same bin name and can conflict; follow the tested upgrade procedure in `QUICKSTART.md` rather than forcing an overwrite.
 
 The mission also fixes linked project scopes escaping the declared repository, inherited ecosystem names being treated as adapters, and everyday checks leaving descendant processes after normal exit or timeout. Scope discovery and execution now validate canonical containment; unavailable cleanup measurement cannot produce a successful check. This is user-space cleanup, not an OS sandbox.
 
@@ -105,3 +105,18 @@ On Windows with AMABIE_POWERSHELL_CORE_PATH unset, that exact package failed clo
 The current Windows full suite is 1,425 PASS / 6 SKIP / 0 FAIL using the explicit PowerShell Core override. The exact-source Ubuntu suite is 1,362 PASS / 8 SKIP / 0 FAIL; those skips and five Windows-only suites are not passes. The productization aggregate is 117 PASS / 5 SKIP / 0 FAIL/INCOMPLETE, with skip limitations documented in the checklist. The exact-source hosted CI has not run on this unpushed candidate. npm whoami remains ENEEDAUTH, and unauthenticated registry lookup returns E404 (which alone does not distinguish unpublished, private, or inaccessible package state). The one authorized Codex and Claude correction attempt each ended FAIL 5/10 without project changes; their root causes remain unknown and no repeat is authorized.
 
 Release status: NOT READY. Outstanding gates are exact-candidate hosted CI, clean-default-Windows validation, npm CLI authentication/publication readiness, and successful live Codex/Claude correction acceptance for the experimental workflow. No push, package publish, deployment, DNS change, or additional provider request occurred.
+
+## Pre-publication inventory — 2026-10-22
+
+Re-verified locally on the rename worktree; nothing was pushed, published, tagged or deployed.
+
+| Item | Observed |
+| --- | --- |
+| Reproducible package | `tooling/probes/release-package-reproducibility.mjs`: three builds, one from an unrelated caller directory, byte-identical; SHA-256 `3c4e72de0ba253628028b01cf609d3abce5c1fb21170e4d5551b4acc99f0c9e9` for `amabie-cli-2.0.0.tgz` at the commit that carries this section. Any later source change changes the hash: re-record it at the freeze. The earlier hashes in this document are historical. |
+| Package identity | `@amabie/cli` 2.0.0, bin `amabie` → `dist/main.js`, Apache-2.0, `engines.node >=22`, no runtime dependencies. |
+| Package contents | `LICENSE`, `THIRD-PARTY-NOTICES.txt`, `QUICKSTART.md`, `README.md`, `examples/quickstart/` (three files), `dist/main.js`, Windows boundary tooling and fixtures. |
+| Install and first use | Isolated first-user run from README, Quickstart and tarball only: install, example change in a new test file, independent `amabie doctor --json` READY. Rewriting the sealed example test is NOT PROVEN by design and is documented. Probes `cleanroom-packed-artifact`, `release-package-rehearsal`, `release-quickstart-proof-gap`, `v13-doc-first-path` and `v12-doc-consistency` pass against the tarball. |
+| Upgrade / rollback | `QUICKSTART.md` upgrade section: identify and remove only `@canary-rn/cli`, install the checksum-verified tarball, rerun `amabie setup`; no `--force`. |
+| Remaining legacy strings | The GitHub URLs in `.github/ISSUE_TEMPLATE/config.yml` point at the current repository name and change only with a repository rename; `@canary-rn/cli` is the historical package name used for upgrade detection. Both are intentional. |
+
+Still open and not decidable locally: hosted CI on the exact pushed candidate, npm authentication and publication, operator approval of the legal copy, default-host Windows PowerShell 5.1 validation (`0xC0000005`), and the release decision itself. The live-provider correction results recorded above predate the later Codex and Claude runs; this document does not yet restate those later results.
