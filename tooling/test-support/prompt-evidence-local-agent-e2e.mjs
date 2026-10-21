@@ -127,17 +127,11 @@ try {
   assert.equal(loopReport.correctionAttempts, 1);
   assert.equal(loopReport.verification.verdict, 'PASS');
   assert.deepEqual(loopReport.verification.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
-  assert.match(fs.readFileSync(passwordFile, 'utf8'), /rejects blank input/u);
+  const candidateRoot = loopReport.candidate.path;
+  assert.match(fs.readFileSync(path.join(candidateRoot, 'password-policy.mjs'), 'utf8'), /rejects blank input/u);
+  assert.match(fs.readFileSync(passwordFile, 'utf8'), /accepts blank input/u, 'the authoritative project is not silently corrected');
 
-  const final = runCli(['doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json']);
-  assertRun(final, 2, 'the overall doctor gate must preserve its separate regression-evidence result');
-  const finalEnvelope = JSON.parse(final.stdout);
-  const finalReport = finalEnvelope.promptEvidence;
-  assert.equal(finalEnvelope.status, 'NOT PROVEN', 'a passing requirement report must not override an unresolved overall proof obligation');
-  assert.equal(finalReport.verdict, 'PASS');
-  assert.deepEqual(finalReport.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
-
-  const changedFiles = git(['diff', '--name-only']).stdout.trim().split(/\r?\n/u).filter(Boolean);
+  const changedFiles = run('git', ['-C', candidateRoot, 'diff', '--name-only', loopReport.candidate.baseHead], scratchRoot).stdout.trim().split(/\r?\n/u).filter(Boolean);
   assert.deepEqual(changedFiles, ['password-policy.mjs'], 'the local coding agent should change only the unresolved fixture');
   const modelMetrics = JSON.parse(fs.readFileSync(metricsPath, 'utf8'));
   console.log(JSON.stringify({
@@ -151,10 +145,6 @@ try {
     initialCoverage: beforeReport.coverage,
     correctionAttempts: loopReport.correctionAttempts,
     loopVerdict: loopReport.verification.verdict,
-    finalDoctorVerdict: finalReport.verdict,
-    overallDoctorStatus: finalEnvelope.status,
-    overallProofObligations: finalEnvelope.proof?.obligations,
-    finalCoverage: finalReport.coverage,
     changedFiles,
     scratchRoot,
   }, null, 2));

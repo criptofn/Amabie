@@ -171,7 +171,7 @@ interface CandidateIntent {
   proofBindings?: Record<string, string>;
 }
 
-interface CandidateRecord {
+export interface CandidateRecord {
   schema: 'amabie-candidate/1';
   name: string;
   root: string;
@@ -233,14 +233,14 @@ function headToken(root: string): string {
 }
 
 /** Registry reads are untrusted bytes until shape-proved (M4 discipline). */
-function loadRecord(root: string, name: string): CandidateRecord | 'missing' | 'invalid' {
+export function loadRecord(root: string, name: string): CandidateRecord | 'missing' | 'invalid' {
   const p = recordPath(root, name);
   if (containedRealPath(root, p) === null) return 'invalid';
   if (!fs.existsSync(p)) return 'missing';
   try {
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<CandidateRecord> | null;
     if (!v || typeof v !== 'object' || Array.isArray(v)) return 'invalid';
-    if ((v.schema !== 'amabie-candidate/1' && v.schema !== 'amabie-candidate/1') || v.name !== name || !NAME_RE.test(name)) return 'invalid';
+    if (v.schema !== 'amabie-candidate/1' || v.name !== name || !NAME_RE.test(name)) return 'invalid';
     if (typeof v.root !== 'string' || !path.isAbsolute(v.root)) return 'invalid';
     if (typeof v.baseRoot !== 'string' || !path.isAbsolute(v.baseRoot)) return 'invalid';
     if (typeof v.baseRef !== 'string' || !v.baseRef || v.baseRef.length > 200) return 'invalid';
@@ -279,7 +279,7 @@ function trustedBase(startDir: string, o: Out): { root: string; cfg: AmabieConfi
 
 // ---------- modes ----------
 
-function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: string, baseRef: string, customPath: string | null): number {
+export function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: string, baseRef: string, customPath: string | null): number {
   const existing = loadRecord(root, name);
   if (existing === 'invalid') { o.say(`isolate: a malformed record "${name}" blocks registration — Amabie cannot tell what it points at; delete .amabie/${CANDIDATES_SUBDIR}/${name}.json manually, then re-isolate`); return 2; }
   if (existing !== 'missing') { o.say(`isolate: candidate "${name}" is already registered — pick another name, or --remove it first`); return 2; }
@@ -350,7 +350,8 @@ function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: string, ba
  *  M8 promotion consumes startHead/rec; verify's own caller ignores them. */
 interface VerifyOutcome { code: number; startHead: string | null; rec: CandidateRecord | null }
 
-function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string): VerifyOutcome {
+/** `sink`, when given, receives the sealed-plan results of THIS run (left empty when the run stopped before executing any step). */
+export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string, sink?: { results: StepResult[] }): VerifyOutcome {
   // F2 (quarantine) — BEFORE any record read: a tampering caught in a past
   // Amabie window means the bytes this run would baseline on are exactly the
   // bytes under suspicion. The mechanical laundering vector is byte-
@@ -562,6 +563,7 @@ function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string):
   };
   try {
     results = planWithFreshTests(cfg.plan).map((step) => runPlanStep(rec.root, cfg.pm, step));
+    if (sink) sink.results = results;
     // Both executions stay inside the authority sandwich. The comparison uses
     // the frozen isolation base, never setup's possibly older baseline.
     if (results.every((r) => r.ok)) regression = discriminationObligation(rec.root, cfg, 600_000, rec.baseHead, deferComparison, results);

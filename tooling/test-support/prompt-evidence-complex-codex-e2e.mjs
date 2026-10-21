@@ -318,7 +318,7 @@ function installLocalAgentShim(tempRoot, agent) {
     'let request;',
     'try { request = JSON.parse(prompt.slice(marker + 2)); } catch { console.error(\'correction request is not JSON\'); process.exit(22); }',
     "if (request?.schema !== 'amabie-correction-request/1' || request?.cycle !== 1) { console.error('unexpected correction request envelope'); process.exit(23); }",
-    "const registered = JSON.parse(fs.readFileSync(path.join(process.cwd(), '.amabie', 'prompt-evidence.json'), 'utf8'));",
+    "const registered = JSON.parse(fs.readFileSync(path.join(process.cwd(), '..', '..', 'prompt-evidence.json'), 'utf8'));",
     'const unresolved = request.report?.unresolved;',
     "const criterionEntries = Array.isArray(unresolved) ? unresolved.flatMap((item) => Array.isArray(item?.criteria) ? item.criteria.map((criterion) => ({ item, criterion })) : []) : [];",
     "const criteriaContractsMatchRequest = request.report?.schema === 'amabie-correction-report/3' && Array.isArray(unresolved) && unresolved.every((item) => { const declaration = registered.requirements.find((requirement) => requirement.text === item.requirement); return Boolean(declaration) && item.status === 'unmet' && item.criteria.length === declaration.criteria.length && item.criteria.every((criterion) => typeof criterion.criterionId === 'string' && criterion.status === 'unmet' && typeof criterion.gap === 'string' && criterion.gap.length > 0 && declaration.criteria.some((expected) => expected.statement === criterion.statement && expected.adapterId === criterion.adapterId && expected.evidenceType === criterion.evidenceType && expected.predicate.path === criterion.predicate?.path && JSON.stringify(expected.predicate.equals) === JSON.stringify(criterion.predicate?.equals))); });",
@@ -530,10 +530,11 @@ async function correct() {
     currentProductIdentity(),
     'Amabie source, build artifacts, or runtime changed during the correction run',
   );
-  const after = workspaceFileDigests(projectRoot);
-  const changed = changedFiles(before, after);
+  const baseChanged = changedFiles(before, workspaceFileDigests(projectRoot));
   let envelope;
   try { envelope = JSON.parse(run.stdout); } catch { envelope = null; }
+  const candidatePath = envelope?.candidate?.path ?? null;
+  const changed = candidatePath ? changedFiles(before, workspaceFileDigests(candidatePath)) : [];
   const shimEvents = shim && fs.existsSync(shim.capturePath)
     ? fs.readFileSync(shim.capturePath, 'utf8').split(/\r?\n/u).filter(Boolean).map(line => JSON.parse(line))
     : [];
@@ -569,6 +570,8 @@ async function correct() {
     amabieStdout: safeDiagnostic(run.stdout),
     amabieStderr: safeDiagnostic(run.stderr),
     changedFiles: changed,
+    baseChangedFiles: baseChanged,
+    candidatePath,
   };
   manifest.correction = correction;
   persistManifest(tempRoot, manifest, 'final');
@@ -581,6 +584,7 @@ async function correct() {
   assert.equal(envelope?.verification?.verdict, 'PASS');
   assert.deepEqual(envelope?.verification?.coverage, { total: 10, met: 10, unmet: 0, unproven: 0, blocked: 0 });
   assert.equal(envelope?.agentClaimUsedAsEvidence, false);
+  assert.deepEqual(baseChanged, [], 'the authoritative project must not be modified; the correction lives in the candidate');
   assert.ok(changed.includes('transactions.mjs'), 'the selected correction agent must fix the candidate implementation');
   assert.ok(changed.includes('legacy.mjs'), 'the selected correction agent must restore the hidden legacy behavior regression');
   console.error(`PASS: ${executionMode} correction and a fresh independent Amabie verification completed.`);

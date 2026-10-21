@@ -219,19 +219,12 @@ try {
   assert.equal(loopReport.correctionAttempts, 1);
   assert.equal(loopReport.verification.verdict, 'PASS');
   assert.deepEqual(loopReport.verification.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
-  assert.match(fs.readFileSync(passwordFile, 'utf8'), /value\.trim\(\)\.length\s*>\s*0/u);
+  const candidateRoot = loopReport.candidate.path;
+  assert.match(fs.readFileSync(path.join(candidateRoot, 'password-policy.mjs'), 'utf8'), /value\.trim\(\)\.length\s*>\s*0/u);
+  assert.doesNotMatch(fs.readFileSync(passwordFile, 'utf8'), /value\.trim\(\)\.length\s*>\s*0/u, 'the authoritative project is not silently corrected');
   assert.equal(createHash('sha256').update(fs.readFileSync(acceptancePath)).digest('hex'), acceptanceDigest, 'the correction agent must not edit the evaluator-owned acceptance check');
 
-  const final = run(process.execPath, [cliEntry, 'doctor', '--prompt-evidence', requestRelativePath, '--json'], projectRoot);
-  assertRun(final, 0, 'fresh overall Doctor must verify the corrected requirement against the sealed baseline');
-  const finalEnvelope = JSON.parse(final.stdout);
-  assert.equal(finalEnvelope.status, 'READY');
-  assert.equal(finalEnvelope.promptEvidence.verdict, 'PASS');
-  assert.deepEqual(finalEnvelope.promptEvidence.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
-  assert.equal(finalEnvelope.proof.obligations.find(({ id }) => id === 'regression-evidence')?.status, 'met', 'baseline comparison must fail with the evaluator-owned acceptance check and pass after correction');
-  assert.match(final.stdout + final.stderr, /CHECK TEXT WRITTEN BY THE WORKER ITSELF/u, 'the Doctor must disclose that changed test files are not an operator-sealed authority');
-
-  const changedFiles = git(['diff', '--name-only']).stdout.trim().split(/\r?\n/u).filter(Boolean);
+  const changedFiles = run('git', ['-C', candidateRoot, 'diff', '--name-only', loopReport.candidate.baseHead], projectRoot).stdout.trim().split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean);
   assert.deepEqual(changedFiles, ['password-policy.mjs'], 'the coding agent may change only the requirement-specific fixture');
   const transcript = JSON.parse(fs.readFileSync(modelTranscriptPath, 'utf8'));
   assert.equal(transcript.exitCode, 0);
@@ -264,8 +257,6 @@ try {
     correctionRuntimeMs,
     finalPromptEvidenceVerdict: loopReport.verification.verdict,
     finalCoverage: loopReport.verification.coverage,
-    overallDoctorStatus: finalEnvelope.status,
-    overallDoctorRegressionEvidence: finalEnvelope.proof.obligations.find(({ id }) => id === 'regression-evidence')?.status,
     changedFiles,
     requirements: requirements.map((text, index) => ({ id: reviewed.requirements[index].id, text })),
     artifactRoot,

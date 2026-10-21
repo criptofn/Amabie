@@ -787,8 +787,8 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
   fs.writeFileSync(passwordFile, 'export const passwordRule = "rejects blank input";\n');
   const check = path.join(FIXTURES, 'prompt-evidence-source-check.mjs');
   const scripts = {
-    test: `node "${check}" "${registrationFile}" "rejects invalid email"`,
-    typecheck: `node "${check}" "${passwordFile}" "rejects blank input"`,
+    test: `node "${check}" registration.mjs "rejects invalid email"`,
+    typecheck: `node "${check}" password-policy.mjs "rejects blank input"`,
   };
   const proofs = Object.fromEntries(requirements.map((text, index) => [materialDigest(text), index === 0 ? 'test' : 'typecheck']));
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: `${agent}-shim-success-e2e`, scripts, amabie: { proofs } }, null, 2)}\n`);
@@ -822,7 +822,7 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
     "const request = JSON.parse(input.slice(input.lastIndexOf('\\n\\n') + 2));",
     "if (request.schema !== 'amabie-correction-request/1' || request.cycle !== 1) process.exit(10);",
     `if (request.report.unresolved.length !== 1 || request.report.unresolved[0]?.requirement !== ${JSON.stringify(requirements[1])} || request.report.unresolved[0]?.status !== 'unmet') process.exit(11);`,
-    `fs.writeFileSync(${JSON.stringify(passwordFile)}, ${JSON.stringify('export const passwordRule = "rejects blank input";\n')});`,
+    `fs.writeFileSync('password-policy.mjs', ${JSON.stringify('export const passwordRule = "rejects blank input";\n')});`,
     "console.log('Focused correction applied.');",
     '',
   ].join('\n'));
@@ -858,7 +858,7 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
   assert.equal(result.status, 0, result.stderr + result.stdout + `\nFake ${agent} input: ` + captured);
 
   const envelope = JSON.parse(result.stdout) as {
-    status: string; correctionAttempts: number; agentClaimUsedAsEvidence: boolean;
+    status: string; correctionAttempts: number; agentClaimUsedAsEvidence: boolean; candidate: { path: string };
     verification: { verdict: string; coverage: { total: number; met: number; unmet: number }; evidence: Array<{ provenance: string }> };
   };
   assert.equal(envelope.status, 'verified');
@@ -889,7 +889,9 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
     status: 'unmet',
   }]);
   assert.ok(sent.report.unresolved[0]?.criteria[0]?.gap);
-  assert.match(fs.readFileSync(passwordFile, 'utf8'), /rejects blank input/u);
+  // The correction lands in the disposable candidate; nothing is silently adopted into the project.
+  assert.match(fs.readFileSync(path.join(envelope.candidate.path, 'password-policy.mjs'), 'utf8'), /rejects blank input/u);
+  assert.match(fs.readFileSync(passwordFile, 'utf8'), /accepts blank input/u);
 });
 }
 
@@ -911,8 +913,8 @@ it('experimental correction loop scopes a separate agent process to unresolved e
   fs.writeFileSync(passwordFile, 'export const passwordRule = "rejects blank input";\n');
   const check = path.join(FIXTURES, 'prompt-evidence-source-check.mjs');
   const scripts = {
-    test: `node "${check}" "${registrationFile}" "rejects invalid email"`,
-    typecheck: `node "${check}" "${passwordFile}" "rejects blank input"`,
+    test: `node "${check}" registration.mjs "rejects invalid email"`,
+    typecheck: `node "${check}" password-policy.mjs "rejects blank input"`,
   };
   const proofs = Object.fromEntries(requirements.map((text, index) => [materialDigest(text), index === 0 ? 'test' : 'typecheck']));
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'correction-loop-e2e', scripts, amabie: { proofs } }, null, 2)}\n`);
@@ -951,7 +953,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     'prompt-evidence', 'loop', '--request', request,
     '--agent-executable', process.execPath,
     '--agent-arg', agent,
-    '--agent-arg', passwordFile,
+    '--agent-arg', 'password-policy.mjs',
     '--agent-arg', requirements[1]!,
     '--agent-arg', agentReportFile,
     '--json',
@@ -963,16 +965,16 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     'prompt-evidence', 'loop', '--request', request,
     '--agent-executable', process.execPath,
     '--agent-arg', agent,
-    '--agent-arg', passwordFile,
+    '--agent-arg', 'password-policy.mjs',
     '--agent-arg', requirements[1]!,
     '--agent-arg', agentReportFile,
     '--authorize-corrections', '--json',
   ], root);
-  assert.match(result.stderr, /Correction agents edit this working tree directly; changes are not automatically rolled back\. Use a disposable Git worktree and inspect the diff\./u);
+  assert.match(result.stderr, /The correction agent edits a disposable candidate worktree, not this project/u);
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
   const envelope = JSON.parse(result.stdout) as {
-    schema: string; status: string; correctionAttempts: number;
+    schema: string; status: string; correctionAttempts: number; candidate: { path: string };
     verification: { verdict: string; attempt: number; coverage: { total: number; met: number }; requirements: Array<{ status: string }>; evidence: Array<{ facts: Record<string, unknown> }> };
   };
   assert.equal(envelope.schema, 'amabie-prompt-evidence-loop/1');
@@ -982,14 +984,16 @@ it('experimental correction loop scopes a separate agent process to unresolved e
   assert.equal(envelope.verification.attempt, 1);
   assert.deepEqual(envelope.verification.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
   assert.deepEqual(envelope.verification.requirements.map(requirement => requirement.status), ['met', 'met']);
-  assert.ok(envelope.verification.evidence.every(evidence => typeof evidence.facts.sourceRunId === 'string'));
+  assert.ok(envelope.verification.evidence.every(evidence => typeof evidence.facts.runId === 'string' && typeof evidence.facts.planDigest === 'string'));
   const sent = JSON.parse(fs.readFileSync(agentReportFile, 'utf8')) as { schema: string; cycle: number; report: { unresolved: Array<{ requirement: string; status: string }> } };
   assert.equal(sent.schema, 'amabie-correction-request/1');
   assert.equal(sent.cycle, 1);
   assert.deepEqual(sent.report.unresolved.map(({ requirement, status }) => ({ requirement, status })), [
     { requirement: requirements[1], status: 'unmet' },
   ]);
-  assert.match(fs.readFileSync(passwordFile, 'utf8'), /rejects blank input/u);
+  // The correction landed in the disposable candidate; the project itself is untouched.
+  assert.match(fs.readFileSync(path.join(envelope.candidate.path, 'password-policy.mjs'), 'utf8'), /rejects blank input/u);
+  assert.match(fs.readFileSync(passwordFile, 'utf8'), /accepts blank input/u);
 
   // A second agent process only claims completion and exits successfully; no workspace change means no re-verification PASS.
   fs.writeFileSync(passwordFile, 'export const passwordRule = "accepts blank input";\n');
@@ -998,7 +1002,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     'prompt-evidence', 'loop', '--request', request,
     '--agent-executable', process.execPath,
     '--agent-arg', agent,
-    '--agent-arg', passwordFile,
+    '--agent-arg', 'password-policy.mjs',
     '--agent-arg', requirements[1]!,
     '--agent-arg', stalledReport,
     '--agent-arg', 'claim-only',
@@ -1054,7 +1058,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     'prompt-evidence', 'loop', '--request', request,
     '--agent-executable', process.execPath,
     '--agent-arg', agent,
-    '--agent-arg', passwordFile,
+    '--agent-arg', 'password-policy.mjs',
     '--agent-arg', requirements[1]!,
     '--agent-arg', persistentReport,
     '--agent-arg', 'persistent-unresolved',
@@ -1062,7 +1066,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
   ], root);
   assert.equal(persistent.status, 2, persistent.stderr || persistent.stdout);
   const persistentEnvelope = JSON.parse(persistent.stdout) as {
-    status: string; correctionAttempts: number; agentClaimUsedAsEvidence: boolean;
+    status: string; correctionAttempts: number; agentClaimUsedAsEvidence: boolean; candidate: { path: string };
     verification: { verdict: string; attempt: number; coverage: { met: number; unmet: number } };
   };
   assert.equal(persistentEnvelope.status, 'limit-reached');
@@ -1071,17 +1075,16 @@ it('experimental correction loop scopes a separate agent process to unresolved e
   assert.equal(persistentEnvelope.verification.attempt, 3);
   assert.deepEqual(persistentEnvelope.verification.coverage, { total: 2, met: 1, unmet: 1, unproven: 0, blocked: 0 });
   assert.equal(persistentEnvelope.agentClaimUsedAsEvidence, false);
-  assert.equal(fs.readFileSync(`${passwordFile}.attempts`, 'utf8'), '3');
+  assert.equal(fs.readFileSync(path.join(persistentEnvelope.candidate.path, 'password-policy.mjs.attempts'), 'utf8'), '3');
   const finalCorrectionRequest = JSON.parse(fs.readFileSync(persistentReport, 'utf8')) as { cycle: number };
   assert.equal(finalCorrectionRequest.cycle, 3);
 
-  fs.rmSync(`${passwordFile}.attempts`, { force: true });
   const cappedReport = path.join(TMP, 'single-cycle-report.json');
   const capped = run([
     'prompt-evidence', 'loop', '--request', request,
     '--agent-executable', process.execPath,
     '--agent-arg', agent,
-    '--agent-arg', passwordFile,
+    '--agent-arg', 'password-policy.mjs',
     '--agent-arg', requirements[1]! ,
     '--agent-arg', cappedReport,
     '--agent-arg', 'persistent-unresolved',
@@ -1089,13 +1092,13 @@ it('experimental correction loop scopes a separate agent process to unresolved e
   ], root);
   assert.equal(capped.status, 2, capped.stderr || capped.stdout);
   const cappedEnvelope = JSON.parse(capped.stdout) as {
-    status: string; correctionAttempts: number; verification: { verdict: string; attempt: number };
+    status: string; correctionAttempts: number; candidate: { path: string }; verification: { verdict: string; attempt: number };
   };
   assert.equal(cappedEnvelope.status, 'limit-reached');
   assert.equal(cappedEnvelope.correctionAttempts, 1);
   assert.equal(cappedEnvelope.verification.verdict, 'FAIL');
   assert.equal(cappedEnvelope.verification.attempt, 1);
-  assert.equal(fs.readFileSync(`${passwordFile}.attempts`, 'utf8'), '1');
+  assert.equal(fs.readFileSync(path.join(cappedEnvelope.candidate.path, 'password-policy.mjs.attempts'), 'utf8'), '1');
   const singleCycleRequest = JSON.parse(fs.readFileSync(cappedReport, 'utf8')) as { cycle: number };
   assert.equal(singleCycleRequest.cycle, 1);
 
@@ -1298,4 +1301,30 @@ it('Ollama draft preserves compound source clauses when noun-list splitting woul
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }
+});
+
+it('a correction agent that cannot start, or that writes outside its candidate, ends blocked with no re-verification', () => {
+  const project = prepareProject({ includeBindings: 0 }, 'correction-candidate-blocked');
+  const request = writeRequest(project.root, project.goal, project.requirements);
+  const loop = (...agentArgs: string[]) => run([
+    'prompt-evidence', 'loop', '--request', request, '--max-corrections', '1', '--authorize-corrections', '--json', ...agentArgs,
+  ], project.root);
+
+  const missing = loop('--agent-executable', path.join(TMP, 'no-such-agent-executable'));
+  assert.equal(missing.status, 2, missing.stderr || missing.stdout);
+  const missingEnvelope = JSON.parse(missing.stdout) as { status: string; stopReason: string; verification: { attempt: number } };
+  assert.equal(missingEnvelope.status, 'correction-blocked');
+  assert.match(missingEnvelope.stopReason, /correction agent could not run/u);
+  assert.equal(missingEnvelope.verification.attempt, 0);
+
+  const intruder = path.join(project.root, 'intruder.txt');
+  const writer = path.join(TMP, 'agent-writes-base.mjs');
+  fs.writeFileSync(writer, `import fs from 'node:fs'; fs.writeFileSync(${JSON.stringify(intruder)}, 'x');\n`);
+  const escaped = loop('--agent-executable', process.execPath, '--agent-arg', writer);
+  assert.equal(escaped.status, 2, escaped.stderr || escaped.stdout);
+  const escapedEnvelope = JSON.parse(escaped.stdout) as { status: string; stopReason: string; verification: { attempt: number }; agentClaimUsedAsEvidence: boolean };
+  assert.equal(escapedEnvelope.status, 'correction-blocked');
+  assert.match(escapedEnvelope.stopReason, /outside its candidate/u);
+  assert.equal(escapedEnvelope.verification.attempt, 0);
+  assert.equal(escapedEnvelope.agentClaimUsedAsEvidence, false);
 });

@@ -60,12 +60,12 @@ function materialDigest(text) {
   return createHash('sha256').update(canonical, 'utf8').digest('hex');
 }
 
-function workspaceFileDigests() {
+function workspaceFileDigests(root = projectRoot) {
   const files = new Map();
   const visit = (directory) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       const fullPath = path.join(directory, entry.name);
-      const relativePath = path.relative(projectRoot, fullPath).split(path.sep).join('/');
+      const relativePath = path.relative(root, fullPath).split(path.sep).join('/');
       if (relativePath === '.git' || relativePath.startsWith('.git/')
         || relativePath === '.amabie' || relativePath.startsWith('.amabie/')) continue;
       if (entry.isDirectory()) visit(fullPath);
@@ -207,8 +207,9 @@ try {
     '--authorize-corrections', '--max-corrections', '1', '--json',
   ], projectRoot, { timeout: 12 * 60_000 });
   const result = JSON.parse(loop.stdout);
-  const filesAfterCorrection = workspaceFileDigests();
-  const changedFiles = changedFilesBetween(filesBeforeCorrection, filesAfterCorrection);
+  const baseChanged = changedFilesBetween(filesBeforeCorrection, workspaceFileDigests());
+  const candidateRoot = result.candidate?.path;
+  const changedFiles = candidateRoot ? changedFilesBetween(filesBeforeCorrection, workspaceFileDigests(candidateRoot)) : [];
   const summary = {
     status: loop.status === 0 && result.status === 'verified' ? 'PASS' : 'FAIL',
     providerCli: agent,
@@ -235,7 +236,8 @@ try {
   assert.equal(result.verification.verdict, 'PASS');
   assert.deepEqual(result.verification.coverage, { total: 2, met: 2, unmet: 0, unproven: 0, blocked: 0 });
   assert.equal(result.agentClaimUsedAsEvidence, false);
-  assert.match(fs.readFileSync(passwordFile, 'utf8'), /value\.trim\(\)\.length\s*>\s*0/u);
+  assert.deepEqual(baseChanged, [], 'the authoritative project is not silently corrected');
+  assert.match(fs.readFileSync(path.join(candidateRoot, 'password-policy.mjs'), 'utf8'), /value\.trim\(\)\.length\s*>\s*0/u);
   assert.deepEqual(changedFiles, ['password-policy.mjs'], 'the correction must remain focused on the missing behavior');
   summary.status = 'PASS';
   fs.writeFileSync(path.join(tempRoot, 'result.json'), `${JSON.stringify(summary, null, 2)}\n`);

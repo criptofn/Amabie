@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crossSpawn from 'cross-spawn';
 import {
-  evidenceIntegrityValid,
   MAX_CORRECTION_CYCLES,
   runBoundedCorrectionLoop,
   validatePromptEvidenceRequest,
@@ -16,8 +15,9 @@ import {
   type VerificationReport,
 } from '@amabie/prompt-evidence';
 import { killTree, sweepDescendants } from '@amabie/support';
-import { CLI_ENTRY, containedRealPath, findRepoRoot, readConfig, readTaskRecord } from './onboarding.js';
-import { CODING_SEALED_PLAN_ADAPTER } from './prompt-evidence.js';
+import { isolateCreate, loadRecord, verifyCandidate, type CandidateRecord } from './candidate.js';
+import { CLI_ENTRY, Out, containedRealPath, findRepoRoot, planDigest, planWithFreshTests, readConfig, readTaskRecord, type AmabieConfig, type StepResult } from './onboarding.js';
+import { CODING_SEALED_PLAN_ADAPTER, createCodingSealedPlanAdapter, type SealedStepResult } from './prompt-evidence.js';
 import {
   buildCorrectionAgentEnvironment,
   buildCorrectionAgentInvocation,
@@ -32,11 +32,9 @@ const MAX_AGENT_ARGS = 32;
 const MAX_AGENT_ARG_CHARS = 2_048;
 const MAX_AGENT_INPUT_BYTES = 512 * 1024;
 const MAX_AGENT_OUTPUT_BYTES = 1024 * 1024;
-const MAX_DOCTOR_OUTPUT_BYTES = 8 * 1024 * 1024;
 const AGENT_TIMEOUT_MS = 5 * 60 * 1000;
 const AGENT_PREFLIGHT_TIMEOUT_MS = 10_000;
 const MAX_AGENT_PREFLIGHT_OUTPUT_BYTES = 4 * 1024;
-const DOCTOR_TIMEOUT_MS = 30 * 60 * 1000;
 const FORCE_CLOSE_MS = 2_000;
 
 interface ProcessResult {
@@ -58,10 +56,6 @@ export interface AgentProcessDiagnostic {
   stdoutBytes: number;
   stderrBytes: number;
   diagnosticHint: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function hash(data: string | Buffer): string {
@@ -184,6 +178,29 @@ function runBoundedProcess(
   });
 }
 
+/** Make a fresh candidate worktree (committed HEAD) equal to the base's Git-visible working tree, so the
+ *  first evaluation judges the work in progress. Returns a reason on failure, null on success. */
+function seedCandidateFromWorkingTree(root: string, candidateRoot: string): string | null {
+  const git = (cwd: string, args: string[], input?: Buffer) => spawnSync('git', ['-C', cwd, ...args], { input, maxBuffer: 256 * 1024 * 1024 });
+  const diff = git(root, ['diff', 'HEAD', '--binary']);
+  if (diff.status !== 0) return 'Amabie could not read the working-tree changes to seed the candidate';
+  if (diff.stdout.length > 0 && git(candidateRoot, ['apply', '--binary', '--whitespace=nowarn'], diff.stdout).status !== 0) {
+    return 'Amabie could not apply the working-tree changes inside the candidate';
+  }
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '-z']);
+  if (untracked.status !== 0) return 'Amabie could not list untracked files to seed the candidate';
+  for (const rel of untracked.stdout.toString('utf8').split('\0').filter(Boolean)) {
+    if (rel === '.amabie' || rel.startsWith('.amabie/')) continue; // the base's own request/authority stays with the base
+    const target = path.join(candidateRoot, rel);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(root, rel), target);
+  }
+  if (git(candidateRoot, ['add', '-A']).status !== 0) return 'Amabie could not stage the seeded candidate';
+  if (git(candidateRoot, ['status', '--porcelain']).stdout.length === 0) return null;
+  const committed = git(candidateRoot, ['-c', 'user.name=Amabie', '-c', 'user.email=amabie@localhost', 'commit', '-m', 'Seed candidate from working tree']);
+  return committed.status === 0 ? null : 'Amabie could not commit the seeded candidate';
+}
+
 function repoWorkspaceDigest(root: string): string | null {
   const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 10_000 });
   const status = spawnSync('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames'], {
@@ -229,104 +246,6 @@ function localScopeDigest(root: string, requestPath: string): string | null {
     plan: config.plan,
     authority: config.planAuthority ?? null,
   }));
-}
-
-function doctorInvocation(): { executable: string; args: string[] } {
-  return path.resolve(CLI_ENTRY) === path.resolve(process.execPath)
-    ? { executable: CLI_ENTRY, args: ['doctor'] }
-    : { executable: process.execPath, args: [CLI_ENTRY, 'doctor'] };
-}
-
-function parseDoctorReport(
-  stdout: string,
-  request: ValidatedPromptEvidenceRequest,
-  runIds: Set<string>,
-): { report: VerificationReport; evidence: EvidenceDraft[]; collection: AdapterCollection } | null {
-  let envelope: unknown;
-  try { envelope = JSON.parse(stdout) as unknown; }
-  catch { return null; }
-  if (!isRecord(envelope) || envelope.command !== 'doctor' || !isRecord(envelope.promptEvidence)) return null;
-  const raw = envelope.promptEvidence;
-  if (raw.schema !== 'amabie-prompt-evidence-report/2'
-    || raw.taskType !== request.goal.taskType
-    || raw.goalDigest !== request.goalDigest
-    || raw.scopeDigest !== request.scopeDigest
-    || typeof raw.runId !== 'string' || raw.runId.length === 0 || runIds.has(raw.runId)
-    || !Number.isSafeInteger(raw.attempt) || !Array.isArray(raw.requirements)
-    || !Array.isArray(raw.evidence)) return null;
-  runIds.add(raw.runId);
-
-  const expected = new Map(request.requirements.flatMap(requirement => requirement.criteria.map(criterion => [criterion.id, { requirement, criterion }] as const)));
-  if (raw.requirements.length !== request.requirements.length) return null;
-  for (const row of raw.requirements) {
-    if (!isRecord(row) || typeof row.id !== 'string' || typeof row.text !== 'string' || !Array.isArray(row.criteria)) return null;
-    const declaration = request.requirements.find(requirement => requirement.id === row.id);
-    if (!declaration || declaration.text !== row.text || row.criteria.length !== declaration.criteria.length) return null;
-    const seenCriteria = new Set<string>();
-    for (const item of row.criteria) {
-      if (!isRecord(item) || typeof item.criterionId !== 'string' || !['met', 'unmet', 'unproven', 'blocked'].includes(String(item.status))) return null;
-      if (!declaration.criteria.some(criterion => criterion.id === item.criterionId) || seenCriteria.has(item.criterionId)) return null;
-      seenCriteria.add(item.criterionId);
-    }
-    if (seenCriteria.size !== declaration.criteria.length) return null;
-  }
-
-  // The per-requirement block can read PASS while the overall doctor gate refuses (regression evidence,
-  // task obligations, failed sealed checks). A refused envelope that still shows an unmet criterion is a
-  // real gap: its validated evidence goes through the normal path, so the loop reports FAIL and the
-  // correction targets that gap. Without one, nothing in the refused envelope can be trusted, so every
-  // criterion takes the refusal label.
-  let hasUnmet = false;
-  for (const row of raw.requirements) {
-    if (!isRecord(row) || !Array.isArray(row.criteria)) return null;
-    if (row.criteria.some(item => isRecord(item) && item.status === 'unmet')) hasUnmet = true;
-  }
-  if (envelope.status !== 'READY' && !hasUnmet) {
-    // Every refused criterion stays unproven whatever the doctor's status: the refused envelope proves nothing either way, so the verdict is NOT PROVEN, not BLOCKED, and the correction still names each gap.
-    const reason = `the overall doctor gate returned ${String(envelope.status)}, not READY`;
-    const unproven = [...expected.keys()].map(criterionId => ({ criterionId, reason }));
-    return { report: raw as unknown as VerificationReport, evidence: [], collection: { evidence: [], blocked: [], unproven } };
-  }
-
-  const evidence: EvidenceDraft[] = [];
-  const seenEvidence = new Set<string>();
-  for (const record of raw.evidence) {
-    if (!isRecord(record) || typeof record.id !== 'string' || typeof record.requirementId !== 'string'
-      || typeof record.criterionId !== 'string' || typeof record.evidenceType !== 'string'
-      || record.adapterId !== CODING_SEALED_PLAN_ADAPTER || record.taskType !== request.goal.taskType
-      || record.runId !== raw.runId || record.attempt !== raw.attempt || record.provenance !== 'verifier-collected'
-      || !Array.isArray(record.artifactRefs) || !record.artifactRefs.every(ref => typeof ref === 'string')
-      || !isRecord(record.integrity) || !evidenceIntegrityValid(record as never)
-      || !isRecord(record.facts)) return null;
-    const binding = expected.get(record.criterionId);
-    if (!binding || binding.requirement.id !== record.requirementId || binding.criterion.evidenceType !== record.evidenceType || seenEvidence.has(record.criterionId)) return null;
-    seenEvidence.add(record.criterionId);
-    evidence.push({
-      requirementId: record.requirementId,
-      criterionId: record.criterionId,
-      evidenceType: record.evidenceType,
-      facts: {
-        ...record.facts as Record<string, JsonValue>,
-        sourceRunId: record.runId,
-        sourceEvidenceId: record.id,
-        sourceEvidenceDigest: record.integrity.digest as string,
-      },
-      artifactRefs: record.artifactRefs as string[],
-    });
-  }
-
-  const blocked: Array<{ criterionId: string; reason: string }> = [];
-  const unproven: Array<{ criterionId: string; reason: string }> = [];
-  for (const row of raw.requirements) {
-    if (!isRecord(row) || !Array.isArray(row.criteria)) return null;
-    for (const item of row.criteria) {
-      if (!isRecord(item) || typeof item.criterionId !== 'string') return null;
-      if (seenEvidence.has(item.criterionId)) continue;
-      if (item.status === 'blocked') blocked.push({ criterionId: item.criterionId, reason: 'the fresh sealed-plan doctor run could not execute this bound check' });
-      else unproven.push({ criterionId: item.criterionId, reason: 'the fresh sealed-plan doctor run produced no evidence for this criterion' });
-    }
-  }
-  return { report: raw as unknown as VerificationReport, evidence, collection: { evidence, blocked, unproven } };
 }
 
 function parseOptions(args: string[]): { request?: string; executable?: string; agent?: BuiltinCorrectionAgent; agentArgs: string[]; authorized: boolean; json: boolean; maxCorrections?: number; problem?: string } {
@@ -399,6 +318,8 @@ function emitResult(value: unknown, json: boolean, maxCorrections: number): void
     console.log(`Corrections: ${result.correctionAttempts} (maximum ${maxCorrections})`);
     if (result.verification) console.log(`Fresh verification: ${result.verification.verdict} (${result.verification.coverage.met}/${result.verification.coverage.total} requirements met)`);
     if (result.stopReason) console.log(`Stopped: ${result.stopReason}`);
+    const cand = (value as { candidate?: { diffCommand: string } | null }).candidate;
+    if (cand) console.log(`Candidate diff (nothing adopted): ${cand.diffCommand}`);
   }
 }
 
@@ -441,48 +362,86 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
   catch { console.error('BLOCKED — Amabie could not fingerprint its CLI entry; no agent was started'); return 2; }
   if (expectedScope === null) { console.error('BLOCKED — Amabie could not fingerprint the task and sealed plan; no agent was started'); return 2; }
 
-  const requestRelativePath = path.relative(root, requestPath);
   const agentInvocation = options.agent
     ? buildCorrectionAgentInvocation(options.agent, root)
     : { executable: options.executable!, args: options.agentArgs };
   const agentEnvironment = options.agent
     ? buildCorrectionAgentEnvironment(process.env, options.agent)
     : process.env;
-  const doctor = doctorInvocation();
-  const childRunIds = new Set<string>();
   const agentProcessDiagnostics: AgentProcessDiagnostic[] = [];
   let claudeVersionPreflightPassed = false;
+  // The correction agent only ever edits a disposable candidate worktree of the
+  // base's committed HEAD; the base project is never touched by the loop.
+  let candidate = null as { name: string; rec: CandidateRecord; cfg: AmabieConfig } | null;
+  const sealedAdapter = (cfg: AmabieConfig, results: StepResult[]): VerifierAdapter => {
+    const resultsByScript = new Map<string, SealedStepResult[]>();
+    planWithFreshTests(cfg.plan).forEach((step, index) => {
+      const result = results[index];
+      if (!result) return;
+      resultsByScript.set(step.script, [...(resultsByScript.get(step.script) ?? []), {
+        ok: result.ok,
+        exitCode: result.exitCode,
+        startedAt: result.startedAt,
+        endedAt: result.endedAt,
+        execDigest: result.exec.digest,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      }]);
+    });
+    return createCodingSealedPlanAdapter({
+      plan: cfg.plan,
+      proofBindings: cfg.planAuthority?.proofBindings ?? {},
+      resultsByScript,
+      refusedScripts: new Set(),
+      planDigest: planDigest(cfg.plan),
+      baselineDigest: cfg.baseline?.head ?? null,
+    });
+  };
   const adapter: VerifierAdapter = {
     id: CODING_SEALED_PLAN_ADAPTER,
     taskType: 'coding',
-    async collect(_validated, criteria): Promise<AdapterCollection> {
+    async collect(validated, criteria, context): Promise<AdapterCollection> {
+      const blockAll = (reason: string): AdapterCollection => ({ evidence: [], blocked: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason })) });
       const currentScope = localScopeDigest(root, requestPath);
       let currentCliDigest: string;
       try { currentCliDigest = hash(fs.readFileSync(expectedCliPath)); }
       catch { currentCliDigest = ''; }
       if (currentScope !== expectedScope || currentCliDigest !== cliDigest) {
-        return { evidence: [], blocked: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason: 'the request, registered task, sealed plan, or Amabie CLI changed during the correction loop' })) };
+        return blockAll('the request, registered task, sealed plan, or Amabie CLI changed during the correction loop');
       }
-      console.error('[P2E] Running the complete sealed plan for fresh evidence.');
-      const run = await runBoundedProcess(
-        doctor.executable,
-        [...doctor.args, '--prompt-evidence', requestRelativePath, '--json'],
-        root,
-        '',
-        DOCTOR_TIMEOUT_MS,
-        MAX_DOCTOR_OUTPUT_BYTES,
-      );
-      if (run.exitCode === null || run.exitCode !== 0 && run.exitCode !== 2
-        || run.timedOut || run.outputExceeded || run.sweepFailed) {
-        const reason = run.timedOut ? 'the full sealed-plan verification timed out'
-          : run.outputExceeded ? 'the Amabie doctor response exceeded its output limit'
-            : run.sweepFailed ? 'Amabie could not confirm cleanup of verification child processes'
-              : run.error ?? `Amabie doctor exited ${run.exitCode ?? 'without an exit code'}`;
-        return { evidence: [], blocked: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason })) };
+      const quiet = new Out(false, true);
+      if (!candidate) {
+        const cfg = readConfig(root);
+        if (!cfg || cfg === 'corrupt') return blockAll('the project has no readable Amabie configuration, so no candidate can be created');
+        const name = `p2e-${randomUUID().slice(0, 8)}`;
+        if (isolateCreate(root, cfg, quiet, name, 'HEAD', null) !== 0) return blockAll('Amabie could not create the disposable candidate worktree');
+        const rec = loadRecord(root, name);
+        if (rec === 'missing' || rec === 'invalid') return blockAll('the disposable candidate record is not readable');
+        candidate = { name, rec, cfg };
+        console.error(`[P2E] Candidate ${name} created at ${rec.root}.`);
+        const seeded = seedCandidateFromWorkingTree(root, rec.root);
+        if (seeded) return blockAll(seeded);
+      } else {
+        const git = (args: string[]) => spawnSync('git', ['-C', candidate!.rec.root, ...args], { encoding: 'utf8' });
+        const dirty = git(['status', '--porcelain']);
+        if (dirty.status !== 0) return blockAll('Amabie could not read the candidate status');
+        if (dirty.stdout.trim()) {
+          const staged = git(['add', '-A']);
+          const committed = staged.status === 0
+            ? git(['-c', 'user.name=Amabie', '-c', 'user.email=amabie@localhost', 'commit', '-m', `Apply correction ${context.attempt}`])
+            : staged;
+          if (committed.status !== 0) return blockAll('Amabie could not commit the correction inside the candidate');
+        }
       }
-      const parsed = parseDoctorReport(run.stdout, request, childRunIds);
-      if (!parsed) return { evidence: [], blocked: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason: 'the fresh doctor run did not return a valid, scope-matched per-requirement evidence report' })) };
-      return parsed.collection;
+      console.error('[P2E] Running the complete sealed plan on the candidate for fresh evidence.');
+      const sink = { results: [] as StepResult[] };
+      const outcome = verifyCandidate(root, candidate.cfg, quiet, candidate.name, sink);
+      const collection = await sealedAdapter(candidate.cfg, sink.results).collect(validated, criteria, context);
+      const unmet = collection.evidence.some((item: EvidenceDraft) => typeof item.facts === 'object' && item.facts !== null && !Array.isArray(item.facts) && (item.facts as { ok?: JsonValue }).ok === false);
+      if (outcome.code !== 0 && !unmet) {
+        return { evidence: [], unproven: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason: 'the overall candidate gate did not return PASS' })) };
+      }
+      return collection;
     },
   };
 
@@ -495,8 +454,11 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     async correct({ report, cycle }) {
       const currentScope = localScopeDigest(root, requestPath);
       if (currentScope !== expectedScope) return { outcome: 'applied', scopeDigest: 'changed-before-correction' };
-      const before = repoWorkspaceDigest(root);
-      if (before === null) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'Amabie could not fingerprint Git-visible project files before invoking the correction agent' };
+      if (!candidate) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'no disposable candidate exists to receive the correction' };
+      const cand = candidate;
+      const before = repoWorkspaceDigest(cand.rec.root);
+      const baseBefore = repoWorkspaceDigest(root);
+      if (before === null || baseBefore === null) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'Amabie could not fingerprint Git-visible project files before invoking the correction agent' };
       const correctionInput = JSON.stringify({
         schema: CORRECTION_SCHEMA,
         cycle,
@@ -526,7 +488,7 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
           else reason = `Claude Code version preflight exited ${versionRun.exitCode ?? 'without an exit code'}`;
           return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `${reason}; no correction request was sent` };
         }
-        if (localScopeDigest(root, requestPath) !== expectedScope || repoWorkspaceDigest(root) !== before) {
+        if (localScopeDigest(root, requestPath) !== expectedScope || repoWorkspaceDigest(root) !== baseBefore) {
           return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'the project changed during Claude Code version preflight; no correction request was sent' };
         }
         const version = evaluateClaudeCodeVersion(`${versionRun.stdout}\n${versionRun.stderr}`);
@@ -539,22 +501,23 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
         claudeVersionPreflightPassed = true;
         console.error(`[P2E] Claude Code ${version.version} satisfies the built-in profile minimum ${version.minimumVersion}.`);
       }
-      console.error('[P2E] Safety warning: Correction agents edit this working tree directly; changes are not automatically rolled back. Use a disposable Git worktree and inspect the diff.');
+      console.error('[P2E] Safety warning: The correction agent edits a disposable candidate worktree, not this project; uncommitted changes in this project are not visible to it. Inspect the candidate diff before adopting anything.');
       const agentInput = options.agent ? renderCorrectionAgentPrompt(correctionInput) : correctionInput;
       console.error(`[P2E] Correction ${cycle}/${maxCorrections}: invoking ${options.agent ?? path.basename(agentInvocation.executable)} with the scoped report.`);
-      const agent = await runBoundedProcess(agentInvocation.executable, agentInvocation.args, root, agentInput, AGENT_TIMEOUT_MS, MAX_AGENT_OUTPUT_BYTES, agentEnvironment);
+      const agent = await runBoundedProcess(agentInvocation.executable, agentInvocation.args, cand.rec.root, agentInput, AGENT_TIMEOUT_MS, MAX_AGENT_OUTPUT_BYTES, agentEnvironment);
       agentProcessDiagnostics.push(summarizeAgentProcess(cycle, agent));
       const afterScope = localScopeDigest(root, requestPath);
       if (afterScope !== expectedScope) return { outcome: 'applied', scopeDigest: 'changed-by-correction-agent' };
+      if (repoWorkspaceDigest(root) !== baseBefore) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'the correction agent modified the authoritative project outside its candidate' };
       if (agent.timedOut) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'correction agent timed out and was terminated' };
       if (agent.outputExceeded) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'correction agent exceeded the output limit and was terminated' };
       if (agent.sweepFailed) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'Amabie could not confirm cleanup of the correction agent process tree' };
       if (agent.error) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `correction agent could not run: ${agent.error}` };
       if (agent.exitCode !== 0) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: `correction agent exited ${agent.exitCode ?? 'without an exit code'}; its claims are not evidence` };
-      const after = repoWorkspaceDigest(root);
+      const after = repoWorkspaceDigest(cand.rec.root);
       if (after === null) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'Amabie could not fingerprint Git-visible project files after the correction agent ran' };
-      if (after === before) return { outcome: 'no-change', scopeDigest: request.scopeDigest, reason: 'correction agent reported success but made no Git-visible project change' };
-      console.error(`[P2E] Correction ${cycle} changed the project; Amabie will rerun every sealed check.`);
+      if (after === before) return { outcome: 'no-change', scopeDigest: request.scopeDigest, reason: 'correction agent reported success but made no Git-visible candidate change' };
+      console.error(`[P2E] Correction ${cycle} changed the candidate; Amabie will rerun every sealed check.`);
       return { outcome: 'applied', scopeDigest: request.scopeDigest };
     },
   });
@@ -569,6 +532,7 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     sourceCoverage: request.sourceCoverage,
     agentClaimUsedAsEvidence: false,
     agentProcessDiagnostics,
+    candidate: candidate ? { name: candidate.name, path: candidate.rec.root, baseHead: candidate.rec.baseHead, diffCommand: `git -C "${candidate.rec.root}" diff ${candidate.rec.baseHead}` } : null,
   };
   emitResult(envelope, options.json, maxCorrections);
   return result.status === 'verified' && result.verification.verdict === 'PASS' ? 0 : 2;

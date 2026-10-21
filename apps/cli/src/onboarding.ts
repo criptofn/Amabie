@@ -2820,7 +2820,7 @@ function recordOriginalPrompt(root: string, prompt: string, promptId: string): v
   }
 }
 
-function readOriginalPrompt(root: string): string[] | null {
+export function readOriginalPrompt(root: string): string[] | null {
   try {
     const p = path.join(root, ORIGINAL_PROMPT_FILE);
     if (containedRealPath(root, p) === null) return null;
@@ -2868,7 +2868,7 @@ function appendTaskRevision(root: string, task: TaskIdentity): void {
 }
 
 /** Reasons the registered task is not the authorized one; empty when the chain is intact and every in-request change only adds. */
-function taskRevisionIssues(root: string, task: TaskIdentity): string[] {
+export function taskRevisionIssues(root: string, task: TaskIdentity): string[] {
   const lines = readRevisionLines(root);
   if (lines.length === 0) return ['No task revision log exists for this project, so the registered task has no recorded origin; manual operator confirmation is required.'];
   const issues: string[] = [];
@@ -2898,7 +2898,7 @@ function taskRevisionIssues(root: string, task: TaskIdentity): string[] {
  * (CLI-only use) means nothing to compare, so the check is silent there. LOCAL and same-user: a
  * record replayed from a still-present session state would match.
  */
-function promptEpochIssues(root: string): string[] {
+export function promptEpochIssues(root: string): string[] {
   const epoch = readPromptEpoch(root);
   if (epoch === null) return [];
   const dir = path.join(root, CONFIG_DIR, CLAUDE_TURN_STATE_DIR);
@@ -2916,7 +2916,7 @@ function promptEpochIssues(root: string): string[] {
     : ['The recorded original prompt belongs to a request that is not the current one in any session of this project, so it may be a replay.'];
 }
 
-function bindTaskRevisions(report: VerificationReport, issues: string[]): VerificationReport {
+export function bindTaskRevisions(report: VerificationReport, issues: string[]): VerificationReport {
   return issues.length === 0 ? report : { ...report, verdict: report.verdict === 'PASS' ? 'NOT PROVEN' : report.verdict, issues: [...report.issues, ...issues] };
 }
 
@@ -2924,7 +2924,7 @@ function bindTaskRevisions(report: VerificationReport, issues: string[]): Verifi
  * Every line of the recorded original prompt must still be a line of the request goal. A missing
  * line is NOT PROVEN (FAIL stays FAIL); no record is not silent — it is labelled as unbound.
  */
-function bindOriginalPrompt(report: VerificationReport, recorded: string[] | null, goalText: string): VerificationReport {
+export function bindOriginalPrompt(report: VerificationReport, recorded: string[] | null, goalText: string): VerificationReport {
   if (recorded === null) return { ...report, issues: [...report.issues, 'No original-prompt record exists for this project, so the original prompt is unbound; manual operator confirmation is required.'] };
   const goal = new Set(promptLineDigests(goalText));
   const missing = recorded.filter(digest => !goal.has(digest)).length;
@@ -3288,7 +3288,7 @@ function readAgentClaim(root: string): { at: string; text: string } | null {
 
 function rel(root: string, p: string): string { return path.relative(root, p) || '.'; }
 
-function promptEvidenceBundleSummary(report: VerificationReport): Record<string, unknown> {
+export function promptEvidenceBundleSummary(report: VerificationReport): Record<string, unknown> {
   const { requirements, ...summary } = report;
   return {
     ...summary,
