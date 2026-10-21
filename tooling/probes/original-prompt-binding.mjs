@@ -72,7 +72,7 @@ const GREETING_TEST = "import { test } from 'node:test';\nimport assert from 'no
  * task and requirement, an optional sequence of prompts reaches the intake hook, and the worker's
  * request declares `requestGoal`. Returns the doctor envelope.
  */
-function scenario(name, { prompts, registeredGoal, requestGoal }) {
+function scenario(name, { prompts, registeredGoal, requestGoal, mutate }) {
   const dir = path.join(root, name);
   fs.mkdirSync(path.join(dir, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
@@ -97,6 +97,7 @@ function scenario(name, { prompts, registeredGoal, requestGoal }) {
   const bind = amabie(dir, ['bind', 'test', '--requirement', registeredGoal, '--reseal']);
   if (bind.status !== 0) throw new Error(`bind failed in ${name}: ${bind.stdout}${bind.stderr}`);
   fs.mkdirSync(path.join(dir, '.amabie'), { recursive: true });
+  mutate?.(dir);
   fs.writeFileSync(path.join(dir, '.amabie', 'prompt-evidence.json'), JSON.stringify({
     schema: 'amabie-prompt-evidence/1',
     goal: { taskType: 'coding', text: requestGoal },
@@ -159,6 +160,21 @@ const replay = scenario('replay', { prompts: [FIRST, 'Unrelated follow-up reques
 check(verdictOf(replay) !== 'PASS' && /original prompt/.test(issuesOf(replay)),
   'REPLAY: a request that answers an older prompt, not the latest one, is NOT PROVEN',
   `verdict=${verdictOf(replay)} issues=${issuesOf(replay) || '(none)'}`);
+
+// FOREIGN RECORD (T10): the record carries the right lines but a promptId this project never minted,
+// as when a record is copied from another project or replayed. The lines match; only the id can refuse it.
+const foreign = scenario('foreign-record', {
+  prompts: [FIRST], registeredGoal: FIRST, requestGoal: FIRST,
+  mutate: dir => {
+    const file = path.join(dir, '.amabie', 'original-prompt.json');
+    const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+    record.promptId = '00000000-0000-4000-8000-000000000000';
+    fs.writeFileSync(file, JSON.stringify(record, null, 2) + '\n');
+  },
+});
+check(verdictOf(foreign) !== 'PASS' && /replay/.test(issuesOf(foreign)),
+  'FOREIGN RECORD: an original-prompt record whose promptId no session of this project minted is NOT PROVEN',
+  `verdict=${verdictOf(foreign)} issues=${issuesOf(foreign) || '(none)'}`);
 
 fs.rmSync(root, { recursive: true, force: true });
 console.log('');

@@ -2812,13 +2812,13 @@ function promptLineDigests(text: string): string[] {
   return [...new Set(lines.map(sha256))];
 }
 
-function recordOriginalPrompt(root: string, prompt: string): void {
+function recordOriginalPrompt(root: string, prompt: string, promptId: string): void {
   const p = path.join(root, ORIGINAL_PROMPT_FILE);
   try {
     if (containedRealPath(root, path.dirname(p)) === null || containedRealPath(root, p) === null) throw new Error('refused');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     assertPlainTarget(p);
-    writeFileAtomic(p, JSON.stringify({ schema: ORIGINAL_PROMPT_SCHEMA, lineDigests: promptLineDigests(prompt) }, null, 2) + '\n');
+    writeFileAtomic(p, JSON.stringify({ schema: ORIGINAL_PROMPT_SCHEMA, promptId, lineDigests: promptLineDigests(prompt) }, null, 2) + '\n');
   } catch {
     // a failed write must not leave the previous prompt's record standing in for this one
     try { if (containedRealPath(root, p) !== null) { assertPlainTarget(p); fs.rmSync(p, { force: true }); } } catch { /* absence is labelled at doctor */ }
@@ -2833,6 +2833,96 @@ function readOriginalPrompt(root: string): string[] | null {
     if (v?.schema !== ORIGINAL_PROMPT_SCHEMA || !Array.isArray(v.lineDigests) || !v.lineDigests.every(d => typeof d === 'string')) return null;
     return v.lineDigests.length > 0 ? v.lineDigests as string[] : null;
   } catch { return null; }
+}
+
+/** The harness-minted id of the request the recorded prompt belongs to (null when no hook recorded one). */
+function readPromptEpoch(root: string): string | null {
+  try {
+    const p = path.join(root, ORIGINAL_PROMPT_FILE);
+    if (containedRealPath(root, p) === null) return null;
+    const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
+    return v?.schema === ORIGINAL_PROMPT_SCHEMA && typeof v.promptId === 'string' && /^[0-9a-f-]{36}$/i.test(v.promptId) ? v.promptId : null;
+  } catch { return null; }
+}
+
+// T11 — append-only, hash-chained log of every task registration. Registering overwrites the task
+// record, so without this a dropped requirement leaves no trace. A change inside ONE request (same
+// harness promptId) can only weaken the duties silently; a new request is the authorized revision.
+// LOCAL and same-user, like the original-prompt record: it makes silent edits visible, not impossible.
+const TASK_REVISIONS_FILE = path.join(CONFIG_DIR, 'task-revisions.jsonl');
+const lineDigest = (line: string): string => sha256(line);
+
+function readRevisionLines(root: string): string[] {
+  try {
+    const p = path.join(root, TASK_REVISIONS_FILE);
+    if (containedRealPath(root, p) === null) return [];
+    return fs.readFileSync(p, 'utf8').split('\n').filter(line => line !== '');
+  } catch { return []; }
+}
+
+function appendTaskRevision(root: string, task: TaskIdentity): void {
+  const p = path.join(root, TASK_REVISIONS_FILE);
+  if (containedRealPath(root, p) === null) throw new Error('revision log resolves outside the repository');
+  assertPlainTarget(p);
+  const lines = readRevisionLines(root);
+  fs.appendFileSync(p, JSON.stringify({
+    schema: 'amabie-task-revision/1', n: lines.length + 1, at: new Date().toISOString(),
+    taskDigest: task.taskDigest, requirementDigests: task.requirementDigests,
+    epoch: readPromptEpoch(root), prev: lines.length ? lineDigest(lines[lines.length - 1]!) : null,
+  }) + '\n');
+}
+
+/** Reasons the registered task is not the authorized one; empty when the chain is intact and every in-request change only adds. */
+function taskRevisionIssues(root: string, task: TaskIdentity): string[] {
+  const lines = readRevisionLines(root);
+  if (lines.length === 0) return ['No task revision log exists for this project, so the registered task has no recorded origin; manual operator confirmation is required.'];
+  const issues: string[] = [];
+  let previous: { taskDigest: string; requirementDigests: string[]; epoch: string | null } | null = null;
+  for (const [i, line] of lines.entries()) {
+    let v: Record<string, unknown>;
+    try { v = JSON.parse(line) as Record<string, unknown>; } catch { return [...issues, `Task revision ${i + 1} is unreadable, so the revision chain is broken.`]; }
+    const digests = Array.isArray(v.requirementDigests) && v.requirementDigests.every(d => typeof d === 'string') ? v.requirementDigests as string[] : null;
+    if (v.schema !== 'amabie-task-revision/1' || v.n !== i + 1 || typeof v.taskDigest !== 'string' || digests === null
+      || v.prev !== (i === 0 ? null : lineDigest(lines[i - 1]!))) return [...issues, `Task revision ${i + 1} does not chain onto the previous one, so the revision history was edited.`];
+    const epoch = typeof v.epoch === 'string' ? v.epoch : null;
+    if (previous !== null && epoch !== null && epoch === previous.epoch) {
+      const dropped = previous.requirementDigests.filter(d => !digests.includes(d)).length;
+      if (dropped > 0) issues.push(`Task revision ${i + 1} dropped or replaced ${dropped} requirement(s) within the same request; only a new request authorizes that.`);
+    }
+    previous = { taskDigest: v.taskDigest, requirementDigests: digests, epoch };
+  }
+  if (previous !== null && (previous.taskDigest !== task.taskDigest
+    || previous.requirementDigests.join() !== task.requirementDigests.join())) issues.push('The registered task is not the last recorded revision, so it was changed outside amabie task.');
+  return issues;
+}
+
+/**
+ * T10 — the recorded original prompt must belong to a request this project actually saw. Turn states
+ * hold the harness-minted promptId of every live session; a record whose promptId matches none of
+ * them (copied from another project, or replayed) is not the current request. No turn state at all
+ * (CLI-only use) means nothing to compare, so the check is silent there. LOCAL and same-user: a
+ * record replayed from a still-present session state would match.
+ */
+function promptEpochIssues(root: string): string[] {
+  const epoch = readPromptEpoch(root);
+  if (epoch === null) return [];
+  const dir = path.join(root, CONFIG_DIR, CLAUDE_TURN_STATE_DIR);
+  const ids: string[] = [];
+  try {
+    if (containedRealPath(root, dir) === null) return [];
+    for (const name of fs.readdirSync(dir)) {
+      try {
+        const v = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')) as Record<string, unknown>;
+        if (typeof v?.promptId === 'string') ids.push(v.promptId);
+      } catch { /* an unreadable state proves nothing either way */ }
+    }
+  } catch { return []; }
+  return ids.length === 0 || ids.includes(epoch) ? []
+    : ['The recorded original prompt belongs to a request that is not the current one in any session of this project, so it may be a replay.'];
+}
+
+function bindTaskRevisions(report: VerificationReport, issues: string[]): VerificationReport {
+  return issues.length === 0 ? report : { ...report, verdict: report.verdict === 'PASS' ? 'NOT PROVEN' : report.verdict, issues: [...report.issues, ...issues] };
 }
 
 /**
@@ -3021,6 +3111,7 @@ export function cmdTask(rawArgs: string[]): number {
       o.verdict('NEEDS ATTENTION', `${rel(root, taskPath)} resolves outside the repository (a link?) — Amabie will not write through it.`, 'replace it with a real folder inside .amabie, then re-run'); return 2;
     }
     fs.mkdirSync(path.dirname(taskPath), { recursive: true });
+    appendTaskRevision(root, task);
     writeFileAtomic(taskPath, JSON.stringify({
       schema: 'amabie-task/2', at: new Date().toISOString(), ...task,
       trustClass: 'AGENT_REPORTED',
@@ -4502,7 +4593,9 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
       planDigest: planDigest(cfg.plan),
       baselineDigest: cfg.baseline?.head ?? null,
     });
-    promptEvidenceReport = bindOriginalPrompt(await verifyPromptEvidence(promptEvidenceRequest, [adapter], { runId: crypto.randomUUID(), attempt: 0 }), readOriginalPrompt(root), promptEvidenceRequest.goal.text);
+    promptEvidenceReport = bindTaskRevisions(
+      bindOriginalPrompt(await verifyPromptEvidence(promptEvidenceRequest, [adapter], { runId: crypto.randomUUID(), attempt: 0 }), readOriginalPrompt(root), promptEvidenceRequest.goal.text),
+      [...taskRevisionIssues(root, readTaskRecord(root)!), ...promptEpochIssues(root)]);
     o.context({ promptEvidence: promptEvidenceReport });
     o.say(`Prompt-to-Evidence (EXPERIMENTAL): ${promptEvidenceReport.verdict} — ${promptEvidenceReport.coverage.met}/${promptEvidenceReport.coverage.total} requirements verified.`);
     o.say(`  Original-goal source coverage: ${promptEvidenceReport.sourceCoverage.mappedNonWhitespaceCharacters}/${promptEvidenceReport.sourceCoverage.nonWhitespaceCharacters} non-whitespace characters${promptEvidenceReport.sourceCoverage.complete ? '' : ' — incomplete, so PASS is unavailable'}.`);
@@ -4740,7 +4833,7 @@ export async function cmdCheckpoint(): Promise<number> {
       registeredPromptId: null, task: null,
     };
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
-    if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt);
+    if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt, state.promptId);
     return emit({ hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
       additionalContext: 'Amabie started a fresh task scope for this request. Before project writes, shell commands, delegation, or MCP calls, register the current intent and exact stated criteria with mcp__amabie__amabie_task; use requirements: [] when none were stated.',

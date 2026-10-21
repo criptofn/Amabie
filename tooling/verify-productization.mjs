@@ -492,6 +492,9 @@ const STEPS = [
   // P0:22 — the user's original prompt reaches the verdict through the harness intake, not through the
   // worker's own goal text: omission, negation and replay of an older prompt are NOT PROVEN, never PASS.
   ['P0:22 original prompt bound through intake to the prompt-evidence verdict', process.execPath, ['tooling/probes/original-prompt-binding.mjs'], {}],
+  // P0:23 — the task record is append-only and hash-chained: only a NEW user request may weaken the
+  // duties; a drop inside one request, an edited chain and a rolled-back task are NOT PROVEN.
+  ['P0:23 task revisions are chained and only a new request may weaken the duties', process.execPath, ['tooling/probes/task-revision-integrity.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53
