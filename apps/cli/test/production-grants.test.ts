@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { gateRequest, openGrants } from '../src/provider/production-grants.js';
-import type { GrantPayload } from '../src/permission-contract.js';
+import type { ExecGrantPayload, GrantPayload } from '../src/permission-contract.js';
 
 const keys = crypto.generateKeyPairSync('ed25519');
 const pem = (k: crypto.KeyObject, t: 'public' | 'private') => k.export({ type: t === 'public' ? 'spki' : 'pkcs8', format: 'pem' }).toString();
@@ -15,7 +15,7 @@ const grant = (over: Partial<GrantPayload> = {}): GrantPayload => ({
   notBefore: NOW - 1000, expiresAt: NOW + 60_000, policyGeneration: 1, prerequisites: [], ...over,
 });
 
-function fixture(grants: GrantPayload[] | null) {
+function fixture(grants: Array<GrantPayload | ExecGrantPayload> | null) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-grants-'));
   const store = path.join(root, 'store'), cwd = path.join(root, 'work');
   fs.mkdirSync(store); fs.mkdirSync(path.join(cwd, 'src'), { recursive: true });
@@ -61,6 +61,44 @@ test('exec, a declared check, an unknown op and a link inside the workspace are 
     fs.symlinkSync(outside, path.join(f.cwd, 'src', 'link'), 'junction');
     assert.throws(() => f.gate(w('src/link/x.txt')), /link/);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+const proc = (argv: string[], over: Partial<ExecGrantPayload> = {}): ExecGrantPayload => ({
+  grantId: 'p1', source: 'user', resource: { kind: 'process', argv }, operation: 'exec', args: {},
+  notBefore: NOW - 1000, expiresAt: NOW + 60_000, policyGeneration: 1, prerequisites: [], ...over,
+});
+const ex = (argv: unknown) => ({ op: 'exec', argv });
+
+test('T25: a process runs only on an exact-argv grant; file and process grants never cover each other', () => {
+  const f = fixture([grant(), proc(['node', 'src/t.js'])]);
+  try {
+    f.gate(ex(['node', 'src/t.js']));
+    f.gate({ operations: [w('src/a.txt'), ex(['node', 'src/t.js'])], check: { argv: ['node', 'src/t.js'] } });
+    assert.throws(() => f.gate(ex(['node', 'src/other.js'])), /outside-scope/); // other argument
+    assert.throws(() => f.gate(ex(['node'])), /outside-scope/); // prefix is not the grant
+    assert.throws(() => f.gate(ex(['node', 'src/t.js', '--x'])), /outside-scope/); // extension is not the grant
+    assert.throws(() => f.gate(ex(['cmd.exe', '/c', 'echo owned'])), /outside-scope/); // a shell is not granted
+    assert.throws(() => f.gate({ operations: [w('src/a.txt')], check: { argv: ['node', 'other.js'] } }), /check/);
+    for (const bad of [['C:\\Windows\\System32\\cmd.exe'], ['..\\x.exe'], ['./node'], [], 'node', [5], ['node\0']])
+      assert.throws(() => f.gate(ex(bad)), /unclear/, JSON.stringify(bad));
+    assert.throws(() => f.gate(w('docs/b.txt')), /outside-scope/); // the exec grant is no file grant
+    const onlyProc = fixture([proc(['node', 'src/t.js'])]);
+    try { assert.throws(() => onlyProc.gate(w('src/a.txt')), /forbidden/); } finally { fs.rmSync(onlyProc.root, { recursive: true, force: true }); }
+  } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test('T25: an exec grant can be expired, revoked, superseded or unmet like a file grant', () => {
+  const expired = fixture([proc(['node'], { expiresAt: NOW - 1 })]);
+  const stale = fixture([proc(['node'])]);
+  const unready = fixture([proc(['node'], { prerequisites: ['plan-approved'] })]);
+  try {
+    assert.throws(() => expired.gate(ex(['node'])), /expired/);
+    assert.throws(() => unready.gate(ex(['node'])), /unready/);
+    fs.writeFileSync(path.join(stale.store, 'grants', 'policy.json'), JSON.stringify({ generation: 1, revoked: ['p1'], deny: [] }));
+    assert.throws(() => stale.gate(ex(['node'])), /revoked/);
+    fs.writeFileSync(path.join(stale.store, 'grants', 'policy.json'), JSON.stringify({ generation: 2, revoked: [], deny: [] }));
+    assert.throws(() => stale.gate(ex(['node'])), /predates/);
+  } finally { for (const x of [expired, stale, unready]) fs.rmSync(x.root, { recursive: true, force: true }); }
 });
 
 test('expired or revoked grants and a newer policy generation refuse everything', () => {

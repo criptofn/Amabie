@@ -11,13 +11,17 @@
  * worker cannot open or close it. A store without that directory behaves exactly as before (honest gap: the
  * controller must open the regime; there is no default-deny for an old enrollment).
  *
- * Honest limits (LOCAL, never HARDENED): `exec` and a declared `check` are refused outright while a regime is
- * open - an arbitrary process is the "alternative native route" and belongs to T25. `maxBytes` bounds the bytes
- * one operation carries (an `edit` is judged by its `replace`), not the resulting file size.
+ * T25: `exec` and a declared `check` are judged as PROCESS actions - one exact argv per grant (bare program name,
+ * no wildcard, no shell family). Without a matching exec grant they are refused. A file grant never covers a
+ * process and an exec grant never covers a file, so there is no blanket native-shell exception.
+ *
+ * Honest limits (LOCAL, never HARDENED): `maxBytes` bounds the bytes one operation carries (an `edit` is judged
+ * by its `replace`), not the resulting file size. A granted `node <script>` runs code the worker may have written
+ * under a file grant; the AppContainer bounds that, the contract does not.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { decide, issueGrant, type FileAction, type GrantPayload, type PermissionContext, type Verdict } from '../permission-contract.js';
+import { decide, decideExec, issueGrant, type ExecGrantPayload, type FileAction, type GrantPayload, type PermissionContext, type Verdict } from '../permission-contract.js';
 import type { RecordEnvelope } from '../authority-envelope.js';
 
 export interface GrantPolicy { generation: number; revoked: string[]; deny: string[] }
@@ -32,7 +36,7 @@ function plainJson<T>(file: string): T {
 }
 
 /** Controller-only: open (or extend) the regime. The signing key is the store's producer key. */
-export function openGrants(store: string, projectId: string, privateKeyPem: string, grants: GrantPayload[], policy: GrantPolicy = DEFAULT_POLICY): void {
+export function openGrants(store: string, projectId: string, privateKeyPem: string, grants: Array<GrantPayload | ExecGrantPayload>, policy: GrantPolicy = DEFAULT_POLICY): void {
   const dir = path.join(store, 'grants');
   fs.mkdirSync(dir, { recursive: true });
   const policyFile = path.join(dir, 'policy.json');
@@ -66,12 +70,23 @@ export function gateRequest(store: string, projectId: string, cwd: string, reque
     projectId, grantKeyPem: fs.readFileSync(path.join(store, 'producer.pub'), 'utf8'), now,
     policyGeneration: policy.generation, revoked: new Set(policy.revoked), met: new Set(), deny: ['.git', ...policy.deny],
   };
-  const r = request as { operations?: unknown[]; check?: unknown } | null;
-  if (r && typeof r === 'object' && r.check !== undefined) refuse('a declared check is a process route (T25)');
+  // A process is its own resource: a file grant never covers it and an exec grant never covers a file.
+  const execGate = (what: string, argv: unknown): void => {
+    let best: Verdict = { decision: 'forbidden', reason: 'no grant', level: 'LOCAL' };
+    for (const g of grants) {
+      const v = decideExec({ source: 'worker-proposal', argv, grant: g }, ctx);
+      if (v.decision === 'authorized') { best = v; break; }
+      if (best.decision === 'forbidden') best = v;
+    }
+    if (best.decision !== 'authorized') refuse(`${what}: ${best.decision} (${best.reason})`);
+  };
+  const r = request as { operations?: unknown[]; check?: { argv?: unknown } } | null;
+  // The declared check runs only after a change, but is judged up front: the whole call is covered or refused.
+  if (r && typeof r === 'object' && r.check !== undefined) execGate('check', r.check?.argv);
   const ops = Array.isArray(r?.operations) ? r!.operations : [request];
   for (const op of ops as Array<Record<string, unknown> | null>) {
     const kind = op?.op;
-    if (kind === 'exec') refuse('exec is a process route with no grant yet (T25)');
+    if (kind === 'exec') { execGate('exec', op!.argv); continue; }
     if (kind === 'list') { if (op!.path !== undefined && op!.path !== '.' && !safePath(op!.path)) refuse('list path'); continue; }
     if (kind !== 'read' && kind !== 'write' && kind !== 'edit') refuse('unknown operation');
     if (!safePath(op!.path)) refuse(`${kind} path is not a plain repo-relative path`);
