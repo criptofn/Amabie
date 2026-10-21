@@ -19,7 +19,9 @@ test('Codex resolves the native executable or npm shim and uses the shared stdin
 
   assert.equal(invocation.executable, 'codex');
   assert.deepEqual(invocation.args, [
-    'exec', '--ephemeral', '--ignore-user-config', '-c', 'approval_policy=never', '--sandbox', 'workspace-write',
+    'exec', '--ephemeral', '--ignore-user-config', '-c', 'approval_policy=never',
+    ...(process.platform === 'win32' ? ['-c', 'windows.sandbox="elevated"'] : []),
+    '--sandbox', 'workspace-write',
     '--color', 'never', '-C', root, '-',
   ]);
   assert.ok(!invocation.args.includes('--approve-for-me'));

@@ -825,6 +825,9 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
     shimHelpLine(agent),
     "const input = fs.readFileSync(0, 'utf8');",
     `fs.writeFileSync(${JSON.stringify(capturedPrompt)}, input);`,
+    // A profile that names its own working directory (-C) must name the candidate Amabie spawned it in.
+    "const cdIndex = process.argv.indexOf('-C');",
+    "if (cdIndex >= 0 && fs.realpathSync(process.argv[cdIndex + 1]) !== fs.realpathSync(process.cwd())) process.exit(12);",
     "const request = JSON.parse(input.slice(input.lastIndexOf('\\n\\n') + 2));",
     "if (request.schema !== 'amabie-correction-request/1' || request.cycle !== 1) process.exit(10);",
     `if (request.report.unresolved.length !== 1 || request.report.unresolved[0]?.requirement !== ${JSON.stringify(requirements[1])} || request.report.unresolved[0]?.status !== 'unmet') process.exit(11);`,

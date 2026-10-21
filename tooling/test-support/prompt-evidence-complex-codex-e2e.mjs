@@ -438,6 +438,9 @@ async function prepare() {
     ...expectedRequirements.flatMap((text) => ['--requirement', text])], projectRoot, env), 0, 'register original task');
   const requestPath = writeProjectRequest(projectRoot, extracted);
   const falseDone = seedFalseDoneCandidate(projectRoot);
+  // Corrections run in a disposable candidate cut from the committed base, so the false-done work must be committed.
+  assertRun(git(['add', 'transactions.mjs', 'legacy.mjs'], projectRoot), 0, 'stage false-done candidate');
+  assertRun(git(['commit', '--quiet', '-m', 'agent false-done candidate'], projectRoot), 0, 'commit false-done candidate');
 
   console.error('[complex-e2e] Running independent verification against the false-done candidate.');
   const initial = runSync(process.execPath, [cliEntry, 'doctor', '--prompt-evidence', '.amabie/prompt-evidence.json', '--json'], projectRoot, env);

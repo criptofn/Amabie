@@ -528,7 +528,9 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
       console.error('[P2E] Safety warning: The correction agent edits a disposable candidate worktree, not this project; uncommitted changes in this project are not visible to it. Inspect the candidate diff before adopting anything.');
       const agentInput = options.agent ? renderCorrectionAgentPrompt(correctionInput) : correctionInput;
       console.error(`[P2E] Correction ${cycle}/${maxCorrections}: invoking ${options.agent ?? path.basename(agentInvocation.executable)} with the scoped report.`);
-      const agent = await runBoundedProcess(agentInvocation.executable, agentInvocation.args, cand.rec.root, agentInput, AGENT_TIMEOUT_MS, MAX_AGENT_OUTPUT_BYTES, agentEnvironment);
+      // A built-in profile must work in the candidate, not the base, so its working-directory option is rebuilt per cycle.
+      const invocation = options.agent ? buildCorrectionAgentInvocation(options.agent, cand.rec.root) : agentInvocation;
+      const agent = await runBoundedProcess(invocation.executable, invocation.args, cand.rec.root, agentInput, AGENT_TIMEOUT_MS, MAX_AGENT_OUTPUT_BYTES, agentEnvironment);
       agentProcessDiagnostics.push(summarizeAgentProcess(cycle, agent));
       const afterScope = localScopeDigest(root, requestPath);
       if (afterScope !== expectedScope) return { outcome: 'applied', scopeDigest: 'changed-by-correction-agent' };

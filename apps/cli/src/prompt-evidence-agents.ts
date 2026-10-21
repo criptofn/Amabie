@@ -82,7 +82,10 @@ export function buildCorrectionAgentInvocation(
     return {
       executable: 'codex',
       args: [
-        'exec', '--ephemeral', '--ignore-user-config', '-c', 'approval_policy=never', '--sandbox', 'workspace-write',
+        'exec', '--ephemeral', '--ignore-user-config', '-c', 'approval_policy=never',
+        // --ignore-user-config also drops the Windows sandbox mode, and Codex then falls back to read-only.
+        ...(process.platform === 'win32' ? ['-c', 'windows.sandbox="elevated"'] : []),
+        '--sandbox', 'workspace-write',
         '--color', 'never', '-C', projectRoot, '-',
       ],
     };
