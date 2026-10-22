@@ -119,4 +119,15 @@ Re-verified locally on the rename worktree; nothing was pushed, published, tagge
 | Upgrade / rollback | `QUICKSTART.md` upgrade section: identify and remove only `@canary-rn/cli`, install the checksum-verified tarball, rerun `amabie setup`; no `--force`. |
 | Remaining legacy strings | The GitHub URLs in `.github/ISSUE_TEMPLATE/config.yml` point at the current repository name and change only with a repository rename; `@canary-rn/cli` is the historical package name used for upgrade detection. Both are intentional. |
 
-Still open and not decidable locally: hosted CI on the exact pushed candidate, npm authentication and publication, operator approval of the legal copy, default-host Windows PowerShell 5.1 validation (`0xC0000005`), and the release decision itself. The live-provider correction results recorded above predate the later Codex and Claude runs; this document does not yet restate those later results.
+Still open and not decidable locally: hosted CI on the exact pushed candidate, npm authentication and publication, operator approval of the legal copy, default-host Windows PowerShell 5.1 validation (`0xC0000005`), and the release decision itself.
+
+### Live-provider correction runs — 2026-10-21
+
+Both runs used a new multi-requirement task with an intentional omission and a hidden regression, independent oracles, and the bounded correction loop. Provider tokens and cost are not reported by the loop and are not claimed.
+
+| Provider | Result |
+| --- | --- |
+| Codex CLI 0.162.1 | verified, 10/10 checks, one correction, base unchanged, the agent's own claim not accepted as evidence. Known gap: the agent also modified `README.md` and `package.json`. |
+| Claude 2.1.306 | Attempt 1: limit reached, NOT PROVEN (the hidden regression remained). Attempt 2 on a fresh base: verified, 10/10 checks, one correction. No permission downgrade, no check weakened. |
+
+These are two controlled runs, not a reliability estimate. They address the open gate "successful live Codex/Claude correction acceptance" named in the status lines above; the other gates listed there stay open.
