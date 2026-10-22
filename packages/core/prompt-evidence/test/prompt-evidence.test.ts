@@ -753,3 +753,29 @@ test('free-prose subject-modal boundaries do not split a dependent only-when cla
   assert.equal(draft.verdict, 'NOT PROVEN');
   assert.ok(draft.request.requirements.every(requirement => requirement.clarity === 'unclear' && requirement.criteria.length === 0));
 });
+
+test('dependsOn is reviewer-declared by digest, validated, and bound into the scope only when present', () => {
+  const base = makeRequest([{ text: registration }, { text: password }]);
+  const [first, second] = [materialDigest(registration), materialDigest(password)];
+  const withDep = (deps: unknown) => {
+    const input = structuredClone(base.input) as PromptEvidenceRequest;
+    (input.requirements[1] as unknown as Record<string, unknown>).dependsOn = deps;
+    return input;
+  };
+  const ok = validatePromptEvidenceRequest(withDep([first, first]), base.task);
+  assert.deepEqual(ok.requirements[1]!.dependsOn, [first]);
+  assert.equal(ok.requirements[0]!.dependsOn, undefined);
+  assert.equal(ok.requirements[1]!.id, base.request.requirements[1]!.id);
+  assert.notEqual(ok.scopeDigest, base.request.scopeDigest);
+  assert.equal(validatePromptEvidenceRequest(withDep([]), base.task).scopeDigest, base.request.scopeDigest);
+  assert.throws(() => validatePromptEvidenceRequest(withDep([second]), base.task), /cannot depend on itself/u);
+  assert.throws(() => validatePromptEvidenceRequest(withDep(['nope']), base.task), /not registered/u);
+  assert.throws(() => validatePromptEvidenceRequest(withDep('x'), base.task), /array of requirement digests/u);
+  const cyclic = withDep([first]);
+  (cyclic.requirements[0] as unknown as Record<string, unknown>).dependsOn = [second];
+  assert.throws(() => validatePromptEvidenceRequest(cyclic, base.task), /cycle/u);
+  const dup = makeRequest([{ text: registration }, { text: registration }, { text: password }]);
+  const dupInput = structuredClone(dup.input) as PromptEvidenceRequest;
+  (dupInput.requirements[2] as unknown as Record<string, unknown>).dependsOn = [first];
+  assert.throws(() => validatePromptEvidenceRequest(dupInput, dup.task), /ambiguous/u);
+});

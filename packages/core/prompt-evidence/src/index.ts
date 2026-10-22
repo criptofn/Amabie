@@ -54,6 +54,8 @@ export interface RequirementDeclaration {
   };
   clarity: 'clear' | 'unclear';
   criteria: CriterionDeclaration[];
+  /** Digests (materialDigest of the text) of registered requirements this one depends on. Reviewer-declared only. */
+  dependsOn?: string[];
 }
 
 export interface CriterionDeclaration {
@@ -194,6 +196,7 @@ export interface RequirementEvaluation {
   note: string;
   status: RequirementStatus;
   criteria: CriterionEvaluation[];
+  dependsOn?: string[];
 }
 
 export interface VerificationReport {
@@ -618,8 +621,35 @@ function scopeFingerprint(request: Pick<ValidatedPromptEvidenceRequest, 'goal' |
     requirements: request.requirements.map(r => ({
       id: r.id, digest: r.digest, clarity: r.clarity,
       criteria: r.criteria.map(c => c.id),
+      // Only bound when declared, so scope digests of requests without dependencies stay unchanged.
+      ...(r.dependsOn && r.dependsOn.length > 0 ? { dependsOn: r.dependsOn } : {}),
     })),
   });
+}
+
+/** dependsOn must name registered, unambiguous requirements other than itself, without cycles. */
+function validateDependencies(declarations: RequirementDeclaration[]): void {
+  const counts = new Map<string, number>();
+  for (const d of declarations) counts.set(materialDigest(d.text), (counts.get(materialDigest(d.text)) ?? 0) + 1);
+  const edges = new Map<string, string[]>();
+  for (const d of declarations) {
+    const own = materialDigest(d.text);
+    for (const dep of d.dependsOn ?? []) {
+      if (dep === own) throw new Error('a requirement cannot depend on itself');
+      if (!counts.has(dep)) throw new Error('dependsOn names a requirement that is not registered');
+      if (counts.get(dep)! > 1) throw new Error('dependsOn names a requirement whose text is declared more than once and is ambiguous');
+    }
+    if (d.dependsOn?.length) edges.set(own, d.dependsOn);
+  }
+  const state = new Map<string, 1 | 2>();
+  const visit = (node: string): void => {
+    if (state.get(node) === 2) return;
+    if (state.get(node) === 1) throw new Error('dependsOn contains a cycle');
+    state.set(node, 1);
+    for (const next of edges.get(node) ?? []) visit(next);
+    state.set(node, 2);
+  };
+  for (const node of edges.keys()) visit(node);
 }
 
 /** Validate that the agent's structured proposal neither drops nor adds an authorized requirement. */
@@ -690,17 +720,27 @@ export function validatePromptEvidenceRequest(
       };
     });
     const sourceMatches = sourceMatchesRequirement({ text: value.text, sourceRef });
+    let dependsOn: string[] | undefined;
+    if (value.dependsOn !== undefined) {
+      if (!Array.isArray(value.dependsOn) || value.dependsOn.length > MAX_REQUIREMENTS
+        || !value.dependsOn.every(d => typeof d === 'string')) {
+        throw new Error(`requirements[${index}].dependsOn must be an array of requirement digests`);
+      }
+      dependsOn = [...new Set(value.dependsOn as string[])].sort();
+    }
     return {
       text: value.text,
       sourceRef,
       clarity: value.clarity === 'clear' && !sourceMatches ? 'unclear' : value.clarity,
       criteria,
+      ...(dependsOn && dependsOn.length > 0 ? { dependsOn } : {}),
     };
   });
 
   const registered = [...registeredTask.requirementDigests].sort();
   const proposed = declarations.map(r => materialDigest(r.text)).sort();
   if (registered.some((digest, i) => digest !== proposed[i])) throw new Error('the structured requirements do not exactly match the requirements registered with Amabie');
+  validateDependencies(declarations);
   const goalDigest = materialDigest(goal.text as string);
   const duplicateCounts = new Map<string, number>();
   const requirements: ValidatedRequirement[] = declarations.map(declaration => {
@@ -883,7 +923,7 @@ export function evaluatePromptEvidence(
         if (result.status !== 'blocked') { result.status = 'unproven'; result.note = note; }
       }
     }
-    return { id: requirement.id, text: requirement.text, clarity: requirement.clarity, note, status, criteria: criterionResults };
+    return { id: requirement.id, text: requirement.text, clarity: requirement.clarity, note, status, criteria: criterionResults, ...(requirement.dependsOn ? { dependsOn: requirement.dependsOn } : {}) };
   });
   const counts = { total: requirements.length, met: 0, unmet: 0, unproven: 0, blocked: 0 };
   for (const requirement of requirements) counts[requirement.status] += 1;
