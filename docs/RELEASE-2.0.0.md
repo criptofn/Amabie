@@ -112,7 +112,7 @@ Re-verified locally on the rename worktree; nothing was pushed, published, tagge
 
 | Item | Observed |
 | --- | --- |
-| Reproducible package | `tooling/probes/release-package-reproducibility.mjs`: three builds, one from an unrelated caller directory, byte-identical; SHA-256 `3c4e72de0ba253628028b01cf609d3abce5c1fb21170e4d5551b4acc99f0c9e9` for `amabie-cli-2.0.0.tgz` at the commit that carries this section. Any later source change changes the hash: re-record it at the freeze. The earlier hashes in this document are historical. |
+| Reproducible package | `tooling/probes/release-package-reproducibility.mjs`: three builds, one from an unrelated caller directory, byte-identical; SHA-256 `353fad4b55cc2da12d24eeef25e7af17caf4b49976f913e4044f1f8b1bf34fa7` for `amabie-cli-2.0.0.tgz` at the commit that carries this section. Any later source change changes the hash: re-record it at the freeze. The earlier hashes in this document are historical. |
 | Package identity | `@amabie/cli` 2.0.0, bin `amabie` → `dist/main.js`, Apache-2.0, `engines.node >=22`, no runtime dependencies. |
 | Package contents | `LICENSE`, `THIRD-PARTY-NOTICES.txt`, `QUICKSTART.md`, `README.md`, `examples/quickstart/` (three files), `dist/main.js`, Windows boundary tooling and fixtures. |
 | Install and first use | Isolated first-user run from README, Quickstart and tarball only: install, example change in a new test file, independent `amabie doctor --json` READY. Rewriting the sealed example test is NOT PROVEN by design and is documented. Probes `cleanroom-packed-artifact`, `release-package-rehearsal`, `release-quickstart-proof-gap`, `v13-doc-first-path` and `v12-doc-consistency` pass against the tarball. |
