@@ -350,8 +350,9 @@ export function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: str
  *  M8 promotion consumes startHead/rec; verify's own caller ignores them. */
 interface VerifyOutcome { code: number; startHead: string | null; rec: CandidateRecord | null }
 
-/** `sink`, when given, receives the sealed-plan results of THIS run (left empty when the run stopped before executing any step). */
-export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string, sink?: { results: StepResult[] }): VerifyOutcome {
+/** `sink`, when given, receives the sealed-plan results of THIS run (left empty when the run stopped before executing any step)
+ *  and, in `open`, one line per UNMET/UNPROVEN total obligation that kept the gate off PASS. */
+export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string, sink?: { results: StepResult[]; open?: string[] }): VerifyOutcome {
   // F2 (quarantine) — BEFORE any record read: a tampering caught in a past
   // Amabie window means the bytes this run would baseline on are exactly the
   // bytes under suspicion. The mechanical laundering vector is byte-
@@ -682,6 +683,7 @@ export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: s
     return { code: 2, startHead: cid.head, rec };
   }
   const unmet = obligations.filter((x) => x.status === 'unmet');
+  if (sink) sink.open = obligations.filter((x) => x.status !== 'met').map((x) => `[${x.id}] ${x.status.toUpperCase()} (${x.mode}): ${x.note}`);
   if (unmet.length) {
     writeVerificationBundle(root, 'candidate', results, 'blocked', prov, { evidenceRoot: root, subjectRoot: rec.root, extra: { ...extra, obligations: obList } });
     if (cid.dirty) o.detail('candidate working tree is dirty — verification ran on the checked-out files, not a committed state');

@@ -437,12 +437,13 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
         }
       }
       console.error('[P2E] Running the complete sealed plan on the candidate for fresh evidence.');
-      const sink = { results: [] as StepResult[] };
+      const sink = { results: [] as StepResult[], open: [] as string[] };
       const outcome = verifyCandidate(root, candidate.cfg, quiet, candidate.name, sink);
       const collection = await sealedAdapter(candidate.cfg, sink.results).collect(validated, criteria, context);
       const unmet = collection.evidence.some((item: EvidenceDraft) => typeof item.facts === 'object' && item.facts !== null && !Array.isArray(item.facts) && (item.facts as { ok?: JsonValue }).ok === false);
       if (outcome.code !== 0 && !unmet) {
-        return { evidence: [], unproven: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason: 'the overall candidate gate did not return PASS' })) };
+        const open = sink.open.length ?`; open total obligations: ${sink.open.join(' | ')}` : '';
+        return { evidence: [], unproven: criteria.map(({ criterion }) => ({ criterionId: criterion.id, reason: `the overall candidate gate did not return PASS${open}` })) };
       }
       return collection;
     },

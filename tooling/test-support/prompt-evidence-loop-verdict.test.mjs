@@ -149,6 +149,8 @@ test('NOT PROVEN: a green per-requirement block with no discrimination is never 
     assert.notEqual(loopEnvelope.verification?.verdict, 'PASS', `the loop must not claim PASS\n${loop.stdout}`);
     assert.equal(loopEnvelope.verification?.verdict, 'NOT PROVEN', `the loop must carry the doctor's NOT PROVEN\n${loop.stdout}`);
     assert.equal(loop.status, 2, 'a refused candidate exits 2');
+    // T06: the open total obligations of the outer gate stay in the report instead of a bare "did not return PASS".
+    assert.match(loop.stdout, /open total obligations: \[[a-z-]+\] UNPROVEN/u, `the report must name the open obligations\n${loop.stdout}`);
   } finally {
     fs.rmSync(project.root, { recursive: true, force: true });
   }
