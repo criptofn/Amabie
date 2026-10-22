@@ -40,7 +40,7 @@ function make({e2e=false,bench=false,bindings={}}={}) {
 // must FAIL on the sealed base). These cases are about the closure laws, not the
 // discrimination gate itself — but a green suite that cannot tell candidate from
 // base is NOT PROVEN by design, so the fixture has to supply genuine proof.
-function isolate(root,text,reqs=[]) {ok(task(root,text,reqs));ok(cli(root,'isolate','c'));const c=path.join(root,'.amabie/candidates/c');fs.appendFileSync(path.join(c,'screen.html'),'<!-- candidate -->\n');addRegression(c);commit(c);return c;}
+function isolate(root,text,reqs=[]) {ok(task(root,text,reqs));ok(cli(root,'isolate','c'));const c=path.join(root,'.amabie/candidates/c');fs.appendFileSync(path.join(c,'ui.css'),'/* candidate */\n');addRegression(c);commit(c);return c;}
 function accept(root,action='none') {return run(process.execPath,[driver,CLI,action],root);}
 const accPath=r=>path.join(r,'.amabie/acceptance/c.json');
 function verify(root) {return cli(root,'isolate','--verify','c');}
