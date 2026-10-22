@@ -1,6 +1,6 @@
 # Amabie 2.0.0 release candidate
 
-Unpublished local candidate; evidence rechecked 17 October 2026. NOT READY: exact-candidate hosted CI, default-host Windows cleanroom, npm authentication, and successful live Codex/Claude correction acceptance remain open. This document does not authorise publication.
+Unpublished local candidate; evidence rechecked 17 October 2026. NOT READY: exact-candidate hosted CI, default-host Windows cleanroom, and npm authentication remain open. Live Codex/Claude correction runs are recorded below (2026-10-21). This document does not authorise publication.
 
 ## What this release changes
 
@@ -104,7 +104,7 @@ On Windows with AMABIE_POWERSHELL_CORE_PATH unset, that exact package failed clo
 
 The current Windows full suite is 1,425 PASS / 6 SKIP / 0 FAIL using the explicit PowerShell Core override. The exact-source Ubuntu suite is 1,362 PASS / 8 SKIP / 0 FAIL; those skips and five Windows-only suites are not passes. The productization aggregate is 117 PASS / 5 SKIP / 0 FAIL/INCOMPLETE, with skip limitations documented in the checklist. The exact-source hosted CI has not run on this unpushed candidate. npm whoami remains ENEEDAUTH, and unauthenticated registry lookup returns E404 (which alone does not distinguish unpublished, private, or inaccessible package state). The one authorized Codex and Claude correction attempt each ended FAIL 5/10 without project changes; their root causes remain unknown and no repeat is authorized.
 
-Release status: NOT READY. Outstanding gates are exact-candidate hosted CI, clean-default-Windows validation, npm CLI authentication/publication readiness, and successful live Codex/Claude correction acceptance for the experimental workflow. No push, package publish, deployment, DNS change, or additional provider request occurred.
+Release status: NOT READY. Outstanding gates are exact-candidate hosted CI, clean-default-Windows validation, and npm CLI authentication/publication readiness. Live Codex/Claude correction runs for the experimental workflow are recorded below (2026-10-21; two controlled runs, not a reliability estimate). No push, package publish, deployment, DNS change, or additional provider request occurred.
 
 ## Pre-publication inventory — 2026-10-22
 
