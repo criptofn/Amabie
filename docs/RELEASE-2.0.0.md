@@ -2,6 +2,18 @@
 
 Unpublished local candidate; joint quality validation rechecked 23 October 2026. The latest Windows full suite and fresh Windows/Linux installed-package rehearsals pass; see [the joint validation and current artifact](JOINT-QUALITY-2026-10-23.md) and [the earlier process-fix closure](WINDOWS-CLOSURE-2026-10-23.md). Public release remains BLOCKED on exact-candidate hosted CI and the separately owned publication/account approvals. Older failed runs and artifact hashes below remain historical, not the current candidate. Live Codex/Claude correction runs are recorded below (2026-10-21). This document does not authorise publication.
 
+## Latest joint validation — 23 October 2026
+
+Public release remains **BLOCKED**. Draft [PR #11](https://github.com/criptofn/Amabie/pull/11) is for current CI and review; it is not a public package release.
+
+- Complete local Windows suite on executable source `5aa1abe`: 1,674 tests, 1,667 passed, 0 failed, 7 skipped, 0 cancelled. The subsequent `bd56f86` fixture fix changes no production code. Its 36 affected tests passed on Windows and on Linux with an empty user profile.
+- Hosted Ubuntu core on `bd56f86`, run `40001202809`: 1,612 tests, 1,598 passed, 0 failed, 14 skipped. All three hosted standalone executable jobs passed (Windows, Linux and macOS); this is not a full native macOS suite.
+- The superseded hosted Windows run `39964104115` recorded real assertion failures caused by Windows PowerShell 5.1 CIM sweep timeouts before its cancellation. A cancelled run is not a pass. CI now selects an explicit existing PowerShell 7 host, requires a real process snapshot and unchanged lifecycle controls before proceeding. Its hosted result is still unverified; the 5.1 root cause is not claimed fixed.
+- Current local CLI package: `@amabie/cli@2.0.0`, SHA-256 `21f242b8c3163edc8dd4d102497fc6afe3144872c55b9d0c2a5e38582965a21a`. Three builds were byte-identical. Fresh Windows/Linux installed-package rehearsals and original-byte diagnostic checks passed. This supersedes the earlier package hashes in this document.
+- Fresh held-out live correction acceptance and the ordinary correction CLI's connection to the enforced authorization gateway remain open. An ordinary-process execution label is disclosure, not completion of gateway enforcement. Experiments remain opt-in and LOCAL.
+
+The Linux fixture failure was reproduced with an empty home directory and fixed by explicitly declaring project-local harnesses in the affected fixtures. No verdict assertion, test skip, process timeout or production security rule was weakened.
+
 ## What this release changes
 
 The product is renamed to Amabie: package identity `@amabie/cli`, executable `amabie`, renamed MCP tools and project documentation. Legacy project formats and data discovery remain where needed for migration. An existing global installation of the historical package (`@canary-rn/cli`) owns the same bin name and can conflict; follow the tested upgrade procedure in `QUICKSTART.md` rather than forcing an overwrite.

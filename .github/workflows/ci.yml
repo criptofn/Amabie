@@ -131,6 +131,21 @@ jobs:
             _toolchains/py/bin/python -m pip install pytest==9.1.1
           fi
       - run: npm run build
+      # Hosted Windows PowerShell 5.1 timed out on real CIM sweeps in run
+      # 39964104115. Select the runner's existing Core host explicitly, then
+      # prove it can measure processes and clean up owned descendants. A failed
+      # prerequisite stops CI; no assertion, sweep budget or fallback is relaxed.
+      - name: verify the selected PowerShell 7 containment host (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $taskPowerShellHost = (Get-Process -Id $PID).Path
+          $env:AMABIE_POWERSHELL_CORE_PATH = $taskPowerShellHost
+          node tooling/probes/windows-selected-host.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test --test-concurrency=1 packages/support/dist/test/lifecycle.test.js apps/cli/dist/test/everyday-lifecycle.test.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "AMABIE_POWERSHELL_CORE_PATH=$taskPowerShellHost"
       # v1.4 — MEASURE THE HOST, THEN ASK THE SUITE FOR THE CAPABILITY.
       #
       # `apps/cli/test/confined-activation.test.ts` requires a host that can
