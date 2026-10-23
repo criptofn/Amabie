@@ -44,6 +44,8 @@ interface ProcessResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+  stdoutRaw?: Buffer;
+  stderrRaw?: Buffer;
   timedOut: boolean;
   outputExceeded: boolean;
   sweepFailed: boolean;
@@ -90,8 +92,8 @@ export function summarizeAgentProcess(cycle: number, result: ProcessResult): Age
     timedOut: result.timedOut,
     outputExceeded: result.outputExceeded,
     sweepFailed: result.sweepFailed,
-    stdoutBytes: Buffer.byteLength(result.stdout, 'utf8'),
-    stderrBytes: Buffer.byteLength(result.stderr, 'utf8'),
+    stdoutBytes: result.stdoutRaw?.length ?? Buffer.byteLength(result.stdout, 'utf8'),
+    stderrBytes: result.stderrRaw?.length ?? Buffer.byteLength(result.stderr, 'utf8'),
     diagnosticHint,
   };
 }
@@ -137,10 +139,14 @@ function runBoundedProcess(
       if (timer) clearTimeout(timer);
       if (forceClose) clearTimeout(forceClose);
       const sweep = child.pid ? sweepDescendants(child.pid, spawnedAtMs) : { killed: [], failed: false };
+      const stdoutRaw = Buffer.concat(stdout);
+      const stderrRaw = Buffer.concat(stderr);
       resolve({
         exitCode,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr: Buffer.concat(stderr).toString('utf8'),
+        stdout: stdoutRaw.toString('utf8'),
+        stderr: stderrRaw.toString('utf8'),
+        stdoutRaw,
+        stderrRaw,
         timedOut,
         outputExceeded,
         sweepFailed: sweep.failed,

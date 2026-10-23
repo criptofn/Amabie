@@ -1419,3 +1419,24 @@ it('an explicit retention failure blocks correction instead of hiding the lost d
   assert.equal(fs.readFileSync(collision, 'utf8'), 'preserve user data');
   assert.deepEqual(envelope.agentOutputLogs, []);
 });
+
+it('retained invalid UTF-8 preserves original bounded bytes and the actual process failure', () => {
+  const project = prepareProject({ includeBindings: 0 }, 'invalid-utf8-agent-diagnostics');
+  const request = writeRequest(project.root, project.goal, project.requirements);
+  const bytes = Buffer.alloc(400_000, 0xff);
+  const agent = path.join(TMP, 'invalid-utf8-agent.mjs');
+  fs.writeFileSync(agent, 'process.stdout.write(Buffer.alloc(400000, 0xff)); process.exitCode = 1;\n');
+  const result = run(['prompt-evidence', 'loop', '--request', request,
+    '--agent-executable', process.execPath, '--agent-arg', agent,
+    '--authorize-corrections', '--max-corrections', '1', '--retain-agent-output', '--json'], project.root);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  const envelope = JSON.parse(result.stdout);
+  assert.equal(envelope.status, 'correction-blocked');
+  assert.match(envelope.stopReason, /correction agent exited 1/u);
+  assert.doesNotMatch(envelope.stopReason, /retention failed/u);
+  assert.equal(envelope.agentClaimUsedAsEvidence, false);
+  assert.equal(envelope.agentProcessDiagnostics[0].stdoutBytes, bytes.length);
+  assert.equal(envelope.agentOutputLogs.length, 1);
+  const saved = fs.readFileSync(path.join(envelope.agentOutputLogs[0].directory, 'stdout.log'));
+  assert(saved.equals(bytes));
+});

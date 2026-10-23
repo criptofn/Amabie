@@ -39,6 +39,18 @@ test('retention refuses invalid cycle, stage and over-budget output before creat
   assert.deepEqual(fs.readdirSync(root), []);
 });
 
+test('retention preserves invalid UTF-8 bytes within the original process budget without decoding expansion', () => {
+  const bytes = Buffer.alloc(400_000, 0xff);
+  const decoded = bytes.toString('utf8');
+  assert.equal(Buffer.byteLength(decoded), 1_200_000, 'positive control for replacement-character expansion');
+  const record = retainAgentProcessOutput(scratch, 1, 'correction', { ...output, stdout: decoded, stdoutRaw: bytes });
+  const saved = fs.readFileSync(path.join(record.directory, 'stdout.log'));
+  assert(saved.equals(bytes));
+  const metadata = JSON.parse(fs.readFileSync(path.join(record.directory, 'process.json'), 'utf8'));
+  assert.equal(metadata.stdout.bytes, bytes.length);
+  assert.equal(metadata.stdout.sha256, createHash('sha256').update(bytes).digest('hex'));
+});
+
 test('retention refuses a linked project state directory without writing through it', () => {
   const root = path.join(scratch, 'linked-state');
   const outside = path.join(scratch, 'outside-state');
