@@ -3,6 +3,7 @@ import { spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_proce
 import fs from 'node:fs';
 import path from 'node:path';
 import crossSpawn from 'cross-spawn';
+import { retainAgentProcessOutput, type AgentOutputStage, type RetainedAgentOutput } from './agent-process-output.js';
 import {
   MAX_CORRECTION_CYCLES,
   runBoundedCorrectionLoop,
@@ -250,7 +251,7 @@ function localScopeDigest(root: string, requestPath: string): string | null {
   }));
 }
 
-function parseOptions(args: string[]): { request?: string; executable?: string; agent?: BuiltinCorrectionAgent; agentArgs: string[]; authorized: boolean; json: boolean; maxCorrections?: number; problem?: string } {
+function parseOptions(args: string[]): { request?: string; executable?: string; agent?: BuiltinCorrectionAgent; agentArgs: string[]; authorized: boolean; json: boolean; maxCorrections?: number; retainAgentOutput?: boolean; problem?: string } {
   let request: string | undefined;
   let executable: string | undefined;
   let agent: BuiltinCorrectionAgent | undefined;
@@ -258,6 +259,7 @@ function parseOptions(args: string[]): { request?: string; executable?: string; 
   const agentArgs: string[] = [];
   let authorized = false;
   let json = false;
+  let retainAgentOutput = false;
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index]!;
     const value = (): string | undefined => {
@@ -291,6 +293,7 @@ function parseOptions(args: string[]): { request?: string; executable?: string; 
       if (!limit || !/^[1-3]$/u.test(limit)) return { agentArgs, authorized, json, problem: `--max-corrections must be an integer from 1 to ${MAX_CORRECTION_CYCLES}` };
       maxCorrections = Number(limit);
     }
+    else if (argument === '--retain-agent-output') retainAgentOutput = true;
     else if (argument === '--json') json = true;
     else return { agentArgs, authorized, json, problem: `unknown prompt-evidence loop option: ${argument}` };
   }
@@ -308,6 +311,7 @@ function parseOptions(args: string[]): { request?: string; executable?: string; 
     agentArgs,
     authorized,
     json,
+    retainAgentOutput,
     ...(maxCorrections === undefined ? {} : { maxCorrections }),
   };
 }
@@ -328,7 +332,7 @@ function emitResult(value: unknown, json: boolean, maxCorrections: number): void
 export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
   const options = parseOptions(args);
   if (options.problem) {
-    console.error(`usage: amabie prompt-evidence loop --request FILE (--agent codex|claude | --agent-executable PROGRAM [--agent-arg ARG]...) --authorize-corrections [--max-corrections 1..${MAX_CORRECTION_CYCLES}] [--json]\n${options.problem}`);
+    console.error(`usage: amabie prompt-evidence loop --request FILE (--agent codex|claude | --agent-executable PROGRAM [--agent-arg ARG]...) --authorize-corrections [--max-corrections 1..${MAX_CORRECTION_CYCLES}] [--retain-agent-output] [--json]\n${options.problem}`);
     return 3;
   }
   const maxCorrections = options.maxCorrections ?? MAX_CORRECTION_CYCLES;
@@ -371,6 +375,18 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     ? buildCorrectionAgentEnvironment(process.env, options.agent)
     : process.env;
   const agentProcessDiagnostics: AgentProcessDiagnostic[] = [];
+  const agentOutputLogs: RetainedAgentOutput[] = [];
+  const retainOutput = (cycle: number, stage: AgentOutputStage, output: ProcessResult): string | null => {
+    if (!options.retainAgentOutput) return null;
+    try {
+      const retained = retainAgentProcessOutput(root, cycle, stage, output);
+      agentOutputLogs.push(retained);
+      console.error(`[P2E] Local agent diagnostics retained at ${retained.directory}; these may contain sensitive text and are not verification evidence.`);
+      return null;
+    } catch (error) {
+      return `agent output retention failed; correction stopped: ${boundedReason(error instanceof Error ? error.message : String(error))}`;
+    }
+  };
   let claudeVersionPreflightPassed = false;
   let agentHelpPreflightPassed = false;
   // The correction agent only ever edits a disposable candidate worktree of the
@@ -482,6 +498,8 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
           MAX_AGENT_PREFLIGHT_OUTPUT_BYTES,
           agentEnvironment,
         );
+        const retentionProblem = retainOutput(cycle, 'version-preflight', versionRun);
+        if (retentionProblem) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: retentionProblem };
         if (versionRun.timedOut || versionRun.outputExceeded || versionRun.sweepFailed
           || versionRun.error || versionRun.exitCode !== 0) {
           let reason: string;
@@ -511,6 +529,8 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
           agentInvocation.executable, probe.args, root, '',
           AGENT_PREFLIGHT_TIMEOUT_MS, MAX_AGENT_PREFLIGHT_OUTPUT_BYTES * 16, agentEnvironment,
         );
+        const retentionProblem = retainOutput(cycle, 'capability-preflight', helpRun);
+        if (retentionProblem) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: retentionProblem };
         if (helpRun.timedOut || helpRun.outputExceeded || helpRun.sweepFailed || helpRun.error || helpRun.exitCode !== 0) {
           const cause = helpRun.timedOut ? 'timed out' : helpRun.outputExceeded ? 'exceeded its output limit'
             : helpRun.sweepFailed ? 'could not be cleaned up' : helpRun.error ? boundedReason(helpRun.error)
@@ -526,13 +546,15 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
         }
         agentHelpPreflightPassed = true;
       }
-      console.error('[P2E] Safety warning: The correction agent edits a disposable candidate worktree, not this project; uncommitted changes in this project are not visible to it. Inspect the candidate diff before adopting anything.');
+      console.error('[P2E] Safety warning: The correction agent edits a disposable candidate worktree, not this project. Git-visible working-tree changes are copied into the candidate; ignored files are not copied. Inspect the candidate diff before adopting anything. This is not an OS isolation boundary.');
       const agentInput = options.agent ? renderCorrectionAgentPrompt(correctionInput) : correctionInput;
       console.error(`[P2E] Correction ${cycle}/${maxCorrections}: invoking ${options.agent ?? path.basename(agentInvocation.executable)} with the scoped report.`);
       // A built-in profile must work in the candidate, not the base, so its working-directory option is rebuilt per cycle.
       const invocation = options.agent ? buildCorrectionAgentInvocation(options.agent, cand.rec.root) : agentInvocation;
       const agent = await runBoundedProcess(invocation.executable, invocation.args, cand.rec.root, agentInput, AGENT_TIMEOUT_MS, MAX_AGENT_OUTPUT_BYTES, agentEnvironment);
       agentProcessDiagnostics.push(summarizeAgentProcess(cycle, agent));
+      const retentionProblem = retainOutput(cycle, 'correction', agent);
+      if (retentionProblem) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: retentionProblem };
       const afterScope = localScopeDigest(root, requestPath);
       if (afterScope !== expectedScope) return { outcome: 'applied', scopeDigest: 'changed-by-correction-agent' };
       if (repoWorkspaceDigest(root) !== baseBefore) return { outcome: 'blocked', scopeDigest: request.scopeDigest, reason: 'the correction agent modified the authoritative project outside its candidate' };
@@ -559,6 +581,7 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     sourceCoverage: request.sourceCoverage,
     agentClaimUsedAsEvidence: false,
     agentProcessDiagnostics,
+    ...(options.retainAgentOutput ? { agentOutputLogs } : {}),
     candidate: candidate ? { name: candidate.name, path: candidate.rec.root, baseHead: candidate.rec.baseHead, diffCommand: `git -C "${candidate.rec.root}" diff ${candidate.rec.baseHead}` } : null,
   };
   emitResult(envelope, options.json, maxCorrections);

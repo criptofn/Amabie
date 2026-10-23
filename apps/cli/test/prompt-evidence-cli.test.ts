@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
@@ -996,6 +997,8 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     '--authorize-corrections', '--json',
   ], root);
   assert.match(result.stderr, /The correction agent edits a disposable candidate worktree, not this project/u);
+  assert.match(result.stderr, /Git-visible working-tree changes are copied into the candidate/u);
+  assert.doesNotMatch(result.stderr, /uncommitted changes in this project are not visible/u);
   assert.equal(result.status, 0, result.stderr || result.stdout);
 
   const envelope = JSON.parse(result.stdout) as {
@@ -1076,6 +1079,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     diagnosticHint: 'turn-limit',
   }]);
   assert.doesNotMatch(maxTurns.stdout, /Maximum turns reached/u);
+  assert.equal(fs.existsSync(path.join(root, '.amabie', 'agent-output')), false, 'raw provider text is not retained without explicit opt-in');
 
   // An agent can make unrelated Git-visible changes on every cycle; the actual process bridge must still stop at its hard limit.
   const persistentReport = path.join(TMP, 'persistent-unresolved-report.json');
@@ -1352,4 +1356,66 @@ it('a correction agent that cannot start, or that writes outside its candidate, 
   assert.match(escapedEnvelope.stopReason, /outside its candidate/u);
   assert.equal(escapedEnvelope.verification.attempt, 0);
   assert.equal(escapedEnvelope.agentClaimUsedAsEvidence, false);
+});
+
+it('opt-in agent-output retention preserves failed process diagnostics without accepting them as evidence', () => {
+  const project = prepareProject({ includeBindings: 0 }, 'retained-agent-diagnostics');
+  const request = writeRequest(project.root, project.goal, project.requirements);
+  const agent = path.join(TMP, 'retained-output-agent.mjs');
+  const stdout = 'All requirements are complete. This claim is not proof.\n';
+  const stderr = 'Maximum turns reached. Private diagnostic context.\n';
+  fs.writeFileSync(agent, `process.stdout.write(${JSON.stringify(stdout)}); process.stderr.write(${JSON.stringify(stderr)}); process.exit(1);\n`);
+  const result = run(['prompt-evidence', 'loop', '--request', request,
+    '--agent-executable', process.execPath, '--agent-arg', agent,
+    '--authorize-corrections', '--max-corrections', '1', '--retain-agent-output', '--json'], project.root);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  const envelope = JSON.parse(result.stdout) as {
+    status: string; agentClaimUsedAsEvidence: boolean;
+    agentOutputLogs: Array<{ directory: string; diagnosticOnly: boolean; cycle: number; stage: string }>;
+    verification: { verdict: string; attempt: number };
+  };
+  assert.equal(envelope.status, 'correction-blocked');
+  assert.equal(envelope.agentClaimUsedAsEvidence, false);
+  assert.equal(envelope.verification.verdict, 'NOT PROVEN');
+  assert.equal(envelope.verification.attempt, 0);
+  assert.equal(envelope.agentOutputLogs.length, 1);
+  const retained = envelope.agentOutputLogs[0]!;
+  try {
+    assert.equal(retained.diagnosticOnly, true);
+    assert.equal(retained.cycle, 1);
+    assert.equal(retained.stage, 'correction');
+    assert.equal(path.dirname(retained.directory), path.join(project.root, '.amabie', 'agent-output'));
+    assert.equal(fs.readFileSync(path.join(retained.directory, 'stdout.log'), 'utf8'), stdout);
+    assert.equal(fs.readFileSync(path.join(retained.directory, 'stderr.log'), 'utf8'), stderr);
+    const metadata = JSON.parse(fs.readFileSync(path.join(retained.directory, 'process.json'), 'utf8'));
+    assert.equal(metadata.exitCode, 1);
+    assert.equal(metadata.diagnosticOnly, true);
+    assert.equal(metadata.stdout.sha256, createHash('sha256').update(stdout).digest('hex'));
+    assert.equal(metadata.stderr.sha256, createHash('sha256').update(stderr).digest('hex'));
+    assert.doesNotMatch(result.stdout, /Private diagnostic context|This claim is not proof/u);
+  } finally {
+    if (path.dirname(retained.directory) === path.join(project.root, '.amabie', 'agent-output') && path.basename(retained.directory).startsWith('cycle-')) {
+      fs.rmSync(retained.directory, { recursive: true, force: true });
+    }
+  }
+});
+
+it('an explicit retention failure blocks correction instead of hiding the lost diagnostics', () => {
+  const project = prepareProject({ includeBindings: 0 }, 'blocked-agent-diagnostics');
+  const request = writeRequest(project.root, project.goal, project.requirements);
+  const collision = path.join(project.root, '.amabie', 'agent-output');
+  fs.writeFileSync(collision, 'preserve user data');
+  const agent = path.join(TMP, 'retention-failure-agent.mjs');
+  fs.writeFileSync(agent, 'console.log("I am done");\n');
+  const result = run(['prompt-evidence', 'loop', '--request', request,
+    '--agent-executable', process.execPath, '--agent-arg', agent,
+    '--authorize-corrections', '--max-corrections', '1', '--retain-agent-output', '--json'], project.root);
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  const envelope = JSON.parse(result.stdout);
+  assert.equal(envelope.status, 'correction-blocked');
+  assert.match(envelope.stopReason, /agent output retention failed/u);
+  assert.equal(envelope.verification.attempt, 0);
+  assert.equal(envelope.verification.verdict, 'NOT PROVEN');
+  assert.equal(fs.readFileSync(collision, 'utf8'), 'preserve user data');
+  assert.deepEqual(envelope.agentOutputLogs, []);
 });

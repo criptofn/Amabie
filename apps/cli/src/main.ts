@@ -121,7 +121,9 @@ usage:
                             numeric values absent from the task are flagged for review.
   amabie prompt-evidence loop --request FILE (--agent codex|claude |
                             --agent-executable PROGRAM [--agent-arg ARG]...)
-                            --authorize-corrections [--max-corrections 1..3] [--json]
+                            --authorize-corrections [--max-corrections 1..3]
+                            [--retain-agent-output] [--json]
+                            Opt-in local diagnostics in .amabie/agent-output; may contain sensitive text.
                             EXPERIMENTAL: bounded correction with fresh sealed checks;
                             requires explicit project-change authorization. A provider CLI
                             may consume its account quota or API billing. The default limit is 3.
