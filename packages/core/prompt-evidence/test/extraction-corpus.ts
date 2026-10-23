@@ -78,19 +78,16 @@ export const EXTRACTION_CORPUS: readonly ExtractionCase[] = [
     id: 'gap-fix-refactor-bump',
     goal: 'Fix the login bug, refactor the session store, and bump the version.',
     expected: ['Fix the login bug', 'refactor the session store', 'bump the version.'],
-    knownGap: { reason: 'fix, refactor and bump are not in the action-verb list, so three duties stay one candidate' },
   },
   {
     id: 'gap-make-verb',
     goal: 'Make the API respond in under 200 ms and make the tests deterministic.',
     expected: ['Make the API respond in under 200 ms', 'make the tests deterministic.'],
-    knownGap: { reason: '"make" is not a recognized clause verb' },
   },
   {
     id: 'gap-migrate-rename-drop',
     goal: 'Migrate the database, rename the column and drop the old table.',
     expected: ['Migrate the database', 'rename the column', 'drop the old table.'],
-    knownGap: { reason: 'migrate, rename and drop are not in the action-verb list' },
   },
   {
     id: 'gap-elliptical-second-clause',
@@ -102,13 +99,11 @@ export const EXTRACTION_CORPUS: readonly ExtractionCase[] = [
     id: 'gap-imperative-negation',
     goal: 'Add pagination to the list endpoint and do not change the response schema for existing clients.',
     expected: ['Add pagination to the list endpoint', 'do not change the response schema for existing clients.'],
-    knownGap: { reason: 'a negated imperative ("do not ...") does not start a new clause' },
   },
   {
     id: 'gap-inline-enumeration',
     goal: 'The importer must (1) parse CSV (2) reject duplicate rows (3) log skipped rows.',
     expected: ['The importer must', '(1) parse CSV', '(2) reject duplicate rows', '(3) log skipped rows.'],
-    knownGap: { reason: 'inline (1)(2)(3) enumerations are not treated as list markers' },
   },
   {
     id: 'gap-german-prompt',
@@ -120,13 +115,11 @@ export const EXTRACTION_CORPUS: readonly ExtractionCase[] = [
     id: 'gap-quoted-sentence-boundary',
     goal: 'Print "Done. Next steps follow." after the import finishes.',
     expected: ['Print "Done. Next steps follow." after the import finishes.'],
-    knownGap: { reason: 'a sentence boundary inside a quoted string splits the quoted text' },
   },
   {
     id: 'gap-abbreviation-title',
     goal: 'Support the address format used by Dr. Mueller in the legacy export.',
     expected: ['Support the address format used by Dr. Mueller in the legacy export.'],
-    knownGap: { reason: 'the period in "Dr." is treated as a sentence end when the next word is capitalized' },
   },
   {
     id: 'code-spans-with-commas',

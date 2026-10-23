@@ -279,7 +279,7 @@ function validateDraftInput(goalText: string, taskType: string): void {
   }
 }
 
-function conditionalComma(goalText: string, contentStart: number, commaIndex: number): boolean {
+function conditionalComma(goalText: string, contentStart: number, commaIndex: number, requireComma = false): boolean {
   const beforeComma = goalText.slice(contentStart, commaIndex);
   const sentenceStart = Math.max(
     beforeComma.lastIndexOf('.'),
@@ -288,6 +288,7 @@ function conditionalComma(goalText: string, contentStart: number, commaIndex: nu
     beforeComma.lastIndexOf(';'),
   ) + 1;
   const clause = beforeComma.slice(sentenceStart);
+  if (requireComma && !clause.includes(',')) return false;
   return /(?:^|,\s*(?:and\s+)?)(?:if|when|unless|provided(?: that)?|assuming|as long as|in case|once|after|before)\b/iu.test(clause.trim());
 }
 
@@ -325,7 +326,7 @@ const ACTION_CLAUSE_VERBS = [
   'prevent', 'return', 'expose', 'handle', 'log', 'measure', 'compare', 'detect', 'report', 'keep', 'provide',
   'check', 'test', 'parse', 'render', 'display', 'allow', 'require', 'configure', 'install', 'record', 'list', 'total',
   'show', 'send', 'accept', 'attach', 'deny', 'sanitize', 'escape', 'encode', 'decode', 'restore', 'delete',
-  'refuse', 'export', 'neutralize',
+  'refuse', 'export', 'neutralize', 'fix', 'make', 'refactor', 'bump', 'migrate', 'rename', 'drop', 'clear',
 ] as const;
 
 function thirdPersonAction(verb: string): string {
@@ -350,7 +351,24 @@ const ACTION_CLAUSE_PATTERN = [...new Set(ACTION_CLAUSE_VERBS.flatMap(verb => [
 ]))].join('|');
 const ACTION_GERUND_PATTERN = [...new Set(ACTION_CLAUSE_VERBS.map(actionGerund))].join('|');
 const SUBJECT_MODAL_ACTION_PATTERN = '(?:(?!if\\b|when\\b|unless\\b|provided\\b|assuming\\b|once\\b|before\\b|after\\b|while\\b|because\\b)[\\p{L}\\p{N}_-]+[ \\t]+){1,6}(?:must|should|can|cannot|will|shall|may|might)(?:[ \\t]+(?:not|never))?[ \\t]+(?:' + ACTION_CLAUSE_PATTERN + ')\\b';
-const ACTION_CLAUSE_START_PATTERN = '(?:' + ACTION_CLAUSE_PATTERN + '|' + SUBJECT_MODAL_ACTION_PATTERN + ')';
+// A negated imperative ("do not change ...") starts its own duty, like an action verb does.
+const NEGATED_IMPERATIVE_PATTERN = "(?:do[ \\t]+not|don't)";
+const ACTION_CLAUSE_START_PATTERN = '(?:' + ACTION_CLAUSE_PATTERN + '|' + NEGATED_IMPERATIVE_PATTERN + '|' + SUBJECT_MODAL_ACTION_PATTERN + ')';
+
+// Inline "(1) ... (2) ..." enumerations: a marker only splits when the line holds at least two of them.
+const INLINE_MARKER_BOUNDARY = String.raw`\s+(?=\(\d{1,2}\)\s)`;
+const INLINE_MARKER = /\(\d{1,2}\)\s/gu;
+
+// Sentence boundaries and clause separators inside "..." or `...` belong to the quoted text.
+function quotedRanges(goalText: string, from: number, to: number): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  const quote = /"([^"\n]*)"|`([^`\n]*)`|“([^”\n]*)”/gu;
+  quote.lastIndex = from;
+  for (let m = quote.exec(goalText); m !== null && m.index < to; m = quote.exec(goalText)) {
+    ranges.push({ start: m.index, end: m.index + m[0].length });
+  }
+  return ranges;
+}
 
 /**
  * Produce review-only source-linked candidates from the exact goal text. The
@@ -363,7 +381,7 @@ export function draftPromptEvidence(goalText: string, taskType = 'coding'): Prom
   validateDraftInput(goalText, taskType);
 
   const requirements: RequirementDeclaration[] = [];
-  const separator = new RegExp(String.raw`,\s*(?:(?:and|but|then|also)\s+)?(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|;\s*(?:(?:and|but|then|also)\s+)?|\s+(?:and|but|then|also)\s+(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|\s+while\s+(?=(?:${ACTION_GERUND_PATTERN})\b)|(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bvs\.)(?<=\.)\s+(?=[A-Z0-9])|(?<=[!?])\s+(?=[A-Z0-9])`, 'giu');
+  const separator = new RegExp(String.raw`,\s*(?:(?:and|but|then|also)\s+)?(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|;\s*(?:(?:and|but|then|also)\s+)?|\s+(?:and|but|then|also)\s+(?=(?:${ACTION_CLAUSE_START_PATTERN})\b)|\s+while\s+(?=(?:${ACTION_GERUND_PATTERN})\b)|(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bvs\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bMrs\.)(?<!\bMs\.)(?<!\bProf\.)(?<=\.)\s+(?=[A-Z0-9])|(?<=[!?])\s+(?=[A-Z0-9])|${INLINE_MARKER_BOUNDARY}`, 'giu');
   let lineStart = 0;
   while (lineStart <= goalText.length) {
     const newline = goalText.indexOf('\n', lineStart);
@@ -382,8 +400,15 @@ export function draftPromptEvidence(goalText: string, taskType = 'coding'): Prom
       const focusRanges: Array<{ start: number; end: number }> = [];
       let focusStart = contentStart;
       separator.lastIndex = contentStart;
+      const quoted = quotedRanges(goalText, contentStart, end);
+      const hasInlineMarkers = (goalText.slice(contentStart, end).match(INLINE_MARKER)?.length ?? 0) >= 2;
       for (let boundary = separator.exec(goalText); boundary !== null && boundary.index < end; boundary = separator.exec(goalText)) {
+        if (quoted.some(range => boundary.index >= range.start && boundary.index < range.end)) continue;
         if (goalText[boundary.index] === ',' && conditionalComma(goalText, contentStart, boundary.index)) continue;
+        // "If X, do A and do B": the condition after the comma scopes over both duties.
+        if (/^\s+(?:and|but|then|also)\s/iu.test(boundary[0]) && conditionalComma(goalText, contentStart, boundary.index, true)) continue;
+        // A whitespace-only boundary followed by "(" is the inline-marker alternative.
+        if (!hasInlineMarkers && /^\s+$/u.test(boundary[0]) && goalText[boundary.index + boundary[0].length] === '(') continue;
         let focusEnd = boundary.index;
         while (focusEnd > focusStart && /\s/u.test(goalText[focusEnd - 1]!)) focusEnd -= 1;
         while (focusStart < focusEnd && /\s/u.test(goalText[focusStart]!)) focusStart += 1;
