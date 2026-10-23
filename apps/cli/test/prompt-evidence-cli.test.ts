@@ -115,7 +115,8 @@ it('Claude Code versions older than the profile minimum are rejected before the 
 
   assert.equal(result.status, 2, result.stderr || result.stdout);
   assert.equal(fs.existsSync(invokedPath), false, 'an unsupported Claude CLI must not receive the correction report');
-  const envelope = JSON.parse(result.stdout) as { status: string; stopReason: string; agentClaimUsedAsEvidence: boolean };
+  const envelope = JSON.parse(result.stdout) as { status: string; stopReason: string; agentClaimUsedAsEvidence: boolean; execution: unknown };
+  assert.deepEqual(envelope.execution, { adapter: 'ordinary-process', osConfinement: false, enforcedGateway: false });
   assert.equal(envelope.status, 'correction-blocked');
   assert.match(envelope.stopReason, /Claude Code 2\.1\.247 is unsupported; version 2\.1\.248 or newer is required/u);
   assert.equal(envelope.agentClaimUsedAsEvidence, false);
@@ -771,6 +772,7 @@ it('built-in Codex and Claude profiles launch npm shims through the bounded corr
     assert.equal(envelope.verification.verdict, 'NOT PROVEN');
     assert.equal(envelope.agentClaimUsedAsEvidence, false);
     assert.match(fs.readFileSync(capturedPrompt, 'utf8'), /amabie-correction-request\/1/u);
+    assert.deepEqual((JSON.parse(result.stdout) as { execution: unknown }).execution, { adapter: 'ordinary-process', osConfinement: false, enforcedGateway: false });
   }
 });
 
@@ -1006,6 +1008,7 @@ it('experimental correction loop scopes a separate agent process to unresolved e
     verification: { verdict: string; attempt: number; coverage: { total: number; met: number }; requirements: Array<{ status: string }>; evidence: Array<{ facts: Record<string, unknown> }> };
   };
   assert.equal(envelope.schema, 'amabie-prompt-evidence-loop/1');
+  assert.deepEqual((envelope as unknown as { execution: unknown }).execution, { adapter: 'ordinary-process', osConfinement: false, enforcedGateway: false });
   assert.equal(envelope.status, 'verified');
   assert.equal(envelope.correctionAttempts, 1);
   assert.equal(envelope.verification.verdict, 'PASS');

@@ -329,6 +329,7 @@ function emitResult(value: unknown, json: boolean, maxCorrections: number): void
     console.log(`Prompt-to-Evidence correction loop: ${result.status.toUpperCase()}`);
     console.log(`Corrections: ${result.correctionAttempts} (maximum ${maxCorrections})`);
     if (result.verification) console.log(`Fresh verification: ${result.verification.verdict} (${result.verification.coverage.met}/${result.verification.coverage.total} requirements met)`);
+    console.log('Execution: ordinary process in a disposable candidate (no OS confinement, not an enforced gateway).');
     if (result.stopReason) console.log(`Stopped: ${result.stopReason}`);
     const cand = (value as { candidate?: { diffCommand: string } | null }).candidate;
     if (cand) console.log(`Candidate diff (nothing adopted): ${cand.diffCommand}`);
@@ -586,6 +587,7 @@ export async function cmdPromptEvidenceLoop(args: string[]): Promise<number> {
     stopReason: result.stopReason,
     sourceCoverage: request.sourceCoverage,
     agentClaimUsedAsEvidence: false,
+    execution: { adapter: 'ordinary-process', osConfinement: false, enforcedGateway: false },
     agentProcessDiagnostics,
     ...(options.retainAgentOutput ? { agentOutputLogs } : {}),
     candidate: candidate ? { name: candidate.name, path: candidate.rec.root, baseHead: candidate.rec.baseHead, diffCommand: `git -C "${candidate.rec.root}" diff ${candidate.rec.baseHead}` } : null,
