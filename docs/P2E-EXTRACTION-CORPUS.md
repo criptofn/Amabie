@@ -45,6 +45,6 @@ Other abbreviations, other languages, and phrasings outside the corpus are untes
 | Deterministic draft with full source coverage, every candidate `unclear`, verdict `NOT PROVEN` | Implemented, experimental |
 | Splitter on the 18-case corpus | Implemented, experimental; 16 of 18 agree, 2 pinned limits |
 | Bounded correction loop (`--authorize-corrections`, at most 3 attempts, 5-minute agent cap, 30-minute verification cap) in a disposable candidate worktree | Implemented, experimental; not an OS-isolation guarantee |
-| Correction evidence from live agent sessions (two providers) | Planned; not measured, listed as SKIP in the productization run |
+| Correction evidence from live agent sessions (two providers) | Two historical controlled live runs exist (2026-10-21, recorded in `RELEASE-2.0.0.md`). No reliability rate, no new exact-head run and no current provider-SKIP coverage is claimed from them |
 | Elliptical clauses and non-English prompts in the splitter | Planned |
 | Reliability rate for extraction on a held-out prompt set | Planned; nothing is claimed until measured and published with its false-pass and false-failure observations |
