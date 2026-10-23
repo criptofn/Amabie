@@ -12,7 +12,7 @@ The test-runner authority fixture now pins its reviewed canonical Git LF bytes. 
 
 The npm package includes a runnable consumer Quickstart, a three-file example and its Apache-2.0 licence. Website source uses Apache-2.0 with Amabie brand assets reserved separately. The official static website provides an illustrative Evidence Desk and accurately separates available LOCAL capabilities from unavailable HARDENED isolation.
 
-`docs/NORTH_STAR.md` records Phase 1 Coding-Agent Verification, Phase 2 Prompt-to-Evidence, and Phase 3 Universal Agent Assurance with explicit acceptance criteria. Phase 3 is a future direction and is not claimed as achieved. The Prompt-to-Evidence commands in this stable candidate (`amabie prompt-evidence draft`, `amabie prompt-evidence loop` and `amabie doctor --prompt-evidence`) are EXPERIMENTAL, labelled as such in the CLI help, and are not a stable, supported capability of this release.
+`docs/NORTH_STAR.md` records Phase 1 Coding-Agent Verification, Phase 2 Prompt-to-Evidence, and Phase 3 Universal Agent Assurance with explicit acceptance criteria. Phase 3 is a future direction and is not claimed as achieved. The Prompt-to-Evidence commands in this stable candidate (`amabie prompt-evidence draft`, `amabie prompt-evidence loop` and `amabie doctor --prompt-evidence`) are EXPERIMENTAL, labelled as such in the CLI help, and are not a stable, supported capability of this release. Their requirement splitter is measured against an 18-case hand-written corpus (16 agree, 2 limits pinned; not a reliability rate): see [the extraction corpus record](P2E-EXTRACTION-CORPUS.md).
 
 ## Installation and migration
 

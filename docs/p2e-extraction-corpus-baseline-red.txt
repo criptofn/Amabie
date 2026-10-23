@@ -1,0 +1,38 @@
+MATCH    multi-sentence-feature
+MATCH    bullet-list-with-header
+MATCH    coordinated-noun-list-stays-whole
+MATCH    conditional-comma-stays-whole
+MATCH    while-clause-is-not-a-new-duty
+MATCH    negative-single-requirement-with-and
+MATCH    semicolon-separated
+MATCH    filename-with-dots-does-not-split
+MISMATCH gap-fix-refactor-bump  [knownGap]
+   expected: ["Fix the login bug","refactor the session store","bump the version."]
+   actual:   ["Fix the login bug, refactor the session store, and bump the version."]
+MISMATCH gap-make-verb  [knownGap]
+   expected: ["Make the API respond in under 200 ms","make the tests deterministic."]
+   actual:   ["Make the API respond in under 200 ms and make the tests deterministic."]
+MISMATCH gap-migrate-rename-drop  [knownGap]
+   expected: ["Migrate the database","rename the column","drop the old table."]
+   actual:   ["Migrate the database, rename the column and drop the old table."]
+MISMATCH gap-elliptical-second-clause  [knownGap]
+   expected: ["Return 404 when the user is not found","403 when access is denied."]
+   actual:   ["Return 404 when the user is not found, and 403 when access is denied."]
+MISMATCH gap-imperative-negation  [knownGap]
+   expected: ["Add pagination to the list endpoint","do not change the response schema for existing clients."]
+   actual:   ["Add pagination to the list endpoint and do not change the response schema for existing clients."]
+MISMATCH gap-inline-enumeration  [knownGap]
+   expected: ["The importer must","(1) parse CSV","(2) reject duplicate rows","(3) log skipped rows."]
+   actual:   ["The importer must (1) parse CSV (2) reject duplicate rows (3) log skipped rows."]
+MISMATCH gap-german-prompt  [knownGap]
+   expected: ["Implementiere die Registrierung","validiere die E-Mail-Adresse","hashe die Passwörter."]
+   actual:   ["Implementiere die Registrierung, validiere die E-Mail-Adresse und hashe die Passwörter."]
+MISMATCH gap-quoted-sentence-boundary  [knownGap]
+   expected: ["Print \"Done. Next steps follow.\" after the import finishes."]
+   actual:   ["Print \"Done.","Next steps follow.\" after the import finishes."]
+MISMATCH gap-abbreviation-title  [knownGap]
+   expected: ["Support the address format used by Dr. Mueller in the legacy export."]
+   actual:   ["Support the address format used by Dr.","Mueller in the legacy export."]
+MATCH    code-spans-with-commas
+
+9/18 cases agree with the reader-drawn boundaries
