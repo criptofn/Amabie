@@ -125,6 +125,8 @@ it('Claude Code versions older than the profile minimum are rejected before the 
 function makeProject(name: string, options: { fixture?: 'f-pass.js' | 'f-controlled.js'; includeBindings: number }): { root: string; goal: string; requirements: string[] } {
   const root = path.join(TMP, name);
   fs.mkdirSync(root, { recursive: true });
+  // Declare this fixture's harness; never depend on the developer's private home configuration.
+  fs.mkdirSync(path.join(root, '.claude'));
   assert.equal(spawnSync('git', ['init', '--quiet'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'amabie-test@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.name', 'Amabie Test'], { cwd: root }).status, 0);
@@ -780,6 +782,7 @@ for (const agent of ['codex', 'claude'] as const) {
 it(`${agent} profile uses the shared correction loop and fresh independent verification through a local shim`, () => {
   const root = path.join(TMP, `${agent}-shim-success-e2e`);
   fs.mkdirSync(root, { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'));
   assert.equal(spawnSync('git', ['init', '--quiet'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'amabie-test@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.name', 'Amabie Test'], { cwd: root }).status, 0);
@@ -926,6 +929,7 @@ it(`${agent} profile uses the shared correction loop and fresh independent verif
 it('experimental correction loop scopes a separate agent process to unresolved evidence and verifies fresh checks', () => {
   const root = path.join(TMP, 'correction-loop-e2e');
   fs.mkdirSync(root, { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'));
   assert.equal(spawnSync('git', ['init', '--quiet'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.email', 'amabie-test@example.invalid'], { cwd: root }).status, 0);
   assert.equal(spawnSync('git', ['config', 'user.name', 'Amabie Test'], { cwd: root }).status, 0);
@@ -1213,6 +1217,7 @@ it('Scenario E: a failed password-policy check is FAIL, while a green unbound ch
   const makeSecurityCase = (name: string, bindProof: boolean, source: string) => {
     const root = path.join(TMP, name);
     fs.mkdirSync(root, { recursive: true });
+    fs.mkdirSync(path.join(root, '.claude'));
     assert.equal(spawnSync('git', ['init', '--quiet'], { cwd: root }).status, 0);
     assert.equal(spawnSync('git', ['config', 'user.email', 'amabie-test@example.invalid'], { cwd: root }).status, 0);
     assert.equal(spawnSync('git', ['config', 'user.name', 'Amabie Test'], { cwd: root }).status, 0);

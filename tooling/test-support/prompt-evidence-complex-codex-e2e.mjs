@@ -377,6 +377,8 @@ async function prepare() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-codex-complex-p2e-'));
   const projectRoot = path.join(tempRoot, 'project');
   fs.mkdirSync(projectRoot, { recursive: true });
+  // Setup must see a project-declared harness even on a clean, agent-free CI host.
+  fs.mkdirSync(path.join(projectRoot, '.claude'));
   const env = makeIsolatedEnv(tempRoot);
 
   console.error('[complex-e2e] Extracting ten source-linked requirements.');

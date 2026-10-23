@@ -65,6 +65,8 @@ function passwordCheckSource(rule) {
  *  reads. `rewriteCheckTo` makes the candidate rewrite the oracle itself. */
 function makeProject({ baseRule, candidateRule, candidateNote = '', rewriteCheckTo, breakStable = false, fixtureRule = 'rejects blank input' }) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-loop-verdict-'));
+  // These are local hook/verifier fixtures, not live-provider tests.
+  fs.mkdirSync(path.join(root, '.claude'));
   const git = (args) => run('git', args, root);
   assertRun(git(['init', '--quiet']), 0, 'initialize scratch repository');
   assertRun(git(['config', 'user.email', 'amabie-test@example.invalid']), 0, 'set scratch commit identity');
