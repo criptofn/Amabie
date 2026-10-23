@@ -135,6 +135,8 @@ jobs:
       # 39964104115. Select the runner's existing Core host explicitly, then
       # prove it can measure processes and clean up owned descendants. A failed
       # prerequisite stops CI; no assertion, sweep budget or fallback is relaxed.
+      # Trust the runner image's current tool path; this is not a signature check.
+      # Sequential preflight is diagnostic; the full suite still uses concurrency 8.
       - name: verify the selected PowerShell 7 containment host (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

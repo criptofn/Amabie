@@ -27,6 +27,9 @@ try {
   assert(Number.isSafeInteger(observation.count) && observation.count > 0, 'snapshot must not be empty');
   assert.equal(observation.observedPid, process.pid);
   assert.equal(observation.selfObserved, true, 'snapshot must include this live parent process');
+  assert.equal(observation.observedParentPid, process.ppid, 'snapshot must include the actual parent identity');
+  const createdAt = typeof observation.observedCreatedAt === 'string' ? Date.parse(observation.observedCreatedAt) : NaN;
+  assert(Number.isFinite(createdAt) && createdAt > 0 && createdAt <= started, 'snapshot must include a valid, non-future process creation time');
   console.log(JSON.stringify({...observation, host, elapsedMs: Date.now() - started}));
   console.log('PASS selected PowerShell host: real CIM snapshot with own-process positive control; no kills requested');
 } catch (error) {
