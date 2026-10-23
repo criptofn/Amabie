@@ -964,7 +964,7 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
   // Request only ProcessId, ParentProcessId, and CreationDate from each snapshot.
   // Process command lines and executable paths add cost but are not used for lineage
   // or PID-reuse checks.
-  // THREE FULL-TREE SNAPSHOTS, NOT ONE QUERY PER PROCESS. MEASURED (v1.4 release gate, GitHub
+  // BOUNDED FULL-TREE SNAPSHOTS, NOT ONE QUERY PER PROCESS. MEASURED (v1.4 release gate, GitHub
   // Windows runner, run 35636516908): the previous shape issued
   // `Get-CimInstance -Filter "ParentProcessId=$p"` for EVERY node of the BFS. A
   // fixture command that spawns a whole test suite has a large descendant tree,
@@ -976,8 +976,10 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
   // Windows retains a dead parent's numeric PPID. Traverse both pre-kill
   // snapshots and union exact process identities, so a transient omission in
   // the first enumeration does not hide a live descendant from the kill pass.
-  // Re-traverse the post-kill snapshot too: a descendant first visible there
-  // must make the sweep fail closed instead of being treated as a clean tree.
+  // Re-traverse post-kill snapshots too. Late-visible descendants get their own
+  // bounded kill-and-confirm pass; persistent or unconfirmable survivors still
+  // fail closed. Retain known ancestry when an intermediate parent vanishes,
+  // but never seed traversal through a visibly reused ancestor PID.
   //
   // Output is a small, strict protocol: snapshot count, whether the traversal
   // hit its cap, successfully requested kills, and same-identity survivors.
@@ -992,8 +994,9 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `$script:descIds=New-Object System.Collections.Generic.HashSet[string];` +
     `$script:uncertain=$false; $script:limited=$false;` +
     `function Add-Descendants { param([object[]]$Rows);` +
-    `$byParent=@{}; foreach($proc in $Rows){ $pp=[int]$proc.ParentProcessId; if(-not $byParent.ContainsKey($pp)){ $byParent[$pp]=New-Object System.Collections.ArrayList }; [void]$byParent[$pp].Add($proc) };` +
+    `$byParent=@{}; $byId=@{}; foreach($proc in $Rows){ $pp=[int]$proc.ParentProcessId; $byId[[int]$proc.ProcessId]=$proc; if(-not $byParent.ContainsKey($pp)){ $byParent[$pp]=New-Object System.Collections.ArrayList }; [void]$byParent[$pp].Add($proc) };` +
     `$q=New-Object System.Collections.Generic.Queue[int]; $q.Enqueue(${pid});` +
+    `foreach($ancestor in $script:desc){ $aid=[int]$ancestor.ProcessId; if($byId.ContainsKey($aid)){ $current=$byId[$aid]; if(-not $current.CreationDate){$script:uncertain=$true;continue}; if($current.CreationDate.ToUniversalTime().Ticks -ne $ancestor.CreationDate.ToUniversalTime().Ticks){continue} }; $q.Enqueue($aid) };` +
     `$seen=New-Object System.Collections.Generic.HashSet[int]; $done=New-Object System.Collections.Generic.HashSet[int];` +
     `while($q.Count -gt 0){ $parent=$q.Dequeue(); if(-not $done.Add($parent)){continue}; if(-not $byParent.ContainsKey($parent)){continue};` +
     `foreach($child in $byParent[$parent]){ $childId=[int]$child.ProcessId; if($childId -eq ${pid} -or -not $seen.Add($childId)){continue}; if(-not $child.CreationDate){$script:uncertain=$true;continue}; if($child.CreationDate.ToUniversalTime() -lt $cut){continue};` +
@@ -1004,15 +1007,19 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `if($before.Count -le 0){ throw 'empty pre-kill process snapshot' }; Add-Descendants $before;` +
     // Index exact identities once. Filtering the entire WMI snapshot for every
     // descendant made cleanup quadratic on large Windows test process trees.
-    `$beforeIds=@{}; foreach($row in $before){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $beforeIds[$key]=$true } };` +
     `$k=New-Object System.Collections.Generic.List[int];` +
+    `$attempted=New-Object System.Collections.Generic.HashSet[string]; $pending=$before; $survivors=New-Object System.Collections.Generic.List[int];` +
+    `for($pass=0; $pass -lt ${SWEEP_MAX_PASSES}; $pass++){` +
+    `$beforeIds=@{}; foreach($row in $pending){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $beforeIds[$key]=$true } };` +
+    `$roundKills=New-Object System.Collections.Generic.List[int];` +
     `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
-    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key)){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id) }catch{} } };` +
-    `if($k.Count -gt 0){ try{ Wait-Process -Id $k.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
+    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key) -and $attempted.Add($key)){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id); $roundKills.Add($id) }catch{} } };` +
+    `if($roundKills.Count -gt 0){ try{ Wait-Process -Id $roundKills.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
     `$after=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
     `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +
-    `$survivors=New-Object System.Collections.Generic.List[int]; foreach($row in $script:desc){ $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks; $key=('{0}:{1}' -f $id, $created); if($afterIds.ContainsKey($key)){[void]$survivors.Add($id)} };` +
+    `$survivors.Clear(); $more=$false; foreach($row in $script:desc){ $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks; $key=('{0}:{1}' -f $id, $created); if($afterIds.ContainsKey($key)){[void]$survivors.Add($id); if(-not $attempted.Contains($key)){$more=$true}} };` +
+    `if($survivors.Count -eq 0 -or -not $more -or $script:limited -or $script:uncertain){break}; $pending=$after };` +
     `Write-Output ('limit=' + $(if($script:limited){1}else{0}));` +
     `Write-Output ('uncertain=' + $(if($script:uncertain){1}else{0}));` +
     `Write-Output ('killed=' + ($k -join ','));` +

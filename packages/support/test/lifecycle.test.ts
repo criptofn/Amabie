@@ -499,6 +499,38 @@ describe('Windows sweep snapshot refresh', () => {
     assert.equal(waitCalls, 1, 'one bounded wait is made for a killed descendant');
   });
 
+  it('cleans a late-visible descendant and confirms its termination before reporting success', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 51801;
+    const childPid = 51802;
+    const started = Date.now();
+    const created = new Date(started - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const child = processRow(childPid, rootPid, created);
+    assert.deepEqual(runWithSnapshots(rootPid, started,
+      [root], [root], [root, child], [root]), { killed: [childPid], failed: false });
+  });
+
+  it('retains ancestry when a terminated parent disappears before its live child is enumerated', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 51901;
+    const parentPid = 51902;
+    const childPid = 51903;
+    const started = Date.now();
+    const created = new Date(started - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const parent = processRow(parentPid, rootPid, created);
+    const child = processRow(childPid, parentPid, created);
+    // The kill mock does not remove this child: a successful kill request alone
+    // must never turn a persistent survivor into a clean sweep.
+    const sweep = runWithSnapshots(rootPid, started,
+      [root, parent], [root, parent], [root, child]);
+    assert.equal(sweep.failed, true, 'the orphaned descendant must not be lost with its parent');
+    assert.match(sweep.reason ?? '', new RegExp(`surviving process ids: ${childPid}`));
+  });
+
   it('fails closed when a descendant appears in the final snapshot and remains alive', {
     skip: process.platform !== 'win32',
   }, () => {
@@ -509,8 +541,49 @@ describe('Windows sweep snapshot refresh', () => {
     const root = processRow(rootPid, 100, created);
     const child = processRow(childPid, rootPid, created);
     assert.deepEqual(runWithSnapshots(rootPid, spawnedAtMs, [root], [root], [root, child]), {
-      killed: [], failed: true, reason: `surviving process ids: ${childPid}`,
+      killed: [childPid], failed: true, reason: `surviving process ids: ${childPid}`,
     });
+  });
+
+  it('does not traverse a cached ancestor whose PID now belongs to a different process', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 52101;
+    const parentPid = 52102;
+    const started = Date.now();
+    const old = new Date(started - 1_000).toISOString();
+    const recent = new Date(started).toISOString();
+    const root = processRow(rootPid, 100, old);
+    const parent = processRow(parentPid, rootPid, old);
+    const reused = processRow(parentPid, 99999, recent);
+    const unrelated = processRow(52103, parentPid, recent);
+    assert.deepEqual(runWithSnapshots(rootPid, started,
+      [root, parent], [root, parent], [root, reused, unrelated]),
+    { killed: [parentPid], failed: false }, 'PID reuse must not authorize killing an unrelated child');
+  });
+
+  it('stops within a bounded number of passes when new descendants keep appearing', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 52201;
+    const started = Date.now();
+    const created = new Date(started - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const setup = [
+      '$script:enumerations=0',
+      `function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); $script:enumerations++; ${root}; for($n=3;$n -le $script:enumerations;$n++){ [pscustomobject]@{ProcessId=(52300+$n);ParentProcessId=${rootPid};CreationDate=[DateTime]::Parse('${created}')} } }`,
+      'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
+      'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout) }',
+    ].join(';');
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command',
+      `${setup}; ${buildWin32SweepScript(rootPid, started)}; [Console]::Error.WriteLine('snapshots=' + $script:enumerations)`],
+    { encoding: 'utf8', timeout: 15_000, windowsHide: true });
+    assert.equal(result.status, 0, result.stderr);
+    const sweep = parseWin32SweepOutput(result.stdout);
+    assert.equal(sweep.failed, true, 'a finite cleanup budget never excuses live descendants');
+    assert.match(sweep.reason ?? '', /surviving process ids:/);
+    const snapshots = Number(/snapshots=(\d+)/.exec(result.stderr)?.[1]);
+    assert.equal(snapshots, 12, 'two initial snapshots plus at most ten cleanup passes');
   });
 });
 
