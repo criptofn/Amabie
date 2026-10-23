@@ -34,6 +34,7 @@ const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
 class Void extends Error {}
 class Fail extends Error {}
+class Skip extends Error {}
 
 // ---- frozen manifest -------------------------------------------------------------------------------------
 export function freezeManifest(store, manifest) {
@@ -151,10 +152,15 @@ export async function runPositive({ work, store, manifestSha, corrector, maxCycl
     try { assertFrozen(store, manifestSha); } catch (error) { voided = error; throw error; }
     if (invocations >= maxCycles) throw new Error('controller cycle cap reached');
     invocations += 1;
-    return corrector({ report, cycle, work, out, request });
+    try { return await corrector({ report, cycle, work, out, request }); }
+    finally {
+      // A successful final correction has no next cycle in which to notice tampering.
+      try { assertFrozen(store, manifestSha); } catch (error) { voided = error; throw error; }
+    }
   };
   const loop = await runBoundedCorrectionLoop({ request, adapters: [adapter], authorized, maxAttempts: maxCycles, correct });
   const final = await verifyPromptEvidence(request, [adapter], { runId: 'final-independent', attempt: 0 });
+  try { assertFrozen(store, manifestSha); } catch (error) { voided = error; }
   const sourceIntact = sha(fs.readFileSync(path.join(work, 'sales.csv'))) === sourceDigest;
 
   let cls;
@@ -199,8 +205,12 @@ function writeFixtureBundle(projectRoot, cycle, stage, stdout = 'agent said: GrÃ
 async function selfTest() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-p2e-rehearsal-'));
   let failed = 0;
+  let skipped = 0;
   const check = async (name, fn) => {
-    try { await fn(); console.log(`PASS ${name}`); } catch (error) { failed += 1; console.log(`FAIL ${name}\n     ${error instanceof Error ? error.message : String(error)}`); }
+    try { await fn(); console.log(`PASS ${name}`); } catch (error) {
+      if (error instanceof Skip) { skipped += 1; console.log(`SKIP ${name}\n     ${error.message}`); }
+      else { failed += 1; console.log(`FAIL ${name}\n     ${error instanceof Error ? error.message : String(error)}`); }
+    }
   };
   const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
   const equal = (a, b, msg) => ok(a === b, `${msg}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`);
@@ -309,6 +319,18 @@ async function selfTest() {
       ok(res.class !== 'PASS' && res.class !== 'NOT_PROVEN', 'source tampering was not caught');
     });
 
+    await check('manifest tampering in the successful final correction is VOID even without a next cycle', async () => {
+      const f = fresh();
+      const res = await runPositive({ ...f, corrector: async (a) => {
+        await heal(a);
+        fs.appendFileSync(path.join(f.store, 'run-manifest.json'), ' ');
+        return applied(a.request);
+      } });
+      equal(res.corrections, 1, 'only correction');
+      equal(res.class, 'VOID', 'terminal tampering class');
+      equal(obsClass(res, 4), 'VOID', 'no success claimed for a tampered run');
+    });
+
     await check('retained bundles are exported byte-identically with controller digests and verified against process.json', () => {
       const f = fresh();
       for (let cycle = 1; cycle <= 2; cycle += 1) writeFixtureBundle(f.work, cycle, 'correction');
@@ -345,7 +367,10 @@ async function selfTest() {
       const target = path.join(root, `linktarget${n}`);
       fs.writeFileSync(target, fs.readFileSync(path.join(dir, 'stderr.log')));
       fs.rmSync(path.join(dir, 'stderr.log'));
-      try { fs.symlinkSync(target, path.join(dir, 'stderr.log')); } catch { console.log('     (symlink not creatable here; link case not exercised)'); return; }
+      try { fs.symlinkSync(target, path.join(dir, 'stderr.log')); } catch (error) {
+        if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) throw new Skip(`symlink not creatable here (${error.code}); link assertion NOT exercised`);
+        throw error;
+      }
       throwsOf(() => exportRetained(f.work, f.store, { minBundles: 1 }), Fail, 'linked file');
     });
 
@@ -374,7 +399,7 @@ async function selfTest() {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
-  console.log(failed === 0 ? '\nSELF-TEST OK (FIXTURE ONLY: no provider, no gateway, no evidence about any live agent)' : `\nSELF-TEST FAILED: ${failed} check(s)`);
+  console.log(failed === 0 ? `\nSELF-TEST OK (${skipped} SKIP; FIXTURE ONLY: no provider, no gateway, no evidence about any live agent)` : `\nSELF-TEST FAILED: ${failed} check(s), ${skipped} SKIP`);
   return failed === 0 ? 0 : 1;
 }
 

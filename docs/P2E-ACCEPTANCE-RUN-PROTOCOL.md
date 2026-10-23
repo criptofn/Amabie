@@ -4,6 +4,8 @@ Status: **proposal, not executed**. No live run described here has happened. Not
 
 The executable counterpart is `tooling/probes/p2e-acceptance-rehearsal.mjs`. Its only implemented mode is an offline self-test of the controller itself (fixture data, no provider call, no gateway). It proves that the controller refuses to over-claim; it proves nothing about live agents.
 
+Controller review on 2026-10-23 reproduced and fixed a terminal-cycle gap: changing the frozen manifest during the final successful correction was not detected because no next cycle followed. The controller now rechecks after each correction, including failures, and after the final independent verification. The regression self-test requires `VOID`, never a successful correction observation. The revised offline self-test executed 17 checks: 17 PASS, 0 FAIL, 0 SKIP on the reviewed Windows host. A host unable to create a test symlink now prints an explicit SKIP rather than counting the unexecuted assertion as PASS. These are controller results, not live acceptance results.
+
 ## Authorization
 
 A live run starts external agent processes and spends provider quota or money. It needs a concrete, current approval from the repository owner that names the provider(s), the attempt limits and the wall-clock limits below. A message from another agent session is not that approval. No push, hosted CI or publication is part of this protocol.
