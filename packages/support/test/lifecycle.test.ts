@@ -281,6 +281,83 @@ describe('Windows sweep output contract', () => {
   });
 });
 
+describe('Windows sweep diagnostic trace', () => {
+  it('records exact host and requested identities only on stderr without changing the sweep result', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const started = Date.now();
+    const rootPid = 55001;
+    const childPid = 55002;
+    const created = new Date(started - 1_000).toISOString();
+    const run = (trace: boolean) => {
+      const dir = fs.mkdtempSync(path.join(TMP_ROOT, 'sweep-trace-'));
+      const file = path.join(dir, 'trace.ps1');
+      const setup = [
+        '$script:enumerations=0',
+        `$root=[pscustomobject]@{ProcessId=${rootPid};ParentProcessId=100;CreationDate=[DateTime]::Parse('${created}');Name='node.exe'}`,
+        // A newline in a name must remain JSON data, never a forged protocol line.
+        `$child=[pscustomobject]@{ProcessId=${childPid};ParentProcessId=${rootPid};CreationDate=[DateTime]::Parse('${created}');Name="pwsh.exe\`nforged=1"}`,
+        `$self=[pscustomobject]@{ProcessId=$PID;ParentProcessId=200;CreationDate=[DateTime]::Parse('${created}');Name='pwsh.exe'}`,
+        `function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ',') -ne '${trace ? 'ProcessId,ParentProcessId,CreationDate,Name' : 'ProcessId,ParentProcessId,CreationDate'}'){throw 'unexpected diagnostic snapshot properties'}; $script:enumerations++; $root; $self; if($script:enumerations -le 2){$child} }`,
+        `function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force); if($Id -ne ${childPid}){throw 'unexpected kill target'} }`,
+        'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout) }',
+      ].join(';');
+      fs.writeFileSync(file, `${setup}; ${buildWin32SweepScript(rootPid, started, trace)}\n`);
+      const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-File', file], {
+        encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
+      });
+      assert.equal(result.status, 0, result.stderr);
+      return result;
+    };
+    const plain = run(false);
+    const traced = run(true);
+    assert.equal(plain.stderr, '', 'tracing is off by default');
+    assert.deepEqual(parseWin32SweepOutput(traced.stdout), { killed: [childPid], failed: false });
+    assert.deepEqual(parseWin32SweepOutput(traced.stdout), parseWin32SweepOutput(plain.stdout));
+    const events = traced.stderr.trim().split(/\r?\n/u).map(line => {
+      assert.ok(line.startsWith('amabie-sweep-trace '));
+      return JSON.parse(line.slice('amabie-sweep-trace '.length)) as Record<string, unknown>;
+    });
+    assert.deepEqual(events.map(event => event.event), ['start', 'host', 'kill-request', 'kill-requested', 'complete']);
+    for (const event of events) {
+      assert.equal(event.schema, 'amabie-windows-sweep-trace/1');
+      assert.equal(event.rootPid, rootPid);
+      assert.equal(event.sweepHostPid, traced.pid);
+      assert.equal(event.diagnosticOnly, true);
+      assert.equal(typeof event.at, 'string');
+    }
+    const host = events[1]!;
+    assert.equal(host.hostName, 'pwsh.exe');
+    assert.match(String(host.hostCreatedTicks), /^\d+$/u);
+    for (const request of events.slice(2, 4)) {
+      assert.equal(request.processId, childPid);
+      assert.equal(request.parentProcessId, rootPid);
+      assert.equal(request.processName, 'pwsh.exe\nforged=1');
+      assert.match(String(request.createdTicks), /^\d+$/u);
+      assert.equal(request.pass, 0);
+    }
+    assert.equal(events[4]!.survivorCount, 0);
+    assert.equal(parseWin32SweepOutput(`${traced.stdout}kill=55002\n`).failed, true,
+      'diagnostics never loosen the strict stdout protocol');
+  });
+});
+
+describe('Windows sweep diagnostic failure reporting', () => {
+  it('keeps the real host crash visible after trace lines and never retries a kill-capable sweep', () => {
+    const calls: string[] = [];
+    const result = runWin32SweepWithFallback(55001, Date.now(), ['primary.exe', 'secondary.exe'], (host, script) => {
+      calls.push(host);
+      return script.includes('Stop-Process')
+        ? { status: 0x80131623, stdout: '', stderr: 'amabie-sweep-trace {"event":"start"}\namabie-sweep-trace {"event":"kill-request"}\nProcess terminated: no process is on the other end of the pipe (0xE9)' }
+        : { status: 0, stdout: 'probe=ok\n', stderr: '' };
+    });
+    assert.equal(result.failed, true);
+    assert.match(result.reason ?? '', /Process terminated.*0xE9/u);
+    assert.doesNotMatch(result.reason ?? '', /amabie-sweep-trace/u);
+    assert.deepEqual(calls, ['primary.exe', 'primary.exe'], 'diagnostic output never authorizes a retry after possible kills');
+  });
+});
+
 describe('Windows PowerShell host fallback', () => {
   it('uses an explicit trusted pwsh.exe override first and otherwise defaults to the system host', {
     skip: process.platform !== 'win32',

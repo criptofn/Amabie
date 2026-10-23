@@ -188,6 +188,9 @@ jobs:
 
       # Use the same forced rebuild, bounded concurrency and complete glob as local verification.
       - run: npm test
+        # Temporary Windows diagnosis only; no process exemptions or retries.
+        env:
+          AMABIE_TRACE_WINDOWS_SWEEP: ${{ runner.os == 'Windows' && '1' || '0' }}
       - run: node tooling/probes/architecture-closure.mjs
       - run: node tooling/probes/architecture-metrics.mjs
       - run: node tooling/probes/cleanroom-packed-artifact.mjs

@@ -788,6 +788,7 @@ export function posixSessionMember(pgrp: number, sid: number, childPid: number):
 }
 
 let windowsPowerShellAccessViolationPath: string | undefined;
+const WIN32_SWEEP_TRACE_PREFIX = 'amabie-sweep-trace ';
 
 function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
   const allCandidates = windowsPowerShellCandidates();
@@ -804,6 +805,11 @@ function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
       // Bounded snapshots request only process identity fields; a timeout still fails CLOSED
       // (never "no survivors") and names its cause.
       { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
+    if (process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1' && typeof r.stderr === 'string') {
+      for (const line of r.stderr.split(/\r?\n/u)) {
+        if (line.startsWith(WIN32_SWEEP_TRACE_PREFIX)) process.stderr.write(`${line}\n`);
+      }
+    }
     return {
       status: r.status,
       stdout: typeof r.stdout === 'string' ? r.stdout : '',
@@ -898,7 +904,7 @@ export function runWin32SweepWithFallback(
   onFallback: (previous: string, next: string, reason: 'engine access violation 0xC0000005' | 'executable unavailable') => void = () => {},
 ): SweepResult & { reason?: string } {
   if (candidates.length === 0) return { killed: [], failed: true, reason: 'no PowerShell host is available' };
-  const script = buildWin32SweepScript(pid, spawnedAtMs);
+  const script = buildWin32SweepScript(pid, spawnedAtMs, process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1');
   for (let index = 0; index < candidates.length; index++) {
     const executable = candidates[index]!;
     const probe = invokeWin32Host(run, executable, WIN32_HOST_PROBE_SCRIPT);
@@ -946,14 +952,15 @@ function invokeWin32Host(
 }
 
 function describeWin32HostFailure(executable: string, result: WindowsPowerShellRunResult): string {
+  const hostErrors = result.stderr.split('\n').filter(line => !line.startsWith(WIN32_SWEEP_TRACE_PREFIX)).join('\n').trim();
   const details = result.error
     ? `spawn error ${result.error.code ?? 'unknown'}: ${result.error.message}`
-    : `exited ${String(result.status)}${result.stderr.trim() ? `: ${result.stderr.trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
+    : `exited ${String(result.status)}${hostErrors ? `: ${hostErrors.split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
   return `${path.basename(executable)} ${details}`;
 }
 
 /** @internal — shared with a deterministic Windows test for snapshot refresh. */
-export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string {
+export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = false): string {
   if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isFinite(spawnedAtMs)) {
     throw new RangeError('Windows sweep requires a positive PID and finite spawn time');
   }
@@ -961,9 +968,22 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
   // seconds of slack covers truncation without admitting an unrelated process
   // that reused a parent PID minutes before this child was spawned.
   const cut = new Date(spawnedAtMs - 2_000).toISOString();
-  // Request only ProcessId, ParentProcessId, and CreationDate from each snapshot.
-  // Process command lines and executable paths add cost but are not used for lineage
-  // or PID-reuse checks.
+  const properties = `ProcessId,ParentProcessId,CreationDate${trace ? ',Name' : ''}`;
+  const traceSetup = trace
+    ? `function Write-SweepTrace { param([string]$Event,[hashtable]$Data); try{` +
+      `$record=[ordered]@{schema='amabie-windows-sweep-trace/1';diagnosticOnly=$true;event=$Event;at=[DateTime]::UtcNow.ToString('o');rootPid=${pid};rootSpawnedAtMs=${spawnedAtMs};sweepHostPid=$PID};` +
+      `foreach($field in $Data.Keys){$record[$field]=$Data[$field]}; [Console]::Error.WriteLine(('${WIN32_SWEEP_TRACE_PREFIX}'+($record|ConvertTo-Json -Compress -Depth 3))) }catch{} };` +
+      `Write-SweepTrace 'start' @{};`
+    : '';
+  const traceHost = trace
+    ? `$traceHost=$all|Where-Object{$_.ProcessId -eq $PID}|Select-Object -First 1;` +
+      `Write-SweepTrace 'host' @{hostName=[string]$traceHost.Name;hostParentPid=$traceHost.ParentProcessId;hostCreatedTicks=$(if($traceHost.CreationDate){$traceHost.CreationDate.ToUniversalTime().Ticks.ToString()}else{$null})};`
+    : '';
+  const traceRequest = trace
+    ? `$traceFields=@{processId=$id;createdTicks=$created.ToString();parentProcessId=[int]$row.ParentProcessId;processName=[string]$row.Name;pass=$pass}; Write-SweepTrace 'kill-request' $traceFields;`
+    : '';
+  // Normal snapshots need only identity fields. Opt-in diagnostics also request Name,
+  // never command lines or executable paths; names never affect a kill or verdict.
   // BOUNDED FULL-TREE SNAPSHOTS, NOT ONE QUERY PER PROCESS. MEASURED (v1.4 release gate, GitHub
   // Windows runner, run 35636516908): the previous shape issued
   // `Get-CimInstance -Filter "ParentProcessId=$p"` for EVERY node of the BFS. A
@@ -986,9 +1006,11 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
   // The input root itself is only traversed; it is never put in the kill list.
   return (
     `$ErrorActionPreference='Stop';` +
+    traceSetup +
     `$cut=[DateTime]::Parse('${cut}').ToUniversalTime();` +
-    `$all=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `$all=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($all.Count -le 0){ throw 'empty process snapshot' };` +
+    traceHost +
     `Write-Output ('snapshot=' + $all.Count);` +
     `$script:desc=New-Object System.Collections.Generic.List[object];` +
     `$script:descIds=New-Object System.Collections.Generic.HashSet[string];` +
@@ -1003,7 +1025,7 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `$identity=('{0}:{1}' -f $childId, $child.CreationDate.ToUniversalTime().Ticks);` +
     `if(-not $script:descIds.Contains($identity)){ if($script:desc.Count -ge ${SWEEP_MAX_PROCESSES}){ $script:limited=$true; break }; [void]$script:descIds.Add($identity); [void]$script:desc.Add($child) }; $q.Enqueue($childId) }; if($script:limited){break} } };` +
     `Add-Descendants $all;` +
-    `$before=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `$before=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($before.Count -le 0){ throw 'empty pre-kill process snapshot' }; Add-Descendants $before;` +
     // Index exact identities once. Filtering the entire WMI snapshot for every
     // descendant made cleanup quadratic on large Windows test process trees.
@@ -1013,15 +1035,17 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `$beforeIds=@{}; foreach($row in $pending){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $beforeIds[$key]=$true } };` +
     `$roundKills=New-Object System.Collections.Generic.List[int];` +
     `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
-    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key) -and $attempted.Add($key)){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id); $roundKills.Add($id) }catch{} } };` +
+    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key) -and $attempted.Add($key)){` + traceRequest +
+    `try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id); $roundKills.Add($id); ${trace ? "Write-SweepTrace 'kill-requested' $traceFields" : ''} }catch{${trace ? "Write-SweepTrace 'kill-request-failed' $traceFields" : ''}} } };` +
     `if($roundKills.Count -gt 0){ try{ Wait-Process -Id $roundKills.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
-    `$after=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId,ParentProcessId,CreationDate -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `$after=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
     `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +
     `$survivors.Clear(); $more=$false; foreach($row in $script:desc){ $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks; $key=('{0}:{1}' -f $id, $created); if($afterIds.ContainsKey($key)){[void]$survivors.Add($id); if(-not $attempted.Contains($key)){$more=$true}} };` +
     // A kill request plus Wait-Process does not prove the next CIM row is gone.
     // Reconfirm within the existing pass/time caps; never repeat an attempted kill.
     `if($survivors.Count -eq 0 -or $script:limited -or $script:uncertain){break}; if(-not $more){Start-Sleep -Milliseconds 100}; $pending=$after };` +
+    (trace ? "Write-SweepTrace 'complete' @{survivorCount=$survivors.Count;limited=$script:limited;uncertain=$script:uncertain};" : '') +
     `Write-Output ('limit=' + $(if($script:limited){1}else{0}));` +
     `Write-Output ('uncertain=' + $(if($script:uncertain){1}else{0}));` +
     `Write-Output ('killed=' + ($k -join ','));` +
