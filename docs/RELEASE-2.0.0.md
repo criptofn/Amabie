@@ -1,6 +1,6 @@
 # Amabie 2.0.0 release candidate
 
-Unpublished local candidate; local closure rechecked 23 October 2026. The corrected Windows full suite and fresh Windows/Linux installed-package rehearsals pass; see [the current closure record](WINDOWS-CLOSURE-2026-10-23.md). Public release remains BLOCKED on exact-candidate hosted CI and the separately owned publication/account approvals. Older failed runs and artifact hashes below remain historical, not the current candidate. Live Codex/Claude correction runs are recorded below (2026-10-21). This document does not authorise publication.
+Unpublished local candidate; joint quality validation rechecked 23 October 2026. The latest Windows full suite and fresh Windows/Linux installed-package rehearsals pass; see [the joint validation and current artifact](JOINT-QUALITY-2026-10-23.md) and [the earlier process-fix closure](WINDOWS-CLOSURE-2026-10-23.md). Public release remains BLOCKED on exact-candidate hosted CI and the separately owned publication/account approvals. Older failed runs and artifact hashes below remain historical, not the current candidate. Live Codex/Claude correction runs are recorded below (2026-10-21). This document does not authorise publication.
 
 ## What this release changes
 
