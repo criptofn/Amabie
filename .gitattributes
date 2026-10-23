@@ -23,3 +23,6 @@ packages/support/test/fixtures/runner-manifests/** text eol=lf
 
 # Retain captured evidence while keeping generated results collapsed in GitHub reviews.
 /tooling/benchmark/results/** linguist-generated
+
+# Rehearsal fixture source is digest-pinned at run time; keep checkout bytes == committed bytes.
+tooling/test-support/fixtures/p2e-rehearsal-sales.csv text eol=lf
