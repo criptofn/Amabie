@@ -48,6 +48,7 @@ test('the exact packed CLI starts after clean-room installation', { timeout: 240
   // invocation skips discovery. The clean-room journey itself must run the
   // shipped example's documented test command as an ordinary user process.
   delete env.NODE_TEST_CONTEXT;
+  const startedAt = new Date().toISOString();
   const result = spawnSync(process.execPath, ['tooling/probes/cleanroom-packed-artifact.mjs'], {
     cwd: REPO,
     encoding: 'utf8',
@@ -58,5 +59,7 @@ test('the exact packed CLI starts after clean-room installation', { timeout: 240
   });
   assert.equal(result.error, undefined, `clean-room probe could not run: ${String(result.error ?? '')}`);
   assert.equal(result.signal, null, `clean-room probe was terminated by ${String(result.signal)}`);
-  assert.equal(result.status, 0, `clean-room probe failed\n${result.stdout ?? ''}\n${result.stderr ?? ''}`);
+  assert.equal(result.status, 0, `clean-room probe failed ${JSON.stringify({
+    pid: result.pid, startedAt, endedAt: new Date().toISOString(), status: result.status, signal: result.signal,
+  })}\n${result.stdout ?? ''}\n${result.stderr ?? ''}`);
 });

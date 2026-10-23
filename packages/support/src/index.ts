@@ -800,12 +800,23 @@ function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
     : allCandidates;
   const script = buildWin32SweepScript(pid, spawnedAtMs);
   const result = runWin32SweepWithFallback(pid, spawnedAtMs, candidates, (psExe, command) => {
+    const invocationStartedAt = new Date().toISOString();
     const r = spawnSync(psExe,
       ['-NoProfile', '-NonInteractive', '-Command', command],
       // Bounded snapshots request only process identity fields; a timeout still fails CLOSED
       // (never "no survivors") and names its cause.
       { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
     if (process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1' && typeof r.stderr === 'string') {
+      // Parent-side metadata survives a host failure before its first script line.
+      process.stderr.write(`amabie-sweep-invocation ${JSON.stringify({
+        schema: 'amabie-windows-sweep-invocation/1', diagnosticOnly: true,
+        phase: command === WIN32_HOST_PROBE_SCRIPT ? 'preflight' : 'sweep',
+        rootPid: pid, rootSpawnedAtMs: spawnedAtMs, callerPid: process.pid,
+        hostName: path.basename(psExe), hostPid: r.pid ?? null,
+        startedAt: invocationStartedAt, endedAt: new Date().toISOString(),
+        status: r.status, signal: r.signal ?? null,
+        errorCode: (r.error as NodeJS.ErrnoException | undefined)?.code ?? null,
+      })}\n`);
       for (const line of r.stderr.split(/\r?\n/u)) {
         if (line.startsWith(WIN32_SWEEP_TRACE_PREFIX)) process.stderr.write(`${line}\n`);
       }

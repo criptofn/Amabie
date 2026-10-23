@@ -601,8 +601,17 @@ describe('checkpoint (harness entry)', () => {
       const r = spawnSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true });
       assert.equal(r.status, 0, r.stderr);
     }
-    assert.equal(amabie(['setup', '--yes', root]).status, 2, 'the sealed baseline fails both assertions');
-    const first = JSON.parse(amabie(['checkpoint'], root, hookInput(root)).stdout) as { decision: string; reason: string };
+    const setup = amabie(['setup', '--yes', root]);
+    const setupDiagnostic = JSON.stringify({ pid: setup.pid, status: setup.status, signal: setup.signal,
+      error: setup.error?.message, stdout: setup.stdout, stderr: setup.stderr });
+    assert.equal(setup.status, 2, `the sealed baseline fails both assertions: ${setupDiagnostic}`);
+    assert.ok(fs.existsSync(cfgFile(root)), `setup must seal the failing baseline before checkpoint: ${setupDiagnostic}`);
+    const checkpoint = amabie(['checkpoint'], root, hookInput(root));
+    assert.ok(checkpoint.stdout.trim(), `checkpoint must emit its JSON decision: ${JSON.stringify({
+      pid: checkpoint.pid, status: checkpoint.status, signal: checkpoint.signal,
+      error: checkpoint.error?.message, stderr: checkpoint.stderr,
+    })}`);
+    const first = JSON.parse(checkpoint.stdout) as { decision: string; reason: string };
     assert.equal(first.decision, 'block');
     const cliPrefix = buildHookCommand(CLI)!.replace(/ checkpoint$/, '');
     assert.ok(first.reason.includes(`${cliPrefix} doctor --check backend::test`), first.reason);
