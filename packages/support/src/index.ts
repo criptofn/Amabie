@@ -1019,7 +1019,9 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number): string 
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
     `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +
     `$survivors.Clear(); $more=$false; foreach($row in $script:desc){ $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks; $key=('{0}:{1}' -f $id, $created); if($afterIds.ContainsKey($key)){[void]$survivors.Add($id); if(-not $attempted.Contains($key)){$more=$true}} };` +
-    `if($survivors.Count -eq 0 -or -not $more -or $script:limited -or $script:uncertain){break}; $pending=$after };` +
+    // A kill request plus Wait-Process does not prove the next CIM row is gone.
+    // Reconfirm within the existing pass/time caps; never repeat an attempted kill.
+    `if($survivors.Count -eq 0 -or $script:limited -or $script:uncertain){break}; if(-not $more){Start-Sleep -Milliseconds 100}; $pending=$after };` +
     `Write-Output ('limit=' + $(if($script:limited){1}else{0}));` +
     `Write-Output ('uncertain=' + $(if($script:uncertain){1}else{0}));` +
     `Write-Output ('killed=' + ($k -join ','));` +

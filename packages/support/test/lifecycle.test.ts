@@ -406,22 +406,25 @@ describe('Windows sweep snapshot refresh', () => {
   const processRow = (pid: number, parentPid: number, created: string): string =>
     `[pscustomobject]@{ProcessId=${pid};ParentProcessId=${parentPid};CreationDate=[DateTime]::Parse('${created}')}`;
   const runWithSnapshots = (rootPid: number, spawnedAtMs: number, first: string[], before: string[], after: string[],
-    afterWait = after, onWaitCalls?: (count: number) => void) => {
+    afterWait = after, onWaitCalls?: (count: number) => void,
+    refresh?: { rows: string[]; observe: (counts: { kills: number; snapshots: number }) => void }) => {
     const setup = [
       '$script:enumerations=0',
       '$script:waitCalls=0',
+      '$script:killCalls=0',
+      `$script:refresh=$${refresh ? 'true' : 'false'}; $script:refreshed=@(${refresh?.rows.join(',') ?? ''})`,
       `$script:first=@(${first.join(',')})`,
       `$script:before=@(${before.join(',')})`,
       `$script:after=@(${after.join(',')})`,
       `$script:afterWait=@(${afterWait.join(',')})`,
-      'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} else {$script:after} }',
-      'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
+      'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} elseif($script:refresh -and $script:enumerations -gt 3){$script:refreshed} else {$script:after} }',
+      'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force); $script:killCalls++ }',
       'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout); if($Timeout -ne 2 -or $Id.Count -le 0){throw "invalid bounded wait"}; $script:waitCalls++; $script:after=$script:afterWait }',
     ].join(';');
     // These tests exercise generated-script semantics with mocked process
     // snapshots, not Windows PowerShell 5.1 itself. Prefer installed PowerShell
     // Core when the inbox host is unavailable or crashes on CIM enumeration.
-    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; Write-Output ('test-waits=' + $script:waitCalls)`], {
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; Write-Output ('test-waits=' + $script:waitCalls); Write-Output ('test-kills=' + $script:killCalls); Write-Output ('test-snapshots=' + $script:enumerations)`], {
       encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
     });
     assert.equal(result.status, 0, result.stderr);
@@ -429,7 +432,15 @@ describe('Windows sweep snapshot refresh', () => {
     const waitLine = lines.find(line => line.startsWith('test-waits='));
     assert.ok(waitLine, 'mocked wait-call observation missing');
     onWaitCalls?.(Number(waitLine.slice('test-waits='.length)));
-    return parseWin32SweepOutput(lines.filter(line => !line.startsWith('test-waits=')).join('\n'));
+    if (refresh) {
+      const metric = (name: string): number => {
+        const line = lines.find(value => value.startsWith(`test-${name}=`));
+        assert.ok(line, `mocked ${name} observation missing`);
+        return Number(line.slice(`test-${name}=`.length));
+      };
+      refresh.observe({ kills: metric('kills'), snapshots: metric('snapshots') });
+    }
+    return parseWin32SweepOutput(lines.filter(line => !/^test-(?:waits|kills|snapshots)=/u.test(line)).join('\n'));
   };
 
   it('indexes the pre-kill process identities once for a large snapshot', {
@@ -497,6 +508,43 @@ describe('Windows sweep snapshot refresh', () => {
     assert.deepEqual(sweep, { killed: [childPid], failed: false },
       'the post-kill snapshot must reflect the bounded wait');
     assert.equal(waitCalls, 1, 'one bounded wait is made for a killed descendant');
+  });
+
+  it('reconfirms a termination still visible in the first post-wait snapshot without repeating the kill', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 51601;
+    const childPid = 51602;
+    const started = Date.now();
+    const created = new Date(started - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const child = processRow(childPid, rootPid, created);
+    let counts = { kills: 0, snapshots: 0 };
+    const result = runWithSnapshots(rootPid, started,
+      [root, child], [root, child], [root, child], [root, child], undefined,
+      { rows: [root], observe: value => { counts = value; } });
+    assert.deepEqual(result, { killed: [childPid], failed: false },
+      'only a fresh snapshot confirming absence can finish the pending termination');
+    assert.deepEqual(counts, { kills: 1, snapshots: 4 },
+      'termination confirmation takes one additional snapshot, never a second kill request');
+  });
+
+  it('exhausts the same bounded confirmation budget on a persistent exact-identity survivor and fails closed', {
+    skip: process.platform !== 'win32',
+  }, () => {
+    const rootPid = 51701;
+    const childPid = 51702;
+    const started = Date.now();
+    const created = new Date(started - 1_000).toISOString();
+    const root = processRow(rootPid, 100, created);
+    const child = processRow(childPid, rootPid, created);
+    let counts = { kills: 0, snapshots: 0 };
+    const result = runWithSnapshots(rootPid, started,
+      [root, child], [root, child], [root, child], [root, child], undefined,
+      { rows: [root, child], observe: value => { counts = value; } });
+    assert.deepEqual(result, { killed: [childPid], failed: true, reason: `surviving process ids: ${childPid}` });
+    assert.deepEqual(counts, { kills: 1, snapshots: 12 },
+      'two initial snapshots plus at most ten confirmation passes; no repeated kill');
   });
 
   it('cleans a late-visible descendant and confirms its termination before reporting success', {
