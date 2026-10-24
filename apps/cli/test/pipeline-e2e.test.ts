@@ -20,6 +20,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { runCommand, type RunOptions } from '@amabie/support';
+import type { ExperimentSpec } from '@amabie/planner';
 
 import { runExperiment, InfraAbort } from '../src/pipeline.js';
 import { validateBundle, structuralIssues, type EvidenceBundle } from '@amabie/evidence-schema';
@@ -98,6 +100,52 @@ async function offlineRun(driftSwap: boolean): Promise<
   });
   return { repoRoot, artifactsDir: result.artifactsDir, bundle: result.bundle, issues: result.bundleIssues };
 }
+
+describe('pipeline containment outside measurement rounds', () => {
+  for (const stage of ['prepare', 'toolchain', 'build', 'swap', 'tree', 'attestation', 'npm-version']) {
+    it(`${stage}: unconfirmed cleanup aborts before a strong verdict despite zero process exit`, async () => {
+      const repoRoot = fs.mkdtempSync(path.join(TMP, 'containment-repo-'));
+      const stub = fs.mkdtempSync(path.join(TMP, 'containment-stub-'));
+      makeStub(stub, { driftSwap: false });
+      const spec = specFor() as ExperimentSpec;
+      const pass = path.resolve(import.meta.dirname, '../../../../tooling/test-support/fixtures/f-pass.js');
+      spec.commands.toolchainOverrides = [['node', pass, 'containment-toolchain']];
+      spec.commands.build = [['node', pass, 'containment-build']];
+      let injected = false;
+      let afterFailure = 0;
+      const deps = {
+        allowAmabieDoubleOrigin: true,
+        fetch: async () => ({ ...FAKE_BLOB }),
+        extract: (_tgz: string, wsRoot: string) => fs.cpSync(stub, path.join(wsRoot, `downstream-${FAKE_SHA}`), { recursive: true }),
+        // Fault injection preserves a REAL command's output/exit; only the independent cleanup measurement fails.
+        run: async (options: RunOptions) => {
+          if (injected) afterFailure++;
+          const result = await runCommand(options);
+          const argv = options.argv;
+          const match = stage === 'prepare' ? argv.includes(stageCommands({ mocha: true })[0]![1]!)
+            : stage === 'toolchain' || stage === 'build' ? argv.includes(`containment-${stage}`)
+            : stage === 'swap' ? argv.includes('swap.js')
+            : stage === 'tree' ? argv.includes('ls') && argv.includes('--depth')
+            : stage === 'attestation' ? argv.includes('-e') && argv.some(value => value.includes('r.resolve('))
+            : argv.includes('--version');
+          if (!injected && match) {
+            assert.equal(result.exitCode, 0, result.stderr);
+            injected = true;
+            return { ...result, sweepFailed: true };
+          }
+          return result;
+        },
+      };
+      await assert.rejects(runExperiment(spec, repoRoot, true, deps), (error: unknown) => {
+        assert.ok(error instanceof InfraAbort, 'the caller receives the existing infrastructure-failure contract');
+        assert.match(error.message, /containment sweep/);
+        return true;
+      });
+      assert.equal(injected, true, 'the named stage actually executed before injecting the cleanup fault');
+      assert.equal(afterFailure, 0, 'no later command executes after the unconfirmed cleanup');
+    });
+  }
+});
 
 describe('audit M8 — offline pipeline end-to-end', () => {
   it('confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean', async () => {

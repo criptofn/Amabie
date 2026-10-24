@@ -1154,6 +1154,9 @@ export class Recorder {
     fs.writeFileSync(path.join(this.deps.artifactsDir, `${uniq}.stderr.log`), run.stderr);
     fs.writeFileSync(path.join(this.deps.artifactsDir, `${uniq}.stdout.norm`), normOut);
     fs.writeFileSync(path.join(this.deps.artifactsDir, `${uniq}.stderr.norm`), normErr);
+    if (!observe && run.sweepFailed) {
+      throw new AmabieError('post-run containment sweep could not confirm zero surviving descendants', 'containment-sweep-failed');
+    }
     return { label: uniq, run, combined, normOut, normErr };
   }
 

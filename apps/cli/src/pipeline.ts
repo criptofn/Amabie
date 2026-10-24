@@ -51,6 +51,8 @@ export interface PipelineResult {
 export { runnerIdentitiesFromSealedPlan } from './runner-authority.js';
 
 export interface PipelineDeps {
+  /** In-process test seam, like ExecutorDeps.run; never read from spec, environment or CLI input. */
+  run?: typeof runCommand;
   /**
    * Test seam mirroring downloadTarball's own deps.fetchFn and the recorder's
    * deps.run: replaces the network fetch. Default = real codeload download.
@@ -104,6 +106,7 @@ export async function runExperiment(
     return await runExperimentInner(specRaw, repoRoot, quiet, deps);
   } catch (e) {
     if (e instanceof InfraAbort || (e instanceof Error && e.name === 'InfraAbort')) throw e;
+    if (e instanceof AmabieError && e.reasonCode === 'containment-sweep-failed') throw new InfraAbort(e.message);
     if (e instanceof AmabieError) throw new InfraAbort(`spec refused by Amabie policy: ${e.message}`);
     throw e;
   }
@@ -150,8 +153,15 @@ async function runExperimentInner(
   // config on this machine would.
   const sealedGrants = runnerIdentitiesFromSealedPlan(repoRoot);
   const runnerIdentities = { ...sealedGrants, ...(deps.runnerIdentities ?? {}) };
+  const execute = deps.run ?? runCommand;
+  const runContained: typeof runCommand = async (options) => {
+    const result = await execute(options);
+    if (result.sweepFailed) throw new InfraAbort('post-run containment sweep could not confirm zero surviving descendants');
+    return result;
+  };
   const rec = new Recorder({
     ws, nodeDir: NODE_DIR, npmCli: NPM_CLI, artifactsDir: ART, pipeline,
+    run: execute,
     allowAmabieDoubleOrigin: deps.allowAmabieDoubleOrigin === true,
     ...(Object.keys(runnerIdentities).length > 0 ? { runnerIdentities } : {}),
   });
@@ -238,8 +248,8 @@ async function runExperimentInner(
       throw new InfraAbort('toolchain override failed');
     }
   }
-  const treeB = await treeHash(ws, spec.dependency.package, ART, 'baseline');
-  const attB = await attestDependency(ws, spec.dependency.package);
+  const treeB = await treeHash(ws, spec.dependency.package, ART, 'baseline', runContained);
+  const attB = await attestDependency(ws, spec.dependency.package, runContained);
   attB.copies = treeB.copies;
   // F3: the BASELINE arm's resolved dependency version must be attested from
   // the machine, not copied from the spec.
@@ -269,14 +279,14 @@ async function runExperimentInner(
   if ((await rec.step('swap', execArgv(spec.commands.swap), spec.timeoutSecs?.install ?? 900)).run.exitCode !== 0) {
     throw new InfraAbort('swap failed');
   }
-  const attC = await attestDependency(ws, spec.dependency.package);
+  const attC = await attestDependency(ws, spec.dependency.package, runContained);
   if (attC.version !== spec.dependency.candidate) {
     throw new InfraAbort(`candidate attestation failed: resolved ${attC.version}, spec claims ${spec.dependency.candidate}`);
   }
   // Secondary round-3 fix: compute the candidate tree BEFORE logging the
   // attestation so the printed copy count is the real one (it used to print
   // the placeholder `1` emitted by attestDependency).
-  const treeC = await treeHash(ws, spec.dependency.package, ART, 'candidate');
+  const treeC = await treeHash(ws, spec.dependency.package, ART, 'candidate', runContained);
   attC.copies = treeC.copies;
   log(`  attested candidate: ${spec.dependency.package}@${attC.version} (${attC.copies} copy/copies)`);
   const drift = diffTrees(treeB.deps, treeC.deps, spec.dependency.package);
@@ -308,7 +318,7 @@ async function runExperimentInner(
     confined: drift.confined, other: drift.other, dependency: spec.dependency.package,
     baselineStatus: treeB.status, candidateStatus: treeC.status,
   });
-  const envFp = withNpmVersion(staticFingerprint(spec.environmentNotes?.toolchainOverrides ?? {}), await npmVersion());
+  const envFp = withNpmVersion(staticFingerprint(spec.environmentNotes?.toolchainOverrides ?? {}), await npmVersion(runContained));
   const bundle: EvidenceBundle = {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     runId: path.basename(WS),
@@ -398,8 +408,8 @@ export class InfraAbort extends Error {
   }
 }
 
-async function npmVersion(): Promise<string> {
-  const r = await runCommand({
+async function npmVersion(run: typeof runCommand): Promise<string> {
+  const r = await run({
     ws: { root: os.tmpdir(), fixture: process.cwd() },
     nodeDir: NODE_DIR,
     argv: [NODE, NPM_CLI, '--version'],
@@ -415,7 +425,7 @@ async function npmVersion(): Promise<string> {
  * registry. Also counts copies present in the resolved tree.
  */
 async function attestDependency(
-  ws: WorkspaceLayout, dep: string,
+  ws: WorkspaceLayout, dep: string, run: typeof runCommand,
 ): Promise<{ version: string; path: string; copies: number }> {
   // Resolve the package's MAIN entry (always exported), then walk up to its
   // package.json. (require.resolve('<dep>/package.json') fails for packages
@@ -430,7 +440,7 @@ async function attestDependency(
     "const pj=JSON.parse(fs.readFileSync(path.join(d,'package.json'),'utf8'));",
     "console.log(JSON.stringify({path:d,version:pj.version}));",
   ].join('').replace(/DEP/g, JSON.stringify(dep));
-  const r = await runCommand({
+  const r = await run({
     ws, nodeDir: NODE_DIR, argv: [NODE, '-e', script], timeoutSecs: 60,
   });
   if (r.exitCode !== 0) throw new InfraAbort(`dependency attestation crashed for ${dep}: ${r.stderr.slice(-400)}`);
@@ -625,13 +635,13 @@ export function flattenNpmLsJson(rawStdout: string, rawStderr = ''): NpmLsFlatte
 }
 
 async function treeHash(
-  ws: WorkspaceLayout, dependency: string, artifactsDir: string, arm: 'baseline' | 'candidate',
+  ws: WorkspaceLayout, dependency: string, artifactsDir: string, arm: 'baseline' | 'candidate', run: typeof runCommand,
 ): Promise<TreeObservation> {
   // post-glm F6e: same re-establish contract as the executor install path —
   // at the moment npm reads it, the userconfig must be Amabie's empty file,
   // not whatever workspace-writable code left there since creation.
   fs.writeFileSync(path.join(ws.root, 'empty.npmrc'), '');
-  const r = await runCommand({
+  const r = await run({
     ws, nodeDir: NODE_DIR,
     argv: [NODE, NPM_CLI, 'ls', '--json', '--all', '--depth', '9999',
       '--userconfig', path.join(ws.root, 'empty.npmrc')],

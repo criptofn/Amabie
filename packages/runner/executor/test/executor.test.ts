@@ -835,6 +835,18 @@ describe('round-3 secondary — crash & sweep signals reach the classification',
     } finally { cleanup(); }
   });
 
+  it('non-round step refuses a zero exit when containment is unconfirmed and retains its logs', async () => {
+    const { rec, art, cleanup } = freshRecorder(async () => ({
+      exitCode: 0, killedByTimeout: false, stdout: 'prepare completed\n', stderr: 'retained diagnostics\n',
+      durationMs: 5, argv: [NODE], envKeys: [], sweepFailed: true,
+    }));
+    try {
+      await assert.rejects(rec.step('prepare', [NODE], 30), /containment sweep/);
+      assert.equal(fs.readFileSync(path.join(art, 'prepare.stdout.log'), 'utf8'), 'prepare completed\n');
+      assert.equal(fs.readFileSync(path.join(art, 'prepare.stderr.log'), 'utf8'), 'retained diagnostics\n');
+    } finally { cleanup(); }
+  });
+
   it('round() records sweepFailed (when the run outcome flags it) -> classify says INFRA rule 1', async () => {
     // Inject a run whose post-exit sweep could not confirm zero survivors.
     const fake = async () => ({
