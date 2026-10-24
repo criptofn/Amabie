@@ -5226,7 +5226,8 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
   if (cfg === 'corrupt' || !cfg) { o.verdict('NEEDS ATTENTION', 'Amabie is not set up here, so there is no sealed plan to bind to.', 'run: amabie setup --yes'); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
   if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not write a binding into a config it does not trust (${distrust}).`, 'run: amabie setup --yes'); return 2; }
-  if (!cfg.plan.some((s) => s.script === script)) {
+  const boundStep = cfg.plan.find((s) => s.script === script);
+  if (!boundStep) {
     // Fail closed with the real recovery: the plan is what proves, so a script it does not run cannot
     // be a proof. (This is the same rule setup enforces when it validates amabie.proofs.)
     o.verdict('NEEDS ATTENTION', `the sealed plan does not run a script named "${safePath(script)}" — a binding to it would prove nothing.`, `add that check to your package.json scripts and run: amabie setup, then bind again. Plan scripts: ${cfg.plan.map((s) => s.script).map(safePath).join(', ')}`);
@@ -5247,12 +5248,12 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
   const pkgPath = path.join(root, 'package.json');
   const manifestPath = path.join(root, 'amabie.project.json');
   /**
-   * WHICH DECLARATION SURFACE? A Node project carries `package.json` `amabie.proofs`; every other
-   * project (Python, Rust, Go, anything the universal contract covers) has no package.json at all, so
-   * the binding goes into `amabie.project.json` `proofs`. MEASURED: before this, a non-Node project
-   * could not bind a requirement anywhere, so its only reachable end state was human acceptance.
+   * A root Node-script binding belongs beside its package.json script even if
+   * a universal manifest also exists. Other checks keep the manifest surface
+   * when present; a native script must not become an invalid manifest binding.
    */
-  const targetPath = fs.existsSync(manifestPath) ? manifestPath : pkgPath;
+  const rootNodeScript = !boundStep.scope && boundStep.argv === undefined && adapterForStep(cfg, boundStep).id === 'node';
+  const targetPath = !rootNodeScript && fs.existsSync(manifestPath) ? manifestPath : pkgPath;
   const isNode = targetPath === pkgPath;
   const surface = isNode ? 'package.json' : 'amabie.project.json';
   let doc: Record<string, unknown>;

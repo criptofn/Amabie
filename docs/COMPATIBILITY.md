@@ -62,7 +62,9 @@ from both the native `package.json` `amabie.proofs` block and the manifest's
 requirement are refused. A malformed manifest is refused even when native checks
 are available, including by `setup --check`. Writing a binding with `amabie bind`
 is still only a declaration: rerun setup to seal it, and execute the checks to
-obtain evidence. Bindings neither create checks nor prove requirements by themselves.
+obtain evidence. A root Node-script binding is written beside its script in
+`package.json`; a universal check uses the manifest when present. Bindings
+neither create checks nor prove requirements by themselves.
 
 **Two ceilings stated rather than implied**, in the same spirit as everything else
 here:

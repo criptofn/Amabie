@@ -1347,6 +1347,18 @@ describe('mixed Node and universal proof declarations', () => {
     assert.match(setup.stdout + setup.stderr, /conflicting proof bindings/i);
     assert.equal(fs.existsSync(cfgFile(root)), false);
   });
+  it('bind selects the root Node script declaration beside a universal manifest', () => {
+    const root = mixed('mixed-native-bind-reseal');
+    const initial = amabie(['setup', '--yes', root]);
+    assert.equal(initial.status, 0, initial.stdout + initial.stderr);
+    const bound = amabie(['bind', 'test', '--requirement', requirement], root);
+    assert.equal(bound.status, 0, bound.stdout + bound.stderr);
+    const reseal = amabie(['setup', '--yes', root]);
+    assert.equal(reseal.status, 0, reseal.stdout + reseal.stderr);
+    assert.equal(readCfg(root).planAuthority?.proofBindings?.[digest], 'test');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).amabie.proofs[digest], 'test');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'amabie.project.json'), 'utf8')).proofs, {});
+  });
   it('matching duplicated declarations remain valid and yield one sealed binding', () => {
     const root = mixed('mixed-matching-proofs', { [digest]: 'contract-check' }, { [digest]: 'contract-check' });
     const setup = amabie(['setup', '--yes', root]);
