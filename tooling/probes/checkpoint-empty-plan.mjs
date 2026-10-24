@@ -15,12 +15,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const CANARY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const CLI = path.join(CANARY, 'apps', 'cli', 'dist', 'src', 'main.js');
+const AMABIE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const CLI = path.join(AMABIE, 'apps', 'cli', 'dist', 'src', 'main.js');
 if (!fs.existsSync(CLI)) { console.error(`build first: ${CLI} missing`); process.exit(1); }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-emptyplan-probe-'));
-const FIX = path.join(CANARY, 'tooling', 'test-support', 'fixtures', 'f-pass.js');
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-emptyplan-probe-'));
+const FIX = path.join(AMABIE, 'tooling', 'test-support', 'fixtures', 'f-pass.js');
 let failures = 0;
 const check = (label, cond, extra = '') => {
   if (cond) console.log(`PASS: ${label}`);
@@ -37,7 +37,7 @@ try {
   const setup = spawnSync(process.execPath, [CLI, 'setup', '--yes', root], { encoding: 'utf8', timeout: 120_000 });
   check('setup READY on a green sample repo', setup.status === 0 && /READY/.test(setup.stdout), setup.stdout);
 
-  const cfgFile = path.join(root, '.canary', 'canary.local.json');
+  const cfgFile = path.join(root, '.amabie', 'amabie.local.json');
   const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
   cfg.plan = []; // simulate the hand-edited degenerate config
   fs.writeFileSync(cfgFile, JSON.stringify(cfg));

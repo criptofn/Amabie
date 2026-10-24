@@ -1,6 +1,6 @@
 // v1.3 §16 — HOW MUCH INTERNAL VOCABULARY DOES THE ORDINARY PATH SPEAK?
 //
-// The release's own product test is: hand Canary to a developer who has never heard of proof bindings,
+// The release's own product test is: hand Amabie to a developer who has never heard of proof bindings,
 // sealed bases or candidate promotion, and see whether they get verified work without learning any of
 // it. The honest proxy for "without learning the machinery" is the words the DEFAULT output uses,
 // because `--verbose` is opt-in and nobody reads it unless they already suspect something.
@@ -9,7 +9,7 @@
 // and the completion gate's own message — and pins it as a BUDGET: default output may not exceed the
 // recorded counts. It also checks the other direction, which is what makes a budget safe to enforce:
 // the detail must still EXIST under `--verbose`, so lowering the default count by deleting information
-// fails here rather than silently making Canary less inspectable.
+// fails here rather than silently making Amabie less inspectable.
 //
 // Verdict words (READY, NOT PROVEN, NEEDS ATTENTION, BLOCKED, UNSUPPORTED, CONNECTED) are NOT jargon:
 // they are the product's answer, and they are identical in the machine channel. The list below is
@@ -17,19 +17,20 @@
 //
 // FIXTURE LAYOUT MATTERS, and this probe learned it the hard way: the trust store lives OUTSIDE the
 // repository (as the default one does, under the OS home). An earlier version pointed
-// CANARY_TRUST_STORE at a directory inside the repo, which made the repo genuinely dirty — so `setup`
+// AMABIE_TRUST_STORE at a directory inside the repo, which made the repo genuinely dirty — so `setup`
 // correctly stamped `dirty: true` and the gate correctly answered "the repo was already dirty at
-// setup". That is Canary behaving properly on a misconfigured layout, and it looked exactly like a
+// setup". That is Amabie behaving properly on a misconfigured layout, and it looked exactly like a
 // product defect until the probe printed its own decision inputs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-vocabulary-'));
+const git = hostGit();
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-vocabulary-'));
 const project = path.join(temp, 'project');
 let failures = 0;
 const check = (name, fn) => {
@@ -50,14 +51,14 @@ const count = (text) => {
 };
 const total = (hits) => Object.values(hits).reduce((a, b) => a + b, 0);
 
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd, input) => spawnSync(exe, args, {
   cwd, env, encoding: 'utf8', windowsHide: true, timeout: 300000,
   ...(input === undefined ? {} : { input }),
 });
-const canary = (args) => run(process.execPath, [cli, ...args], project);
+const amabie = (args) => run(process.execPath, [cli, ...args], project);
 const out = (r) => `${r.stdout ?? ''}${r.stderr ?? ''}`;
-const baseline = () => JSON.parse(fs.readFileSync(path.join(project, '.canary', 'canary.local.json'), 'utf8')).baseline;
+const baseline = () => JSON.parse(fs.readFileSync(path.join(project, '.amabie', 'amabie.local.json'), 'utf8')).baseline;
 
 try {
   fs.mkdirSync(project, { recursive: true });
@@ -77,27 +78,27 @@ try {
     + "const greeting = require('./greeting.cjs');\n"
     + "assert.equal(greeting('Ada'), 'Hello, Ada!');\n");
   run(git, ['init', '-b', 'main'], project);
-  run(git, ['config', 'user.email', 'vocab@canary.local'], project);
+  run(git, ['config', 'user.email', 'vocab@amabie.local'], project);
   run(git, ['config', 'user.name', 'Vocabulary Probe'], project);
   run(git, ['add', '-A'], project);
   const commit = run(git, ['commit', '-m', 'base'], project);
   if (commit.status !== 0) throw new Error(`fixture commit failed: ${commit.stdout}${commit.stderr}`);
 
-  const setup = canary(['setup', '--yes']);
+  const setup = amabie(['setup', '--yes']);
   // PRECONDITION, asserted rather than assumed: the ordinary path starts from a repository that was
-  // CLEAN when Canary was wired. A dirty one makes the gate answer with the unattributable-comparison
+  // CLEAN when Amabie was wired. A dirty one makes the gate answer with the unattributable-comparison
   // premise instead of the discrimination question — a different message measuring a different thing.
   if (baseline()?.dirty !== false) {
     throw new Error(`fixture precondition failed: setup stamped baseline.dirty=${String(baseline()?.dirty)}`);
   }
 
-  const status = canary(['status']);
-  const doctor = canary(['doctor']);
-  const agents = canary(['agents']);
-  const statusJson = JSON.parse(canary(['status', '--json']).stdout);
-  const doctorJson = JSON.parse(canary(['doctor', '--json']).stdout);
-  const setupVerbose = canary(['setup', '--yes', '--verbose']);
-  const doctorVerbose = canary(['doctor', '--verbose']);
+  const status = amabie(['status']);
+  const doctor = amabie(['doctor']);
+  const agents = amabie(['agents']);
+  const statusJson = JSON.parse(amabie(['status', '--json']).stdout);
+  const doctorJson = JSON.parse(amabie(['doctor', '--json']).stdout);
+  const setupVerbose = amabie(['setup', '--yes', '--verbose']);
+  const doctorVerbose = amabie(['doctor', '--verbose']);
 
   // The completion gate is the message the AGENT reads, and the one place a user meets a refusal
   // without having asked for one. Provoke the interesting case — a behaviour change no declared check
@@ -160,7 +161,7 @@ try {
    * The brief is explicit that renaming internals for cosmetics is not the work, so the finding is
    * recorded instead of churned.
    */
-  const BUDGET = Number(process.env.CANARY_VOCAB_BUDGET ?? 13);
+  const BUDGET = Number(process.env.AMABIE_VOCAB_BUDGET ?? 13);
   check(`the ordinary path speaks at most ${BUDGET} internal term(s)`, () => {
     if (total(defaultHits) > BUDGET) {
       throw new Error(`default output uses ${total(defaultHits)}: ${JSON.stringify(defaultHits)}`);

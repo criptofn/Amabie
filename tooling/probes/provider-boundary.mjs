@@ -3,11 +3,11 @@
  * v1.1 item E — the HARDENED boundary, measured instead of asserted.
  *
  * `HARDENED` is a claim that a *different OS identity* stands between candidate
- * code and Canary's authority. That claim is either measurable on the host or it
+ * code and Amabie's authority. That claim is either measurable on the host or it
  * is not made. This probe does two jobs:
  *
  *   1. TRIPWIRE. It reads the product's own capability surface (the compiled
- *      `platform-boundary.js`) and FAILS if Canary would report `HARDENED`, or
+ *      `platform-boundary.js`) and FAILS if Amabie would report `HARDENED`, or
  *      would report fewer than all six boundary controls unavailable, while no
  *      installed provider has been proven. Overclaiming protection must break a
  *      build, not merely be discouraged in prose.
@@ -88,17 +88,17 @@ const facts = {};
   // the store and the worker identity discoverable, so their absence is the
   // honest reason each control is unavailable.
   const programData = process.env.ProgramData ?? process.env.ALLUSERSPROFILE ?? 'C:\\ProgramData';
-  const providerDir = path.join(programData, 'Canary');
+  const providerDir = path.join(programData, 'Amabie');
   facts.providerStoreDir = providerDir;
   facts.providerInstalled = fs.existsSync(providerDir);
-  facts.workerIdentityDeclared = typeof process.env.CANARY_WORKER_USER === 'string' && process.env.CANARY_WORKER_USER.trim() !== '';
-  facts.brokerEndpointDeclared = typeof process.env.CANARY_BROKER_ENDPOINT === 'string' && process.env.CANARY_BROKER_ENDPOINT.trim() !== '';
+  facts.workerIdentityDeclared = typeof process.env.AMABIE_WORKER_USER === 'string' && process.env.AMABIE_WORKER_USER.trim() !== '';
+  facts.brokerEndpointDeclared = typeof process.env.AMABIE_BROKER_ENDPOINT === 'string' && process.env.AMABIE_BROKER_ENDPOINT.trim() !== '';
   // A service manager is the only sanctioned way to run the broker under a
   // different identity on Windows.
   if (process.platform === 'win32') {
-    const q = spawnSync('sc.exe', ['query', 'CanaryBroker'], { encoding: 'utf8', timeout: 20_000, windowsHide: true });
+    const q = spawnSync('sc.exe', ['query', 'AmabieBroker'], { encoding: 'utf8', timeout: 20_000, windowsHide: true });
     facts.brokerServiceInstalled = q.status === 0;
-    facts.brokerServiceProbe = `sc.exe query CanaryBroker -> exit ${q.status}`;
+    facts.brokerServiceProbe = `sc.exe query AmabieBroker -> exit ${q.status}`;
   }
 }
 console.log(JSON.stringify(facts, null, 2));
@@ -110,7 +110,7 @@ const REASONS = [
     'install the provider store under a protected path owned by the broker identity'],
   ['workerFilesystem', () => !facts.workerIdentityDeclared,
     'no dedicated worker identity is declared, so candidate code runs as the same user that can write the authority',
-    'create the worker identity, then declare it (CANARY_WORKER_USER) before any verification runs'],
+    'create the worker identity, then declare it (AMABIE_WORKER_USER) before any verification runs'],
   ['verificationSandbox', () => !facts.brokerServiceInstalled,
     'no supervisor service is installed, so nothing launches candidate code under a restricted identity',
     'install the supervisor as a service running as the broker identity'],
@@ -142,7 +142,7 @@ check('every control is unavailable and every reason is substantive', () => {
 });
 
 // ─────────────────── 3b. the REAL provider surface (v1.1 Phase 3) ───────────────────
-console.log('\n=== canary provider status (the measured boundary) ===');
+console.log('\n=== amabie provider status (the measured boundary) ===');
 {
   // v1.2 Mission 3: the tripwire is no longer "HARDENED must never appear" — the
   // confined-caller measurement may legitimately produce it. What must never
@@ -152,7 +152,7 @@ console.log('\n=== canary provider status (the measured boundary) ===');
   if (!fs.existsSync(boundaryModule)) { failures++; console.log(`FAIL missing built boundary module: ${boundaryModule}`); }
   else {
     const { measureBoundary } = await import(`file://${boundaryModule.replace(/\\/g, '/')}`);
-    const emptyStore = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provider-probe-measure-'));
+    const emptyStore = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provider-probe-measure-'));
     const measured = measureBoundary({ root: emptyStore }, {});
     check('a store with no measurement reports no control available and not HARDENED', () => {
       assert(measured.hardenedAvailable === false, 'hardenedAvailable was true with no measurement');
@@ -170,8 +170,8 @@ console.log('\n=== canary provider status (the measured boundary) ===');
   const cli = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
   if (!fs.existsSync(cli)) { failures++; console.log(`FAIL missing built CLI: ${cli}`); }
   else {
-    const store = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provider-probe-'));
-    const env = { ...process.env, CANARY_TRUST_STORE: store };
+    const store = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provider-probe-'));
+    const env = { ...process.env, AMABIE_TRUST_STORE: store };
     const status = spawnSync(process.execPath, [cli, 'provider', 'status', '--json'], { encoding: 'utf8', timeout: 120_000, env, windowsHide: true });
     const line = (status.stdout ?? '').split(/\r?\n/).find((l) => l.trim().startsWith('{'));
     let env0 = null;
@@ -179,7 +179,7 @@ console.log('\n=== canary provider status (the measured boundary) ===');
     console.log(`provider status -> exit ${status.status}, envelope ${env0 === null ? 'MISSING' : 'present'}`);
     check('the provider reports NOT CONNECTED with every control missing, and never READY', () => {
       assert(env0 !== null, `no JSON envelope on stdout:\n${status.stdout}${status.stderr}`);
-      assert(env0.schema === 'canary-provider-status/1', `wrong schema: ${env0.schema}`);
+      assert(env0.schema === 'amabie-provider-status/1', `wrong schema: ${env0.schema}`);
       assert(env0.status === 'NOT CONNECTED', `an uninstalled provider must not read READY: ${env0.status}`);
       assert(env0.exitCode === 2, `exitCode must be 2 without a boundary, got ${env0.exitCode}`);
       assert(Array.isArray(env0.problems) && env0.problems.length === CONTROLS.length,
@@ -192,7 +192,12 @@ console.log('\n=== canary provider status (the measured boundary) ===');
     check('install-plan PRINTS the privileged steps and executes nothing', () => {
       assert(plan.status === 0, `install-plan failed: ${planOut.slice(-400)}`);
       assert(/OWNER AUTHORIZATION REQUIRED/.test(planOut), 'the plan must say what it is waiting for');
-      for (const needle of ['net user', 'sc.exe create', 'icacls']) {
+      // Each host names its own commands: the Windows plan is `net user` / `sc.exe` / `icacls`, the Linux plan is the
+      // `useradd` / `setfacl` / `systemctl` argv that `linuxInstallPlan` builds. Both must be printed in full.
+      const needles = process.platform === 'win32'
+        ? ['net user', 'sc.exe create', 'icacls']
+        : ['useradd', 'setfacl', 'systemctl enable --now'];
+      for (const needle of needles) {
         assert(planOut.includes(needle), `the plan must name the real command (${needle})`);
       }
       assert(/rollback/i.test(planOut), 'a plan without a rollback is not a plan');
@@ -201,8 +206,8 @@ console.log('\n=== canary provider status (the measured boundary) ===');
 
     // The provider must not have installed itself as a side effect.
     if (process.platform === 'win32') {
-      const q = spawnSync('sc.exe', ['query', 'CanaryBroker'], { encoding: 'utf8', timeout: 30_000, windowsHide: true });
-      check('no CanaryBroker service was installed as a side effect', () => {
+      const q = spawnSync('sc.exe', ['query', 'AmabieBroker'], { encoding: 'utf8', timeout: 30_000, windowsHide: true });
+      check('no AmabieBroker service was installed as a side effect', () => {
         assert(q.status !== 0, 'a service exists after running only the planning commands — that would be an unrequested privileged change');
       });
     }
@@ -225,16 +230,16 @@ console.log('confined-caller deployment (node tooling/probes/v12-confined-caller
 console.log('which uses no elevation. They remain here for a host that wants a separate');
 console.log('broker ACCOUNT on top of it, and elevation stays a human decision. On Windows x64:');
 console.log('  1. create a restricted worker identity (as Administrator, once):');
-console.log('       net user canary-worker <STRONG-PASSWORD> /add /passwordreq:yes');
-console.log('       net localgroup "Users" canary-worker /add');
+console.log('       net user amabie-worker <STRONG-PASSWORD> /add /passwordreq:yes');
+console.log('       net localgroup "Users" amabie-worker /add');
 console.log('  2. install the broker/supervisor to run as ANOTHER identity (NOT the worker):');
-console.log('       sc.exe create CanaryBroker binPath= "<install>\\canary-broker.exe" obj= "<BROKER-ACCOUNT>" start= auto');
-console.log('       sc.exe start CanaryBroker');
+console.log('       sc.exe create AmabieBroker binPath= "<install>\\amabie-broker.exe" obj= "<BROKER-ACCOUNT>" start= auto');
+console.log('       sc.exe start AmabieBroker');
 console.log('  3. give the provider store a DACL that excludes the worker identity:');
 console.log(`       icacls "${facts.providerStoreDir}" /inheritance:r /grant:r "<BROKER-ACCOUNT>:(OI)(CI)F" /grant:r "SYSTEM:(OI)(CI)F"`);
 console.log('  4. declare the pairing, then re-run THIS probe and the broker contract suite:');
-console.log('       set CANARY_WORKER_USER=canary-worker');
-console.log('       set CANARY_BROKER_ENDPOINT=\\\\.\\pipe\\canary-broker');
+console.log('       set AMABIE_WORKER_USER=amabie-worker');
+console.log('       set AMABIE_BROKER_ENDPOINT=\\\\.\\pipe\\amabie-broker');
 console.log('       node tooling/probes/provider-boundary.mjs && npm test');
 console.log('Until step 4 passes on a host with a real second identity, the IDENTITY path contributes');
 console.log('no control; that is not the same as HARDENED being unreachable, which it is not:');

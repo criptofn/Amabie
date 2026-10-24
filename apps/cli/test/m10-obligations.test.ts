@@ -39,14 +39,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 import { candidateDiffSignals, obligationsFor, declaredTask, type TaskKind } from '../src/onboarding.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m10-'));
-const canary = (args: string[], cwd: string) =>
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m10-'));
+const amabie = (args: string[], cwd: string) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 const fx = (f: string) => `node "${path.join(REPO, 'tooling', 'test-support', 'fixtures', f)}"`;
 
@@ -56,25 +56,25 @@ function setUpProject(name: string): string {
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: fx('f-pass.js') } }, null, 2));
-  const r = canary(['setup', '--yes', root], root);
+  const r = amabie(['setup', '--yes', root], root);
   assert.equal(r.status, 0, `setup failed: ${r.stdout}${r.stderr}`);
   return root;
 }
-const cfgOf = (root: string) => JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
-const recPath = (root: string, name: string) => path.join(root, '.canary', 'candidates', `${name}.json`);
-const taskPath = (root: string) => path.join(root, '.canary', 'task', 'current.json');
+const cfgOf = (root: string) => JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
+const recPath = (root: string, name: string) => path.join(root, '.amabie', 'candidates', `${name}.json`);
+const taskPath = (root: string) => path.join(root, '.amabie', 'task', 'current.json');
 const writeTask = (root: string, kinds: string[], requirementCount: number) => {
   fs.mkdirSync(path.dirname(taskPath(root)), { recursive: true });
-  fs.writeFileSync(taskPath(root), JSON.stringify({ schema: 'canary-task/2', ...declaredTask('', kinds as TaskKind[], Array.from({length: requirementCount}, (_,i) => `r${i}`)) }));
+  fs.writeFileSync(taskPath(root), JSON.stringify({ schema: 'amabie-task/2', ...declaredTask('', kinds as TaskKind[], Array.from({length: requirementCount}, (_,i) => `r${i}`)) }));
 };
-const QUARANTINE = path.join('.canary', 'authority-quarantine.json');
+const QUARANTINE = path.join('.amabie', 'authority-quarantine.json');
 
 /** A valid-shape record whose candidate root cannot resolve under fake git —
  *  exactly m9's LOST posture — with a hand-frozen intent. */
 function registerWithIntent(root: string, intent: Record<string, unknown>, name = 'p'): void {
-  fs.mkdirSync(path.join(root, '.canary', 'candidates'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.amabie', 'candidates'), { recursive: true });
   fs.writeFileSync(recPath(root, name), JSON.stringify({
-    schema: 'canary-candidate/1', name, root: path.join(root, '.canary', 'candidates', 'p'),
+    schema: 'amabie-candidate/1', name, root: path.join(root, '.amabie', 'candidates', 'p'),
     baseRoot: root, baseRef: 'HEAD', baseHead: 'b'.repeat(40), baseTree: null,
     createdAt: new Date().toISOString(), intent,
   }));
@@ -90,7 +90,7 @@ function matchedIntent(root: string): { at: string; plan: { kind: string; script
   };
 };
 const candBundles = (root: string) => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((x) => x.endsWith('-candidate')).sort()
     .map((x) => JSON.parse(fs.readFileSync(path.join(d, x, 'verification.json'), 'utf8')) as Record<string, unknown>);
@@ -99,19 +99,19 @@ const weakenedRe = /the verification intent was weakened after isolation/;
 const identityRe = /not a resolvable git tree/;
 
 function expectIntentBlock(root: string, eventRe: RegExp) {
-  const r = canary(['isolate', '--verify', 'p', root], root);
+  const r = amabie(['isolate', '--verify', 'p', root], root);
   assert.equal(r.status, 2, r.stdout);
   assert.match(r.stdout, weakenedRe, 'the guard names the weakening');
   assert.match(r.stdout, eventRe, 'the guard names the specific event');
   assert.match(r.stdout, /legitimate revision is a deliberate local act/, 'recovery is a deliberate local act, not a quiet re-run');
   assert.ok(!identityRe.test(r.stdout), 'the guard fires BEFORE identity — nothing ran, nothing was probed');
-  assert.ok(!/CANARY BLOCKED COMPLETION|QUARANTIN/.test(r.stdout), 'an intent block is not a §9 mandate');
+  assert.ok(!/AMABIE BLOCKED COMPLETION|QUARANTIN/.test(r.stdout), 'an intent block is not a §9 mandate');
   assert.ok(!fs.existsSync(path.join(root, QUARANTINE)), 'grudgeless: no quarantine stamp — restore is the recovery');
   const b = candBundles(root).at(-1)!;
   assert.equal(b.status, 'blocked', 'the refusal is evidenced as blocked');
   assert.deepEqual(b.steps, [], 'an intent block runs zero steps');
   assert.equal(b.source, 'candidate');
-  assert.equal(b.trustClass, 'CANARY_OBSERVED', 'M3 class intact');
+  assert.equal(b.trustClass, 'AMABIE_OBSERVED', 'M3 class intact');
   assert.equal(b.authorityEvent, undefined, 'an intent block carries no authorityEvent');
   const ev = b.intentEvent as { snapshotAt: string; events: string[] };
   assert(ev && typeof ev.snapshotAt === 'string', 'intentEvent carries the snapshot time');
@@ -123,7 +123,7 @@ try {
   test('intent matching the live authority stays SILENT (the guard must not shout at innocence)', () => {
     const root = setUpProject('match');
     registerWithIntent(root, matchedIntent(root));
-    const r = canary(['isolate', '--verify', 'p', root], root);
+    const r = amabie(['isolate', '--verify', 'p', root], root);
     assert.equal(r.status, 2, r.stdout);
     assert.match(r.stdout, identityRe, 'verify sails to the ordinary LOST block');
     assert.ok(!weakenedRe.test(r.stdout), 'a held intent is never a complaint');
@@ -136,13 +136,13 @@ try {
   // is proven at the ladder by S5 (probe) and F4-I (below).
   test('intent-less record under fake git: identity block precedes the fail-safe ladder (M10.2 — NOT a legacy PASS path)', () => {
     const root = setUpProject('legacy');
-    fs.mkdirSync(path.join(root, '.canary', 'candidates'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.amabie', 'candidates'), { recursive: true });
     fs.writeFileSync(recPath(root, 'p'), JSON.stringify({
-      schema: 'canary-candidate/1', name: 'p', root: path.join(root, '.canary', 'candidates', 'p'),
+      schema: 'amabie-candidate/1', name: 'p', root: path.join(root, '.amabie', 'candidates', 'p'),
       baseRoot: root, baseRef: 'HEAD', baseHead: 'b'.repeat(40), baseTree: null,
       createdAt: new Date().toISOString(),
     }));
-    const r = canary(['isolate', '--verify', 'p', root], root);
+    const r = amabie(['isolate', '--verify', 'p', root], root);
     assert.equal(r.status, 2, r.stdout);
     assert.match(r.stdout, identityRe, 'an intent-less record under fake git still stops at identity');
     assert.ok(!weakenedRe.test(r.stdout), 'no intent, no guard, no noise');
@@ -169,7 +169,7 @@ try {
   test('seal vanished (authority re-created without one) → intent block', () => {
     const root = setUpProject('sealgone');
     registerWithIntent(root, matchedIntent(root));
-    const cfgP = path.join(root, '.canary', 'canary.local.json');
+    const cfgP = path.join(root, '.amabie', 'amabie.local.json');
     const cfg = JSON.parse(fs.readFileSync(cfgP, 'utf8'));
     delete cfg.planAuthority;
     fs.writeFileSync(cfgP, JSON.stringify(cfg));
@@ -197,12 +197,12 @@ try {
   test('INCREASES are allowed: richer plan + richer task sail past the guard', () => {
     const root = setUpProject('increase');
     registerWithIntent(root, matchedIntent(root)); // intent = the old, weaker authority
-    const cfgP = path.join(root, '.canary', 'canary.local.json');
+    const cfgP = path.join(root, '.amabie', 'amabie.local.json');
     const cfg = JSON.parse(fs.readFileSync(cfgP, 'utf8'));
     cfg.plan.push({ kind: 'e2e', script: 'e2e' }); // the human grew the plan
     fs.writeFileSync(cfgP, JSON.stringify(cfg));
     writeTask(root, ['bugfix'], 2); // the task grew too
-    const r = canary(['isolate', '--verify', 'p', root], root);
+    const r = amabie(['isolate', '--verify', 'p', root], root);
     assert.equal(r.status, 2, r.stdout);
     assert.match(r.stdout, identityRe, 'a growing authority is not a weakening — verify sails on');
     assert.ok(!weakenedRe.test(r.stdout));
@@ -215,13 +215,13 @@ try {
     const intent = matchedIntent(root);
     intent.plan.push({ kind: 'e2e', script: 'e2e' });
     registerWithIntent(root, intent);
-    const cfgP = path.join(root, '.canary', 'canary.local.json');
+    const cfgP = path.join(root, '.amabie', 'amabie.local.json');
     const cfg = JSON.parse(fs.readFileSync(cfgP, 'utf8'));
     fs.writeFileSync(cfgP, JSON.stringify({ ...cfg, plan: cfg.plan.filter((s: { script: string }) => s.script !== 'test') }));
     // plan now lacks what the intent froze (and nothing was ever added back)
     expectIntentBlock(root, /is no longer in the plan/);
     fs.writeFileSync(cfgP, JSON.stringify({ ...cfg, plan: [...cfg.plan, { kind: 'e2e', script: 'e2e' }] }));
-    const r = canary(['isolate', '--verify', 'p', root], root);
+    const r = amabie(['isolate', '--verify', 'p', root], root);
     assert.match(r.stdout, identityRe, 'the human restored the promised authority — verify judges again');
     assert.ok(!weakenedRe.test(r.stdout));
     assert.ok(!fs.existsSync(path.join(root, QUARANTINE)), 'and the block left no residue behind');
@@ -229,7 +229,7 @@ try {
 
   test('malformed intent fields make the RECORD invalid (a guard cannot read a snapshot it will not parse)', () => {
     const root = setUpProject('malformed');
-    const cfgP = path.join(root, '.canary', 'canary.local.json');
+    const cfgP = path.join(root, '.amabie', 'amabie.local.json');
     void cfgP;
     for (const [name, bad] of [
       ['plan-string', { at: new Date().toISOString(), plan: 'not-an-array', seal: null, task: null }],
@@ -237,7 +237,7 @@ try {
       ['task-float', { ...matchedIntent(root), task: { kinds: [], requirementCount: 1.5 } }],
     ] as const) {
       registerWithIntent(root, bad as unknown as Record<string, unknown>, 'p');
-      const r = canary(['isolate', '--verify', 'p', root], root);
+      const r = amabie(['isolate', '--verify', 'p', root], root);
       assert.equal(r.status, 2, `${name}: ${r.stdout}`);
       assert.match(r.stdout, /malformed/, `${name}: refused as a malformed record`);
       assert.ok(!weakenedRe.test(r.stdout), `${name}: an unparsable snapshot is never judged as a weakening`);
@@ -251,19 +251,19 @@ try {
     const intent = matchedIntent(root);
     intent.plan.push({ kind: 'e2e', script: 'e2e' }); // would block, if it were ever reached
     registerWithIntent(root, intent);
-    fs.writeFileSync(path.join(root, QUARANTINE), JSON.stringify({ schema: 'canary-authority-quarantine/1', at: 'x', when: 'during execution', changes: [] }));
-    let r = canary(['isolate', '--verify', 'p', root], root);
-    assert.match(r.stdout, /CANARY QUARANTINED/, 'the marker refuses the base before any intent talk');
+    fs.writeFileSync(path.join(root, QUARANTINE), JSON.stringify({ schema: 'amabie-authority-quarantine/1', at: 'x', when: 'during execution', changes: [] }));
+    let r = amabie(['isolate', '--verify', 'p', root], root);
+    assert.match(r.stdout, /AMABIE QUARANTINED/, 'the marker refuses the base before any intent talk');
     assert.ok(!weakenedRe.test(r.stdout));
     assert.equal(candBundles(root).length, 0, 'a refusal-before-judging writes no bundle');
     fs.rmSync(path.join(root, QUARANTINE));
 
     fs.writeFileSync(recPath(root, 'p'), JSON.stringify({
-      schema: 'canary-candidate/1', name: 'p', root: path.join(TMP, 'elsewhere'),
+      schema: 'amabie-candidate/1', name: 'p', root: path.join(TMP, 'elsewhere'),
       baseRoot: path.join(TMP, 'elsewhere'), baseRef: 'HEAD', baseHead: 'f'.repeat(40),
       baseTree: null, createdAt: new Date().toISOString(), intent,
     }));
-    r = canary(['isolate', '--verify', 'p', root], root);
+    r = amabie(['isolate', '--verify', 'p', root], root);
     assert.match(r.stdout, /different base/, 'the impersonation guard answers first');
     assert.ok(!weakenedRe.test(r.stdout), 'a record aimed at another base is refused, not attributed');
   });
@@ -313,7 +313,7 @@ try {
     const { root, base } = realRepo('cand-rename', { 'tests/r.test.js': 'test();\n', 'src/keep.js': 'k\n' });
     const mv = spawnSync('git', ['-C', root, 'mv', 'tests/r.test.js', 'src/renamed.js'], { encoding: 'utf8', timeout: 60_000 });
     assert.equal(mv.status, 0, mv.stderr);
-    commit(root, 'candidate: relocate the test somewhere Canary cannot see it');
+    commit(root, 'candidate: relocate the test somewhere Amabie cannot see it');
     const sig = candidateDiffSignals(root, base);
     assert.deepEqual(sig.deletedTestsAttributable, ['tests/r.test.js'], 'rename-out deletes the test path');
     assert.ok(sig.changes.includes('src/renamed.js'), 'the new side counts as a change, not as coverage');
@@ -428,29 +428,29 @@ try {
       { name, private: true, scripts: { test: 'node check.cjs' } }, null, 2));
     gitAt(root, 'init', '-b', 'main'); gitAt(root, 'config', 'user.email', 't@t'); gitAt(root, 'config', 'user.name', 't');
     gitAt(root, 'add', '-A'); gitAt(root, 'commit', '-m', 'base');
-    const s = canary(['setup', '--yes', root], root);
+    const s = amabie(['setup', '--yes', root], root);
     assert.equal(s.status, 0, `setup failed: ${s.stdout}${s.stderr}`);
     return root;
   }
   function f4Candidate(root: string, mutate: (c: string) => void): string {
     const name = 'f1';
-    const i = canary(['isolate', name, root], root);
+    const i = amabie(['isolate', name, root], root);
     assert.equal(i.status, 0, `isolate failed: ${i.stdout}${i.stderr}`);
-    const c = path.join(root, '.canary', 'candidates', name);
+    const c = path.join(root, '.amabie', 'candidates', name);
     mutate(c);
     gitAt(c, 'add', '-A'); gitAt(c, 'commit', '-m', 'candidate work');
     return name;
   }
-  const f4Verify = (root: string) => canary(['isolate', '--verify', 'f1', root], root);
-  const f4Promote = (root: string) => canary(['isolate', '--promote', 'f1', root], root);
+  const f4Verify = (root: string) => amabie(['isolate', '--verify', 'f1', root], root);
+  const f4Promote = (root: string) => amabie(['isolate', '--promote', 'f1', root], root);
   const f4Task = (root: string, ...args: string[]) => {
-    const t = canary(['task', ...args], root);
+    const t = amabie(['task', ...args], root);
     assert.equal(t.status, 0, `task failed: ${t.stdout}${t.stderr}`);
   };
   const f4Bundle = (root: string) => candBundles(root).at(-1)!;
   const f4Obs = (b: Record<string, unknown>) => (b.obligations ?? []) as { id: string; mode: string; status: string; note: string }[];
   const promBundles = (root: string) => {
-    const d = path.join(root, '.canary', 'evidence');
+    const d = path.join(root, '.amabie', 'evidence');
     return fs.existsSync(d) ? fs.readdirSync(d).filter((x) => x.endsWith('-promotion')) : [];
   };
 
@@ -462,12 +462,12 @@ try {
     assert.match(r.stdout, /CANDIDATE NOT PROVEN/, 'the verdict is NOT PROVEN');
     assert.ok(!/CANDIDATE PASS|ELIGIBLE for promotion/.test(r.stdout), 'no PASS, no eligibility wording');
     assert.match(r.stdout, /obligation \[task-authority\] UNPROVEN \(objective\)/, 'the authority duty is named');
-    assert.match(r.stdout, /canary task/, 'the note points at the honest path — register the work');
+    assert.match(r.stdout, /amabie task/, 'the note points at the honest path — register the work');
     const b = f4Bundle(root);
     assert.equal(b.status, 'unproven', 'honest unproven bundle');
     const ta = f4Obs(b).find((x) => x.id === 'task-authority');
     assert.ok(ta && ta.status === 'unproven' && ta.mode === 'objective', 'bundle carries the authority obligation');
-    assert.match(ta.note, /canary task/, 'the recovery path is in the bundle bytes');
+    assert.match(ta.note, /amabie task/, 'the recovery path is in the bundle bytes');
     const steps = b.steps as { ok: boolean }[];
     assert.equal(steps.length, 1, 'the green executed step still rides the bundle');
     assert.ok(steps[0]!.ok, 'the step was green — what failed is the AUTHORITY, not the plan');
@@ -489,7 +489,7 @@ try {
     const root = f4Repo('f4-c');
     f4Task(root, 'behavior-preserving restructure', '--kind', 'refactor');
     f4Candidate(root, (c) => fs.writeFileSync(path.join(c, 'README.md'), 'document the preserved behavior\n'));
-    const rec = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'candidates', 'f1.json'), 'utf8')) as
+    const rec = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'candidates', 'f1.json'), 'utf8')) as
       { intent?: { task?: { kinds?: string[] } | null } };
     assert.deepEqual(rec.intent?.task?.kinds, ['refactor'],
       'the registration PRECEDED isolation, so the snapshot froze the authority — innocence, not H-style minting');
@@ -535,10 +535,10 @@ try {
     f4Candidate(root, (c) => fs.writeFileSync(path.join(c, 'src', 'tweak.js'), 'behavior-preserving\n'));
     const withEnv = spawnSync(process.execPath,
       [CLI, 'isolate', '--verify', 'f1', root],
-      { cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, CANARY_NO_TASK_OK: '1', CANARY_SKIP_TASK_AUTHORITY: '1' } });
+      { cwd: root, encoding: 'utf8', timeout: 120_000, env: { ...process.env, AMABIE_NO_TASK_OK: '1', AMABIE_SKIP_TASK_AUTHORITY: '1' } });
     assert.equal(withEnv.status, 2, `an env var must be inert:\n${withEnv.stdout}`);
     assert.match(withEnv.stdout, /CANDIDATE NOT PROVEN/, 'and the verdict is unchanged');
-    const withFlag = canary(['isolate', '--verify', 'f1', root, '--no-task-ok'], root);
+    const withFlag = amabie(['isolate', '--verify', 'f1', root, '--no-task-ok'], root);
     assert.notEqual(withFlag.status, 0, 'an invented flag cannot reach PASS either');
     assert.ok(!/CANDIDATE PASS|ELIGIBLE for promotion/.test(withFlag.stdout), 'no PASS through any knob');
   });
@@ -573,7 +573,7 @@ try {
     const p = f4Promote(root);
     assert.equal(p.status, 2, 'promotion stays locked after the self-mint attempt');
     assert.deepEqual(promBundles(root), [], 'zero promotion bundles');
-    assert.ok(fs.existsSync(path.join(root, '.canary', 'candidates', 'f1.json')), 'nothing was quarantined or destroyed — growth is allowed, it just cannot mint');
+    assert.ok(fs.existsSync(path.join(root, '.amabie', 'candidates', 'f1.json')), 'nothing was quarantined or destroyed — growth is allowed, it just cannot mint');
   });
 
   test('F4-I (GLM F4-GATE-2): deleting rec.intent does not restore a legacy-PASS shape — absence fails safe to NOT PROVEN', () => {
@@ -581,7 +581,7 @@ try {
     f4Task(root, 'behavior-preserving restructure', '--kind', 'refactor'); // PRE-isolation, honestly
     f4Candidate(root, (c) => fs.writeFileSync(path.join(c, 'README.md'), 'document the preserved behavior\n'));
     assert.equal(f4Verify(root).status, 0, 'precondition: the frozen authority PASSes before the strip');
-    const rp = path.join(root, '.canary', 'candidates', 'f1.json');
+    const rp = path.join(root, '.amabie', 'candidates', 'f1.json');
     const rec = JSON.parse(fs.readFileSync(rp, 'utf8')) as Record<string, unknown>;
     delete rec.intent; // out-of-window byte edit of an agent-writable file — GATE-2's attack
     fs.writeFileSync(rp, JSON.stringify(rec, null, 2) + '\n');

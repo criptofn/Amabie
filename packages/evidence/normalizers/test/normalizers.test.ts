@@ -11,7 +11,7 @@ import {
   pathVariants,
 } from '../src/index.js';
 
-const WS_ROOT = 'C:\\canary-ws';
+const WS_ROOT = 'C:\\amabie-ws';
 
 function pipelineFor(wsRoot: string) {
   const machine = machineRules({
@@ -70,7 +70,7 @@ describe('normalizers', () => {
         `  ✗ adapter contract broke at 2026-08-30T0${i}:11:22.5Z`,
         `    server on http://localhost:5${i}000 responded`,
         `    file ${WS_ROOT}\\fixture\\node_modules\\x${i}\\index.js`,
-        `    tmp ${os.tmpdir()}\\canary-run-${i}${i}${i}`,
+        `    tmp ${os.tmpdir()}\\amabie-run-${i}${i}${i}`,
         `  28 passing (1${i}4ms)`,
         `  4 failing`,
       ].join('\r\n');

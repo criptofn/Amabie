@@ -1,4 +1,4 @@
-# Canary v1.3.0
+# Amabie v1.3.0
 
 **Prepared 2026-09-20 — NOT published.** There is **no** `v1.3.0` tarball, tag or GitHub release yet, and
 none will exist until the repository owner authorizes it. `v1.2.0` remains the newest *published* artifact.
@@ -10,10 +10,10 @@ including the trust batteries, is [`docs/V1.3-RELEASE-AUDIT.md`](V1.3-RELEASE-AU
 
 ## What v1.3 changes
 
-**1. The everyday path is the product.** `canary setup --yes` once per repository, then use your coding
-agent the way you already do. Canary seals the plan, wires the Claude Code `Stop` hook, and from then on the
+**1. The everyday path is the product.** `amabie setup --yes` once per repository, then use your coding
+agent the way you already do. Amabie seals the plan, wires the Claude Code `Stop` hook, and from then on the
 completion check runs itself: when the agent says it is done, the sealed checks run, and a completion can be
-**blocked** once with one actionable line. There is no Canary command to run per task, and no Canary
+**blocked** once with one actionable line. There is no Amabie command to run per task, and no Amabie
 vocabulary to learn — proofs, bindings, sealed bases, candidate promotion and verification receipts stay
 inside the implementation.
 
@@ -24,8 +24,8 @@ changed so it fails without your change and passes with it. A change touching on
 or generated files is never asked this. This is the concrete thing the everyday path adds over "just running
 the tests".
 
-**3. The expert surface is unchanged, and labelled with what it costs.** `canary work` → commit in the
-candidate → `canary finish` still freezes a task's authority and proves the change in a copy before it
+**3. The expert surface is unchanged, and labelled with what it costs.** `amabie work` → commit in the
+candidate → `amabie finish` still freezes a task's authority and proves the change in a copy before it
 touches the repository. It is measured to cost **more** than the everyday path and is documented as the
 expert surface you choose for isolation, not as the ordinary way to work.
 
@@ -36,7 +36,7 @@ turns against **288,942** over 19 for the unrestricted form) and **reverted** ra
 strength of an argument.
 
 **5. The per-batch confined check ships opt-in, because the evidence is genuinely mixed.**
-`CANARY_CONFINED_CHECK=1` is required; the default is off. On `bound-requirements` it helps substantially
+`AMABIE_CONFINED_CHECK=1` is required; the default is off. On `bound-requirements` it helps substantially
 (32,362 tokens — 25.5 % of plain — with the flag, 51,050 — 40.2 % — without) and on `bug-sum` it **hurts**
 (42,800 — 61.1 % — with, 25,999 — 37.1 % — without), with the no-flag runs sitting entirely below the
 with-flag runs. A flag whose sign depends on the task does not become a default.
@@ -48,21 +48,21 @@ token accounting. One recorded run per cell, correct in every cell, no false don
 
 > **The positioning, with its qualification attached.**
 >
-> Canary can cut model-token use by up to **87 %**.
+> Amabie can cut model-token use by up to **87 %**.
 >
 > On short, well-bounded confined tasks in our replicated experiments, measured savings ranged from
 > roughly **27 % to 87 %**.
 >
-> On the measured authored everyday workflow, Canary used **7.3 % fewer model tokens than Plain in
+> On the measured authored everyday workflow, Amabie used **7.3 % fewer model tokens than Plain in
 > aggregate** at equal measured correctness, while adding independent completion verification.
 >
 > The confined measurements are **experimental** and the fixtures were authored and validated for the
-> `guarded` arm; **87 % is not typical or universal**; and **Canary does not always save tokens** — the
+> `guarded` arm; **87 % is not typical or universal**; and **Amabie does not always save tokens** — the
 > ≤75 % aggregate target was not met.
 
 | arm | what it is | model tokens | vs plain | correctness |
 |---|---|---|---|---|
-| `plain` | no Canary at all — untreated control | 409,824 | — | 12/12 · 15/15 · 406/406 |
+| `plain` | no Amabie at all — untreated control | 409,824 | — | 12/12 · 15/15 · 406/406 |
 | **everyday (`guarded`)** | `setup` once, then work normally | **379,792** | **92.7 %** | 12/12 · 15/15 · 406/406 |
 | expert (`workflow`) | candidate ceremony, `work` → `finish` | 728,564 | 177.8 % | 12/12 · 15/15 · 406/406 |
 
@@ -82,10 +82,10 @@ never more expensive on any task: bug-sum was 100.02 % of Plain, i.e. technicall
 **The ≤75 % aggregate target was NOT met.** It *is* met, replicated three times on each arm, on the two
 short bound cells confined mode can execute (13.1–36.5 % and 54.0–73.3 % of plain), but not in aggregate:
 **86.8 % by median, 110.5 % by mean**, because the long stateful cell dominates and is repeatedly *more*
-expensive than plain. **Canary does not generally save tokens, and this release does not claim that it
+expensive than plain. **Amabie does not generally save tokens, and this release does not claim that it
 does.** The wording this release is allowed to use is the measured one: on the authored everyday benchmark
-Canary used 92.7 % of the tokens of a plain agent at equal correctness while providing an independent
-completion gate. Not "Canary saves 25 % of tokens".
+Amabie used 92.7 % of the tokens of a plain agent at equal correctness while providing an independent
+completion gate. Not "Amabie saves 25 % of tokens".
 
 **Confined-mode ratios are experimental measurements, not canonical fixture results.** All three benchmark
 fixtures declare `benchmarkConfig: {"arm": "guarded"}`, so running them under confined transport is — in the
@@ -102,19 +102,19 @@ everyday numbers are the exception and the stronger case, because `guarded` **is
    spent, **no** delivered-correctness credit. They are refusals, not results. No binding was invented to
    raise the count.
 2. **Cursor is `UNMEASURED`.** Cursor documents importing Claude Code hooks, which *would* make the hook
-   Canary installs effective there, but that was not reproduced on a real Cursor install — so **no
-   protection is claimed**. `canary agents` reports it as `UNMEASURED` in place.
+   Amabie installs effective there, but that was not reproduced on a real Cursor install — so **no
+   protection is claimed**. `amabie agents` reports it as `UNMEASURED` in place.
 3. **`HARDENED` remains unreachable** on any host without a measured deployment; the provider is
    implemented and refuses to start without a proven separation, and privileged activation is still
    missing.
-4. **One harness-owned MCP approval** remains when Canary's tools are registered at project scope;
+4. **One harness-owned MCP approval** remains when Amabie's tools are registered at project scope;
    registering at `local` scope needs no approval (`tooling/probes/v13-mcp-scope.mjs`).
 5. **No correctness advantage is demonstrated.** The v1.2 corpus already had the plain model at ceiling
    (36/36 delivered correct). v1.3's value is the completion guarantee, not a higher pass rate.
-6. **`CANARY_CONFINED_CHECK` is opt-in and its evidence is mixed** — see item 5 above.
+6. **`AMABIE_CONFINED_CHECK` is opt-in and its evidence is mixed** — see item 5 above.
 
 ## Releasing these bytes
 
 The complete productization battery is run against the frozen release tree; `exit 0` with only explicitly
 listed, host-bound skips is the release condition, and a `SKIP` is never a pass. Merging to `main`, pushing,
-tagging, publishing, and flipping `CANARY_CONFINED_CHECK` on by default all remain the owner's acts.
+tagging, publishing, and flipping `AMABIE_CONFINED_CHECK` on by default all remain the owner's acts.

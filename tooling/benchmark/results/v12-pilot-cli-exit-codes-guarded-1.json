@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12-pilot-cli-exit-codes-guarded-1",
   "task": "cli-exit-codes",
   "arm": "guarded",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-13T17:44:01.311Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-cli-exit-codes-guarded-n2IRnj",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-cli-exit-codes-guarded-n2IRnj",
   "agent": {
     "command": "claude",
     "model": null,
@@ -57,10 +57,10 @@
     "secs": 1,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 2,
     "verdict": "other",
     "hookFired": false,
@@ -78,7 +78,7 @@
     "acceptedPromotionBundles": [],
     "lastVerdictBundles": [],
     "baseMoved": true,
-    "stdoutTail": "\nUNSUPPORTED — C:\\Users\\Johannes has no project Canary can model at its root (no package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).\nnext: if your checks live in subdirectories, declare them in canary.scopes.json, then: canary setup --yes\n"
+    "stdoutTail": "\nUNSUPPORTED — C:\\Users\\Johannes has no project Amabie can model at its root (no package.json, pyproject.toml / setup.py / tox.ini, Cargo.toml, go.mod / go.work).\nnext: if your checks live in subdirectories, declare them in amabie.scopes.json, then: amabie setup --yes\n"
   },
   "agentResult": {
     "isError": true,
@@ -153,7 +153,7 @@
   "taskRegistration": {
     "requirements": 8,
     "exit": 0,
-    "stdoutTail": "requirement [needs proof or acceptance]: 8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219 — \"a missing, unreadable or non-JSON config file exits 3 with an error on stderr and nothing \"\n  bind it: package.json \"canary\": { \"proofs\": { \"8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236 — \"a missing required argument or an unknown argument exits 3 with an error and the usage blo\"\n  bind it: package.json \"canary\": { \"proofs\": { \"cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359 — \"validate(config, { strict }) returns { errors, warnings } with every entry shaped '<field>\"\n  bind it: package.json \"canary\": { \"proofs\": { \"f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359\": \"<script name from your plan>\" } }, then: canary setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
+    "stdoutTail": "requirement [needs proof or acceptance]: 8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219 — \"a missing, unreadable or non-JSON config file exits 3 with an error on stderr and nothing \"\n  bind it: package.json \"amabie\": { \"proofs\": { \"8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236 — \"a missing required argument or an unknown argument exits 3 with an error and the usage blo\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359 — \"validate(config, { strict }) returns { errors, warnings } with every entry shaped '<field>\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359\": \"<script name from your plan>\" } }, then: amabie setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
   },
   "stream": {
     "lines": 0,
@@ -182,18 +182,18 @@
     "bytes": {
       "toolResultTotal": 0,
       "largestToolResult": 0,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 0,
-      "canary": 0,
+      "amabie": 0,
       "checks": 0,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

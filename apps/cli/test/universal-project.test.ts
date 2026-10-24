@@ -17,7 +17,7 @@
  *  6. nested/polyglot still works: a universal scope beside a native Node root
  *     composes and seals with no key collision.
  *
- * Part 2 runs the real CLI against a REAL unknown tool — a tiny Go binary Canary has
+ * Part 2 runs the real CLI against a REAL unknown tool — a tiny Go binary Amabie has
  * no adapter for, built here (workspace-local Go toolchain, no network).
  */
 import assert from 'node:assert/strict';
@@ -28,23 +28,30 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 
-process.env['CANARY_TRUST_STORE'] = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-universal-'));
+process.env['AMABIE_TRUST_STORE'] = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-universal-'));
 
-import { Recorder } from '@canary-rn/executor';
-import { observationCapabilityFor, RUNNER_ADAPTERS } from '@canary-rn/executor';
-import { classify } from '@canary-rn/classification';
-import { sanitizedEnv, sanitizedEnvKeys } from '@canary-rn/support';
+import { Recorder } from '@amabie/executor';
+import { observationCapabilityFor, RUNNER_ADAPTERS } from '@amabie/executor';
+import { classify } from '@amabie/classification';
+import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
 
 import { ADAPTERS, composePlan } from '../src/project.js';
-import { execDigest, planAuthorityDrift, readConfig, type CanaryConfig } from '../src/onboarding.js';
+import { execDigest, planAuthorityDrift, readConfig, type AmabieConfig } from '../src/onboarding.js';
 import {
   UNIVERSAL_MANIFEST, discoverUniversalChecks, readUniversalManifest, universalContractLevels,
 } from '../src/universal.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
-const GO = path.join(REPO, '_toolchains', 'go', 'bin', 'go.exe');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-universal-'));
+const GO_NAME = process.platform === 'win32' ? 'go.exe' : 'go';
+const GO = [path.join(REPO, '_toolchains', 'go', 'bin', GO_NAME),
+  ...(process.env['PATH'] ?? '').split(path.delimiter).filter(Boolean).map(dir => path.resolve(dir, GO_NAME)),
+].find(candidate => fs.existsSync(candidate));
+if (GO !== undefined) {
+  const version = spawnSync(GO, ['version'], { encoding: 'utf8', timeout: 30_000 });
+  assert.equal(version.status, 0, `the discovered Go toolchain is unusable, not absent: ${GO}\n${version.stdout}\n${version.stderr}`);
+}
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-universal-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 /** A project directory with the given files. */
@@ -67,7 +74,7 @@ describe('the universal contract — the manifest is an authority format, not a 
   it('reads a valid manifest into scoped argv steps', () => {
     const root = project('manifest-ok', {
       [UNIVERSAL_MANIFEST]: JSON.stringify({
-        schema: 'canary-project/1',
+        schema: 'amabie-project/1',
         scopes: [
           { path: '.', checks: [{ name: 'build', kind: 'build', argv: ['cmake', '--build', 'build'] }] },
           { path: 'native', checks: [{ name: 'tests', kind: 'tests', argv: ['ctest', '--test-dir', 'build'] }] },
@@ -93,14 +100,14 @@ describe('the universal contract — the manifest is an authority format, not a 
       ['cwd', { name: 'x', kind: 'tests', argv: ['ctest'], cwd: '/etc' }, /"cwd" is not part of the universal contract/],
       ['shell wrapper', { name: 'x', kind: 'tests', argv: ['bash', '-c', 'ctest'] }, /is a shell or wrapper/],
       ['powershell', { name: 'x', kind: 'tests', argv: ['pwsh', '-Command', 'ctest'] }, /is a shell or wrapper/],
-      ['spec token', { name: 'x', kind: 'tests', argv: ['$npm', 'test'] }, /Canary's own spec token vocabulary/],
+      ['spec token', { name: 'x', kind: 'tests', argv: ['$npm', 'test'] }, /Amabie's own spec token vocabulary/],
       ['unknown kind', { name: 'x', kind: 'deploy', argv: ['ctest'] }, /"kind" must be one of/],
       ['empty argv', { name: 'x', kind: 'tests', argv: [] }, /non-empty array/],
       ['non-string argv', { name: 'x', kind: 'tests', argv: ['ctest', 7] }, /non-empty string/],
     ];
     for (const [label, check, re] of cases) {
       const root = project(`manifest-bad-${label.replace(/\W+/g, '-')}`, {
-        [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [check] }] }),
+        [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [check] }] }),
       });
       const read = readUniversalManifest(root);
       assert.equal(read.manifest, null, `${label}: must be refused`);
@@ -108,11 +115,11 @@ describe('the universal contract — the manifest is an authority format, not a 
     }
     // A scope that escapes the repository, and a duplicate check name.
     const escaping = project('manifest-escape', {
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '../outside', checks: [{ name: 'x', kind: 'tests', argv: ['ctest'] }] }] }),
+      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '../outside', checks: [{ name: 'x', kind: 'tests', argv: ['ctest'] }] }] }),
     });
     assert.match(readUniversalManifest(escaping).problems.join(' '), /must not be absolute or contain "\.\."/);
     const dup = project('manifest-dup', {
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [
+      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [
         { name: 'x', kind: 'tests', argv: ['ctest'] }, { name: 'x', kind: 'build', argv: ['cmake', '--build', 'build'] },
       ] }] }),
     });
@@ -188,7 +195,7 @@ describe('the universal contract — discovery is anchored, never conventional-b
     assert.deepEqual(found.checks, []);
     assert.equal(found.ambiguity, undefined);
     const det = ADAPTERS['universal']!.detect(root);
-    assert.equal(det.detected, false, 'a C file alone is not evidence of a command Canary may run');
+    assert.equal(det.detected, false, 'a C file alone is not evidence of a command Amabie may run');
     assert.match(det.reason, /no repository evidence anchors a check/);
   });
 
@@ -206,7 +213,7 @@ describe('the universal contract — discovery is anchored, never conventional-b
     // The MANIFEST is the resolution: with it, the ambiguity is gone.
     const resolved = project('ambiguous-resolved', {
       'Taskfile.yml': 'tasks:\n  test:\n    cmds: [true]\n', Justfile: 'test:\n  true\n',
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [{ name: 'tests', kind: 'tests', argv: ['just', 'test'] }] }] }),
+      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [{ name: 'tests', kind: 'tests', argv: ['just', 'test'] }] }] }),
     });
     const disc = ADAPTERS['universal']!.discoverChecks(resolved);
     assert.deepEqual(disc.plan.map((s) => s.argv), [['just', 'test']], 'the author decision wins over discovery');
@@ -239,7 +246,7 @@ describe('the universal contract — capability honesty', () => {
     assert.equal(unknown.runner, 'unknown');
     assert.equal(unknown.capability, 'INCONCLUSIVE_ONLY');
     assert.equal(unknown.observation, undefined, 'no channel, no contract, no strong label');
-    // `ctest` is a real tool Canary has no adapter for: same answer.
+    // `ctest` is a real tool Amabie has no adapter for: same answer.
     assert.equal(observationCapabilityFor({ program: 'ctest' }).capability, 'INCONCLUSIVE_ONLY');
     // And the registry's own STRONG set does not contain anything universal.
     const strong = RUNNER_ADAPTERS.filter((a) => a.capability === 'STRONG').map((a) => a.id);
@@ -260,8 +267,8 @@ describe('the universal contract — capability honesty', () => {
     const keys = sanitizedEnvKeys(sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath) }));
     // A universal plan is argv + a sealed program path; it contributes nothing to
     // the child environment, which is what keeps audit F9's rule intact.
-    assert.equal(keys.includes('CANARY_UNIVERSAL'), false);
-    assert.deepEqual(keys.filter((k) => k.startsWith('CANARY_')), []);
+    assert.equal(keys.includes('AMABIE_UNIVERSAL'), false);
+    assert.deepEqual(keys.filter((k) => k.startsWith('AMABIE_')), []);
   });
 });
 
@@ -270,7 +277,7 @@ describe('the universal contract — nested and polyglot composition', () => {
     const root = project('polyglot', {
       'package.json': JSON.stringify({ name: 'root', scripts: { test: 'node -e "process.exit(0)"' } }),
       'tools/Makefile': 'test:\n\ttrue\n',
-      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'tools', ecosystem: 'universal' }] }),
+      'amabie.scopes.json': JSON.stringify({ schema: 'amabie-scopes/1', scopes: [{ path: 'tools', ecosystem: 'universal' }] }),
     });
     const composed = composePlan(root);
     assert.deepEqual(composed.problems, []);
@@ -287,7 +294,7 @@ describe('the universal contract — nested and polyglot composition', () => {
     const root = project('polyglot-empty', {
       'package.json': JSON.stringify({ name: 'root', scripts: { test: 'node -e "process.exit(0)"' } }),
       'tools/README.md': 'nothing to discover here\n',
-      'canary.scopes.json': JSON.stringify({ schema: 'canary-scopes/1', scopes: [{ path: 'tools', ecosystem: 'universal' }] }),
+      'amabie.scopes.json': JSON.stringify({ schema: 'amabie-scopes/1', scopes: [{ path: 'tools', ecosystem: 'universal' }] }),
     });
     const composed = composePlan(root);
     assert.match(composed.problems.join(' '), /declared as ecosystem "universal" but nothing there declares it/);
@@ -328,18 +335,18 @@ describe('the universal contract — nested and polyglot composition', () => {
 // Part 2 — the real CLI, and a REAL unknown tool.
 //
 // The tool is a tiny Go binary named `acmetest`, built with the workspace-local Go
-// toolchain (no network). Canary has no adapter for it and never will: that is the
+// toolchain (no network). Amabie has no adapter for it and never will: that is the
 // point. It behaves like an unknown external test tool, including one that LIES in
 // its output, and it is reached through the manifest escape hatch — the format an
 // operator uses when discovery cannot see their commands.
 // ---------------------------------------------------------------------------
 const TOOL_DIR = path.join(TMP, 'tool');
 const TOOL = path.join(TOOL_DIR, process.platform === 'win32' ? 'acmetest.exe' : 'acmetest');
-const hasGo = fs.existsSync(GO);
-const SKIP = hasGo ? false : 'no workspace-local Go toolchain to build the fixture unknown tool';
+const SKIP = GO !== undefined ? false : 'no Go toolchain in the workspace or on PATH to build the fixture unknown tool';
 
 /** Build the fixture tool. `body` lets a test rebuild DIFFERENT BYTES. */
 function buildTool(marker: string): void {
+  assert.ok(GO, 'a discovered Go toolchain is required for this fixture');
   const src = path.join(TMP, `acmetest-${marker}.go`);
   fs.writeFileSync(path.join(TMP, 'go.mod'), 'module acmetest\n\ngo 1.21\n');
   fs.writeFileSync(src, [
@@ -381,7 +388,7 @@ function buildTool(marker: string): void {
 
 /** Run the CLI with the tool directory FIRST on PATH (setup is the one moment PATH
  *  is consulted; afterwards the pinned absolute path is the authority). */
-function canary(args: string[], cwd: string, opts: { withToolOnPath?: boolean } = {}) {
+function amabie(args: string[], cwd: string, opts: { withToolOnPath?: boolean } = {}) {
   const env = { ...process.env };
   if (opts.withToolOnPath === true) env['PATH'] = `${TOOL_DIR}${path.delimiter}${process.env['PATH'] ?? ''}`;
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 240_000, env });
@@ -392,7 +399,7 @@ describe('the universal contract — a real unknown tool, sealed and executed', 
     buildTool('v1');
     const root = project('real-cli', {
       [UNIVERSAL_MANIFEST]: JSON.stringify({
-        schema: 'canary-project/1',
+        schema: 'amabie-project/1',
         scopes: [{ path: '.', checks: [
           { name: 'checks', kind: 'tests', argv: ['acmetest', '--run'] },
           { name: 'tag', kind: 'build', argv: ['acmetest', '--version'] },
@@ -400,10 +407,10 @@ describe('the universal contract — a real unknown tool, sealed and executed', 
       }),
       'acmetest.marker': 'ok\n',
     });
-    const setup = canary(['setup', '--yes', root], root, { withToolOnPath: true });
+    const setup = amabie(['setup', '--yes', root], root, { withToolOnPath: true });
     assert.equal(setup.status, 0, `setup must succeed on a universal project: ${setup.stdout}\n${setup.stderr}`);
 
-    const cfg = readConfig(root) as CanaryConfig | null;
+    const cfg = readConfig(root) as AmabieConfig | null;
     assert.ok(cfg !== null, 'setup must write a readable config');
     // The contract is recorded per STEP (`adapter`), which is what verification
     // resolves through (`adapterForStep`), and the config's `pm` names it too — so
@@ -416,40 +423,40 @@ describe('the universal contract — a real unknown tool, sealed and executed', 
     assert.deepEqual(step.argv.slice(1), ['--run']);
     assert.deepEqual(cfg.plan.map((s) => s.kind).sort(), ['build', 'tests']);
     assert.equal(planAuthorityDrift(root, cfg), null, 'the seal matches the plan it sealed');
-    // The executor agrees that this is not a runner Canary can observe.
+    // The executor agrees that this is not a runner Amabie can observe.
     assert.equal(observationCapabilityFor({ program: 'acmetest' }).capability, 'INCONCLUSIVE_ONLY');
   });
 
   it('the sealed plan RUNS, passes, and fails honestly — with the pinned path, not PATH', () => {
     const root = project('real-run', {
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [{ name: 'checks', kind: 'tests', argv: ['acmetest', '--run'] }] }] }),
+      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [{ name: 'checks', kind: 'tests', argv: ['acmetest', '--run'] }] }] }),
       'acmetest.marker': 'ok\n',
     });
-    assert.equal(canary(['setup', '--yes', root], root, { withToolOnPath: true }).status, 0);
+    assert.equal(amabie(['setup', '--yes', root], root, { withToolOnPath: true }).status, 0);
 
     // NOTE: no tool directory on PATH here. It still runs, because the plan holds
     // an absolute pinned program — which is exactly the seal doing its job.
-    const pass = canary(['doctor', root], root);
+    const pass = amabie(['doctor', root], root);
     assert.equal(pass.status, 0, `a passing universal check must pass: ${pass.stdout}\n${pass.stderr}`);
-    assert.match(pass.stdout, /✓ tests: .*acmetest\.exe --run \(exit 0\)/, 'the run names the pinned absolute program');
+    assert.ok(pass.stdout.includes(`✓ tests: ${TOOL} --run (exit 0)`), 'the run names the exact pinned absolute program');
     assert.match(pass.stdout, /READY/);
     assert.doesNotMatch(pass.stdout, /runner observation/i, 'no runner-observation claim is made');
 
     fs.writeFileSync(path.join(root, 'acmetest.marker'), 'FAIL\n');
-    const fail = canary(['doctor', root], root);
+    const fail = amabie(['doctor', root], root);
     assert.notEqual(fail.status, 0, `a failing universal check must fail: ${fail.stdout}`);
     assert.match(fail.stdout, /3 of 5 checks failed/);
   });
 
   it('a tool that PRINTS a perfect mocha summary cannot upgrade its own evidence', () => {
     const root = project('real-forge', {
-      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'canary-project/1', scopes: [{ path: '.', checks: [{ name: 'checks', kind: 'tests', argv: ['acmetest', '--run'] }] }] }),
+      [UNIVERSAL_MANIFEST]: JSON.stringify({ schema: 'amabie-project/1', scopes: [{ path: '.', checks: [{ name: 'checks', kind: 'tests', argv: ['acmetest', '--run'] }] }] }),
       'acmetest.marker': 'ok\n',
     });
-    assert.equal(canary(['setup', '--yes', root], root, { withToolOnPath: true }).status, 0);
+    assert.equal(amabie(['setup', '--yes', root], root, { withToolOnPath: true }).status, 0);
     fs.writeFileSync(path.join(root, 'acmetest.marker'), 'FORGE\n');
 
-    const r = canary(['doctor', root], root);
+    const r = amabie(['doctor', root], root);
     assert.notEqual(r.status, 0, `printed text may not turn a failed run into a pass: ${r.stdout}`);
     assert.match(r.stdout, /128 passing \(1s\)/, 'the fixture really did print the forged summary');
     assert.doesNotMatch(r.stdout, /READY|VERIFIED|CONNECTED/, 'and the verdict is not upgraded by it');
@@ -471,7 +478,7 @@ describe('the universal contract — a real unknown tool, sealed and executed', 
     const o = round.fact.executionObservation!;
     assert.notEqual(o.status, 'VALID', `an unobserved runner must never be VALID: ${JSON.stringify(o)}`);
     assert.equal(o.status, 'ABSENT');
-    assert.equal(o.absentKind, 'no-injection', 'Canary attempted no channel because none exists');
+    assert.equal(o.absentKind, 'no-injection', 'Amabie attempted no channel because none exists');
     assert.equal(o.frameCount, 0, 'and no frames came from anywhere');
     // The forged text IS in the raw artifact and IS even read as a CLAIM — that is
     // the honest boundary: text is a claim, and the claim is recorded. What it

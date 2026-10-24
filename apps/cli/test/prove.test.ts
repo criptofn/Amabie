@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
-import { verifyArtifacts, assertProof, proofVerdict, environmentAttestationIssues, actualHostFingerprint, type ProofExpectation } from '../src/prove.js';
-import { sha256hex } from '@canary-rn/hashing';
-import type { EvidenceBundle, RoundEvidence } from '@canary-rn/evidence-schema';
+import { verifyArtifacts, assertProof, proofVerdict, environmentAttestationIssues, actualHostFingerprint, findLatestEvidencePath, type ProofExpectation } from '../src/prove.js';
+import { sha256hex } from '@amabie/hashing';
+import type { EvidenceBundle, RoundEvidence } from '@amabie/evidence-schema';
 
 /** Real files on disk, real hashes — no mocks (audit F3/F4 spirit). */
 function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void } {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-prove-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-prove-'));
   const write = (name: string, content: string): string => {
     fs.writeFileSync(path.join(dir, name), content, 'utf8');
     return sha256hex(content);
@@ -38,7 +38,7 @@ function harness(): { dir: string; bundle: EvidenceBundle; cleanup: () => void }
     };
   };
   const bundle = {
-    schemaVersion: 1, runId: 'r', createdAt: '2026-08-30T00:00:00Z', canaryVersion: '0.1.0',
+    schemaVersion: 1, runId: 'r', createdAt: '2026-08-30T00:00:00Z', amabieVersion: '0.1.0',
     experimentId: 'e', dependency: { package: 'p', baselineVersion: '1', candidateVersion: '2' },
     downstream: { repositoryUrl: 'https://github.com/u', commitSha: 'b'.repeat(40), fetchMethod: 'tarball-by-sha', tarballSha256: 'a'.repeat(64) },
     environment: { nodeVersion: 'v', npmVersion: 'n', packageManagerUsed: 'npm', platform: 'x', arch: 'y', toolchainOverrides: {} },
@@ -112,7 +112,7 @@ describe('verifyArtifacts — audit F4 (proof must rehash the real artifacts)', 
 describe('verifyArtifacts — audit B3 (path confinement + ownership)', () => {
   // Independent harness so each case controls file bytes + claimed paths.
   function art(): { dir: string; outside: string; cleanup: () => void } {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-b3-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-b3-'));
     const dir = path.join(tmp, 'artifacts');
     fs.mkdirSync(dir, { recursive: true });
     const outside = path.join(tmp, 'external');
@@ -249,7 +249,7 @@ describe('verifyArtifacts — audit B3 (path confinement + ownership)', () => {
 
 function canSymlink(): boolean {
   try {
-    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-sym-'));
+    const t = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-sym-'));
     fs.writeFileSync(path.join(t, 'a'), 'x');
     fs.symlinkSync(path.join(t, 'a'), path.join(t, 'b'));
     fs.rmSync(t, { recursive: true, force: true });
@@ -534,7 +534,7 @@ describe('round-3 B4-D — exact failing-identity set equality (proof vs candida
 describe('post-sol secondary — host sampling is immune to the verifier process environment', () => {
   it('a poisoned NODE_OPTIONS in the verifying process does NOT crash or steer the fingerprint', () => {
     const saved = process.env['NODE_OPTIONS'];
-    process.env['NODE_OPTIONS'] = '--invalid-option-canary-probe';
+    process.env['NODE_OPTIONS'] = '--invalid-option-amabie-probe';
     try {
       const fp = actualHostFingerprint();
       assert.match(fp.npmVersion, /^\d+\.\d+\.\d+/, 'must still sample a real npm version');

@@ -4,7 +4,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const repo = path.resolve(import.meta.dirname, '../..');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-git-path-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-git-path-'));
 const work = path.join(root, 'self-contained'); fs.mkdirSync(work);
 const run = (exe, args) => {
   const r = spawnSync(exe, args, { cwd: work, encoding: 'utf8', windowsHide: true, timeout: 45000 });
@@ -23,7 +23,7 @@ try {
   const restricted = JSON.parse(fs.readFileSync(path.join(work, 'restricted.json'), 'utf8'));
   const token = fs.readFileSync(path.join(root, 'token.jsonl'), 'utf8').split(/\r?\n/).filter(Boolean).map(x => JSON.parse(x));
   assert.equal(token[0].appContainer, true); assert.equal(token[0].restricted, true); assert.equal(token[0].capabilities, 0); assert.equal(token[1].exit, 0);
-  const output = path.join(os.tmpdir(), 'canary-git-path-diagnostic.json');
+  const output = path.join(os.tmpdir(), 'amabie-git-path-diagnostic.json');
   const gitControl = JSON.parse(fs.readFileSync(path.join(work, 'git-control.json'), 'utf8'));
   const gitRestricted = JSON.parse(fs.readFileSync(path.join(work, 'git-restricted.json'), 'utf8'));
   const gitToken = fs.readFileSync(path.join(root, 'token.jsonl.git'), 'utf8').split(/\r?\n/).filter(Boolean).map(x => JSON.parse(x));

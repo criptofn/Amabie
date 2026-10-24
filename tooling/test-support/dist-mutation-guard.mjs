@@ -37,7 +37,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const DIR = path.join(REPO, '.canary-runs', 'dist-mutation-guard');
+const DIR = path.join(REPO, '.amabie-runs', 'dist-mutation-guard');
 const JOURNAL = path.join(DIR, 'journal.json');
 
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
@@ -118,7 +118,7 @@ export function beginDistMutation(files) {
     return { file, sidecar, sha256: sha256(bytes) };
   });
   fs.writeFileSync(JOURNAL, JSON.stringify({
-    schema: 'canary-dist-mutation/1', pid: process.pid, at: new Date().toISOString(), entries,
+    schema: 'amabie-dist-mutation/1', pid: process.pid, at: new Date().toISOString(), entries,
   }, null, 2) + '\n');
   return { recovered, entries };
 }

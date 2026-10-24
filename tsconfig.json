@@ -3,6 +3,7 @@
   "references": [
     { "path": "packages/support" },
     { "path": "packages/core/planner" },
+    { "path": "packages/core/prompt-evidence" },
     { "path": "packages/core/comparator" },
     { "path": "packages/core/classification" },
     { "path": "packages/runner/executor" },

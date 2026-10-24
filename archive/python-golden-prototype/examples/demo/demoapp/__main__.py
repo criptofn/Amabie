@@ -1,7 +1,7 @@
-"""demoapp — a tiny, boring, deterministic program used as Canary's subject.
+"""demoapp — a tiny, boring, deterministic program used as Amabie's subject.
 
 Subcommands:
-  ping                 -> "PONG" on stdout (the classic canary probe)
+  ping                 -> "PONG" on stdout (the classic amabie probe)
   greet --name NAME    -> "Hello, NAME!"
   noisy                -> deliberately nondeterministic output that the
                           normalizer pipeline must make stable

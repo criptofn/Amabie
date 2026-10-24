@@ -11,7 +11,7 @@ import type { BoundaryControl } from '../platform-boundary.js';
 
 /** Where a valid measurement lives, relative to the protected store root. */
 export const CONFINED_RECORD_NAME = 'confined-caller-measurement.json';
-export const CONFINED_RECORD_SCHEMA = 'canary-confined-measurement/1';
+export const CONFINED_RECORD_SCHEMA = 'amabie-confined-measurement/1';
 /** The only producer whose records this build validates. */
 export const CONFINED_RECORD_SOURCE = 'tooling/probes/v12-confined-caller.mjs';
 
@@ -50,8 +50,8 @@ export const REQUIRED_DEPLOYMENT_FACTS: readonly string[] = [
  * untrusted caller fixture whose attacks were measured.
  */
 export const CONFINED_TOOL_PATHS: readonly string[] = [
-  'tools/windows-boundary/CanaryConfinedLauncher.cs',
-  'tools/windows-boundary/CanaryBroker.cs',
+  'tools/windows-boundary/AmabieConfinedLauncher.cs',
+  'tools/windows-boundary/AmabieBroker.cs',
   'tools/windows-boundary/confined-relay.ps1',
   'tools/windows-boundary/confined-cli.ps1',
   'tooling/test-support/fixtures/confined-caller.cjs',

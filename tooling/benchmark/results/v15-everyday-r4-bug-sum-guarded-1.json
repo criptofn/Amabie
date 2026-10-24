@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-r4-bug-sum-guarded-1",
   "task": "bug-sum",
   "arm": "guarded",
@@ -26,7 +26,7 @@
     "benchmarkConfigNote": "the legacy baseline fixture: one wrong behaviour behind a failing visible suite. Declared guarded WITHOUT --register-requirements, and here that flag is a MEASURED NO-OP — this fixture states no requirements array, so there is nothing to register (the harness records taskRegistration.requirements = 0). It is declared anyway so that a run with the flag is flagged as outside the authored configuration rather than silently labelled one. This fixture's axis is a false done on a plain failing suite, produced by the CLAIM and the oracle, not by the requirement machinery."
   },
   "startedAt": "2026-09-24T19:58:37.888Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bug-sum-guarded-Tlv7O4",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bug-sum-guarded-Tlv7O4",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -34,7 +34,7 @@
     "exitCode": 0,
     "secs": 36.5,
     "timedOut": false,
-    "mcpConfig": "fixture .mcp.json (standing Canary payload included)",
+    "mcpConfig": "fixture .mcp.json (standing Amabie payload included)",
     "settingsSources": "project,local",
     "forwardedEnvKeys": [
       "ENABLE_TOOL_SEARCH",
@@ -54,10 +54,10 @@
     "secs": 1.1,
     "readme": "NEEDS ATTENTION",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "        numbers.test.js :: total includes negative values\n          Expected values to be strictly equal:\n      5 !== 0\n        numbers.test.js :: average uses every value\n          Expected values to be strictly equal:\n      2 !== 1\n      2 passing (0.01s)\n      2 failing\n\nNEEDS ATTENTION — PROJECT CHECK FAILURE — your project's own checks did not pass (tests). That is your project talking, not Canary.\nnext: fix the failing check, then: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "        numbers.test.js :: total includes negative values\n          Expected values to be strictly equal:\n      5 !== 0\n        numbers.test.js :: average uses every value\n          Expected values to be strictly equal:\n      2 !== 1\n      2 passing (0.01s)\n      2 failing\n\nNEEDS ATTENTION — PROJECT CHECK FAILURE — your project's own checks did not pass (tests). That is your project talking, not Amabie.\nnext: fix the failing check, then: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -109,7 +109,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "proof level: LOCAL — the same user account that runs the agent can also re-run `canary setup --yes` and make a different plan and starting commit the ones that are checked, so this proof is same-user and operator-selected, NOT worker-independent. HARDENED is the level that adds a separate OS identity, and it is NOT available here.\nrunning the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "proof level: LOCAL — the same user account that runs the agent can also re-run `amabie setup --yes` and make a different plan and starting commit the ones that are checked, so this proof is same-user and operator-selected, NOT worker-independent. HARDENED is the level that adds a separate OS identity, and it is NOT available here.\nrunning the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -217,18 +217,18 @@
     "bytes": {
       "toolResultTotal": 3398,
       "largestToolResult": 1264,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

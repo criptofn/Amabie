@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/hashing",
+  "name": "@amabie/hashing",
   "version": "0.0.1",
   "private": true,
   "description": "sha256 helpers for evidence hash-chaining: raw streams, normalized streams, bundles.",

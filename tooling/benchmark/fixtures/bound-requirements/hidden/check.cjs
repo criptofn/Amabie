@@ -3,7 +3,7 @@
  * THE HIDDEN ORACLE for `bound-requirements`.
  *
  * The three stated requirements each have a check in the project (`checks/check-*.cjs`, declared in
- * `canary.project.json` and bound to the requirement digest). This oracle is INDEPENDENT of those:
+ * `amabie.project.json` and bound to the requirement digest). This oracle is INDEPENDENT of those:
  * it tests the behaviour from outside, including cases the per-requirement checks do not choose, so
  * "the bound checks pass" and "the requirements actually hold" are two measurements and the gap
  * between them stays visible.

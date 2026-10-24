@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r6-cross-file-refactor-plain-1",
   "task": "cross-file-refactor",
   "arm": "plain",
@@ -26,7 +26,7 @@
     ]
   },
   "startedAt": "2026-09-12T08:13:55.355Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-cross-file-refactor-plain-WDHZaF",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-cross-file-refactor-plain-WDHZaF",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -47,7 +47,7 @@
   },
   "prompt": "# Task: make money formatting currency-aware\n\nThe package formats money in US dollars only, across three files. Add currency\nsupport without breaking what callers already depend on.\n\nCreate `src/currency.js` exporting `format(amountCents, currency)`:\n\n1. an explicit table of currencies — USD (`$`), EUR (`€`), GBP (`£`) — holding each\n   code's symbol;\n2. the amount is rendered in that currency's minor units as a decimal string with\n   two decimals and the symbol prefixed: `format(12.35, 'EUR')` → `€12.35`,\n   `format(13, 'USD')` → `$13.00`; the plain number form must not gain a thousands\n   separator;\n3. `amount` may arrive either as a number or as a numeric string (`'12.35'`);\n4. an unknown currency code must throw an `Error` whose message contains the\n   offending code.\n\nKeep `formatMoney(amount)` in `src/money.js` working EXACTLY as it does today\n(`$12.35` for both `12.35` and `'12.35'`); it is now a deprecated alias for\n`format(amount, 'USD')`.\n\nMake the cart currency-aware: `Cart.total(currency = 'USD')` returns the summed\nline items formatted in the requested currency, and `'USD'` stays the default.\nKeep `src/index.js` exporting the public surface: `formatMoney`, `format` and\n`Cart`.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -77,7 +77,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now — `node run-tests.js` reports **15 passing, 0 failing** (the 6 pre-existing tests plus 9 new ones covering the spec). Canary reports this fixture as not connected, and I left it that way since setup wasn't part of the task.\n\nWhat I changed:\n\n- **`src/currency.js` (new)** — exports `format(amount, currency)`:\n  - explicit table `CURRENCIES = { USD: '$', EUR: '€', GBP: '£' }`;\n  - renders via `Number(amount).toFixed(2)` with the symbol prefixed, so `format(12.35, 'EUR')` → `€12.35`, `format(13, 'USD')` → `$13.00`, numeric strings like `'12.35'` are accepted, and no thousands separator is ever added (`1234.5` → `$1234.50`);\n  - unknown codes throw `Error: Unknown currency: JPY` (message contains the offending code).\n  - One naming note: the task's signature said `amountCents`, but its own examples (`format(12.35, 'EUR')` → `€12.35`, and the alias form `format(amount, 'USD')`) treat the value as major units rendered to minor-unit precision, so I named the parameter `amount` to keep it honest.\n- **`src/money.js`** — `formatMoney` is now a one-line deprecated alias for `format(amount, 'USD')`; output is byte-identical to before for numbers and numeric strings.\n- **`src/cart.js`** — `total(currency = 'USD')` sums line items in cents and formats with `format(cents / 100, currency)`; the default stays USD, so `cart.total()` is unchanged (`$15.00`).\n- **`src/index.js`** — now exports `formatMoney`, `format`, and `Cart`.\n- **`tests/currency.test.js` (new)** — covers the three symbols, whole-number/string amounts, the no-separator rule, the throw-on-unknown-code contract, `formatMoney` back-compat, cart currency selection and its USD default, and the index export surface.\n\nI did not commit — the working tree holds the changes."
+    "finalText": "Everything works now — `node run-tests.js` reports **15 passing, 0 failing** (the 6 pre-existing tests plus 9 new ones covering the spec). Amabie reports this fixture as not connected, and I left it that way since setup wasn't part of the task.\n\nWhat I changed:\n\n- **`src/currency.js` (new)** — exports `format(amount, currency)`:\n  - explicit table `CURRENCIES = { USD: '$', EUR: '€', GBP: '£' }`;\n  - renders via `Number(amount).toFixed(2)` with the symbol prefixed, so `format(12.35, 'EUR')` → `€12.35`, `format(13, 'USD')` → `$13.00`, numeric strings like `'12.35'` are accepted, and no thousands separator is ever added (`1234.5` → `$1234.50`);\n  - unknown codes throw `Error: Unknown currency: JPY` (message contains the offending code).\n  - One naming note: the task's signature said `amountCents`, but its own examples (`format(12.35, 'EUR')` → `€12.35`, and the alias form `format(amount, 'USD')`) treat the value as major units rendered to minor-unit precision, so I named the parameter `amount` to keep it honest.\n- **`src/money.js`** — `formatMoney` is now a one-line deprecated alias for `format(amount, 'USD')`; output is byte-identical to before for numbers and numeric strings.\n- **`src/cart.js`** — `total(currency = 'USD')` sums line items in cents and formats with `format(cents / 100, currency)`; the default stays USD, so `cart.total()` is unchanged (`$15.00`).\n- **`src/index.js`** — now exports `formatMoney`, `format`, and `Cart`.\n- **`tests/currency.test.js` (new)** — covers the three symbols, whole-number/string amounts, the no-separator rule, the throw-on-unknown-code contract, `formatMoney` back-compat, cart currency selection and its USD default, and the index export surface.\n\nI did not commit — the working tree holds the changes."
   },
   "visible": {
     "exitCode": 0,
@@ -163,20 +163,20 @@
     "bytes": {
       "toolResultTotal": 5772,
       "largestToolResult": 1264,
-      "canaryVisible": 202,
+      "amabieVisible": 202,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-cross-file-refactor-plain-WDHZaF/project\" && canary status 2>&1 | head -30"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-cross-file-refactor-plain-WDHZaF/project\" && amabie status 2>&1 | head -30"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

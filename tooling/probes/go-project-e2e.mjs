@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * A REAL Go project verified end to end by Canary (v1.1 Phase 2 follow-up).
+ * A REAL Go project verified end to end by Amabie (v1.1 Phase 2 follow-up).
  *
  * This is the proof that the Go toolchain declaration actually works through the
- * PRODUCT, not just in a hand-run shell: `canary setup` seals an absolute `go`
- * path, and `canary doctor` executes `go test ./...` and `go vet ./...` inside
- * Canary's sanitized environment.
+ * PRODUCT, not just in a hand-run shell: `amabie setup` seals an absolute `go`
+ * path, and `amabie doctor` executes `go test ./...` and `go vet ./...` inside
+ * Amabie's sanitized environment.
  *
  * WHY IT NEEDED A FIX AT ALL, measured: under the sanitized env Go aborted with
  * `build cache is required, but could not be located: GOCACHE is not defined and
  * %LocalAppData% is not defined` — HOME/USERPROFILE are redirected, and Go
  * derives its cache from them. The Go adapter now declares a workspace-scoped
  * GOCACHE/GOPATH through the same narrow, allowlisted injection the observer env
- * uses (values must resolve inside Canary's workspace, so a PROJECT cannot steer
+ * uses (values must resolve inside Amabie's workspace, so a PROJECT cannot steer
  * them). This probe is what turns that from a plausible fix into an observed one.
  *
  * Skips honestly (exit 3) when no Go toolchain exists, so it is usable as an
@@ -58,7 +58,7 @@ console.log(`go: ${go.version}${go.binDir === null ? ' (system)' : ' (workspace-
 const sep = process.platform === 'win32' ? ';' : ':';
 const env = go.binDir === null ? { ...process.env } : { ...process.env, PATH: `${go.binDir}${sep}${process.env.PATH ?? ''}` };
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-go-e2e-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-go-e2e-'));
 const root = path.join(TMP, 'goproject');
 fs.mkdirSync(root, { recursive: true });
 // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
@@ -82,13 +82,13 @@ const run = (args, timeout = 600_000) => spawnSync(process.execPath, [CLI, ...ar
 const git = (...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 60_000 });
 
 for (const args of [['init', '-b', 'main']]) assert(git(...args).status === 0, `git ${args.join(' ')} failed`);
-git('config', 'user.email', 'go@canary.local');
+git('config', 'user.email', 'go@amabie.local');
 git('config', 'user.name', 'Go E2E');
 git('add', '-A');
 git('commit', '-m', 'initial');
 
 const setup = run(['setup', '--yes']);
-console.log(`\n--- canary setup (exit ${setup.status}) ---`);
+console.log(`\n--- amabie setup (exit ${setup.status}) ---`);
 console.log(`${setup.stdout ?? ''}${setup.stderr ?? ''}`.trim().split('\n').slice(0, 14).join('\n'));
 
 check('setup discovers the Go checks and seals an absolute go path', () => {
@@ -97,7 +97,7 @@ check('setup discovers the Go checks and seals an absolute go path', () => {
   // (`<...>\go.exe test ./...`) rather than the bare declared name.
   assertMatch(setup.stdout ?? '', /go(\.exe)?\s+test\b/i, 'the plan must name the go test check');
   assertMatch(setup.stdout ?? '', /go(\.exe)?\s+vet\b/i, 'and the go vet check');
-  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
   const argv0s = (cfg.plan ?? []).filter((s) => s.argv !== undefined).map((s) => s.argv[0]);
   assert(argv0s.length >= 2, `expected the Go steps to be argv steps: ${JSON.stringify(cfg.plan)}`);
   for (const a of argv0s) {
@@ -107,7 +107,7 @@ check('setup discovers the Go checks and seals an absolute go path', () => {
 });
 
 const doctor = run(['doctor']);
-console.log(`\n--- canary doctor (exit ${doctor.status}) ---`);
+console.log(`\n--- amabie doctor (exit ${doctor.status}) ---`);
 console.log(`${doctor.stdout ?? ''}${doctor.stderr ?? ''}`.trim().split('\n').slice(-12).join('\n'));
 
 check('doctor EXECUTES the Go plan under the sanitized env and reaches READY', () => {
@@ -140,5 +140,5 @@ check('the Go checks really ran (a failing test would be reported, not ignored)'
 
 console.log(`\n=== go project e2e: ${failures === 0 ? 'ALL PASS' : `${failures} FAIL`} ===`);
 console.log(`scratch: ${TMP}`);
-if (failures === 0 || process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (failures === 0 || process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(failures === 0 ? 0 : 1);

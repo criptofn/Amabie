@@ -17,7 +17,7 @@
  *   5. stdout forgery yields no counts
  *   6. a fabricated `addSuccess` is rejected live and the verdict downgrades
  *   7. an absent observation routes the verdict to INCONCLUSIVE
- *   8. the observer door adds ONLY Canary-owned variables (no env-merge)
+ *   8. the observer door adds ONLY Amabie-owned variables (no env-merge)
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -27,10 +27,10 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { Recorder, pythonRunnerIdentity, detectPythonRunner, observerNonce } from '../src/index.js';
-import { sanitizedEnv, sanitizedEnvKeys } from '@canary-rn/support';
-import { classify, type RoundFact } from '@canary-rn/classification';
+import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
+import { classify, type RoundFact } from '@amabie/classification';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-python-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-python-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function whichPython(): string | null {
@@ -45,7 +45,7 @@ const PY = whichPython();
 // only recurses into an importable package, so a layout with no `__init__.py`
 // would find ZERO tests and silently "pass" — exactly the empty-run-is-not-a-pass
 // trap the counts agreement exists to expose. (This test caught that itself.)
-const CANARY_ARGS = ['python', '-m', 'unittest', 'discover', '-v', '-s', 'tests'];
+const AMABIE_ARGS = [PY ?? 'python', '-m', 'unittest', 'discover', '-v', '-s', 'tests'];
 
 /** A workspace whose fixture is a real Python project. */
 function workspace(name: string, files: Record<string, string>): { root: string; fixture: string } {
@@ -106,7 +106,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
     const identity = pythonRunnerIdentity(PY!);
     assert.ok(identity !== null, 'the interpreter identity must resolve');
     const rec = recorder(ws, { 'python-unittest': identity });
-    const { argv, plan } = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
+    const { argv, plan } = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
 
     assert.equal(plan.injected, true, `expected injection: ${JSON.stringify(plan)}`);
     assert.equal(plan.runner, 'python-unittest');
@@ -132,8 +132,8 @@ describe('Python observation through the executor round path', { skip: PY === nu
     const identity = pythonRunnerIdentity(PY!);
     assert.ok(identity !== null);
     const rec = recorder(ws, { 'python-unittest': identity });
-    const first = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
-    const second = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
+    const first = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
+    const second = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
     assert.deepEqual(second.plan, first.plan, 're-expansion from the same inputs must produce an identical plan (structural parity)');
     assert.deepEqual(second.argv, first.argv, 'and an identical argv');
     assert.equal(
@@ -153,7 +153,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
   it('3. without an authorization grant the round is ABSENT — never a weak VALID', () => {
     const ws = workspace('nogrant', PASSING);
     const rec = recorder(ws); // no runnerIdentities: no authority
-    const { plan } = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
+    const { plan } = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
     assert.equal(plan.injected, false);
     assert.equal(plan.absentKind, 'runner-identity-unpinned');
   });
@@ -163,11 +163,11 @@ describe('Python observation through the executor round path', { skip: PY === nu
     const identity = pythonRunnerIdentity(PY!);
     assert.ok(identity !== null);
     const rec = recorder(ws, { 'python-unittest': { version: identity.version, identitySha256: 'f'.repeat(64) } });
-    const { plan } = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
+    const { plan } = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
     assert.equal(plan.injected, false, 'a digest that does not match the interpreter on disk must not authorize');
     assert.equal(plan.absentKind, 'runner-identity-unpinned');
     assert.equal(plan.observedRunnerIdentitySha256, identity.identitySha256,
-      '"what bytes were there" is a Canary-derived fact regardless of trust');
+      '"what bytes were there" is an Amabie-derived fact regardless of trust');
   });
 
   it('5. printed stdout cannot mint observation counts', async () => {
@@ -203,7 +203,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
     const identity = pythonRunnerIdentity(PY!);
     assert.ok(identity !== null);
     const rec = recorder(ws, { 'python-unittest': identity });
-    const { argv, plan } = rec.expandArgvWithPlan(CANARY_ARGS, subs, resolveBin);
+    const { argv, plan } = rec.expandArgvWithPlan(AMABIE_ARGS, subs, resolveBin);
     const round = await rec.round('baseline', 1, argv, 300, plan);
     const o = round.fact.executionObservation!;
     assert.equal(o.status, 'INVALID', `a live reject must fail the round closed: ${JSON.stringify(o)}`);
@@ -224,7 +224,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
     assert.equal(c.classification, 'INCONCLUSIVE', `an unobserved run must not reach a strong label: ${JSON.stringify(c)}`);
   });
 
-  it('8. the observer door adds ONLY Canary-owned variables (no env-merge)', () => {
+  it('8. the observer door adds ONLY Amabie-owned variables (no env-merge)', () => {
     const ws = workspace('env', PASSING);
     const obsDir = path.join(ws.root, 'obs');
     fs.mkdirSync(obsDir, { recursive: true });
@@ -234,7 +234,7 @@ describe('Python observation through the executor round path', { skip: PY === nu
       observer: { kind: 'python', dir: obsDir, nonce: 'n' },
     }));
     const added = withObserver.filter((k) => !baseKeys.includes(k)).sort();
-    assert.deepEqual(added, ['CANARY_OBSERVER_NONCE', 'PYTHONNOUSERSITE', 'PYTHONPATH'],
+    assert.deepEqual(added, ['AMABIE_OBSERVER_NONCE', 'PYTHONNOUSERSITE', 'PYTHONPATH'],
       'the observer door may add exactly its own variables and nothing else');
   });
 });

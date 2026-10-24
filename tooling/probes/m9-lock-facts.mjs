@@ -22,7 +22,7 @@ const line = (ok, msg) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${msg}`); if (!
 
 // Measure the REAL handle, not the class export: a prototype lookup against a
 // possibly-unexposed class would report absence even if open() hands out locks.
-const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m9lockapi-'));
+const probeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m9lockapi-'));
 let hasLock = false;
 try {
   const sample = path.join(probeDir, 'f');
@@ -42,7 +42,7 @@ if (!hasLock) {
 }
 line(true, 'FileHandle.lock exists — measuring per-verb behavior across processes');
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m9lock-'));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m9lock-'));
 try {
   const target = path.join(dir, 'authority.json');
   fs.writeFileSync(target, 'ORIGINAL');

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * M0 dry-run — Canary's security boundary made executable.
+ * M0 dry-run — Amabie's security boundary made executable.
  *
  * Executes the approved golden-fixture experiment (3846masa/axios-cookiejar-
  * support @ f1e045d4) under the mandatory constraints approved 2026-08-30:
  *   - pinned repo + exact commit (content fetched by SHA, not branch)
- *   - disposable workspace inside the repo (.canary-runs/...)
+ *   - disposable workspace inside the repo (.amabie-runs/...)
  *   - allowlisted environment (no ANTHROPIC/GITHUB/cloud credential vars; by omission)
  *   - --ignore-scripts everywhere (no dependency lifecycle code)
  *   - no git auth, no publish, no pushes; network only npm registry + codeload
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WS = path.join(
   REPO_ROOT,
-  ".canary-runs",
+  ".amabie-runs",
   `m0-${new Date().toISOString().replace(/[:.]/g, "-")}`,
 );
 const FIXTURE = path.join(WS, "fixture");

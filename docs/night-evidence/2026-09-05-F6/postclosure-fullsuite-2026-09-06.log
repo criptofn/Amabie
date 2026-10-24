@@ -1,9 +1,9 @@
-TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canary-observation-hardening
-> canary-reliability-network@0.0.0 test
+TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/amabie-observation-hardening
+> amabie-reliability-network@0.0.0 test
 > npm run build && node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js"
 
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 ▶ panel K layer 1 — the validator refuses hostile frame streams
@@ -32,10 +32,10 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (5850.2856ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (5850.4901ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (5759.8281ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (5867.6019ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (11627.6952ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (11627.6952ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✔ check on honest evidence exits 0 and prints PASS (13540.1258ms)
   ✔ check on a tampered artifact exits 3 and names the tampered file (7119.0029ms)
@@ -49,10 +49,10 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
   ✔ test command node -e printing mocha-shaped prose is never PASS (6768.8485ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (6945.259ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (26526.4826ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.8346ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.4433ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (4.418ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (4.418ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✔ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (13372.1433ms)
   ✔ unconfined tree drift is downgraded to INCONCLUSIVE rule 9 (F9 e2e) (6563.0765ms)
@@ -328,7 +328,7 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.1401ms)
 ✔ post-GLM — execution-observation gate (rule 14) (3.8531ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.2819ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.2819ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.2289ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.2978ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.1311ms)
@@ -534,7 +534,7 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
 ✔ round-3 secondary — crash & sweep signals reach the classification (470.7456ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.2178ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (13.1724ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (13.1724ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (12.4472ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (30.2032ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (11.2306ms)
@@ -550,7 +550,7 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
   ✔ Sol's accepted forms are now rejected in install-family commands (2.5109ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (53.2543ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (2.8905ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (4.2986ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (4.2986ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.4791ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (3.0184ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1717ms)
@@ -600,7 +600,7 @@ TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canar
 ✔ audit F6 — child env observation: declared == observed (1644.8082ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (4.9508ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3456ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3456ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (6.6323ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.3732ms)

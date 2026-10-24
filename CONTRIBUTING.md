@@ -1,14 +1,14 @@
-# Contributing to Canary
+# Contributing to Amabie
 
-Thanks for looking. Canary is an evidence-first project: a change is judged by
+Thanks for looking. Amabie is an evidence-first project: a change is judged by
 what a command actually did, not by how convincing the description is. The
 process below is deliberately small, and the rules are strict.
 
 ## The loop
 
 ```sh
-git clone https://github.com/criptofn/Canary.git
-cd Canary
+git clone https://github.com/criptofn/Amabie.git
+cd Amabie
 npm ci                                 # lockfile-exact; no lifecycle scripts needed
 npm run build                          # tsc -b over the workspace graph
 npm test                               # the full unit suite — read the reporter summary
@@ -30,7 +30,7 @@ none of them was a weakened assertion:
 
 | Probe | What it actually was |
 |---|---|
-| `m8-promotion` | FIXTURE defect. The mid-plan step called bare `git` through `execSync`; a sealed step runs in Canary's SANITIZED environment, whose PATH is the Node dir plus the OS dirs and deliberately NOT the caller's, so `git` did not resolve, the step went red, and `CANDIDATE FAIL` was reported before the identity sandwich could speak. Fixed by naming git absolutely (the discipline `pinPlanPrograms` already applies). |
+| `m8-promotion` | FIXTURE defect. The mid-plan step called bare `git` through `execSync`; a sealed step runs in Amabie's SANITIZED environment, whose PATH is the Node dir plus the OS dirs and deliberately NOT the caller's, so `git` did not resolve, the step went red, and `CANDIDATE FAIL` was reported before the identity sandwich could speak. Fixed by naming git absolutely (the discipline `pinPlanPrograms` already applies). |
 | `m9-authority` | Same defect class: `m9-touch-authority.mjs` mode `basemove` called `execFileSync('git', …)` and spawned ENOENT. |
 | `pre10-env-authority` | Fixed earlier (`1abe0b2`): the probe mirrored `trustedDirs()`; the set is now exported and includes the directories `gitExe()` executes from. |
 | `pre10-acceptance` | Host-bound. There is no drivable real pty on this host (measured: no `script(1)`, and `winpty` without a console aborts on its own cols/rows assertion). The probe now uses one terminal provider, runs EVERY product assertion through the repo's in-process terminal driver, and reports the missing pty as an explicit host-bound `SKIP` (exit 3). |
@@ -74,7 +74,7 @@ after a clean checkout; the directory is gitignored.
    actually declares it. A tool named in a comment, a description or a README is
    *prose*; if discovery picks it up, that is a bug (it happened — see
    `git log --grep="mention is not a declaration"`).
-6. **A claim change needs a contract change.** If you alter what Canary promises,
+6. **A claim change needs a contract change.** If you alter what Amabie promises,
    update the owning document in the same PR:
    [`docs/EXECUTION-AUTHORITY.md`](docs/EXECUTION-AUTHORITY.md) (what is
    attested), [`docs/SECURITY.md`](docs/SECURITY.md) (enforced vs convention),

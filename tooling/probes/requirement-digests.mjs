@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * PRINT THE DIGEST `canary bind` / `canary.proofs` NEED FOR A STATED REQUIREMENT.
+ * PRINT THE DIGEST `amabie bind` / `amabie.proofs` NEED FOR A STATED REQUIREMENT.
  *
  * A binding is keyed by the material digest of the requirement TEXT (trimmed, internal whitespace
- * collapsed), so authoring a fixture — or an operator preparing a `package.json canary.proofs` /
- * `canary.project.json proofs` block by hand — needs that digest before the project is set up. The
- * product prints it too (`canary task --requirement "…"`), and this utility is the offline form of
+ * collapsed), so authoring a fixture — or an operator preparing a `package.json amabie.proofs` /
+ * `amabie.project.json proofs` block by hand — needs that digest before the project is set up. The
+ * product prints it too (`amabie task --requirement "…"`), and this utility is the offline form of
  * the same function, so the two can never disagree: it imports the SAME `materialDigest`.
  *
  * Usage:

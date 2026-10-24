@@ -70,7 +70,7 @@ describe('KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (off
     }
   });
 
-  it('canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo)', () => {
+  it('amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo)', () => {
     for (const [pkg, pins] of Object.entries(KNOWN_RUNNER_RELEASES)) {
       for (const p of pins) {
         if (p.origin === 'npm') continue;
@@ -86,7 +86,7 @@ describe('KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (off
 // unit tests pin the gate itself; the executor/pipeline e2es pin its wiring.
 describe('post-GLM F5 — findRunnerPin: origin is an execution-authority gate', () => {
   const pins = KNOWN_RUNNER_RELEASES.mocha ?? [];
-  const double = pins.find((p) => p.origin === 'canary-double');
+  const double = pins.find((p) => p.origin === 'amabie-double');
   const npmPin = pins.find((p) => p.origin === 'npm');
   assert.ok(double && npmPin, 'table must carry both origins for the gate to mean anything');
   // findRunnerPin never reads `dir` — the lookup is table-vs-(version, hash, origin).
@@ -97,15 +97,15 @@ describe('post-GLM F5 — findRunnerPin: origin is an execution-authority gate',
   it('double bytes are UNSELECTABLE by default: pinned hash, zero execution authority', () => {
     assert.equal(findRunnerPin(located(double!)), null);
     assert.equal(findRunnerPin(located(double!), {}), null);
-    assert.equal(findRunnerPin(located(double!), { allowCanaryDoubleOrigin: false }), null);
+    assert.equal(findRunnerPin(located(double!), { allowAmabieDoubleOrigin: false }), null);
   });
 
   it('only the explicit in-process grant selects the double', () => {
-    assert.equal(findRunnerPin(located(double!), { allowCanaryDoubleOrigin: true })?.version, double!.version);
+    assert.equal(findRunnerPin(located(double!), { allowAmabieDoubleOrigin: true })?.version, double!.version);
   });
 
   it('npm pins stay selectable in BOTH postures — the gate is origin-scoped, not blanket', () => {
     assert.equal(findRunnerPin(located(npmPin!))?.version, npmPin!.version);
-    assert.equal(findRunnerPin(located(npmPin!), { allowCanaryDoubleOrigin: true })?.version, npmPin!.version);
+    assert.equal(findRunnerPin(located(npmPin!), { allowAmabieDoubleOrigin: true })?.version, npmPin!.version);
   });
 });

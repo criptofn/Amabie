@@ -57,7 +57,7 @@
 test at packages\evidence\schema\dist\test\schema.test.js:428:5
 ✖ post-glm F6c: unknown fields NAMED LIKE Object.prototype members are refused too (own-property check, not `in`) (0.6087ms)
   AssertionError [ERR_ASSERTION]: root.toString: 
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/packages/evidence/schema/dist/test/schema.test.js:446:24)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/packages/evidence/schema/dist/test/schema.test.js:446:24)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)

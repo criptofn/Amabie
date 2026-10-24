@@ -1,4 +1,4 @@
-name: canary-ci
+name: amabie-ci
 
 on:
   push:
@@ -15,14 +15,15 @@ on:
   #
   # NOT USABLE FROM THIS BRANCH YET, and that is stated as an EXPECTATION, not a
   # measurement: GitHub builds the set of dispatchable workflows from the DEFAULT
-  # branch, so a manual dispatch of `canary-ci` is expected to become available only
+  # branch, so a manual dispatch of `amabie-ci` is expected to become available only
   # once this file reaches `main`. Nothing in this pass pushes or merges, so the
   # behaviour was NOT verified here and PR #8 remains the way to run CI on this branch.
   workflow_dispatch:
+  workflow_call:
 
 # Superseded pull-request runs are wasted work; main/tag runs are never cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: amabie-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -118,7 +119,35 @@ jobs:
             Write-Output "::warning::could not set scanner exclusions ($($_.Exception.Message)) — continuing unchanged"
           }
       - run: npm ci --no-audit --no-fund   # audit S3: reproducible, lockfile-exact install
+      - name: provision the verified workspace-local Go fixture toolchain
+        run: node tooling/toolchains.mjs go --go-version=1.27.2
+      - name: provision pytest for the required runner-authority suites
+        shell: bash
+        run: |
+          python -m venv _toolchains/py
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            _toolchains/py/Scripts/python.exe -m pip install pytest==9.1.1
+          else
+            _toolchains/py/bin/python -m pip install pytest==9.1.1
+          fi
       - run: npm run build
+      # Hosted Windows PowerShell 5.1 timed out on real CIM sweeps in run
+      # 39964104115. Select the runner's existing Core host explicitly, then
+      # prove it can measure processes and clean up owned descendants. A failed
+      # prerequisite stops CI; no assertion, sweep budget or fallback is relaxed.
+      # Trust the runner image's current tool path; this is not a signature check.
+      # Sequential preflight is diagnostic; the full suite still uses concurrency 8.
+      - name: verify the selected PowerShell 7 containment host (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $taskPowerShellHost = (Get-Process -Id $PID).Path
+          $env:AMABIE_POWERSHELL_CORE_PATH = $taskPowerShellHost
+          node tooling/probes/windows-selected-host.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test --test-concurrency=1 packages/support/dist/test/lifecycle.test.js apps/cli/dist/test/everyday-lifecycle.test.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "AMABIE_POWERSHELL_CORE_PATH=$taskPowerShellHost"
       # v1.4 — MEASURE THE HOST, THEN ASK THE SUITE FOR THE CAPABILITY.
       #
       # `apps/cli/test/confined-activation.test.ts` requires a host that can
@@ -149,21 +178,19 @@ jobs:
           if ($code -eq 3) {
             $reason = (Select-String -Path confined-capability.log -Pattern '^CAPABILITY: ' | Select-Object -Last 1).Line
             if (-not $reason) { $reason = 'CAPABILITY: this host cannot execute inside the native confinement (probe exit 3)' }
-            Add-Content -Path $env:GITHUB_ENV -Value "CANARY_CONFINED_HOST=unmeasurable"
-            Add-Content -Path $env:GITHUB_ENV -Value "CANARY_CONFINED_HOST_REASON=$reason"
+            Add-Content -Path $env:GITHUB_ENV -Value "AMABIE_CONFINED_HOST=unmeasurable"
+            Add-Content -Path $env:GITHUB_ENV -Value "AMABIE_CONFINED_HOST_REASON=$reason"
             Write-Output "::notice::$reason"
           } elseif ($code -eq 1) {
             Write-Output "::warning::the confinement capability probe was INCONCLUSIVE (exit 1) — nothing is skipped; the suite runs and must pass or fail on its own merits"
           }
           exit 0
 
-      # The SAME command `npm test` runs, minus the local `--test-concurrency=8`
-      # pin: that pin exists because node's default (one file per core) over-
-      # subscribes a many-core developer machine, while a 4-vCPU runner is
-      # already at 3. The tooling glob is not optional — `sea-capability.test.mjs`
-      # is the test that guards the standalone job's node pin, and CI was not
-      # running it.
-      - run: node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js" "tooling/**/*.test.mjs"
+      # Use the same forced rebuild, bounded concurrency and complete glob as local verification.
+      - run: npm test
+        # Temporary Windows diagnosis only; no process exemptions or retries.
+        env:
+          AMABIE_TRACE_WINDOWS_SWEEP: ${{ runner.os == 'Windows' && '1' || '0' }}
       - run: node tooling/probes/architecture-closure.mjs
       - run: node tooling/probes/architecture-metrics.mjs
       - run: node tooling/probes/cleanroom-packed-artifact.mjs
@@ -247,10 +274,10 @@ jobs:
       # the evidence-environment binding — is evaluated; a SKIPPED host-exact
       # assertion (or a divergence) exits non-zero and fails the job. On any
       # other machine `check` reports INCOMPLETE (exit 2) by design.
-      - name: canary run (execute the axios 0.27.2 -> 1.0.0 experiment)
+      - name: amabie run (execute the axios 0.27.2 -> 1.0.0 experiment)
         run: node apps/cli/dist/src/main.js run fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json
         shell: bash
-      - name: canary check (assert the committed proof, not just the exit code)
+      - name: amabie check (assert the committed proof, not just the exit code)
         run: node apps/cli/dist/src/main.js check fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json
         shell: bash
       - name: upload evidence
@@ -258,4 +285,4 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: evidence-bundle
-          path: .canary-runs/**/artifacts/
+          path: .amabie-runs/**/artifacts/

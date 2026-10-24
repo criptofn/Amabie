@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark/2",
+  "schema": "amabie-benchmark/2",
   "label": "bench-r9",
   "generatedAt": "2026-09-13T02:39:19.653Z",
   "instrument": {
@@ -51,7 +51,7 @@
         "D_candidate_correct_delivered": 2
       },
       "regressions": 0,
-      "canaryTrials": 2,
+      "amabieTrials": 2,
       "falseGreen": 0,
       "falseRed": 0,
       "suiteRedAfterClaim": 0,
@@ -73,12 +73,12 @@
       "turnsMean": 43,
       "wallSecsMean": 781,
       "agentVisibleBytesMean": 80373,
-      "canaryVisibleBytesMean": 1720,
+      "amabieVisibleBytesMean": 1720,
       "checkRunsByModelMean": 3.5,
-      "canaryCommandsByModelMean": 3,
+      "amabieCommandsByModelMean": 3,
       "tokensAfterCodeCorrect": null,
       "tokensAfterCodeCorrectTrials": 0,
-      "canaryHookSeenInStream": 0,
+      "amabieHookSeenInStream": 0,
       "assistantEventsMean": 87.5,
       "hookOutputBytesMean": 0,
       "tokenSource": [
@@ -108,7 +108,7 @@
           "D_candidate_correct_delivered": 2
         },
         "regressions": 0,
-        "canaryTrials": 2,
+        "amabieTrials": 2,
         "falseGreen": 0,
         "falseRed": 0,
         "suiteRedAfterClaim": 0,
@@ -130,12 +130,12 @@
         "turnsMean": 43,
         "wallSecsMean": 781,
         "agentVisibleBytesMean": 80373,
-        "canaryVisibleBytesMean": 1720,
+        "amabieVisibleBytesMean": 1720,
         "checkRunsByModelMean": 3.5,
-        "canaryCommandsByModelMean": 3,
+        "amabieCommandsByModelMean": 3,
         "tokensAfterCodeCorrect": null,
         "tokensAfterCodeCorrectTrials": 0,
-        "canaryHookSeenInStream": 0,
+        "amabieHookSeenInStream": 0,
         "assistantEventsMean": 87.5,
         "hookOutputBytesMean": 0,
         "tokenSource": [
@@ -147,7 +147,7 @@
   },
   "tokenDelta": {},
   "kpi": {},
-  "canaryAgreement": {
+  "amabieAgreement": {
     "trials": 2,
     "correctnessTrials": 2,
     "falseGreen": 0,
@@ -165,8 +165,8 @@
         "task": "multi-requirement-pricing",
         "arm": "guarded",
         "oracleKind": "correctness",
-        "canaryVerdict": "READY",
-        "canaryGreen": true,
+        "amabieVerdict": "READY",
+        "amabieGreen": true,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -183,8 +183,8 @@
         "task": "multi-requirement-pricing",
         "arm": "guarded",
         "oracleKind": "correctness",
-        "canaryVerdict": "READY",
-        "canaryGreen": true,
+        "amabieVerdict": "READY",
+        "amabieGreen": true,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -227,9 +227,9 @@
       "turns": 45,
       "secs": 766.1,
       "checkRunsByModel": 4,
-      "canaryCommandsByModel": 3,
+      "amabieCommandsByModel": 3,
       "agentVisibleBytes": 86934,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -258,9 +258,9 @@
       "turns": 41,
       "secs": 796.3,
       "checkRunsByModel": 3,
-      "canaryCommandsByModel": 3,
+      "amabieCommandsByModel": 3,
       "agentVisibleBytes": 73811,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     }
   ]

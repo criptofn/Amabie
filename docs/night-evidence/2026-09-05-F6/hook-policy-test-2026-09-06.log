@@ -1,4 +1,4 @@
-TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/canary-observation-hardening
+TREE: aad1b81eccf867a59343f8ad9100fe382f8c6f08 @ /c/Users/Johannes/Desktop/amabie-observation-hardening
 CMD: node docs/night-evidence/2026-09-05-F6/hook-policy-test.mjs (decision-only; no payload executed)
 PASS [MUST-AUTONOMIZE] node -e "const fs=require('fs');console.log(fs.statSync('p  ->  allow [LOCAL]: provably read-only inline analysis command (every segment allowl
 PASS [MUST-AUTONOMIZE] node -e "console.log(1+1)"  ->  allow [LOCAL]: provably read-only inline analysis command (every segment allowl

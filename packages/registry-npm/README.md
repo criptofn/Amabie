@@ -1,4 +1,4 @@
-# @canary-rn/registry-npm (reserved — not yet implemented)
+# @amabie/registry-npm (reserved — not yet implemented)
 
 Planned home for npm-registry resolution helpers: version existence checks,
 `gitHead`/repository metadata for specs, and (later) resolution-window

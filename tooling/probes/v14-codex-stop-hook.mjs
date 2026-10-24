@@ -13,9 +13,9 @@
  * A vendor document is not evidence that THIS product gates. So this probe measures three things,
  * in increasing order of strength, and reports exactly how far it got:
  *
- *   H. the WIRING: `canary setup` writes `<repo>/.codex/hooks.json` with exactly one Canary `Stop`
+ *   H. the WIRING: `amabie setup` writes `<repo>/.codex/hooks.json` with exactly one Amabie `Stop`
  *      handler running the same `checkpoint` entry point, merges instead of overwriting, is
- *      byte-idempotent, and `canary uninstall` removes exactly its own handler.
+ *      byte-idempotent, and `amabie uninstall` removes exactly its own handler.
  *   P. the PROTOCOL: the recorded hook command is spawned as Codex spawns it — the `Stop` event JSON
  *      on stdin, the decision read back from stdout — for the passing case (silent allow), the
  *      failing case (parsed `decision: "block"` with a reason that names the FAILING CHECK, not an
@@ -26,12 +26,13 @@
  *      `CODEX_HOME` — a temp copy of the operator's credentials plus the vendor's own
  *      `[projects.'<path>'] trust_level = "trusted"` entry — so nothing the operator owns is
  *      modified), and `--dangerously-bypass-hook-trust` covers the per-hook review record, which is
- *      what that flag is documented for. The observation is not the exit code: it is that Canary's
+ *      what that flag is documented for. The observation is not the exit code: it is that Amabie's
  *      own checkpoint record, deleted just before the run, exists again afterwards (so the harness
  *      really executed the hook), and that the session continued on its decision.
  *
- * WHAT A SKIP MEANS HERE. If no runnable `codex` CLI exists, if it has no credentials, or if it times
- * out, the end-to-end arm prints an explicit SKIP naming what could not be done and the probe exits 3
+ * WHAT A SKIP MEANS HERE. The end-to-end arm starts a paid provider session, so it runs only when the
+ * operator sets AMABIE_ALLOW_CODEX_PROVIDER_USAGE=1. Without that opt-in, or if no runnable `codex` CLI
+ * exists, or if it has no credentials, the arm prints an explicit SKIP naming what could not be done and the probe exits 3
  * (host-bound) — a SKIP is never a PASS, and the `gatingMeasured` claim in the capability table is
  * exactly the thing this arm is evidence for. If the session RUNS but the hook never fires, that is
  * not a host bound: it is a FAIL, because the product would be claiming a gate the harness skipped.
@@ -47,7 +48,7 @@ import { spawnSync } from 'node:child_process';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-v14-codex-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-v14-codex-'));
 const results = [];
 const check = (name, fn) => {
   try {
@@ -116,11 +117,11 @@ try {
    * home keeps the operator's own `~/.claude` from being wired into the same fixture, which would
    * make "setup wrote exactly ONE handler" depend on whose machine this runs on.
    */
-  const canaryEnv = { ...process.env, USERPROFILE: HOME, HOME, CANARY_TRUST_STORE: store };
+  const amabieEnv = { ...process.env, USERPROFILE: HOME, HOME, AMABIE_TRUST_STORE: store };
   const run = (exe, args, cwd, opts = {}) => spawnSync(exe, args, {
     cwd, encoding: 'utf8', windowsHide: true, timeout: 300_000, ...opts,
   });
-  const canary = (args, cwd, opts = {}) => run(process.execPath, [CLI, ...args], cwd, { env: canaryEnv, ...opts });
+  const amabie = (args, cwd, opts = {}) => run(process.execPath, [CLI, ...args], cwd, { env: amabieEnv, ...opts });
 
   // ── the fixture: a real git repo, a REAL check whose verdict can be flipped WITHOUT touching the
   // sealed script text (so a block can only come from the check failing, never from authority drift).
@@ -150,10 +151,10 @@ try {
    *
    * MEASURED, the hard way (first run of this probe): an unfamiliar TOP-LEVEL key is not ignored by
    * Codex — it fails to parse the WHOLE hooks file ("failed to parse hooks config …: unknown field
-   * `keepMe`"), so every hook in it, Canary's included, silently does not exist. That is a real
+   * `keepMe`"), so every hook in it, Amabie's included, silently does not exist. That is a real
    * operational hazard for anyone hand-editing this file, and it is why the fixture below carries
    * only what the vendor documents: the optional `description`, plus events and handlers. The
-   * writer's duty to preserve keys Canary does not understand is pinned in
+   * writer's duty to preserve keys Amabie does not understand is pinned in
    * `apps/cli/test/codex-wiring.test.ts` — where no harness parses the result.
    */
   const unrelatedScript = path.join(temp, 'unrelated-hook.js');
@@ -175,20 +176,20 @@ try {
 
   // ── H: the wiring ────────────────────────────────────────────────────────────────────────────
   const expectedCommand = `node "${CLI}" checkpoint`;
-  const setup = canary(['setup', '--yes'], root);
-  if (setup.status !== 0) showRun('canary setup --yes', setup);
-  const canaryHandlers = () => stopHandlers().filter((h) => h.command === expectedCommand);
+  const setup = amabie(['setup', '--yes'], root);
+  if (setup.status !== 0) showRun('amabie setup --yes', setup);
+  const amabieHandlers = () => stopHandlers().filter((h) => h.command === expectedCommand);
 
-  check('H1-setup-installs-exactly-one-Canary-Stop-handler-into-.codex/hooks.json', () => {
-    assert(setup.status === 0, `canary setup --yes exited ${setup.status}`);
+  check('H1-setup-installs-exactly-one-Amabie-Stop-handler-into-.codex/hooks.json', () => {
+    assert(setup.status === 0, `amabie setup --yes exited ${setup.status}`);
     assert(fs.existsSync(hooksFile), '.codex/hooks.json was not written');
-    assert(canaryHandlers().length === 1, `expected 1 Canary handler, found ${canaryHandlers().length}`);
-    return JSON.stringify(canaryHandlers()[0]);
+    assert(amabieHandlers().length === 1, `expected 1 Amabie handler, found ${amabieHandlers().length}`);
+    return JSON.stringify(amabieHandlers()[0]);
   });
 
   check('H2-the-handler-runs-the-ONE-checkpoint-entry-point-with-a-bounded-timeout-and-a-status-message', () => {
-    const h = canaryHandlers()[0];
-    assert(h !== undefined, 'no Canary handler to inspect');
+    const h = amabieHandlers()[0];
+    assert(h !== undefined, 'no Amabie handler to inspect');
     assert(h.type === 'command', `handler type is ${JSON.stringify(h.type)}`);
     assert(h.timeout === 1800, `timeout is ${JSON.stringify(h.timeout)} (seconds per the vendor schema)`);
     assert(typeof h.statusMessage === 'string' && h.statusMessage.length > 0, 'no statusMessage');
@@ -213,23 +214,23 @@ try {
   });
 
   const afterFirst = fs.readFileSync(hooksFile, 'utf8');
-  const setupAgain = canary(['setup', '--yes'], root);
+  const setupAgain = amabie(['setup', '--yes'], root);
   check('H5-a-second-setup-is-byte-identical-and-does-not-stack-a-second-handler', () => {
     assert(setupAgain.status === 0, `the second setup exited ${setupAgain.status}`);
     assert(fs.readFileSync(hooksFile, 'utf8') === afterFirst, 'the file changed on a re-run');
-    assert(canaryHandlers().length === 1, `${canaryHandlers().length} Canary handlers after two setups`);
+    assert(amabieHandlers().length === 1, `${amabieHandlers().length} Amabie handlers after two setups`);
     return `${afterFirst.length} bytes before and after; ${stopHandlers().length} Stop handler(s) total`;
   });
 
-  check('H6-canary-status-reports-the-wiring-sound-in-this-state', () => {
-    const status = canary(['status'], root);
+  check('H6-amabie-status-reports-the-wiring-sound-in-this-state', () => {
+    const status = amabie(['status'], root);
     assert(status.status === 0, `status exited ${status.status}: ${status.stdout}`);
     assert(/CONNECTED/.test(status.stdout), 'status does not report CONNECTED');
     return 'exit 0, CONNECTED';
   });
 
   check('H7-agents-reports-Codex-GATED-with-the-trust-step-on-the-same-row', () => {
-    const agents = canary(['agents'], root);
+    const agents = amabie(['agents'], root);
     assert(agents.status === 0, `agents exited ${agents.status}: ${agents.stdout}`);
     assert(/GATED\s+OpenAI Codex CLI/.test(agents.stdout), 'Codex is not reported as GATED');
     assert(/hook installed here/.test(agents.stdout), 'the row does not say the hook is installed here');
@@ -238,13 +239,13 @@ try {
   });
 
   // ── P: the hook contract, driven the way the vendor documents it ─────────────────────────────
-  const argv = canaryHandlers().length === 1 ? parseHookCommand(canaryHandlers()[0].command) : null;
+  const argv = amabieHandlers().length === 1 ? parseHookCommand(amabieHandlers()[0].command) : null;
   check('P0-the-recorded-command-parses-to-the-expected-argv', () => {
-    assert(argv !== null, `the recorded command is not the expected shape: ${canaryHandlers()[0]?.command}`);
+    assert(argv !== null, `the recorded command is not the expected shape: ${amabieHandlers()[0]?.command}`);
     assert(argv[1] === CLI && argv[2] === 'checkpoint', `parsed argv is ${JSON.stringify(argv)}`);
-    return `${canaryHandlers()[0].command}  →  ${argv.join(' ')}`;
+    return `${amabieHandlers()[0].command}  →  ${argv.join(' ')}`;
   });
-  const hook = (event) => run(argv[0], argv.slice(1), root, { input: event, env: canaryEnv, timeout: 180_000 });
+  const hook = (event) => run(argv[0], argv.slice(1), root, { input: event, env: amabieEnv, timeout: 180_000 });
   const decisionOf = (r) => {
     const text = (r.stdout ?? '').trim();
     if (text === '') return null;
@@ -260,7 +261,7 @@ try {
   });
 
   // Flip the REAL check to red without touching the sealed script text: the block that follows can
-  // only come from Canary's own execution of the project's check.
+  // only come from Amabie's own execution of the project's check.
   fs.writeFileSync(path.join(root, 'state.json'), '{"ok": false}\n');
   const failRun = hook(stopEvent(root, false));
   const failDecision = decisionOf(failRun);
@@ -275,7 +276,7 @@ try {
 
   check('P3-the-block-came-from-the-FAILING-CHECK-not-from-authority-drift-or-an-unverified-path', () => {
     const reason = typeof failDecision?.reason === 'string' ? failDecision.reason : '';
-    assert(/Canary verification failed/.test(reason), `the reason does not name the failing check: ${reason.slice(0, 200)}`);
+    assert(/Amabie verification failed/.test(reason), `the reason does not name the failing check: ${reason.slice(0, 200)}`);
     assert(/tests/.test(reason), 'the reason does not name the failing step');
     assert(!/authority changed|UNVERIFIED|not valid JSON/.test(reason), `the block came from an authority/corruption path: ${reason.slice(0, 200)}`);
     return reason.split('\n')[0].slice(0, 220);
@@ -311,7 +312,11 @@ try {
    */
   const codex = resolveCodex();
   const userAuth = path.join(os.homedir(), '.codex', 'auth.json');
-  if (codex === null) {
+  // An installed CLI and a credentials file are not consent: `codex exec` starts a real, billable
+  // provider session. Only the operator's explicit opt-in starts it; otherwise the live arm is NOT RUN.
+  if (process.env.AMABIE_ALLOW_CODEX_PROVIDER_USAGE !== '1') {
+    skip('v14-end-to-end: NOT RUN — AMABIE_ALLOW_CODEX_PROVIDER_USAGE=1 is not set, so the `codex exec` session was not started (the hook contracts above still ran)');
+  } else if (codex === null) {
     skip('v14-end-to-end: no runnable codex CLI on this host — the `codex exec` session was NOT attempted, so nothing here measures a real session');
   } else if (!fs.existsSync(userAuth)) {
     skip(`v14-end-to-end: no Codex credentials at ${userAuth} — the \`codex exec\` session was NOT attempted (an unauthenticated run measures nothing)`);
@@ -324,17 +329,17 @@ try {
     fs.copyFileSync(userAuth, path.join(codexHome, 'auth.json')); // removed with the temp tree
     fs.writeFileSync(path.join(codexHome, 'config.toml'), `[projects.'${root.toLowerCase()}']\ntrust_level = "trusted"\n`);
     console.log(`INFO isolated CODEX_HOME: ${codexHome} (a copy of auth.json + the project-trust entry; the operator's own ~/.codex is not modified)`);
-    // Canary's own records of the hook's previous runs are DELETED, so anything that exists
+    // Amabie's own records of the hook's previous runs are DELETED, so anything that exists
     // afterwards can only have been written by a hook invocation INSIDE the session that follows.
-    const checkpointFile = path.join(root, '.canary', 'last-checkpoint.json');
-    const evidenceDir = path.join(root, '.canary', 'evidence');
+    const checkpointFile = path.join(root, '.amabie', 'last-checkpoint.json');
+    const evidenceDir = path.join(root, '.amabie', 'evidence');
     try { fs.rmSync(checkpointFile, { force: true }); } catch { /* absent */ }
     try { fs.rmSync(evidenceDir, { recursive: true, force: true }); } catch { /* absent */ }
     const session = run(codex.argv[0], [
       ...codex.argv.slice(1), 'exec', '--json', '--skip-git-repo-check', '--dangerously-bypass-hook-trust',
       '-s', 'read-only', '-C', root, 'Reply with the single word OK.',
     ], root, {
-      env: { ...process.env, CODEX_HOME: codexHome, CANARY_TRUST_STORE: store }, input: '', timeout: 300_000,
+      env: { ...process.env, CODEX_HOME: codexHome, AMABIE_TRUST_STORE: store }, input: '', timeout: 300_000,
     });
     const sessionOut = `${session.stdout}${session.stderr}`;
     const turns = (sessionOut.match(/"type":"turn\.started"/g) ?? []).length;
@@ -346,26 +351,26 @@ try {
      * the first version of this probe therefore reported a false failure. What IS observable is the
      * hook running TWICE: the second `Stop` happens only when the harness carried on after the first
      * one blocked, and it arrives with `stop_hook_active: true` (the loop guard the P4 case pins).
-     * The probe counts Canary's own checkpoint bundles, which is evidence this product wrote.
+     * The probe counts Amabie's own checkpoint bundles, which is evidence this product wrote.
      */
     const checkpointBundles = fs.existsSync(evidenceDir)
       ? fs.readdirSync(evidenceDir).filter((b) => b.endsWith('-checkpoint')).length : 0;
-    const modelActedOnTheReason = /\.canary[\\/]evidence|tests\.log/.test(sessionOut);
+    const modelActedOnTheReason = /\.amabie[\\/]evidence|tests\.log/.test(sessionOut);
     console.log(`INFO codex session: exit ${session.status}, ${turns} turn(s) started, checkpoint record ${hookRecord === null ? 'ABSENT' : `${hookRecord.status}/${hookRecord.source}`}, checkpoint bundles written DURING the session: ${checkpointBundles}`);
-    console.log(`INFO the model acted on Canary's reason (it named Canary's evidence artifact): ${modelActedOnTheReason}`);
+    console.log(`INFO the model acted on Amabie's reason (it named Amabie's evidence artifact): ${modelActedOnTheReason}`);
     console.log(`INFO the user's own Stop handler also ran in that session: ${fs.existsSync(path.join(temp, 'unrelated-ran.txt'))}`);
-    for (const line of sessionOut.split('\n').filter((l) => /Canary|hook/i.test(l)).slice(0, 6)) console.log(`INFO session: ${line.slice(0, 220)}`);
+    for (const line of sessionOut.split('\n').filter((l) => /Amabie|hook/i.test(l)).slice(0, 6)) console.log(`INFO session: ${line.slice(0, 220)}`);
     if (session.status === null) {
       skip('v14-end-to-end: the `codex exec` session did not finish within 300s on this host — the real-session measurement was NOT obtained');
     } else if (session.status !== 0) {
-      skip(`v14-end-to-end: \`codex exec\` exited ${session.status} (not authenticated, or it refused to run unattended here) — the real-session measurement was NOT obtained`);
+      skip(`v14-end-to-end: \`codex exec\` exited ${session.status}; this exit alone does not establish the cause — inspect the recorded session output. The real-session measurement was NOT obtained`);
     } else {
-      check('E1-the-real-codex-session-EXECUTED-Canarys-hook-(its-checkpoint-record-reappeared)', () => {
-        assert(hookRecord !== null, 'no .canary/last-checkpoint.json appeared during the session — the hook did not run');
+      check('E1-the-real-codex-session-EXECUTED-Amabies-hook-(its-checkpoint-record-reappeared)', () => {
+        assert(hookRecord !== null, 'no .amabie/last-checkpoint.json appeared during the session — the hook did not run');
         assert(hookRecord.source === 'checkpoint', `the record was written by ${hookRecord.source}, not by a hook invocation`);
         return `${hookRecord.status} via ${hookRecord.source}`;
       });
-      check('E2-the-session-CONTINUED-on-Canarys-decision-(the hook ran a SECOND time)', () => {
+      check('E2-the-session-CONTINUED-on-Amabies-decision-(the hook ran a SECOND time)', () => {
         assert(checkpointBundles >= 2, `the hook ran once (${checkpointBundles} checkpoint bundle(s)) — a stopped turn was not continued`);
         return { checkpointBundles, turns, reasonTextEchoedInJsonl: modelActedOnTheReason };
       });
@@ -373,8 +378,8 @@ try {
   }
 
   // ── H (cont.): removal ───────────────────────────────────────────────────────────────────────
-  const uninstall = canary(['uninstall'], root);
-  check('H8-uninstall-removes-exactly-the-Canary-handler-and-keeps-the-users-file', () => {
+  const uninstall = amabie(['uninstall'], root);
+  check('H8-uninstall-removes-exactly-the-Amabie-handler-and-keeps-the-users-file', () => {
     assert(uninstall.status === 0, `uninstall exited ${uninstall.status}: ${uninstall.stdout}`);
     const remaining = stopHandlers();
     assert(remaining.length === 1 && remaining[0].command === UNRELATED, `Stop handlers after uninstall: ${JSON.stringify(remaining)}`);

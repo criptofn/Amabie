@@ -3,7 +3,7 @@
  * The completion gate's failure payload — measured end to end.
  *
  * WHY THIS IS A PROBE AND NOT A UNIT TEST: the payload is a TOKEN-COST control, and the cost is
- * what the MODEL is handed through the Stop hook. Only a real `canary checkpoint` on a real
+ * what the MODEL is handed through the Stop hook. Only a real `amabie checkpoint` on a real
  * wired repository shows what the hook actually emits, how large it is, and that the full runner
  * output is on disk where a human (or an explicit drill-down) can read it.
  *
@@ -31,7 +31,7 @@ const check = (name, fn) => {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 assert(fs.existsSync(CLI), `missing built CLI (run npm run build): ${CLI}`);
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-payload-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-payload-'));
 const root = path.join(TMP, 'project');
 fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
 fs.mkdirSync(path.join(root, '.git'), { recursive: true });
@@ -64,7 +64,7 @@ fs.writeFileSync(path.join(root, 'marker.txt'), 'fail\n');
 
 const git = (args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 60_000 });
 git(['init', '-b', 'main']);
-git(['config', 'user.email', 'payload@canary.local']);
+git(['config', 'user.email', 'payload@amabie.local']);
 git(['config', 'user.name', 'Payload Probe']);
 git(['add', '-A']);
 git(['commit', '-m', 'initial']);
@@ -88,7 +88,7 @@ check('1. a failing check BLOCKS the completion', () => {
 
 check('2. the payload names the check and the failing test identity', () => {
   const reason = envelope?.reason ?? '';
-  assert(/Canary verification failed: tests/.test(reason), `the failing check must be named:\n${reason}`);
+  assert(/Amabie verification failed: tests/.test(reason), `the failing check must be named:\n${reason}`);
   assert(/total includes negative values/.test(reason), `the failing identity must be named:\n${reason}`);
   assert(/5 !== 0/.test(reason), `the assertion line must survive:\n${reason}`);
 });

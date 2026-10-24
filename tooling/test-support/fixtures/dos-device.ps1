@@ -5,7 +5,7 @@
 param([Parameter(Mandatory=$true)][string]$Request)
 $ErrorActionPreference = 'Stop'
 $r = Get-Content -Raw -LiteralPath $Request | ConvertFrom-Json
-Add-Type -Namespace CanaryDos -Name Device -MemberDefinition @'
+Add-Type -Namespace AmabieDos -Name Device -MemberDefinition @'
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern uint QueryDosDeviceW(string name, System.Text.StringBuilder target, uint size);
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool DefineDosDeviceW(uint flags, string name, string target);
 [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern uint GetShortPathNameW(string longPath, System.Text.StringBuilder shortPath, uint size);
@@ -20,25 +20,25 @@ try {
   switch ($r.op) {
     'query' {
       $sb = New-Object System.Text.StringBuilder 32768
-      $n = [CanaryDos.Device]::QueryDosDeviceW([string]$r.name, $sb, 32768)
+      $n = [AmabieDos.Device]::QueryDosDeviceW([string]$r.name, $sb, 32768)
       if ($n -eq 0) { Fail 'QueryDosDeviceW' } else { $out.target = $sb.ToString() }
     }
     'list' {
       $map = [ordered]@{}
       foreach ($c in [char[]]'ZYXWVUTSRQPONMLKJIHGFEDCBA') {
         $sb = New-Object System.Text.StringBuilder 32768
-        if ([CanaryDos.Device]::QueryDosDeviceW([string]$c + ':', $sb, 32768) -ne 0) { $map[[string]$c + ':'] = $sb.ToString() }
+        if ([AmabieDos.Device]::QueryDosDeviceW([string]$c + ':', $sb, 32768) -ne 0) { $map[[string]$c + ':'] = $sb.ToString() }
       }
       $out.map = $map
     }
     'define' {
-      $ok = [CanaryDos.Device]::DefineDosDeviceW([uint32]$r.flags, [string]$r.name, [string]$r.target)
+      $ok = [AmabieDos.Device]::DefineDosDeviceW([uint32]$r.flags, [string]$r.name, [string]$r.target)
       $out.ok = $ok
       if (-not $ok) { Fail 'DefineDosDeviceW' }
     }
     'short' {
       $sb = New-Object System.Text.StringBuilder 32768
-      $n = [CanaryDos.Device]::GetShortPathNameW([string]$r.path, $sb, 32768)
+      $n = [AmabieDos.Device]::GetShortPathNameW([string]$r.path, $sb, 32768)
       if ($n -eq 0) { Fail 'GetShortPathNameW' } else { $out.short = $sb.ToString() }
     }
     'launcher-pids' {

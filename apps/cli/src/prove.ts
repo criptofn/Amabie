@@ -1,7 +1,7 @@
 /**
- * `canary prove` — re-runs (or checks) an experiment and asserts it matches
+ * `amabie prove` — re-runs (or checks) an experiment and asserts it matches
  * the committed expectation file exactly. This is the regression proof of
- * Canary's golden fixture; the CI gate.
+ * Amabie's golden fixture; the CI gate.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -9,16 +9,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { diffTrees, extractFailingTestNamesFor, hasRunnerSummaryFor, parseSummaryCountsFor } from '@canary-rn/comparator';
-import { observerNonce } from '@canary-rn/executor';
+import { diffTrees, extractFailingTestNamesFor, hasRunnerSummaryFor, parseSummaryCountsFor } from '@amabie/comparator';
+import { observerNonce } from '@amabie/executor';
 import {
   hasRunnerSummary, isInfraOutput, hasCrashSignature, Recorder,
   validateObservation, OBSERVER_PRELOAD_SOURCE, observerPreloadPath, type ExpansionPlan,
-} from '@canary-rn/executor';
-import { sha256File } from '@canary-rn/hashing';
-import { validateBundle, type EvidenceBundle } from '@canary-rn/evidence-schema';
-import { classify, applyConfinementGuard, type ExecutionObservation, type RoundFact } from '@canary-rn/classification';
-import { sanitizedEnv, sanitizedEnvKeys, resolveNpmCli, KNOWN_RUNNER_RELEASES, canonicalPath, type WorkspaceLayout } from '@canary-rn/support';
+} from '@amabie/executor';
+import { sha256File } from '@amabie/hashing';
+import { validateBundle, type EvidenceBundle } from '@amabie/evidence-schema';
+import { classify, applyConfinementGuard, type ExecutionObservation, type RoundFact } from '@amabie/classification';
+import { sanitizedEnv, sanitizedEnvKeys, resolveNpmCli, KNOWN_RUNNER_RELEASES, canonicalPath, type WorkspaceLayout } from '@amabie/support';
 import { deriveArmTreeFacts } from './verify-tree.js';
 
 export interface SummaryExpectation { passing: number; failing?: number | undefined }
@@ -122,7 +122,7 @@ export interface AssertionResult {
  * (INCOMPLETE), never as a pass.
  *
  * Post-sol secondary: the sampler spawns under the SAME sanitized child
- * environment every other Canary process gets (allowlist, no inherited
+ * environment every other Amabie process gets (allowlist, no inherited
  * NODE_OPTIONS / npm_config_*). Before this, it inherited the verifier's
  * full process environment: a poisoned NODE_OPTIONS (or any npm-steering
  * var) in the verifying shell could spoof or crash the very measurement
@@ -365,7 +365,8 @@ export function assertProof(
 
 /** Read + VALIDATE the last run's evidence for this experiment (F7). */
 export function readLatestEvidence(repoRoot: string, experimentId: string): { bundle: EvidenceBundle; artifactsDir: string; issues: string[] } {
-  const pointerPath = path.join(repoRoot, '.canary-runs', `latest-${experimentId}.json`);
+  const name = `latest-${experimentId}.json`;
+  const pointerPath = path.join(repoRoot, '.amabie-runs', name);
   const pointer = JSON.parse(fs.readFileSync(pointerPath, 'utf8')) as { evidence: string };
   const bundle = JSON.parse(fs.readFileSync(pointer.evidence, 'utf8')) as EvidenceBundle;
   const issues = validateBundle(bundle);
@@ -373,29 +374,26 @@ export function readLatestEvidence(repoRoot: string, experimentId: string): { bu
 }
 
 /**
- * Audit F12: `canary report` / `npm run report` with no argument resolves
+ * Audit F12: `amabie report` / `npm run report` with no argument resolves
  * the MOST RECENT pointer across all experiments (by file mtime), so the
  * documented one-word command actually works after any run.
  */
 export function findLatestEvidencePath(repoRoot: string): { experimentId: string; evidencePath: string } | undefined {
-  const dir = path.join(repoRoot, '.canary-runs');
-  let names: string[];
-  try {
-    names = fs.readdirSync(dir).filter((n) => n.startsWith('latest-') && n.endsWith('.json'));
-  } catch {
-    return undefined;
-  }
-  const dated = names
-    .map((n) => {
+  const dirs = [path.join(repoRoot, '.amabie-runs')];
+  const dated = dirs.flatMap((dir) => {
+    try {
+      return fs.readdirSync(dir).filter((n) => n.startsWith('latest-') && n.endsWith('.json')).map((n) => {
       try {
-        return { n, mtime: fs.statSync(path.join(dir, n)).mtimeMs };
+          return { n, dir, mtime: fs.statSync(path.join(dir, n)).mtimeMs };
       } catch {
         return undefined;
       }
-    })
-    .filter((x): x is { n: string; mtime: number } => x !== undefined)
+      });
+    } catch { return []; }
+  })
+    .filter((x): x is { n: string; dir: string; mtime: number } => x !== undefined)
     .sort((a, b) => b.mtime - a.mtime);
-  for (const { n } of dated) {
+  for (const { n, dir } of dated) {
     try {
       const pointer = JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')) as { evidence?: string };
       if (typeof pointer.evidence === 'string' && fs.existsSync(pointer.evidence)) {
@@ -542,9 +540,9 @@ function withinDir(root: string, abs: string): { ok: boolean; why: string } {
  * Post-GLM G adds two more byte-boundities, both host-gated like argv
  * re-derivation: (1) each round's executionObservation must equal the result
  * of re-running the SHARED capture validator over the retained
- * `<arm>-<round>.attest.ndjson` bytes with Canary-re-derived inputs; (2) the
+ * `<arm>-<round>.attest.ndjson` bytes with Amabie-re-derived inputs; (2) the
  * retained observer preload under wsRoot must byte-match the current
- * OBSERVER_PRELOAD_SOURCE (what Canary injected is checkable, not assumed).
+ * OBSERVER_PRELOAD_SOURCE (what Amabie injected is checkable, not assumed).
  * Without a `ctx` (the report flow has no spec handle) these are not
  * evaluable here — verifyArtifacts still binds the frame bytes to their
  * recorded digest on every host.
@@ -620,7 +618,7 @@ export function verifyArtifactSemantics(
   // (2) The injected bytes themselves: the preload lives under wsRoot (NOT
   // artifactsDir — panel I), so it is outside the manifest of canonical
   // artifacts and bound here instead. Divergence from the CURRENT source means
-  // capture and verification disagree about what Canary injects — loud fail by
+  // capture and verification disagree about what Amabie injects — loud fail by
   // design; bumping OBSERVER_VERSION without a re-run makes old evidence
   // unprovable rather than quietly re-interpretable.
   if (proveReplayEvaluable(bundle, ctx)) {
@@ -629,7 +627,7 @@ export function verifyArtifactSemantics(
     let pre: string | null = null;
     try { pre = fs.readFileSync(preloadPath, 'utf8'); } catch { pre = null; }
     if (pre === null) {
-      issues.push(`retained observer preload missing (${preloadPath}) — the injected --require bytes cannot be bound to Canary source`);
+      issues.push(`retained observer preload missing (${preloadPath}) — the injected --require bytes cannot be bound to Amabie source`);
     } else if (pre !== OBSERVER_PRELOAD_SOURCE) {
       issues.push('retained observer preload bytes differ from the current OBSERVER_PRELOAD_SOURCE — what was injected at capture is not what this build injects (re-run required; never re-interpret old evidence)');
     }
@@ -852,13 +850,13 @@ function fixtureResolveBin(fixtureDir: string): (pkg: string, key?: string) => s
  *    and the re-derived plan diverge from what was recorded — prove then FAILS
  *    loudly. That drift detection is a FEATURE (panel G), not a bug: the tree
  *    the claim was made about must still be the tree on disk.
- * `opts.allowCanaryDoubleOrigin` (post-GLM F5): the origin gate applies to
- * re-derivation exactly as to capture — see recordedClaimsCanaryDouble for
+ * `opts.allowAmabieDoubleOrigin` (post-GLM F5): the origin gate applies to
+ * re-derivation exactly as to capture — see recordedClaimsAmabieDouble for
  * how prove supplies it without owning an authority channel.
  */
 export function deriveExpectedRoundArgv(
   spec: TrustedRunSpec, wsRoot: string,
-  opts: { allowCanaryDoubleOrigin?: boolean; runnerIdentities?: Record<string, { version: string; identitySha256: string }> } = {},
+  opts: { allowAmabieDoubleOrigin?: boolean; runnerIdentities?: Record<string, { version: string; identitySha256: string }> } = {},
 ): { argv: string[]; plan: ExpansionPlan } {
   const fixture = path.join(wsRoot, 'fixture');
   const rec = new Recorder({
@@ -867,7 +865,7 @@ export function deriveExpectedRoundArgv(
     npmCli: proofNpmCli(),
     artifactsDir: wsRoot, // irrelevant to expansion
     pipeline: [],
-    allowCanaryDoubleOrigin: opts.allowCanaryDoubleOrigin === true,
+    allowAmabieDoubleOrigin: opts.allowAmabieDoubleOrigin === true,
     ...(opts.runnerIdentities !== undefined ? { runnerIdentities: opts.runnerIdentities } : {}),
   });
   return rec.expandArgvWithPlan(
@@ -884,7 +882,7 @@ export function deriveExpectedRoundArgv(
  * evidence was captured THROUGH the double with that grant, and re-deriving
  * its argv without it would diverge from the recorded `--require` (parity is
  * structural, see deriveExpectedRoundArgv). Resolution: honor the claim the
- * RETAINED EVIDENCE ALREADY MAKES. expectedMochaVersion is Canary-written
+ * RETAINED EVIDENCE ALREADY MAKES. expectedMochaVersion is Amabie-written
  * from the PIN at capture — if it names the double pin, capture held the
  * grant. This is sound because prove EXECUTES NOTHING: re-derivation with
  * the claim can only ever reproduce the decision; the attacker's own capture
@@ -895,16 +893,16 @@ export function deriveExpectedRoundArgv(
  * evidence (the golden) never claims the double, so its posture is identical
  * in both worlds.
  */
-function recordedClaimsCanaryDouble(bundle: EvidenceBundle): boolean {
+function recordedClaimsAmabieDouble(bundle: EvidenceBundle): boolean {
   const doubleVersions = new Set(
-    (KNOWN_RUNNER_RELEASES.mocha ?? []).filter((p) => p.origin === 'canary-double').map((p) => p.version),
+    (KNOWN_RUNNER_RELEASES.mocha ?? []).filter((p) => p.origin === 'amabie-double').map((p) => p.version),
   );
   return bundle.rounds.some((r) => doubleVersions.has(r.executionObservation.expectedMochaVersion ?? ''));
 }
 
 /**
  * The NON-PACKAGE runner identities the retained evidence claims — the same
- * no-authority-channel resolution `recordedClaimsCanaryDouble` uses, for the same
+ * no-authority-channel resolution `recordedClaimsAmabieDouble` uses, for the same
  * reason: `check`/`prove` run as production processes that (by design) cannot
  * grant a runner identity, yet re-derivation must reproduce capture's injection
  * decision or parity would fail for every honestly captured round.
@@ -928,7 +926,7 @@ function recordedRunnerIdentities(bundle: EvidenceBundle): Record<string, { vers
 // ---------------------------------------------------------------------------
 // Post-GLM G — observation replay. The retained `<arm>-<round>.attest.ndjson`
 // bytes are re-run through the SHARED capture validator (one implementation,
-// never three) with inputs Canary re-derives itself: the expansion plan from
+// never three) with inputs Amabie re-derives itself: the expansion plan from
 // deriveExpectedRoundArgv (injected / absentKind / expected* / the re-hashed
 // fixture tree), the text channel from the digest-bound stdout/stderr bytes,
 // the exit code from the round. Recorded-vs-rederived equality of
@@ -1012,7 +1010,7 @@ function replayObservations(
   let deriveWhy = '';
   if (evaluable) {
     try {
-      derived = deriveExpectedRoundArgv(ctx!.spec!, wsRoot, { allowCanaryDoubleOrigin: recordedClaimsCanaryDouble(bundle), runnerIdentities: recordedRunnerIdentities(bundle) });
+      derived = deriveExpectedRoundArgv(ctx!.spec!, wsRoot, { allowAmabieDoubleOrigin: recordedClaimsAmabieDouble(bundle), runnerIdentities: recordedRunnerIdentities(bundle) });
     } catch (e) {
       deriveWhy = String(e);
     }
@@ -1139,7 +1137,7 @@ export function hostBoundEvidenceChecks(
     let expected: string[] | undefined;
     let why = '';
     try {
-      expected = deriveExpectedRoundArgv(spec, wsRoot, { allowCanaryDoubleOrigin: recordedClaimsCanaryDouble(ev), runnerIdentities: recordedRunnerIdentities(ev) }).argv;
+      expected = deriveExpectedRoundArgv(spec, wsRoot, { allowAmabieDoubleOrigin: recordedClaimsAmabieDouble(ev), runnerIdentities: recordedRunnerIdentities(ev) }).argv;
     } catch (e) {
       why = String(e);
     }

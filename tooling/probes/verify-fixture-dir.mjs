@@ -65,7 +65,7 @@ const forStates = [
 
 console.log(`fixture: ${fixtureDir}`);
 for (const [label, solution, expected] of forStates) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), `canary-fixture-${path.basename(fixtureDir)}-${solution ?? 'raw'}-`));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `amabie-fixture-${path.basename(fixtureDir)}-${solution ?? 'raw'}-`));
   const project = path.join(root, 'project');
   try {
     copyDir(path.join(fixtureDir, 'project'), project);

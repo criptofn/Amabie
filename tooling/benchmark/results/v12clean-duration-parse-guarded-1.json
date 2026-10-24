@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12clean-duration-parse-guarded-1",
   "task": "duration-parse",
   "arm": "guarded",
@@ -34,10 +34,10 @@
       "arm": "guarded",
       "registerRequirements": false
     },
-    "benchmarkConfigNote": "Category B (partial implementation, sharpened so the wrong answer is the likely one). This field names the configuration to USE: guarded WITHOUT --register-requirements, because that measures the correctness axis cleanly. PROVENANCE OF THE EXISTING PILOT: it ran this fixture WITH --register-requirements (7 requirements registered), which the guard now REJECTS - nothing binds those requirements to a sealed check, so the Stop hook refuses correct work and those trials carry the harness's requirementConfiguration caveat. Their guarded NOT PROVEN verdicts must not be read as Canary judging the code; their token and oracle figures are sound. No trial exists yet under the clean configuration, so the fixture's correctness measurement is still to be taken. See docs/V1.2-PLAN.md open items 6 and 7."
+    "benchmarkConfigNote": "Category B (partial implementation, sharpened so the wrong answer is the likely one). This field names the configuration to USE: guarded WITHOUT --register-requirements, because that measures the correctness axis cleanly. PROVENANCE OF THE EXISTING PILOT: it ran this fixture WITH --register-requirements (7 requirements registered), which the guard now REJECTS - nothing binds those requirements to a sealed check, so the Stop hook refuses correct work and those trials carry the harness's requirementConfiguration caveat. Their guarded NOT PROVEN verdicts must not be read as Amabie judging the code; their token and oracle figures are sound. No trial exists yet under the clean configuration, so the fixture's correctness measurement is still to be taken. See docs/V1.2-PLAN.md open items 6 and 7."
   },
   "startedAt": "2026-09-14T07:08:59.964Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-duration-parse-guarded-ohn13b",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-duration-parse-guarded-ohn13b",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -63,10 +63,10 @@
     "secs": 0.9,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -116,7 +116,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -147,7 +147,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "The checkpoint now reports **pass** with no failed obligations. The regression-evidence gap is closed.\n\n**What I added since the block:**\n\n- `tests/duration.test.js` — two new tests that the sealed `npm test` plan picks up without changing the sealed script:\n  - `leading zeros and repeated units` — `\"01h\"`→60, `\"1h1h\"`→120\n  - `malformed inputs throw invalid duration` — `\"1h30\"`, `\"90\"`, `\"m90\"`, `\"1x\"`, `\"\"` must throw `invalid duration`\n\n**Why this is discriminating evidence (verified both directions):**\n- Against the **base** implementation (`git show HEAD:src/duration.js` with the current suite): **2 failing** — the loose regex accepts `\"1h30\"` and returns `0` for `\"1h1h\"`.\n- Against the **strict** implementation in the working tree: **5 passing**.\n\nI also re-ran the project's own sealing checkpoint (`node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" checkpoint` — the same install that sealed the plan; the PATH `canary` is a different install and correctly reports NOT CONNECTED against this config). It exited 0 and `.canary/last-checkpoint.json` now reads `status: pass`.\n\nEverything works now: the strict parse is in `src/duration.js`, the suite covers both directions of the contract, and Canary's regression-evidence obligation is proven."
+    "finalText": "The checkpoint now reports **pass** with no failed obligations. The regression-evidence gap is closed.\n\n**What I added since the block:**\n\n- `tests/duration.test.js` — two new tests that the sealed `npm test` plan picks up without changing the sealed script:\n  - `leading zeros and repeated units` — `\"01h\"`→60, `\"1h1h\"`→120\n  - `malformed inputs throw invalid duration` — `\"1h30\"`, `\"90\"`, `\"m90\"`, `\"1x\"`, `\"\"` must throw `invalid duration`\n\n**Why this is discriminating evidence (verified both directions):**\n- Against the **base** implementation (`git show HEAD:src/duration.js` with the current suite): **2 failing** — the loose regex accepts `\"1h30\"` and returns `0` for `\"1h1h\"`.\n- Against the **strict** implementation in the working tree: **5 passing**.\n\nI also re-ran the project's own sealing checkpoint (`node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" checkpoint` — the same install that sealed the plan; the PATH `amabie` is a different install and correctly reports NOT CONNECTED against this config). It exited 0 and `.amabie/last-checkpoint.json` now reads `status: pass`.\n\nEverything works now: the strict parse is in `src/duration.js`, the suite covers both directions of the contract, and Amabie's regression-evidence obligation is proven."
   },
   "visible": {
     "exitCode": 0,
@@ -224,21 +224,21 @@
     "bytes": {
       "toolResultTotal": 10664,
       "largestToolResult": 4992,
-      "canaryVisible": 249,
+      "amabieVisible": 249,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 2,
+      "amabie": 2,
       "checks": 2,
-      "canaryCommands": [
-        "canary --help 2>&1; echo ===; canary status 2>&1",
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" checkpoint; echo \"exit:$?\""
+      "amabieCommands": [
+        "amabie --help 2>&1; echo ===; amabie status 2>&1",
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" checkpoint; echo \"exit:$?\""
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

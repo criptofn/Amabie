@@ -29,7 +29,7 @@ AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
 +   'old-report.txt'
   ]
 
-    at file:///C:/Users/Johannes/Desktop/canary-ws5-scratch/hermes-agent/scripts/smoke-test.js:49:10 {
+    at file:///C:/Users/Johannes/Desktop/amabie-ws5-scratch/hermes-agent/scripts/smoke-test.js:49:10 {
   generatedMessage: true,
   code: 'ERR_ASSERTION',
   actual: [ 'fresh.txt', 'old-report.txt' ],

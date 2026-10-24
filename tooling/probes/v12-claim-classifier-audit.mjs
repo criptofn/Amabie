@@ -11,7 +11,7 @@
  * what the oracle says.
  *
  * MEASURED, and this is what prompted the audit: a `workflow`-arm trial whose agent wrote
- * "Done — Canary verified and promoted the work. **Does everything work now: yes.**" was
+ * "Done — Amabie verified and promoted the work. **Does everything work now: yes.**" was
  * classified `mixed`, because the SAME message also said "Leftover housekeeping (deliberately
  * not done, it's a separate act)". `mixed` is deliberately not a success claim, so that trial
  * could never be scored a false done.

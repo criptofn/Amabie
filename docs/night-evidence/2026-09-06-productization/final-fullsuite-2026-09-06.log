@@ -1,12 +1,12 @@
-TREE: 64a51a5a32883066f13b3ed3aeecde678000f633 @ /c/Users/Johannes/Desktop/canary-observation-hardening
+TREE: 64a51a5a32883066f13b3ed3aeecde678000f633 @ /c/Users/Johannes/Desktop/amabie-observation-hardening
 date: 2026-09-06T15:42:59Z node v26.7.0 Windows_NT
-cmd: npm test (full Canary suite incl. new onboarding.test.ts)
+cmd: npm test (full Amabie suite incl. new onboarding.test.ts)
 
-> canary-reliability-network@0.0.0 test
+> amabie-reliability-network@0.0.0 test
 > npm run build && node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js"
 
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 ▶ panel K layer 1 — the validator refuses hostile frame streams
@@ -35,10 +35,10 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (5656.9698ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (5657.1838ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (5671.5483ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (5584.7434ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (11256.5711ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (11256.5711ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✔ check on honest evidence exits 0 and prints PASS (8816.0882ms)
   ✔ check on a tampered artifact exits 3 and names the tampered file (7753.7049ms)
@@ -52,10 +52,10 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
   ✔ test command node -e printing mocha-shaped prose is never PASS (7641.8856ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (7194.8676ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (22884.2555ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.0511ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.3416ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (3.2218ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (3.2218ms)
 ▶ detection (pure)
   ✔ lockfiles pick the package manager, first match wins in declared order (2.8572ms)
   ✔ plan is conservative, ordered, and exact-name only (0.944ms)
@@ -64,7 +64,7 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
 ✔ detection (pure) (6.5034ms)
 ▶ setup
   ✔ happy path: READY, hook registered, evidence written, user repo untouched otherwise (1331.0901ms)
-  ✔ re-run is idempotent: one Canary entry, no duplicates, user entry preserved (1322.3522ms)
+  ✔ re-run is idempotent: one Amabie entry, no duplicates, user entry preserved (1322.3522ms)
   ✔ malformed settings.json: refuse, exit NEEDS ATTENTION, bytes untouched (127.288ms)
   ✔ failing project checks never print READY (NO PROOF, NO DONE) (1090.024ms)
   ✔ unattended without --yes: installed but NOT READY — nothing executed, nothing proven (103.3777ms)
@@ -74,15 +74,15 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
   ✔ pass -> silent allow (human never interrupted) (1214.5597ms)
   ✔ failure -> decision:block with the reason (agent gets a repair turn) (1122.6964ms)
   ✔ loop guard: stop_hook_active allows with an honest systemMessage, never re-blocks (1104.1991ms)
-  ✔ repo without Canary wiring: exit 0, silent (stay out of the way) (83.9944ms)
+  ✔ repo without Amabie wiring: exit 0, silent (stay out of the way) (83.9944ms)
 ✔ checkpoint (harness entry) (3525.8171ms)
 ▶ doctor + uninstall
   ✔ READY after a green setup; hook deletion is detected loudly; --run re-proves (3086.4719ms)
   ✔ never set up -> NEEDS ATTENTION with the one command; outside git -> UNSUPPORTED (206.1414ms)
-  ✔ uninstall removes exactly Canary, preserves everything else; repeat is safe (1415.3662ms)
+  ✔ uninstall removes exactly Amabie, preserves everything else; repeat is safe (1415.3662ms)
 ✔ doctor + uninstall (4708.201ms)
 ▶ hook entry shape + ownership
-  ✔ hasCanaryEntry matches exact command only (0.1712ms)
+  ✔ hasAmabieEntry matches exact command only (0.1712ms)
 ✔ hook entry shape + ownership (0.2563ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✔ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (8584.9122ms)
@@ -359,7 +359,7 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.1271ms)
 ✔ post-GLM — execution-observation gate (rule 14) (3.29ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.5851ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.5851ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.1619ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.2541ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.2999ms)
@@ -565,7 +565,7 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
 ✔ round-3 secondary — crash & sweep signals reach the classification (476.6581ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.1885ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (12.6486ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (12.6486ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (11.9603ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (10.9022ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (12.4999ms)
@@ -581,7 +581,7 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
   ✔ Sol's accepted forms are now rejected in install-family commands (1.842ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (41.1386ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (4.8315ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (7.9234ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (7.9234ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.4208ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (5.8062ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1376ms)
@@ -631,7 +631,7 @@ cmd: npm test (full Canary suite incl. new onboarding.test.ts)
 ✔ audit F6 — child env observation: declared == observed (1531.1384ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (5.0106ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3716ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3716ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (6.6091ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.326ms)

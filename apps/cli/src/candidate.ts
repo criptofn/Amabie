@@ -2,8 +2,8 @@
  * M7 — UNTRUSTED CANDIDATE ISOLATION (git worktrees). Directive §7.
  *
  * The accepted tree is the TRUSTED BASE. A worker never edits it directly:
- * `canary isolate <name>` opens a detached `git worktree` checkout of the
- * base's resolved commit, the worker works there, and Canary verifies the
+ * `amabie isolate <name>` opens a detached `git worktree` checkout of the
+ * base's resolved commit, the worker works there, and Amabie verifies the
  * candidate from OUTSIDE it against the BASE's sealed authority. A PASS makes
  * the candidate ELIGIBLE for promotion — promotion is a separate act
  * (`--promote`, implemented in this file under M8); verify itself never
@@ -12,7 +12,7 @@
  * Which guarantee lives where (the probe proves each end to end on real git):
  *   1  accepted work never edited by the worker — the worktree is the only
  *      writable place; the base is touched solely by git worktree plumbing,
- *      the registry record under .canary, and evidence bundles.
+ *      the registry record under .amabie, and evidence bundles.
  *   2  candidate identity explicit — every bundle carries candidateIdentity
  *      (head/tree/dirty) of the candidate, plus candidateName/candidateRoot.
  *   3  baseline identity explicit — the record and bundle stamp baseRef/
@@ -28,7 +28,7 @@
  *      seal covers only the listed script texts, and both execute outside
  *      them (npm/pnpm run hooks automatically; flags rewrite what runs).
  *   7  authoritative evidence outside candidate-writable scope — bundles land
- *      under the BASE's .canary/evidence, never inside the candidate tree.
+ *      under the BASE's .amabie/evidence, never inside the candidate tree.
  *   8  FAIL leaves the trusted base untouched — proven byte-for-byte in the
  *      probe (base `git status --porcelain` identical after a failing verify).
  *   9/10 unrelated work never overwritten; dirty/ambiguous bases handled
@@ -53,7 +53,7 @@
  * M9 detects (and fails closed on) in-window authority writes; a
  * change-and-revert strictly between the two fingerprint reads stays as
  * invisible as it was under M8's identity sandwich — same thread, same limit.
- * gitignored deps and .canary state do not ride the checkout. A candidate at
+ * gitignored deps and .amabie state do not ride the checkout. A candidate at
  * the DEFAULT path sits under the base, so module resolution walks up into
  * the BASE's node_modules — a pass there can mix base deps with candidate
  * code; a --path elsewhere inherits that location's own ancestors instead.
@@ -88,7 +88,7 @@
  * M9 — authority self-protection (directive §9: the candidate must never
  * control its verifier). The plan runs candidate-authored script text, so
  * in-window writes to authority are the attack — fingerprinted at both edges
- * of the execution window: BASE bytes (.canary config, harness settings, this
+ * of the execution window: BASE bytes (.amabie config, harness settings, this
  * candidate's registry record, the task intent, the CLI entry), the WHOLE
  * evidence store as a tree (closing M8's "plan step can write the base
  * evidence dir" residual), the VERIFIER'S OWN CODE TREE (dist/src — the judge
@@ -100,7 +100,7 @@
  * unsealed words INSIDE the window without touching a single fingerprinted
  * base byte. Measured fact (tooling/probes/m9-lock-facts.mjs): this runtime
  * offers no mandatory locks — so M9 claims NO prevention and enforces
- * DETECTION AT BOTH EDGES, fail-closed: any drift forces CANARY BLOCKED
+ * DETECTION AT BOTH EDGES, fail-closed: any drift forces AMABIE BLOCKED
  * COMPLETION (the PASS path is structurally never reached), a pre-execution
  * containment gate catches a harness entry stripped BEFORE the window, and
  * every event lands in a blocked bundle with both state tokens. A
@@ -124,15 +124,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 // v1.4 — canonical filesystem identity (expands Windows 8.3 short names).
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 import { controllerExecution } from './provider/execution.js';
 import { digest, canonicalTask, taskWeakening, subjectDigest, TASK_KINDS, type TaskIdentity, type AuthorizationSubject } from './authorization.js';
 
 import {
-  ACCEPTANCE_SUBDIR, CLI_ENTRY, CONFIG_DIR, ENV_POLICY, EVIDENCE_DIR, Out, candidateDiffSignals, candidateIdentity, containedRealPath, configPath, ensureCanarySelfIgnore,
-  discriminationObligation, execDigest, findRepoRoot, gitCommand, gitExe, gitWithinRoot, hasCanaryEntry, obligationsFor, parseGlobals, parseJsonOrNull, planAuthorityDrift, planDigest, readAcceptance, readConfig,
-  readTaskRecord, runPlanStep, settingsPath, TASK_FILE, untrustedConfigReason, writeAcceptance, writeFileAtomic, writeVerificationBundle,
-  type AcceptanceRecord, type CanaryConfig, type GitResult, type PlanStep, type StepResult, type TaskKind,
+  ACCEPTANCE_SUBDIR, CLI_ENTRY, CONFIG_DIR, ENV_POLICY, EVIDENCE_DIR, Out, candidateDiffSignals, candidateIdentity, containedRealPath, configPath, ensureAmabieSelfIgnore,
+  discriminationObligation, execDigest, findRepoRoot, gitCommand, gitExe, gitWithinRoot, hasAmabieEntry, obligationsFor, parseGlobals, parseJsonOrNull, planAuthorityDrift, planDigest, readAcceptance, readConfig,
+  readTaskRecord, runPlanStep, planWithFreshTests, settingsPath, TASK_FILE, untrustedConfigReason, writeAcceptance, writeFileAtomic, writeVerificationBundle,
+  type AcceptanceRecord, type AmabieConfig, type GitResult, type PlanStep, type StepResult, type TaskKind,
 } from './onboarding.js';
 import { authorityDrift, quarantineInfo, QUARANTINE_FILE, shortState, snapshotAuthority, snapshotTree, stampQuarantine, treeDrift, type AuthorityChange } from './authority.js';
 import {
@@ -171,8 +171,8 @@ interface CandidateIntent {
   proofBindings?: Record<string, string>;
 }
 
-interface CandidateRecord {
-  schema: 'canary-candidate/1';
+export interface CandidateRecord {
+  schema: 'amabie-candidate/1';
   name: string;
   root: string;
   baseRoot: string;
@@ -225,7 +225,7 @@ function commonDir(root: string): string | null {
  *  reads UNREADABLE on both edges → a non-git root never false-blocks on a
  *  token that cannot change; a legitimate base commit INSIDE the window reads
  *  as drift → false-BLOCK, never false-PASS (same posture as a concurrent
- *  canary invocation). */
+ *  amabie invocation). */
 function headToken(root: string): string {
   const out = gitWithinRoot(root, ['rev-parse', '--verify', '--end-of-options', 'HEAD']);
   const sha = out?.trim() ?? '';
@@ -233,14 +233,14 @@ function headToken(root: string): string {
 }
 
 /** Registry reads are untrusted bytes until shape-proved (M4 discipline). */
-function loadRecord(root: string, name: string): CandidateRecord | 'missing' | 'invalid' {
+export function loadRecord(root: string, name: string): CandidateRecord | 'missing' | 'invalid' {
   const p = recordPath(root, name);
   if (containedRealPath(root, p) === null) return 'invalid';
   if (!fs.existsSync(p)) return 'missing';
   try {
     const v = JSON.parse(fs.readFileSync(p, 'utf8')) as Partial<CandidateRecord> | null;
     if (!v || typeof v !== 'object' || Array.isArray(v)) return 'invalid';
-    if (v.schema !== 'canary-candidate/1' || v.name !== name || !NAME_RE.test(name)) return 'invalid';
+    if (v.schema !== 'amabie-candidate/1' || v.name !== name || !NAME_RE.test(name)) return 'invalid';
     if (typeof v.root !== 'string' || !path.isAbsolute(v.root)) return 'invalid';
     if (typeof v.baseRoot !== 'string' || !path.isAbsolute(v.baseRoot)) return 'invalid';
     if (typeof v.baseRef !== 'string' || !v.baseRef || v.baseRef.length > 200) return 'invalid';
@@ -264,24 +264,24 @@ function loadRecord(root: string, name: string): CandidateRecord | 'missing' | '
   } catch { return 'invalid'; }
 }
 
-/** Every mode runs from a repo Canary can trust as the base: a git root with
+/** Every mode runs from a repo Amabie can trust as the base: a git root with
  *  a readable, non-distrusted local config (the sealed authority source). */
-function trustedBase(startDir: string, o: Out): { root: string; cfg: CanaryConfig } | number {
+function trustedBase(startDir: string, o: Out): { root: string; cfg: AmabieConfig } | number {
   const root = findRepoRoot(startDir);
   if (root === null) { o.say('isolate: not inside a git repository — run from the trusted base (or pass its path)'); return 2; }
   const cfg = readConfig(root);
-  if (cfg === 'corrupt') { o.say(`isolate: ${root}: local config is unreadable — nothing will be executed or removed based on it. Run: canary doctor`); return 2; }
-  if (!cfg) { o.say(`isolate: ${root} has no .canary config — the trusted base must be a repo Canary verifies. Run: canary setup`); return 2; }
+  if (cfg === 'corrupt') { o.say(`isolate: ${root}: local config is unreadable — nothing will be executed or removed based on it. Run: amabie doctor`); return 2; }
+  if (!cfg) { o.say(`isolate: ${root} has no .amabie config — the trusted base must be a repo Amabie verifies. Run: amabie setup`); return 2; }
   const distrust = untrustedConfigReason(root, cfg);
-  if (distrust) { o.say(`isolate: refusing — local config is not trusted (${distrust}). Run: canary setup --yes`); return 2; }
+  if (distrust) { o.say(`isolate: refusing — local config is not trusted (${distrust}). Run: amabie setup --yes`); return 2; }
   return { root, cfg };
 }
 
 // ---------- modes ----------
 
-function isolateCreate(root: string, cfg: CanaryConfig, o: Out, name: string, baseRef: string, customPath: string | null): number {
+export function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: string, baseRef: string, customPath: string | null): number {
   const existing = loadRecord(root, name);
-  if (existing === 'invalid') { o.say(`isolate: a malformed record "${name}" blocks registration — Canary cannot tell what it points at; delete .canary/${CANDIDATES_SUBDIR}/${name}.json manually, then re-isolate`); return 2; }
+  if (existing === 'invalid') { o.say(`isolate: a malformed record "${name}" blocks registration — Amabie cannot tell what it points at; delete .amabie/${CANDIDATES_SUBDIR}/${name}.json manually, then re-isolate`); return 2; }
   if (existing !== 'missing') { o.say(`isolate: candidate "${name}" is already registered — pick another name, or --remove it first`); return 2; }
   const target = customPath ? path.resolve(root, customPath) : path.join(root, CONFIG_DIR, CANDIDATES_SUBDIR, name);
   if (fs.existsSync(target)) { o.say(`isolate: candidate path already exists: ${target} — nothing was created`); return 2; }
@@ -299,10 +299,45 @@ function isolateCreate(root: string, cfg: CanaryConfig, o: Out, name: string, ba
   // blocker 1): spaces and Unicode paths are plain data; the caller's
   // PATH/GIT_* environment can neither pick the git nor forge its view.
   const add: GitResult = gitCommand(root, ['worktree', 'add', '--detach', target, sha], 120_000)
-    ?? { status: null, stdout: '', stderr: "git is not resolvable in Canary's trusted environment" };
+    ?? { status: null, stdout: '', stderr: "git is not resolvable in Amabie's trusted environment" };
   if (add.status !== 0) {
     o.say(`isolate: git worktree add failed — nothing was registered:`);
-    for (const l of (add.stderr || add.stdout || String(add.error?.message ?? '')).trim().split(/\r?\n/).slice(-4)) o.say(`  ${l}`);
+    o.say(`  git result: ${JSON.stringify({
+      status: add.status, signal: add.signal ?? null, pid: add.pid ?? null, callerPid: process.pid,
+      durationMs: add.durationMs ?? null, startedAt: add.startedAt ?? null, finishedAt: add.finishedAt ?? null,
+      errorCode: add.errorCode ?? null, errorMessage: add.error?.message ?? null,
+    })}`);
+    for (const output of [add.stderr, add.stdout]) {
+      if (!output.trim()) continue;
+      const lines = output.trim().split(/\r?\n/);
+      const excerpt = lines.length > 8 ? [...lines.slice(0, 4), `[${lines.length - 8} intervening lines omitted]`, ...lines.slice(-4)] : lines;
+      for (const line of excerpt) o.say(`  ${line}`);
+    }
+    // Observe partial creation only: never repair, prune or retry a failed add.
+    try {
+      const present = (file: string): boolean | null => {
+        try { fs.lstatSync(file); return true; }
+        catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT' ? false : null; }
+      };
+      const list = gitCommand(root, ['worktree', 'list', '--porcelain', '-z'], 5_000);
+      const trees = list?.status === 0 ? list.stdout.split('\0').filter((line) => line.startsWith('worktree ')) : null;
+      const matches = trees?.map((line): boolean | null => {
+        try { return path.relative(canonicalPath(target), canonicalPath(line.slice('worktree '.length))) === ''; }
+        catch { return null; }
+      });
+      const lock = gitCommand(root, ['rev-parse', '--path-format=absolute', '--git-path', 'index.lock'], 5_000);
+      o.say(`  git failure state: ${JSON.stringify({
+        targetExists: present(target), worktreeListStatus: list?.status ?? null,
+        worktreeListInvoked: list !== null, worktreeListSignal: list?.signal ?? null, worktreeListErrorCode: list?.errorCode ?? null,
+        worktreeCount: trees?.length ?? null,
+        targetListed: matches?.includes(true) ? true : !matches || matches.includes(null) ? null : false,
+        indexLockQueryStatus: lock?.status ?? null,
+        indexLockQueryInvoked: lock !== null, indexLockQuerySignal: lock?.signal ?? null, indexLockQueryErrorCode: lock?.errorCode ?? null,
+        indexLockExists: lock?.status === 0 && lock.stdout.trim() ? present(lock.stdout.trim()) : null,
+      })}`);
+    } catch (error) {
+      o.say(`  git failure state unavailable: ${JSON.stringify({ errorCode: (error as NodeJS.ErrnoException).code ?? null })}`);
+    }
     return 2;
   }
   // post-check: what git checked out must BE the resolved commit AND be
@@ -321,9 +356,9 @@ function isolateCreate(root: string, cfg: CanaryConfig, o: Out, name: string, ba
     return 2;
   }
   const rp = recordPath(root, name);
-  if (containedRealPath(root, rp) === null) { o.say('isolate: the candidate registry path escapes the repo (linked .canary?) — refusing to register; remove the worktree manually'); return 2; }
+  if (containedRealPath(root, rp) === null) { o.say('isolate: the candidate registry path escapes the repo (linked .amabie?) — refusing to register; remove the worktree manually'); return 2; }
   const rec: CandidateRecord = {
-    schema: 'canary-candidate/1', name, root: target, baseRoot: root,
+    schema: 'amabie-candidate/1', name, root: target, baseRoot: root,
     baseRef, baseHead: sha, baseTree, createdAt: new Date().toISOString(),
     // M10 §11 — freeze the authority this candidate was opened against.
     intent: {
@@ -336,13 +371,13 @@ function isolateCreate(root: string, cfg: CanaryConfig, o: Out, name: string, ba
   };
   try {
     fs.mkdirSync(path.dirname(rp), { recursive: true }); // --path elsewhere never created it
-    ensureCanarySelfIgnore(root); // registry dirs must never dirty the user repo
+    ensureAmabieSelfIgnore(root); // registry dirs must never dirty the user repo
     writeFileAtomic(rp, JSON.stringify(rec, null, 2) + '\n');
   }
   catch (e) { o.say(`isolate: could not write the registry record (${(e as Error).message}) — the worktree exists but is NOT registered; remove it: git -C "${root}" worktree remove --force "${target}"`); return 2; }
   o.say(`isolated "${name}" at ${target}`);
   o.say(`  from ${baseRef} @ ${short(sha)}${baseTree ? ` (tree ${short(baseTree)})` : ''}`);
-  o.say(`  worker: edit ONLY that directory. verifier: canary isolate --verify ${name}`);
+  o.say(`  worker: edit ONLY that directory. verifier: amabie isolate --verify ${name}`);
   return 0;
 }
 
@@ -350,9 +385,11 @@ function isolateCreate(root: string, cfg: CanaryConfig, o: Out, name: string, ba
  *  M8 promotion consumes startHead/rec; verify's own caller ignores them. */
 interface VerifyOutcome { code: number; startHead: string | null; rec: CandidateRecord | null }
 
-function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string): VerifyOutcome {
+/** `sink`, when given, receives the sealed-plan results of THIS run (left empty when the run stopped before executing any step)
+ *  and, in `open`, one line per UNMET/UNPROVEN total obligation that kept the gate off PASS. */
+export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: string, sink?: { results: StepResult[]; open?: string[] }): VerifyOutcome {
   // F2 (quarantine) — BEFORE any record read: a tampering caught in a past
-  // Canary window means the bytes this run would baseline on are exactly the
+  // Amabie window means the bytes this run would baseline on are exactly the
   // bytes under suspicion. The mechanical laundering vector is byte-
   // idempotence: the persisted mutation re-baselines clean in the NEXT window
   // (pre/post now read the same mutated bytes), so a second verify PASSes and
@@ -361,18 +398,18 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   // marker the candidate can forge would make bundles a second copy anyway —
   // the marker itself is the evidence. cmdSetup clears it: a re-seal is the act
   // that says "these bytes are mine now", and it is a same-user act (v1.5 audit
-  // finding — `canary setup` does not check WHO runs it, so this closes the
+  // finding — `amabie setup` does not check WHO runs it, so this closes the
   // automated re-run laundering, never a determined same-user hand).
   const q = quarantineInfo(path.join(root, CONFIG_DIR, QUARANTINE_FILE));
   if (q) {
-    o.say('CANARY QUARANTINED — a verification-authority tampering was caught in an earlier Canary window.');
-    o.say(`  ${typeof q === 'string' ? 'the marker is present but unreadable — fail-closed: a file Canary cannot parse still stands as a marker' : `stamped ${q.when} at ${q.at} — ${q.changes} fingerprinted change(s) recorded in the mandate bundle`}`);
-    o.say('next: the operator restores the authority bytes deliberately and re-runs `canary setup` — the re-seal is the clearing act, and it does NOT check who runs it, so any same-user caller (including the worker) can do it. Same-UID code can delete the marker by hand; that is the byte-restore/change-and-revert ceiling, stated — what this refusal closes is the AUTOMATED re-run laundering, not a determined hand.');
+    o.say('AMABIE QUARANTINED — a verification-authority tampering was caught in an earlier Amabie window.');
+    o.say(`  ${typeof q === 'string' ? 'the marker is present but unreadable — fail-closed: a file Amabie cannot parse still stands as a marker' : `stamped ${q.when} at ${q.at} — ${q.changes} fingerprinted change(s) recorded in the mandate bundle`}`);
+    o.say('next: the operator restores the authority bytes deliberately and re-runs `amabie setup` — the re-seal is the clearing act, and it does NOT check who runs it, so any same-user caller (including the worker) can do it. Same-UID code can delete the marker by hand; that is the byte-restore/change-and-revert ceiling, stated — what this refusal closes is the AUTOMATED re-run laundering, not a determined hand.');
     return { code: 2, startHead: null, rec: null };
   }
   const rec = loadRecord(root, name);
-  if (rec === 'missing') { o.say(`isolate: no candidate "${name}" registered here — see: canary isolate --list`); return { code: 2, startHead: null, rec: null }; }
-  if (rec === 'invalid') { o.say(`isolate: registry record "${name}" is malformed (hand-edited?) — refusing to verify from it; fix or remove .canary/${CANDIDATES_SUBDIR}/${name}.json`); return { code: 2, startHead: null, rec: null }; }
+  if (rec === 'missing') { o.say(`isolate: no candidate "${name}" registered here — see: amabie isolate --list`); return { code: 2, startHead: null, rec: null }; }
+  if (rec === 'invalid') { o.say(`isolate: registry record "${name}" is malformed (hand-edited?) — refusing to verify from it; fix or remove .amabie/${CANDIDATES_SUBDIR}/${name}.json`); return { code: 2, startHead: null, rec: null }; }
   if (!samePath(rec.baseRoot, root)) { o.say(`isolate: record "${name}" claims a different base (${echoable(path.basename(rec.baseRoot))}) — refusing (impersonation guard)`); return { code: 2, startHead: null, rec }; }
   const prov = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
   const extra = {
@@ -402,14 +439,14 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
       evidenceRoot: root, subjectRoot: rec.root,
       extra: { ...extra, authorityEvent: { when, changes } },
     });
-    o.say('CANARY BLOCKED COMPLETION — Verification authority was modified by the candidate.');
-    if (when !== 'before execution') o.say('CANARY QUARANTINED — verify and promote refuse this base until canary setup is re-run (it does not check who runs it, so a same-user caller can clear this); re-running the same tampering cannot re-baseline it into innocence.');
+    o.say('AMABIE BLOCKED COMPLETION — Verification authority was modified by the candidate.');
+    if (when !== 'before execution') o.say('AMABIE QUARANTINED — verify and promote refuse this base until amabie setup is re-run (it does not check who runs it, so a same-user caller can clear this); re-running the same tampering cannot re-baseline it into innocence.');
     // a wholesale evidence wipe turns EVERY file into a change — print a cap,
     // the bundle carries the complete list (evidence stays the full record).
     for (const c of changes.slice(0, 8)) o.say(`  ${c.file}: ${shortState(c.before)} → ${shortState(c.after)} (${when})`);
     if (changes.length > 8) o.say(`  …and ${changes.length - 8} more change(s) — all listed in the bundle`);
-    o.say('Do not allow candidate-modified Canary to judge its own mutation.');
-    o.say(`next: the change is proven inside Canary's window but not attributable to a specific writer (same-user code is the honest ceiling) — restore the bytes deliberately (setup can re-seal), evidence: ${dir ?? path.join(root, CONFIG_DIR, 'evidence')}`);
+    o.say('Do not allow candidate-modified Amabie to judge its own mutation.');
+    o.say(`next: the change is proven inside Amabie's window but not attributable to a specific writer (same-user code is the honest ceiling) — restore the bytes deliberately (setup can re-seal), evidence: ${dir ?? path.join(root, CONFIG_DIR, 'evidence')}`);
     return { code: 2, startHead: null, rec };
   };
   // M9 §9 containment, BEFORE execution: a harness hook entry that setup
@@ -418,7 +455,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   const settings = settingsPath(root);
   if (cfg.touched.some((t) => samePath(t.path, settings))) {
     const doc = parseJsonOrNull(settings);
-    if (!doc || !hasCanaryEntry(doc, new Set(cfg.hookCommands))) {
+    if (!doc || !hasAmabieEntry(doc, new Set(cfg.hookCommands))) {
       return authorityBlock('before execution', [{ file: settings, before: 'hook entry promised by setup', after: doc ? 'entry missing' : 'unreadable' }]);
     }
   }
@@ -458,25 +495,25 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     }
     if (events.length) return blocked(
       'the verification intent was weakened after isolation — the candidate was opened against a stronger authority than the one now on disk: ' + events.join('; '),
-      'legitimate revision is a deliberate local act (directive §11): restore the plan/task this candidate was isolated under, or re-isolate against the new authority. Canary will not verify an old promise against a quietly-shrunk one.',
+      'legitimate revision is a deliberate local act (directive §11): restore the plan/task this candidate was isolated under, or re-isolate against the new authority. Amabie will not verify an old promise against a quietly-shrunk one.',
       { intentEvent: { snapshotAt: rec.intent.at, events } });
   }
   const cid = candidateIdentity(rec.root);
-  if (!cid.resolved) return blocked(`candidate "${name}" is not a resolvable git tree at ${rec.root} (moved? deleted? corrupted?) — nothing ran`, 'canary isolate --list, then --remove + re-isolate');
+  if (!cid.resolved) return blocked(`candidate "${name}" is not a resolvable git tree at ${rec.root} (moved? deleted? corrupted?) — nothing ran`, 'amabie isolate --list, then --remove + re-isolate');
   const baseCd = commonDir(root); const candCd = commonDir(rec.root);
   if (baseCd === null || candCd === null || !samePath(baseCd, candCd)) {
-    return blocked(`the tree at ${rec.root} does not share this repo's git store — it is not the candidate Canary isolated here`, 'restore the worktree or re-isolate under a new name');
+    return blocked(`the tree at ${rec.root} does not share this repo's git store — it is not the candidate Amabie isolated here`, 'restore the worktree or re-isolate under a new name');
   }
   // COMMITTED tree, not the working .gitmodules: a gitlink (mode 160000)
   // checks out an empty dir — the plan would pass over half the code. The
   // ls-tree answer comes from the candidate's own HEAD inside its store.
   const treeProbe = gitWithinRoot(rec.root, ['ls-tree', '-r', 'HEAD']);
-  if (treeProbe === null) return blocked("the candidate's committed tree cannot be inspected — submodule presence is unknowable, and Canary does not guess", 'restore the worktree or re-isolate');
+  if (treeProbe === null) return blocked("the candidate's committed tree cannot be inspected — submodule presence is unknowable, and Amabie does not guess", 'restore the worktree or re-isolate');
   if (/^160000/m.test(treeProbe)) {
-    return blocked('the candidate tracks git submodules and Canary does not initialize them — the plan would half-verify silently', 'verify a submodule repo manually or flatten it into the base (a human decision)');
+    return blocked('the candidate tracks git submodules and Amabie does not initialize them — the plan would half-verify silently', 'verify a submodule repo manually or flatten it into the base (a human decision)');
   }
   if (!Array.isArray(cfg.plan) || cfg.plan.length === 0) {
-    return blocked('the base\'s verification plan is empty — a pass here would certify nothing', 'configure a real plan via canary setup');
+    return blocked('the base\'s verification plan is empty — a pass here would certify nothing', 'configure a real plan via amabie setup');
   }
   // Guarantee 6 (directive §9), checked at BOTH edges (review F3): the
   // human-sealed authority must hold over the candidate's package.json. The
@@ -498,7 +535,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   const sealViolation = (timing: string): { file: string; why: string; next?: string } | null => {
     const pkg = parseJsonOrNull(path.join(rec.root, 'package.json'));
     const drift = planAuthorityDrift(rec.root, cfg, pkg);
-    if (drift) return { file: path.join(rec.root, 'package.json'), why: `sealed verification authority drifted ${timing}: ${drift}`, next: `restore package.json in the candidate to the sealed text (git -C "${rec.root}" checkout -- package.json), or deliberately re-run canary setup` };
+    if (drift) return { file: path.join(rec.root, 'package.json'), why: `sealed verification authority drifted ${timing}: ${drift}`, next: `restore package.json in the candidate to the sealed text (git -C "${rec.root}" checkout -- package.json), or deliberately re-run amabie setup` };
     const scripts = pkg && typeof pkg.scripts === 'object' && pkg.scripts !== null && !Array.isArray(pkg.scripts) ? pkg.scripts as Record<string, unknown> : null;
     if (scripts) for (const s of cfg.plan) {
       if (Object.hasOwn(scripts, `pre${s.script}`) || Object.hasOwn(scripts, `post${s.script}`)) {
@@ -510,7 +547,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
       const baseNpmrc = gitWithinRoot(rec.root, ['show', `${rec.baseHead}:.npmrc`]);
       if (baseNpmrc === null) return { file: npmrc, why: '.npmrc exists in the candidate but not in the isolated base — npm/pnpm flags rewrite what the sealed steps execute', next: 'delete the candidate-side .npmrc (if the BASE needs one, that is a setup-time human decision)' };
       const changed = gitWithinRoot(rec.root, ['diff', '--name-only', '--end-of-options', rec.baseHead, '--', '.npmrc']);
-      if (changed === null) return { file: npmrc, why: '.npmrc cannot be compared against the isolated base — Canary does not guess past a flag-bearing config file', next: 'restore the worktree or re-isolate' };
+      if (changed === null) return { file: npmrc, why: '.npmrc cannot be compared against the isolated base — Amabie does not guess past a flag-bearing config file', next: 'restore the worktree or re-isolate' };
       if (changed.trim() !== '') return { file: npmrc, why: '.npmrc changed in the candidate vs the isolated base — npm/pnpm flags there rewrite what the sealed steps execute', next: `git -C "${rec.root}" checkout -- .npmrc` };
     }
     return null;
@@ -531,8 +568,8 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   // mutated bytes can judge nothing, a planted PASS bundle authorizes nothing
   // it did not earn, and the PASS/FAIL path below is structurally never
   // reached. The throw arm checks too: an earlier step may have run before
-  // the guard fired. Canary's own writes land OUTSIDE the window (see
-  // authority.ts); a concurrent canary invocation can only ever add a false
+  // the guard fired. Amabie's own writes land OUTSIDE the window (see
+  // authority.ts); a concurrent amabie invocation can only ever add a false
   // BLOCK, never a false PASS.
   const authority = [configPath(root), settings, recordPath(root, name), path.join(root, CONFIG_DIR, TASK_FILE), CLI_ENTRY];
   const evidenceDir = path.join(root, CONFIG_DIR, EVIDENCE_DIR);
@@ -546,24 +583,33 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     return [
       ...authorityDrift(preAuth, authority),
       ...treeDrift(preEvidence, evidenceDir).map((c) => ({ ...c, file: path.join(evidenceDir, c.file) })), // absolute, like the other entries
-      ...treeDrift(preCli, cliDir).map((c) => ({ ...c, file: path.join(cliDir, c.file) })), // F1: §9's "must never control its verifier" includes the verifier's bytes — an in-window write is inert THIS run (modules loaded at start) and executes NEXT run (promote's fresh re-verify included), so "the judge at verdict time" demands binding them. @canary-rn workspace imports resolve outside dist/src: that slice stays the stated dep-tree ceiling.
+      ...treeDrift(preCli, cliDir).map((c) => ({ ...c, file: path.join(cliDir, c.file) })), // F1: §9's "must never control its verifier" includes the verifier's bytes — an in-window write is inert THIS run (modules loaded at start) and executes NEXT run (promote's fresh re-verify included), so "the judge at verdict time" demands binding them. @amabie workspace imports resolve outside dist/src: that slice stays the stated dep-tree ceiling.
       ...(postHead !== preHead ? [{ file: `${root}: base HEAD ref`, before: preHead, after: postHead }] : []), // F4: shared ref store — a moved base ref is moved promotion authority
     ];
   };
   let results: StepResult[];
   let regression: ReturnType<typeof discriminationObligation> = null;
+  const comparisonWrites: Array<() => string | null> = [];
+  const deferComparison: typeof writeVerificationBundle = (_subject, source, steps, status, provenance, options) => {
+    // Keep Amabie's own diagnostic writes outside the authority window and
+    // outside the candidate. Execution-time subject identity is already captured.
+    comparisonWrites.push(() => writeVerificationBundle(root, source, steps, status, provenance,
+      { ...options, evidenceRoot: root }));
+    return null;
+  };
   try {
-    results = cfg.plan.map((step) => runPlanStep(rec.root, cfg.pm, step));
+    results = planWithFreshTests(cfg.plan).map((step) => runPlanStep(rec.root, cfg.pm, step));
+    if (sink) sink.results = results;
     // Both executions stay inside the authority sandwich. The comparison uses
     // the frozen isolation base, never setup's possibly older baseline.
-    if (results.every((r) => r.ok)) regression = discriminationObligation(rec.root, cfg, 600_000, rec.baseHead);
+    if (results.every((r) => r.ok)) regression = discriminationObligation(rec.root, cfg, 600_000, rec.baseHead, deferComparison, results);
   }
   catch (e) {
     const threwDrift = inWindowDrift();
     if (threwDrift.length) return authorityBlock('during execution', threwDrift);
     const threwSeal = sealViolation('during execution');
     if (threwSeal) return authorityBlock('during execution', [{ file: threwSeal.file, before: 'sealed at setup — held when the window opened', after: threwSeal.why }]);
-    return blocked(`plan step refused: ${(e as Error).message} — execution stopped before any step ran`, 'the base plan names a script Canary will not execute; fix the plan via canary setup');
+    return blocked(`plan step refused: ${(e as Error).message} — execution stopped before any step ran`, 'the base plan names a script Amabie will not execute; fix the plan via amabie setup');
   }
   const authDrift = inWindowDrift();
   if (authDrift.length) return authorityBlock('during execution', authDrift);
@@ -571,11 +617,16 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   // F3 post-window edge: the seal re-checked after execution, before the
   // verdict is read. A step that rewrote its sibling's script text executed
   // unsealed words inside a "sealed" window; green output on tampered plan
-  // text is a CANARY-BLOCKED-COMPLETION, never a CANDIDATE PASS. The
+  // text is an AMABIE-BLOCKED-COMPLETION, never a CANDIDATE PASS. The
   // during/after stamp also sets the quarantine — the next window starts
   // refused, so the mutated plan surface cannot re-baseline to a PASS.
   const postSeal = sealViolation('after execution');
   if (postSeal) return authorityBlock('after execution', [{ file: postSeal.file, before: 'sealed at setup — held when the window opened', after: postSeal.why }]);
+  for (const persist of comparisonWrites) {
+    const evidence = persist();
+    if (evidence && regression?.status === 'unproven') regression.note += `; comparison output: ${evidence}`;
+    if (evidence && regression?.caveat?.includes('skipped/pending cases')) regression.caveat += `; baseline comparison evidence: ${evidence}`;
+  }
   // M10 §10 — the obligation ladder over the CANDIDATE diff (baseHead frozen
   // in the record; the worktree started provably clean at isolation, so every
   // deletion here is the candidate's). The sealed plan passing is the FLOOR,
@@ -622,8 +673,8 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   if (!frozenKinds.length || !canonicalTask(frozenTask)) {
     obligations.unshift({ id: 'task-authority', mode: 'objective', status: 'unproven',
       note: rec.intent
-        ? 'NO task-obligation authority FROZEN at isolation: no task was registered when this candidate was opened. Registering afterwards is growth — it adds duties, it cannot mint this authority retroactively. Register the work (canary task "..." --kind ...) and RE-ISOLATE, then verify the new candidate; omitting registration is not a way through §10, it is exactly what makes §10 unprovable.'
-        : 'NO task-obligation authority: this record carries no intent snapshot — it either predates task authority or the snapshot was removed, and the record is agent-writable bytes between windows, so absence proves nothing and fails safe. Register the work (canary task "..." --kind ...) and RE-ISOLATE so a fresh snapshot freezes the authority; there is no pre-M10 PASS path.' });
+        ? 'NO task-obligation authority FROZEN at isolation: no task was registered when this candidate was opened. Registering afterwards is growth — it adds duties, it cannot mint this authority retroactively. Register the work (amabie task "..." --kind ...) and RE-ISOLATE, then verify the new candidate; omitting registration is not a way through §10, it is exactly what makes §10 unprovable.'
+        : 'NO task-obligation authority: this record carries no intent snapshot — it either predates task authority or the snapshot was removed, and the record is agent-writable bytes between windows, so absence proves nothing and fails safe. Register the work (amabie task "..." --kind ...) and RE-ISOLATE so a fresh snapshot freezes the authority; there is no pre-M10 PASS path.' });
   }
   // blocker 3 — ACCEPTANCE FROM AN INTERACTIVE TERMINAL is consumed HERE and
   // nowhere else. It can close ONLY non-objective duties standing UNPROVEN (an
@@ -654,7 +705,8 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
       } else acceptanceStale = true;
     }
   }
-  const obList = obligations.map((x) => ({ id: x.id, mode: x.mode, status: x.status, note: x.note }));
+  const obList = obligations.map((x) => ({ id: x.id, mode: x.mode, status: x.status, note: x.note, ...(x.caveat ? { caveat: x.caveat } : {}) }));
+  for (const x of obligations) if (x.caveat) o.say(`evidence caveat [${x.id}]: ${x.caveat}`);
   const failed = results.filter((r) => !r.ok);
   if (failed.length) {
     // FAIL stays FAIL — but the bundle now carries the obligation read too
@@ -666,6 +718,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     return { code: 2, startHead: cid.head, rec };
   }
   const unmet = obligations.filter((x) => x.status === 'unmet');
+  if (sink) sink.open = obligations.filter((x) => x.status !== 'met').map((x) => `[${x.id}] ${x.status.toUpperCase()} (${x.mode}): ${x.note}`);
   if (unmet.length) {
     writeVerificationBundle(root, 'candidate', results, 'blocked', prov, { evidenceRoot: root, subjectRoot: rec.root, extra: { ...extra, obligations: obList } });
     if (cid.dirty) o.detail('candidate working tree is dirty — verification ran on the checked-out files, not a committed state');
@@ -680,7 +733,9 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     // startHead so M8 gate 1 cannot launder a green-plan-but-unproven run
     // into an apply. Closing an obligation is real work (a test, a sealed
     // bench step) — not a bytes edit.
-    writeVerificationBundle(root, 'candidate', results, 'unproven', prov, { evidenceRoot: root, subjectRoot: rec.root, extra: { ...extra, obligations: obList } });
+    const evidence = writeVerificationBundle(root, 'candidate', results, 'unproven', prov, { evidenceRoot: root, subjectRoot: rec.root, extra: { ...extra, obligations: obList } });
+    if (evidence) o.say(`full evidence: ${evidence} — per-step logs and verification.json`);
+    else o.say('Evidence storage unavailable — no saved candidate run logs are available.');
     if (cid.dirty) o.detail('candidate working tree is dirty — verification ran on the checked-out files, not a committed state');
     const met = obligations.filter((x) => x.status === 'met');
     // PART II split semantics: when EVERY open obligation is one only an
@@ -692,7 +747,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
       o.say(`CANDIDATE NOT PROVEN — the sealed plan is green and every technical duty is met; what remains can only be closed by acceptance from an interactive terminal (NO PROOF, NO DONE still binds):`);
       o.say('  TECHNICAL EVIDENCE: PROVEN (sealed plan green; objective duties met)');
       o.say('  SUBJECTIVE ACCEPTANCE: USER JUDGMENT REQUIRED');
-      o.say(`  OVERALL COMPLETION: NOT PROVEN — promotion stays locked until acceptance from an interactive terminal: canary accept ${echoable(name)}`);
+      o.say(`  OVERALL COMPLETION: NOT PROVEN — promotion stays locked until acceptance from an interactive terminal: amabie accept ${echoable(name)}`);
     } else {
       o.say('CANDIDATE NOT PROVEN — the sealed plan is green, but proof obligations for this task are UNPROVEN (NO PROOF, NO DONE):');
     }
@@ -700,7 +755,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     // evidence bundle (obligations: obList below) — printing met duties here
     // was pure token tax on the agent that must read this.
     for (const x of unproven) o.say(`  obligation [${x.id}] UNPROVEN (${x.mode}): ${x.note}`);
-    if (acceptanceStale) o.say(`  note: an acceptance for "${name}" EXISTS but is STALE — the candidate commit, its base, the frozen task, or the acceptance-eligible duty set changed since it was signed (a terminal acceptance authorizes ONLY the subjective duties that existed at signing), so the duties reopened. Re-run from an interactive terminal: canary accept ${echoable(name)}`);
+    if (acceptanceStale) o.say(`  note: an acceptance for "${name}" EXISTS but is STALE — the candidate commit, its base, the frozen task, or the acceptance-eligible duty set changed since it was signed (a terminal acceptance authorizes ONLY the subjective duties that existed at signing), so the duties reopened. Re-run from an interactive terminal: amabie accept ${echoable(name)}`);
     if (met.length) o.say(`  obligations: ${met.length}/${obligations.length} MET — full list in the evidence bundle.`);
     /**
      * WHO can close what — stated instead of implied.
@@ -708,16 +763,16 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
      * MEASURED (`bench-r12b`, workflow arm, 2 trials): the previous single `next:` line said "close
      * each UNPROVEN obligation with its actual proof (objective ones), or accept the subjective ones
      * …", which reads as an instruction a worker can carry out. It cannot: binding a requirement to a
-     * sealed check is an operator act (`canary bind` + `canary setup`, re-sealing authority) and an
+     * sealed check is an operator act (`amabie bind` + `amabie setup`, re-sealing authority) and an
      * acceptance needs a terminal. The worker therefore spent 53 turns / 23 minutes / 1.85M tokens
-     * re-reading Canary's own help and re-trying, while the outcome was fixed from the start.
+     * re-reading Amabie's own help and re-trying, while the outcome was fixed from the start.
      *
      * So the two classes are now separated in the output, and the second one says plainly that no
      * further work in this session can change it.
      */
     const WORKER_CLOSABLE = new Set(['regression-evidence', 'tests-green', 'coverage-loss']);
     /**
-     * v1.3, slice 1 — `task-authority` was falling through the clause below into `byWorker`, so Canary
+     * v1.3, slice 1 — `task-authority` was falling through the clause below into `byWorker`, so Amabie
      * told the model: "YOU can close … task-authority — make it real (a check that fails without your
      * change), commit in the candidate, then run finish again."
      *
@@ -736,7 +791,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     if (byAuthority.length > 0) {
       o.say('next: task-authority is NOT CLOSABLE FROM THIS CANDIDATE — no work in it can change it.');
       o.say('  It records that the task froze no KIND when this candidate was opened, which is a fact about how the candidate was created, not about anything in it. Editing tests, adding checks or committing more cannot move it.');
-      o.say(`  the recovery is a FRESH candidate, opened from a task that names its kind: canary work <new-name> "<intent>" --kind <${TASK_KINDS.join('|')}>`);
+      o.say(`  the recovery is a FRESH candidate, opened from a task that names its kind: amabie work <new-name> "<intent>" --kind <${TASK_KINDS.join('|')}>`);
       o.say('  nothing was promoted and the trusted base was not touched. Report this state and stop.');
     }
     if (byWorker.length > 0) {
@@ -744,7 +799,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
     }
     if (byOperator.length > 0) {
       o.say(`next: these are NOT CLOSABLE FROM THIS SESSION (no amount of further work changes it): ${byOperator.map((x) => x.id).join(', ')}.`);
-      o.say(`  an OPERATOR closes them by binding each requirement to a check the sealed plan runs (canary bind <script> --requirement "…", then canary setup), or a HUMAN accepts them in a terminal: canary accept ${echoable(name)}.`);
+      o.say(`  an OPERATOR closes them by binding each requirement to a check the sealed plan runs (amabie bind <script> --requirement "…", then amabie setup), or a HUMAN accepts them in a terminal: amabie accept ${echoable(name)}.`);
       o.say('  Do not keep working on them and do not edit checks to make them disappear. Report exactly this state and stop — the trusted base was not touched and promotion stays locked.');
     }
     return { code: 2, startHead: null, rec };
@@ -753,6 +808,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   if (cid.dirty !== false || !postIdentity.resolved || postIdentity.dirty !== false || postIdentity.head !== cid.head || postIdentity.tree !== cid.tree) return blocked('candidate is dirty / UNCOMMITTED or changed during verification — no promotable PASS for an unstable subject', 'commit the intended state and re-verify');
   const evidence = writeVerificationBundle(root, 'candidate', results, 'pass', prov, { evidenceRoot: root, subjectRoot: rec.root, extra: { ...extra, obligations: obList } });
   if (!evidence) o.say('Evidence storage unavailable — this verdict comes from live checks; no durable bundle is guaranteed.');
+  else if (obligations.some((x) => x.caveat)) o.say(`full evidence: ${evidence} — per-step logs and verification.json`);
   if (cid.dirty) o.detail('candidate working tree is dirty — verification ran on the checked-out files, not a committed state');
   if (obligations.length) o.detail(`obligations: ${obligations.length}/${obligations.length} MET — the sealed plan plus this task's proof obligations are all satisfied (directive §10).`);
   const cnt = gitWithinRoot(rec.root, ['rev-list', '--count', '--end-of-options', `${rec.baseHead}..HEAD`]);
@@ -761,7 +817,7 @@ function verifyCandidate(root: string, cfg: CanaryConfig, o: Out, name: string):
   return { code: 0, startHead: cid.head, rec };
 }
 
-function isolateVerify(root: string, cfg: CanaryConfig, o: Out, name: string): number {
+function isolateVerify(root: string, cfg: AmabieConfig, o: Out, name: string): number {
   return verifyCandidate(root, cfg, o, name).code;
 }
 
@@ -772,7 +828,7 @@ function authorizationContext(root: string, name: string): {
   obligations: ReturnType<typeof obligationsFor>;
 } | string {
   const cfg = readConfig(root);
-  if (!cfg || cfg === 'corrupt' || untrustedConfigReason(root, cfg)) return 'untrusted or unreadable base configuration; run canary setup';
+  if (!cfg || cfg === 'corrupt' || untrustedConfigReason(root, cfg)) return 'untrusted or unreadable base configuration; run amabie setup';
   if (quarantineInfo(path.join(root, CONFIG_DIR, QUARANTINE_FILE))) return 'base authority is quarantined; restore it and run setup';
   const rec = loadRecord(root, name);
   if (rec === 'missing' || rec === 'invalid' || !samePath(rec.baseRoot, root)) return 'candidate record missing, malformed or bound to a different base';
@@ -791,7 +847,7 @@ function authorizationContext(root: string, name: string): {
   const top = gitCommand(rec.root, ['rev-parse', '--show-toplevel']);
   if (!top || top.status !== 0 || !samePath(canonicalPath(top.stdout.trim()), canonicalPath(rec.root))) return 'candidate repository identity changed';
   const cid = candidateIdentity(rec.root);
-  if (!cid.resolved || !cid.head || !cid.tree || cid.dirty !== false) return 'candidate is not a clean committed state; commit the exact state you want reviewed, then run canary accept again';
+  if (!cid.resolved || !cid.head || !cid.tree || cid.dirty !== false) return 'candidate is not a clean committed state; commit the exact state you want reviewed, then run amabie accept again';
   const baseTree = gitWithinRoot(root, ['rev-parse', '--verify', `${rec.baseHead}^{tree}`])?.trim();
   if (!baseTree || baseTree !== rec.baseTree) return 'frozen base tree cannot be verified';
   if (!cfg.planAuthority || planAuthorityDrift(rec.root, cfg)) return 'sealed authority missing or drifted; restore it before acceptance';
@@ -815,7 +871,7 @@ function authorizationContext(root: string, name: string): {
      * which is how a candidate with no subjective duty open still produced a non-empty set.
      * MEASURED consequence: `accept` printed "duties this signature covers: none currently open"
      * and then wrote a record whose subjectDigest bound a coverage set that corresponded to no open
-     * duty at all. A human signature is the one act Canary cannot verify, so it must authorise
+     * duty at all. A human signature is the one act Amabie cannot verify, so it must authorise
      * exactly the duties that are genuinely open and nothing else.
      */
     subjectiveDuties: obligations.filter(o => o.mode === 'non-objective' && o.status === 'unproven').map(o => o.id).sort(),
@@ -824,7 +880,7 @@ function authorizationContext(root: string, name: string): {
 }
 
 /**
- * blocker 3 — `canary accept <candidate>`: the human completion path for
+ * blocker 3 — `amabie accept <candidate>`: the human completion path for
  * SUBJECTIVE duties. The claim, stated exactly as enforced: the SUPPORTED
  * acceptance flow requires an interactive terminal on BOTH stdin and stdout —
  * the normal non-interactive coding-agent path is refused, and there is
@@ -832,7 +888,7 @@ function authorizationContext(root: string, name: string): {
  * terminal check would be the laundering vector this command exists to close.
  * A TTY is NOT cryptographic human identity: a same-UID process that can
  * drive a PTY (e.g. `script -qec`) or hand-write this record (every field is
- * derivable from local state) remains inside Canary's documented local
+ * derivable from local state) remains inside Amabie's documented local
  * forgery ceiling (M2). This is a policy/friction boundary on the USUAL agent
  * path, not an OS security boundary — SECURITY.md carries the full model.
  * One canonical AuthorizationSubject binds the clean committed candidate,
@@ -846,7 +902,7 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
   const { opts, rest } = parseGlobals(rawArgs);
   const o = new Out(opts.verbose);
   const name = rest[0] ?? '';
-  if (rest.length !== 1 || !name) { o.say('usage: canary accept <candidate> — typed in an interactive terminal; no flags escape the terminal check'); return 3; }
+  if (rest.length !== 1 || !name) { o.say('usage: amabie accept <candidate> — typed in an interactive terminal; no flags escape the terminal check'); return 3; }
   if (!NAME_RE.test(name)) { o.say(`candidate name must match ${NAME_RE}`); return 3; }
   const root = findRepoRoot(process.cwd());
   if (!root) { o.say('not inside a git repository — there is no candidate registry here to accept from'); return 2; }
@@ -866,7 +922,7 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
    * in the productization chain and names this state explicitly.
    */
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    o.say('REFUSED — the supported acceptance flow requires an interactive terminal on both streams; this session has none, so the non-interactive path is refused. (No flag or env var escapes this. A terminal is friction, not cryptographic human identity — see SECURITY.md.) To accept, run canary accept <candidate> yourself from a real terminal.');
+    o.say('REFUSED — the supported acceptance flow requires an interactive terminal on both streams; this session has none, so the non-interactive path is refused. (No flag or env var escapes this. A terminal is friction, not cryptographic human identity — see SECURITY.md.) To accept, run amabie accept <candidate> yourself from a real terminal.');
     return 2;
   }
   const before = authorizationContext(root, name);
@@ -885,12 +941,12 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
    * can be re-read later, and the message even warned that "any duty that later joins this set will
    * NOT be covered" — a warning is not a gate.
    *
-   * A human signature is the one act Canary cannot verify, so it is the one that must be narrowest.
+   * A human signature is the one act Amabie cannot verify, so it is the one that must be narrowest.
    * With nothing acceptance-eligible, there is nothing to accept: refuse, and say what actually
    * closes the open duties instead.
    */
   if (subjective.length === 0) {
-    o.say(`REFUSED — candidate "${name}" has NO subjective duty open, so there is nothing for a human to accept. An acceptance that covers nothing is not a signature over the work.`);    o.say('  If the work looks unfinished, the open duties are OBJECTIVE and only a measurement closes them: run `canary isolate --verify ' + name + '` to see exactly which ones, then make the proof hold (or have the OPERATOR bind the requirement to a check the sealed plan runs).');
+    o.say(`REFUSED — candidate "${name}" has NO subjective duty open, so there is nothing for a human to accept. An acceptance that covers nothing is not a signature over the work.`);    o.say('  If the work looks unfinished, the open duties are OBJECTIVE and only a measurement closes them: run `amabie isolate --verify ' + name + '` to see exactly which ones, then make the proof hold (or have the OPERATOR bind the requirement to a check the sealed plan runs).');
     return 2;
   }
   const baseToken = headToken(root);
@@ -898,8 +954,8 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
   o.say(`  base ${short(rec.baseHead)} → candidate ${short(subject.candidateCommit)}  (tree ${short(subject.candidateTree)})`);
   o.say(`  duties this signature covers: ${subjective.length ? subjective.join(', ') : 'none currently open (any duty that later joins this set will NOT be covered — the record goes STALE)'}`);
   o.say('  A terminal acceptance authorizes EXACTLY the duties above as registered now — never duties that appear after it.');
-  o.say('  Objective proofs are NEVER closed by this: a green plan and every objective duty must already hold (verify first: canary isolate --verify <name>).');
-  o.say('  Read the evidence before signing: .canary/evidence/*-candidate/verification.json');
+  o.say('  Objective proofs are NEVER closed by this: a green plan and every objective duty must already hold (verify first: amabie isolate --verify <name>).');
+  o.say('  Read the evidence before signing: .amabie/evidence/*-candidate/verification.json');
   fs.writeSync(1, `Accepting from this interactive terminal. Type the candidate name exactly ("${name}") to accept, or anything else to refuse: `);
   const buf = Buffer.alloc(160);
   let n = 0;
@@ -912,7 +968,7 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
     return 2;
   }
   const acc: AcceptanceRecord = {
-    schema: 'canary-acceptance/3', at: new Date().toISOString(), candidate: name,
+    schema: 'amabie-acceptance/3', at: new Date().toISOString(), candidate: name,
     subject, subjectDigest: subjectDigest(subject), acceptedBy: 'tty-human',
   };
   if (providerOnly) {
@@ -922,23 +978,23 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
     const routed = await submitAcceptanceThroughBroker({ projectId: projectIdForRoot(root), candidate: name }, store);
     if (routed.routed && routed.ok) {
       o.say(`ACCEPTED by the broker: the review statement for "${name}" was minted through the provider boundary.`);
-      o.say(`next: canary isolate --verify ${name} — subjective duties read MET (accepted by the broker); objective proof still has to hold on its own.`);
+      o.say(`next: amabie isolate --verify ${name} — subjective duties read MET (accepted by the broker); objective proof still has to hold on its own.`);
       return 0;
     }
     const detail = routed.routed ? refusalText(routed.code, routed.message) : 'the broker could not be consulted';
     o.say(`REFUSED — a provider is configured here, so acceptance must be minted by the broker, and it was not: ${detail}`);
     o.say('  NOTHING WAS WRITTEN. No acceptance record exists, and the local writable path is closed while a provider is installed.');
-    o.say('  this is not a fallback: if the broker is unavailable or refuses, the act does not happen. Run `canary provider status` to see the boundary.');
+    o.say('  this is not a fallback: if the broker is unavailable or refuses, the act does not happen. Run `amabie provider status` to see the boundary.');
     return 2;
   }
-  if (!writeAcceptance(root, acc)) { o.say('acceptance could not be written (.canary containment refused it) — nothing accepted'); return 2; }
+  if (!writeAcceptance(root, acc)) { o.say('acceptance could not be written (.amabie containment refused it) — nothing accepted'); return 2; }
   o.say(`ACCEPTED from this interactive terminal: ${path.join(CONFIG_DIR, ACCEPTANCE_SUBDIR, `${name}.json`)}`);
-  o.say(`next: canary isolate --verify ${name} — subjective duties read MET (accepted, and bound to these exact bytes); objective proof still has to hold on its own.`);
+  o.say(`next: amabie isolate --verify ${name} — subjective duties read MET (accepted, and bound to these exact bytes); objective proof still has to hold on its own.`);
   return 0;
 }
 
 /**
- * M8 — NO PASS, NO APPLY (directive §8). Promotion is the ONLY act in Canary
+ * M8 — NO PASS, NO APPLY (directive §8). Promotion is the ONLY act in Amabie
  * that lets candidate-authored bytes enter the trusted base, so it trusts:
  *   - a LIVE re-verification against the sealed plan, this invocation, right
  *     now — stored bundles are never read back, so replayed, forged, or
@@ -958,7 +1014,7 @@ export async function cmdAccept(rawArgs: string[]): Promise<number> {
  * Deliberately NOT claim-trusting: worker DONE lines, candidate-created PASS
  * files, and the ADVANCED registry status are all inert here.
  */
-async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: string): Promise<number> {
+async function isolatePromote(root: string, cfg: AmabieConfig, o: Out, name: string): Promise<number> {
   const prov = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
   const writeBundle = (results: StepResult[], status: 'accepted' | 'blocked', rec: CandidateRecord, promotion: Record<string, unknown>): string => {
     const dir = writeVerificationBundle(root, 'promotion', results, status, prov, {
@@ -988,7 +1044,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   if (!rec || H === null) return 2; // fail-closed: a PASS without identity is not a PASS
   // Gate 2 — sandwich: the candidate must still BE the bytes that passed.
   const id = candidateIdentity(rec.root);
-  if (!id.resolved) return refuse(rec, 'the candidate became unresolvable during this act — the verified bytes cannot be confirmed', 'canary isolate --list to see what happened');
+  if (!id.resolved) return refuse(rec, 'the candidate became unresolvable during this act — the verified bytes cannot be confirmed', 'amabie isolate --list to see what happened');
   if (id.head !== H) return refuse(rec, `the candidate HEAD moved during verification (${short(H)} → ${short(id.head)}) — the bytes that passed are not what I would apply`, 'run --promote again (it re-verifies from scratch)', { from: H, to: id.head });
   if (id.dirty !== false) return refuse(rec, 'the candidate has UNCOMMITTED or unresolvable changes — promotion requires clean COMMITTED bytes', 'commit inside the candidate first', { from: H, to: H });
   // Gate 3 — pin the verified commit's tree, content-addressed (H is HEX).
@@ -999,14 +1055,14 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   // Untracked base files (setup's own .claude edit among them) do not block:
   // git's own ff-merge refuses when one would be overwritten by the merge.
   const idb = candidateIdentity(root);
-  if (!idb.resolved) return refuse(rec, 'the trusted base identity became unresolvable — cannot promote into a repo git cannot answer for', 'run canary doctor on the base', { from: null, to: H, tree: treeT });
+  if (!idb.resolved) return refuse(rec, 'the trusted base identity became unresolvable — cannot promote into a repo git cannot answer for', 'run amabie doctor on the base', { from: null, to: H, tree: treeT });
   const baseTrackedDirty = gitWithinRoot(root, ['status', '--porcelain', '--untracked-files=no']);
-  if (baseTrackedDirty === null) return refuse(rec, 'the trusted base working tree cannot be inspected — Canary does not guess past a git failure', 'run canary doctor on the base', { from: idb.head, to: H, tree: treeT });
+  if (baseTrackedDirty === null) return refuse(rec, 'the trusted base working tree cannot be inspected — Amabie does not guess past a git failure', 'run amabie doctor on the base', { from: idb.head, to: H, tree: treeT });
   if (baseTrackedDirty.trim() !== '') return refuse(rec, 'the trusted base has UNCOMMITTED tracked changes — commit or stash the base first', 'promotion never merges into, or overwrites, uncommitted human work', { from: idb.head, to: H, tree: treeT });
   // Gate 5 — promotion fast-forwards a checked-out branch (no detached HEAD
   // rewriting, no history games — the human always keeps plain `git merge`).
   const branchRaw = gitWithinRoot(root, ['symbolic-ref', '--quiet', 'HEAD']);
-  if (branchRaw === null) return refuse(rec, 'the trusted base is on a detached HEAD — promotion fast-forwards a checked-out BRANCH', `git switch <branch> in ${root} (or merge by hand; Canary never auto-merges onto detached state)`, { from: idb.head, to: H, tree: treeT });
+  if (branchRaw === null) return refuse(rec, 'the trusted base is on a detached HEAD — promotion fast-forwards a checked-out BRANCH', `git switch <branch> in ${root} (or merge by hand; Amabie never auto-merges onto detached state)`, { from: idb.head, to: H, tree: treeT });
   const branch = branchRaw.trim(); // evidence fields carry no stray newlines
   const branchShort = branch.replace(/^refs\/heads\//, '');
   // Gate 6 — idempotent replay: the base already sits ON the verified commit.
@@ -1018,7 +1074,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   }
   // Gate 6½ — PROVIDER-ONLY ROUTING (v1.1 item 4). When a provider is configured,
   // the fast-forward is authorized by the broker or it does not happen. This is the
-  // LAST gate before the only act in Canary that lets candidate bytes into the
+  // LAST gate before the only act in Amabie that lets candidate bytes into the
   // trusted base, and it is deliberately placed here rather than earlier: all the
   // identity gates above must have passed for the broker to be asked about THIS
   // exact {base, candidate} pair, and the broker's answer is compared against the
@@ -1030,7 +1086,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
     if (!routed.routed || !routed.ok) {
       const detail = routed.routed ? refusalText(routed.code, routed.message) : 'the broker could not be consulted';
       return refuse(rec, `a provider is configured here, so promotion must be authorized by the broker, and it was not: ${detail}`,
-        'run canary provider status — with a provider installed there is no local promotion path, by design',
+        'run amabie provider status — with a provider installed there is no local promotion path, by design',
         { branch, from: idb.head, to: H, tree: treeT, providerOnly: true });
     }
     const window = (routed.result ?? {}) as { expectedHead?: unknown; candidateCommit?: unknown; targetId?: unknown };
@@ -1038,7 +1094,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
       return refuse(rec, 'the broker authorized a DIFFERENT promotion window than this act: '
         + `broker {base ${short(String(window.expectedHead ?? '?'))}, candidate ${short(String(window.candidateCommit ?? '?'))}} `
         + `vs local {base ${short(idb.head)}, candidate ${short(H)}} — a mismatch is a refusal, never a merge`,
-        'the broker is bound to another candidate or base; re-run canary setup on this repository',
+        'the broker is bound to another candidate or base; re-run amabie setup on this repository',
         { branch, from: idb.head, to: H, tree: treeT, providerOnly: true, brokerWindow: window });
     }
     return refuse(rec, 'the broker reserved a window but did not perform protected promotion; caller-owned apply is forbidden with a provider configured',
@@ -1051,7 +1107,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   const t0 = new Date().toISOString();
   const gExe = gitExe();
   const m: GitResult = gitCommand(root, ['merge', '--ff-only', H], 120_000)
-    ?? { status: null, stdout: '', stderr: "git is not resolvable in Canary's trusted environment — the fast-forward was NOT attempted" };
+    ?? { status: null, stdout: '', stderr: "git is not resolvable in Amabie's trusted environment — the fast-forward was NOT attempted" };
   const t1 = new Date().toISOString();
   const mergeStep: StepResult = {
     kind: 'promotion', display: `git -C ${root} merge --ff-only ${H}`, ok: m.status === 0, exitCode: m.status,
@@ -1064,7 +1120,7 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   };
   if (m.status !== 0) {
     const firstLine = (m.stderr || m.stdout || String(m.error?.message ?? '')).trim().split(/\r?\n/)[0] ?? '(no message)';
-    return refuse(rec, `git refused the fast-forward onto the verified commit: ${firstLine}`, 'the base moved or diverged since isolation (or an untracked file collides) — re-isolate onto the current base, or merge by hand; Canary never auto-merges or rewrites history', { branch, from: idb.head, to: H, tree: treeT });
+    return refuse(rec, `git refused the fast-forward onto the verified commit: ${firstLine}`, 'the base moved or diverged since isolation (or an untracked file collides) — re-isolate onto the current base, or merge by hand; Amabie never auto-merges or rewrites history', { branch, from: idb.head, to: H, tree: treeT });
   }
   // Gate 8 — post-proof: the applied bytes must BE the verified bytes.
   const pHeadOut = gitWithinRoot(root, ['rev-parse', '--verify', '--end-of-options', 'HEAD']);
@@ -1072,13 +1128,13 @@ async function isolatePromote(root: string, cfg: CanaryConfig, o: Out, name: str
   const pHead = pHeadOut !== null && HEX_RE.test(pHeadOut.trim()) ? pHeadOut.trim() : null;
   const pTree = pTreeOut !== null && HEX_RE.test(pTreeOut.trim()) ? pTreeOut.trim() : null;
   if (pHead !== H || pTree !== treeT) {
-    return refuse(rec, 'git reported success but Canary cannot re-derive the base identity to match the verified commit — INSPECT the base now', 'this arm should be unreachable on healthy git; the fast-forward WAS applied and is recorded', { branch, from: idb.head, to: H, tree: treeT, applied: true, proven: false });
+    return refuse(rec, 'git reported success but Amabie cannot re-derive the base identity to match the verified commit — INSPECT the base now', 'this arm should be unreachable on healthy git; the fast-forward WAS applied and is recorded', { branch, from: idb.head, to: H, tree: treeT, applied: true, proven: false });
   }
   const dir = writeBundle([mergeStep], 'accepted', rec, { branch, from: idb.head, to: H, tree: treeT });
   o.say(`PROMOTED "${name}" — ${branchShort} fast-forwarded ${short(idb.head)} → ${short(H)}.`);
   o.say(`POST-PROOF PASS — base tree ${short(treeT)} is byte-identical to the tree the sealed plan verified this invocation. ACCEPTED — the promotion is proven, not assumed.`);
   o.say(`  evidence: ${dir}`);
-  o.say(`the candidate record and worktree remain (cleanup is a separate act: canary isolate --remove ${name}).`);
+  o.say(`the candidate record and worktree remain (cleanup is a separate act: amabie isolate --remove ${name}).`);
   return 0;
 }
 
@@ -1086,7 +1142,7 @@ function isolateList(root: string, o: Out): number {
   const dir = path.join(root, CONFIG_DIR, CANDIDATES_SUBDIR);
   let files: string[] = [];
   if (fs.existsSync(dir)) {
-    if (containedRealPath(root, dir) === null) { o.say('isolate: the candidate registry dir escapes the repo (linked .canary?) — refusing to read through it'); return 2; }
+    if (containedRealPath(root, dir) === null) { o.say('isolate: the candidate registry dir escapes the repo (linked .amabie?) — refusing to read through it'); return 2; }
     files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
   }
   const baseCd = commonDir(root);
@@ -1104,7 +1160,7 @@ function isolateList(root: string, o: Out): number {
     const status = !cid.resolved ? 'LOST' : impostor ? 'IMPOSTOR' : cid.dirty ? 'DIRTY' : cid.head !== rec.baseHead ? 'ADVANCED' : 'CLEAN';
     o.say(`${name.padEnd(16)} ${status.padEnd(9)} ${short(cid.head)}  ${rec.root}`);
   }
-  // worktrees git knows about that Canary never registered: report only —
+  // worktrees git knows about that Amabie never registered: report only —
   // they may be the user's own work and are never touched (guarantee 9).
   // core.quotepath=false: C-quoting would print Unicode worktree paths as
   // "…\303\251…" and defeat the samePath comparison below.
@@ -1113,7 +1169,7 @@ function isolateList(root: string, o: Out): number {
     if (!line.startsWith('worktree ')) continue;
     const p = line.slice('worktree '.length).trim();
     if (!p || known.some((k) => samePath(k, p))) continue;
-    o.say(`UNREGISTERED     ${short(null)}  ${p} (not Canary's; left alone)`);
+    o.say(`UNREGISTERED     ${short(null)}  ${p} (not Amabie's; left alone)`);
   }
   return 0;
 }
@@ -1121,7 +1177,7 @@ function isolateList(root: string, o: Out): number {
 function isolateRemove(root: string, o: Out, name: string, discard: boolean): number {
   const rec = loadRecord(root, name);
   if (rec === 'missing') { o.say(`isolate: no candidate "${name}" registered — nothing removed`); return 2; }
-  if (rec === 'invalid') { o.say(`isolate: registry record "${name}" is malformed — Canary cannot tell which worktree is its own, so it removes nothing; delete the record and prune manually`); return 2; }
+  if (rec === 'invalid') { o.say(`isolate: registry record "${name}" is malformed — Amabie cannot tell which worktree is its own, so it removes nothing; delete the record and prune manually`); return 2; }
   if (!samePath(rec.baseRoot, root)) { o.say(`isolate: record "${name}" claims a different base — refusing to remove from here`); return 2; }
   const id = candidateIdentity(rec.root);
   if (id.resolved && id.dirty && !discard) {
@@ -1129,7 +1185,7 @@ function isolateRemove(root: string, o: Out, name: string, discard: boolean): nu
     return 2;
   }
   const git = (args: string[]): GitResult => gitCommand(root, args, 120_000)
-    ?? { status: null, stdout: '', stderr: "git is not resolvable in Canary's trusted environment" };
+    ?? { status: null, stdout: '', stderr: "git is not resolvable in Amabie's trusted environment" };
   let pruned: boolean | null = null;
   if (id.resolved) {
     // rec.root is shape-validated absolute (loadRecord), so it can never
@@ -1167,7 +1223,7 @@ export async function controllerCandidate(root: string, name: string, head: stri
 export async function cmdIsolate(rawArgs: string[]): Promise<number> {
   const { opts, rest } = parseGlobals(rawArgs);
   const o = new Out(opts.verbose);
-  const usage = 'usage: canary isolate <name> [--base <ref>] [--path <dir>] [repo-path] | --list | --verify <name> | --remove <name> [--discard] | --promote <name>';
+  const usage = 'usage: amabie isolate <name> [--base <ref>] [--path <dir>] [repo-path] | --list | --verify <name> | --remove <name> [--discard] | --promote <name>';
   const misuse = (why: string): number => { o.say(`isolate: ${why}`); o.say(usage); return 3; };
   let mode: 'create' | 'list' | 'verify' | 'remove' | 'promote' | null = null;
   let arg = ''; let baseRef = 'HEAD'; let baseGiven = false; let pathGiven = false;

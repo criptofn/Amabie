@@ -6,9 +6,9 @@ import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 
 import { Recorder, roundEvidence, hasRunnerSummary, isInfraOutput, hasCrashSignature, pmArgvPolicy, assertCanonicalPmForm, assertSupportedSpecExecutable, NPM_REGISTRY_PIN, SPEC_LITERAL_EXECUTABLES, NPM_PROTECTED_CONFIG_KEYS, NPM_INSTALL_OPTION_ALLOW, YARN_PROTECTED_CONFIG_KEYS, YARN_INSTALL_OPTION_ALLOW, resolveOptionToken, observerPreloadPath, OBSERVER_PRELOAD_SOURCE, type ExpansionPlan } from '../src/index.js';
-import { sanitizedEnv, sanitizedEnvKeys, resolveNpmCli, KNOWN_RUNNER_RELEASES } from '@canary-rn/support';
-import { classify, type RoundFact } from '@canary-rn/classification';
-import { buildPipeline, machineRules, DEFAULT_RULE_NAMES } from '@canary-rn/normalizers';
+import { sanitizedEnv, sanitizedEnvKeys, resolveNpmCli, KNOWN_RUNNER_RELEASES } from '@amabie/support';
+import { classify, type RoundFact } from '@amabie/classification';
+import { buildPipeline, machineRules, DEFAULT_RULE_NAMES } from '@amabie/normalizers';
 
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
@@ -24,13 +24,13 @@ const armCandidatePass = (round = 1): RoundFact => ({
 });
 
 function freshRecorder(
-  run?: (o: import('@canary-rn/support').RunOptions) => Promise<import('@canary-rn/support').RunOutcome>,
+  run?: (o: import('@amabie/support').RunOptions) => Promise<import('@amabie/support').RunOutcome>,
   // post-GLM F5: the double needs an explicit authority grant to serve as an
   // execution authority; this offline harness is its ONLY designated holder.
   // Tests asserting the UNTRUSTED posture must leave this false.
   trustedDouble = false,
 ) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-exec-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-exec-'));
   const ws = { root, fixture: path.join(root, 'fixture') };
   fs.mkdirSync(ws.fixture, { recursive: true });
   fs.writeFileSync(path.join(root, 'empty.npmrc'), '');
@@ -41,7 +41,7 @@ function freshRecorder(
   }));
   return {
     ws, art,
-    rec: new Recorder({ ws, nodeDir: NODE_DIR, npmCli: path.join(NODE_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js'), artifactsDir: art, pipeline, ...(run ? { run } : {}), ...(trustedDouble ? { allowCanaryDoubleOrigin: true } : {}) }),
+    rec: new Recorder({ ws, nodeDir: NODE_DIR, npmCli: path.join(NODE_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js'), artifactsDir: art, pipeline, ...(run ? { run } : {}), ...(trustedDouble ? { allowAmabieDoubleOrigin: true } : {}) }),
     cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
   };
 }
@@ -52,9 +52,9 @@ function freshRecorder(
 //
 // Strong labels (PASS / CONFIRMED_REGRESSION / FLAKY / PRE_EXISTING_FAILURE)
 // are gated by classifier rule 14: every round must carry a VALID execution
-// observation from Canary's own observer. Offline, the ONLY runner whose
-// bytes hit the pin table (KNOWN_RUNNER_RELEASES, origin 'canary-double') is
-// the Canary mocha double shipped in apps/cli/test/fixtures/mocha-double.
+// observation from Amabie's own observer. Offline, the ONLY runner whose
+// bytes hit the pin table (KNOWN_RUNNER_RELEASES, origin 'amabie-double') is
+// the Amabie mocha double shipped in apps/cli/test/fixtures/mocha-double.
 // The executor package must NOT import from apps/cli, so the fixture bytes
 // are read-copied here with fs at runtime — no project reference, no import,
 // and the injection goes through the REAL expandArgvWithPlan decision + the
@@ -63,7 +63,7 @@ function freshRecorder(
 // ---------------------------------------------------------------------------
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..', '..'); // dist/test -> dist -> executor -> runner -> packages -> repo root
 const MOCHA_DOUBLE_SRC = path.join(REPO_ROOT, 'apps', 'cli', 'test', 'fixtures', 'mocha-double');
-const DOUBLE_VERSION = '0.0.0-canary-double';
+const DOUBLE_VERSION = '0.0.0-amabie-double';
 const SUBS = { dep: 'x', baseline: '1', candidate: '2' };
 
 /** fs-copy the double into a package dir (tamper=true appends a comment to
@@ -164,7 +164,7 @@ describe('Recorder.expandArgv — token expansion + enforced isolation', () => {
       // workspace write access (prepare/swap/subject code — all untrusted)
       // doctored it in the gap between creation and use. Injecting
       // --userconfig at that point must not hand npm the hostile config:
-      // expansion has to re-establish Canary's content first.
+      // expansion has to re-establish Amabie's content first.
       const rc = path.join(ws.root, 'empty.npmrc');
       fs.writeFileSync(rc, 'registry=http://evil.invalid\n');
       rec.expandArgv(['$npm', 'install', 'x@1'], SUBS, () => 'unused');
@@ -230,7 +230,7 @@ describe('Recorder.expandArgv — token expansion + enforced isolation', () => {
       assert.throws(
         () => rec.expandArgv(['$npm', '--whatever', 'install', 'x'],
           { dep: 'x', baseline: 'b', candidate: 'c' }, () => 'unused'),
-        /allowlist|not on Canary's closed option allowlist/,
+        /allowlist|not on Amabie's closed option allowlist/,
       );
       assert.throws(
         () => rec.expandArgv(['$npm', '--whatever', 'run', 'x'],
@@ -432,8 +432,8 @@ describe('Recorder.step/round — real subprocess, real artifacts (no mocks)', (
     // Post-GLM Finding A: FLAKY is a STRONG_EXECUTION label — with these
     // facts now carrying real executionObservation, prose-only rounds would
     // be downgraded by rule 14 (pinned separately below). The rounds run the
-    // PINNED Canary mocha double through the REAL injection, so the identity
-    // divergence Canary classifies is one it WATCHED, not one it parsed.
+    // PINNED Amabie mocha double through the REAL injection, so the identity
+    // divergence Amabie classifies is one it WATCHED, not one it parsed.
     const { rec, cleanup, ws } = freshRecorder(undefined, true);
     try {
       copyDouble(path.join(ws.fixture, 'node_modules', 'mocha'));
@@ -469,7 +469,7 @@ describe('Recorder.step/round — real subprocess, real artifacts (no mocks)', (
 
   it('audit B1 e2e: identical SUITE-QUALIFIED identity across rounds stays CONFIRM-eligible', async () => {
     // Post-GLM Finding A: the confirm is now EARNED, not printed — every
-    // round runs the pinned double with Canary's real injection, so rule 14
+    // round runs the pinned double with Amabie's real injection, so rule 14
     // passes on watched execution. 5 executed tests per round keeps the arms
     // coverage-comparable (post-sol RB-2 rule 13: 5 passing baseline vs
     // 4+1 candidate; an earlier "10 passing" stub encoded exactly the
@@ -479,7 +479,7 @@ describe('Recorder.step/round — real subprocess, real artifacts (no mocks)', (
       copyDouble(path.join(ws.fixture, 'node_modules', 'mocha'));
       fs.writeFileSync(path.join(ws.fixture, 'base.spec.js'), suiteSpec('base suite', false));
       fs.writeFileSync(path.join(ws.fixture, 'fail.spec.js'), suiteSpec('passThrough tests (requires Node)', true));
-      // The injection SHAPE the classifier's trust depends on: Canary's
+      // The injection SHAPE the classifier's trust depends on: Amabie's
       // --require <preload> is appended LAST to the expanded argv, and the
       // plan's expected version comes from the PIN, not the subject.
       const expand = rec.expandArgvWithPlan(['$bin:mocha', 'fail.spec.js'], SUBS, doubleResolver(ws.fixture));
@@ -498,7 +498,7 @@ describe('Recorder.step/round — real subprocess, real artifacts (no mocks)', (
         assert.ok(o && o.status === 'VALID',
           `${r.fact.arm}#${r.fact.round}: expected VALID, got ${o ? `${o.status}/${o.invalidReason ?? o.absentKind}` : 'missing'}`);
       }
-      // the fifth canonical per-round artifact + Canary's own preload bytes
+      // the fifth canonical per-round artifact + Amabie's own preload bytes
       const frames = fs.readFileSync(path.join(art, 'candidate-1.attest.ndjson'), 'utf8');
       assert.match(frames, /"k":"hello"/, 'retained frames must carry the watched lifecycle');
       assert.match(frames, /"k":"pass"/);
@@ -638,7 +638,7 @@ describe('audit B5 — canonical package-manager policy (closed allowlist)', () 
 // ---------------------------------------------------------------------------
 describe('round-3 B5 — wrapper-mediated / frontend package-manager execution is refused', () => {
   const subs = { dep: 'x', baseline: '1', candidate: '2' };
-  // Returns the CanaryError reasonCode, or null if the command expands clean.
+  // Returns the AmabieError reasonCode, or null if the command expands clean.
   function reasonOf(rec: Recorder, cmd: string[]): string | null {
     try { rec.expandArgv(cmd, subs, () => 'unused'); return null; }
     catch (e) { return (e as { reasonCode?: string }).reasonCode ?? 'threw-without-code'; }
@@ -877,7 +877,7 @@ describe('round-3 secondary — crash & sweep signals reach the classification',
 // ---------------------------------------------------------------------------
 // POST-GLM AM-1 / Finding A — the executor-level INJECTION DECISION MATRIX.
 // Recorder.expandArgvWithPlan is the ONLY path to a strong label: injection
-// proceeds only when (name, version, treeHash) hits a Canary-repo pin AND the
+// proceeds only when (name, version, treeHash) hits an Amabie-repo pin AND the
 // package sits at the canonical <fixture>/node_modules/<pkg> anchor; a miss
 // means NO injection at all — the round records an ABSENT observation and
 // rule 14 makes strong labels structurally unreachable. Every case here is
@@ -888,15 +888,15 @@ describe('observation hardening — expandArgvWithPlan injection decision', () =
   const doublePin = (KNOWN_RUNNER_RELEASES.mocha ?? []).find((p) => p.version === DOUBLE_VERSION);
 
   it('the double fixture is actually pinned (fails if the pin table drifted)', () => {
-    assert.ok(doublePin, 'no KNOWN_RUNNER_RELEASES entry for the canary double');
-    assert.equal(doublePin.origin, 'canary-double');
+    assert.ok(doublePin, 'no KNOWN_RUNNER_RELEASES entry for the amabie double');
+    assert.equal(doublePin.origin, 'amabie-double');
   });
 
-  it('post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority', () => {
+  it('post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority', () => {
     // The double's bytes AND observation seams are public in this repo, so
     // an untrusted spec can stage exactly these bytes at the canonical
     // anchor with its own prepare step. Pin MATCH is not enough: origin
-    // 'canary-double' earns injection only behind an explicit in-process
+    // 'amabie-double' earns injection only behind an explicit in-process
     // authority grant that the production pipeline never makes.
     const { rec, cleanup, ws } = freshRecorder();
     try {
@@ -939,7 +939,7 @@ describe('observation hardening — expandArgvWithPlan injection decision', () =
       // expected* fields only exist when injection was ATTEMPTED (panel E)…
       assert.equal(plan.expectedMochaVersion, undefined);
       assert.equal(plan.expectedRunnerTreeSha256, undefined);
-      // …but "what bytes were there" is still Canary-derived and recorded.
+      // …but "what bytes were there" is still Amabie-derived and recorded.
       assert.ok(plan.observedRunnerTreeSha256 && plan.observedRunnerTreeSha256 !== doublePin?.treeSha256);
     } finally { cleanup(); }
   });
@@ -1084,7 +1084,7 @@ describe('observation hardening — expandArgvWithPlan injection decision', () =
 
   it('the ABSENT path end-to-end: an unpinned double runs REAL rounds and rule 14 refuses the strong label', async () => {
     // Honest consequence check: same specs as the CONFIRM case, but the
-    // runner bytes are off-pin — Canary never injects, the fd-3 pipe stays
+    // runner bytes are off-pin — Amabie never injects, the fd-3 pipe stays
     // empty, both rounds are ABSENT, and the decision table (which would
     // otherwise say rule 5) is forced to INCONCLUSIVE/14.
     const { rec, cleanup, ws, art } = freshRecorder();
@@ -1124,9 +1124,9 @@ describe('observation hardening — expandArgvWithPlan injection decision', () =
 //   (1) every install-family option token must be an EXACT spelling from a
 //       closed allowlist that is prefix-disjoint from the protected key
 //       universe (property-tested over ALL prefixes/negations/case/= forms);
-//   (2) Canary's protected flags are appended AFTER every user token, so
+//   (2) Amabie's protected flags are appended AFTER every user token, so
 //       npm's own last-wins makes the effective protected configuration
-//       structurally Canary's regardless of accepted spellings or order;
+//       structurally Amabie's regardless of accepted spellings or order;
 //   (3) `--` and short options remain impossible in install-family commands;
 //   (4) non-install families reject any token whose resolved key (exact,
 //       abbreviation, negation, case) touches a protected key, and the
@@ -1206,7 +1206,7 @@ describe('post-sol RB-1 — semantic package-manager policy (equivalence classes
   });
 
   // ---- 3. Placement: the protected block must be the SUFFIX of argv. ----
-  it('property: accepted install argv ends with Canary protected flags after every user token', () => {
+  it('property: accepted install argv ends with Amabie protected flags after every user token', () => {
     const { rec, cleanup } = freshRecorder();
     try {
       const shapes: string[][] = [
@@ -1294,7 +1294,7 @@ describe('post-sol RB-1 — semantic package-manager policy (equivalence classes
   // when no local npm-cli). These pin WHY the textual denylist failed: npm
   // itself applies abbreviations, negations, and last-wins ordering. ----
   const hostNpmCli = NPM_CLI;
-  const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-rb1-'));
+  const probeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-rb1-'));
   const spawnProbe = (args: string[]): string => {
     const r = spawnSync(process.execPath, [hostNpmCli, ...args], {
       encoding: 'utf8', timeout: 90_000, windowsHide: true, cwd: probeRoot,

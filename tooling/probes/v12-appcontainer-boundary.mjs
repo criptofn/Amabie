@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-appcontainer-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-appcontainer-'));
 const work = path.join(root, 'work');
 const authority = path.join(root, 'authority');
 const nonce = randomUUID();
@@ -33,7 +33,7 @@ try {
   if (label.status !== 0) throw new Error(`low label unavailable: ${label.stderr}`);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const args = ['--preserve-symlinks-main', path.join(work, 'attack.cjs'), root, String(server.address().port), nonce];
-  const control = await run(process.execPath, args, { cwd: work, env: { ...process.env, CANARY_PROBE_SECRET: nonce } });
+  const control = await run(process.execPath, args, { cwd: work, env: { ...process.env, AMABIE_PROBE_SECRET: nonce } });
   const readEvidence = () => JSON.parse(fs.readFileSync(path.join(work, 'evidence.json'), 'utf8'));
   const before = readEvidence();
   if (control.code !== 0 || before.nonce !== nonce || before.attempts.length !== 7) throw new Error('control did not execute all operations');
@@ -42,7 +42,7 @@ try {
   fs.unlinkSync(path.join(work, 'allowed.txt'));
   const confined = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
     path.join(repo, 'tools/windows-boundary/restricted-runner.ps1'), '-Integrity', 'low', '-SandboxDirectory', work,
-    '-CommandLine', [process.execPath, ...args].map(quote).join(' ')], { env: { ...process.env, CANARY_PROBE_SECRET: nonce } });
+    '-CommandLine', [process.execPath, ...args].map(quote).join(' ')], { env: { ...process.env, AMABIE_PROBE_SECRET: nonce } });
   console.log(`launcher exit=${confined.code}\n${confined.output}`);
   if (confined.code !== 0 || !fs.existsSync(path.join(work, 'evidence.json'))) throw new Error('restricted child did not complete; ZERO attacks credited');
   const after = readEvidence();
@@ -60,7 +60,7 @@ try {
     if (!pass) failed++;
   }
   if (fs.readFileSync(path.join(authority, 'secret.txt'), 'utf8') !== nonce) failed++;
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-appcontainer-measurement.json'), JSON.stringify({
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-appcontainer-measurement.json'), JSON.stringify({
     at: new Date().toISOString(), scope: 'experimental primitive, NOT production provider',
     control: before, confined: after, launcher: confined, pass: failed === 0
   }, null, 2));

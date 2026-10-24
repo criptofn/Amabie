@@ -16,7 +16,7 @@
  *   2. runs the same fixture command in the CALLER's environment, as a control,
  *   3. reports which programs the sanitized PATH can actually resolve.
  *
- * Temp dir is KEPT by default so it can be inspected; `CANARY_REPRO_CLEAN=1`
+ * Temp dir is KEPT by default so it can be inspected; `AMABIE_REPRO_CLEAN=1`
  * removes it. Exits 0 when the diagnosis completed (this is not a gate).
  */
 import { spawnSync } from 'node:child_process';
@@ -44,7 +44,7 @@ function dump(label, s) {
 const { sanitizedEnv } = await import(`file://${SUPPORT.replace(/\\/g, '/')}`);
 const { gitExe, trustedDirs, resolveProgram } = await import(`file://${ONBOARDING.replace(/\\/g, '/')}`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m8-midplan-repro-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m8-midplan-repro-'));
 const NODE_DIR = path.dirname(process.execPath);
 
 function git(dir, ...args) {
@@ -52,7 +52,7 @@ function git(dir, ...args) {
   assert(r.status === 0, `git ${args.join(' ')} (in ${dir}) failed: ${r.stderr?.trim() || r.stdout?.trim() || r.error?.message}`);
   return r.stdout.trim();
 }
-function canary(args, cwd) {
+function amabie(args, cwd) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 120_000 });
 }
 // ---- byte-for-byte copy of m8-promotion.mjs makeRepo() ----
@@ -66,17 +66,17 @@ function makeRepo(name) {
     "const fs = require('node:fs');\nprocess.exit(fs.readFileSync('marker.txt', 'utf8').includes('FAIL') ? 1 : 0);\n");
   fs.writeFileSync(path.join(root, 'marker.txt'), 'ok\n');
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
-  git(root, 'config', 'user.name', 'Canary Probe');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
+  git(root, 'config', 'user.name', 'Amabie Probe');
   git(root, 'add', '-A');
   git(root, 'commit', '-m', 'initial');
-  const s = canary(['setup', '--yes', root], root);
+  const s = amabie(['setup', '--yes', root], root);
   assert(s.status === 0, `setup failed: ${s.stdout}\n${s.stderr}`);
-  const t = canary(['task', 'behavior-preserving probe change', '--kind', 'refactor'], root);
+  const t = amabie(['task', 'behavior-preserving probe change', '--kind', 'refactor'], root);
   assert(t.status === 0, `task registration failed: ${t.stdout}\n${t.stderr}`);
   return root;
 }
-const candPath = (root, name) => path.join(root, '.canary', 'candidates', name);
+const candPath = (root, name) => path.join(root, '.amabie', 'candidates', name);
 
 console.log(`temp repo root: ${TMP}`);
 console.log(`node: ${process.execPath}`);
@@ -85,7 +85,7 @@ console.log(`gitExe() (product resolution): ${String(gitExe())}`);
 console.log(`trustedDirs(): ${JSON.stringify(trustedDirs(), null, 2)}`);
 
 const mp = makeRepo('midplan');
-assert(canary(['isolate', 's1', mp], mp).status === 0, 'isolate failed');
+assert(amabie(['isolate', 's1', mp], mp).status === 0, 'isolate failed');
 const c = candPath(mp, 's1');
 fs.writeFileSync(path.join(c, 'marker.txt'), 'FAIL\n'); // committed red
 git(c, 'add', '-A'); git(c, 'commit', '-m', 'red');
@@ -192,8 +192,8 @@ console.log('If RUN 4 product-env fails while caller-env succeeds, the fixture d
 console.log('CALLER PATH, which the product deliberately ignores (docs/SECURITY.md: sanitizedEnv).');
 console.log('If RUN 5 succeeds (status=0 and HEAD moved), pinning the absolute git path is the fix.');
 console.log(`temp repo kept at: ${TMP}`);
-if (process.env.CANARY_REPRO_CLEAN === '1') {
+if (process.env.AMABIE_REPRO_CLEAN === '1') {
   fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 4 });
-  console.log('(removed: CANARY_REPRO_CLEAN=1)');
+  console.log('(removed: AMABIE_REPRO_CLEAN=1)');
 }
 process.exit(0);

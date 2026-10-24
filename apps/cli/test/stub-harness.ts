@@ -3,7 +3,7 @@
  *
  * WHY: auditFixtureDir now REFUSES a fixture that ships node_modules/ at
  * audit time ('node-modules-shipped' → InfraAbort). Runner bytes must arrive
- * through Canary's own controlled steps (install or prepare), never through
+ * through Amabie's own controlled steps (install or prepare), never through
  * the acquired tree — a repo that can smuggle its mocha can smuggle a
  * prepare-created double past every version-derived check (that was AM-1's
  * attack surface; AM-1's pin table closes the runtime side, AM-2 closes the
@@ -13,7 +13,7 @@
  * (stub-payload/) and a generated prepare command copies the payload into
  * ./node_modules AFTER the audit — which is exactly how a legitimate install
  * also lands there. When a scenario wants the REAL observation channel
- * (strong verdicts), it also gets the Canary mocha double injected at the
+ * (strong verdicts), it also gets the Amabie mocha double injected at the
  * canonical location via the same prepare step — hash-pinned, offline, no
  * network.
  */
@@ -23,9 +23,9 @@ import path from 'node:path';
 export const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..'); // dist/test -> dist -> cli -> apps -> repo root
 
 export const MOCHA_DOUBLE_SRC = path.join(REPO, 'apps', 'cli', 'test', 'fixtures', 'mocha-double');
-export const DOUBLE_VERSION = '0.0.0-canary-double';
+export const DOUBLE_VERSION = '0.0.0-amabie-double';
 export const STAGING_REL = 'stub-payload';
-export const STAGER_REL = 'canary-stub-stage.js';
+export const STAGER_REL = 'amabie-stub-stage.js';
 
 export interface StubPkg { name: string; version: string; index?: string }
 
@@ -41,8 +41,8 @@ export function writeStagedPayload(dir: string, pkgs: readonly StubPkg[]): void 
   fs.writeFileSync(path.join(dir, STAGER_REL), [
     "'use strict';",
     "// Offline-stub stager (generated): materialize staged fake node_modules",
-    "// into ./node_modules AFTER Canary's audit — same post-audit position a",
-    "// real install occupies. Optionally inject the Canary mocha double.",
+    "// into ./node_modules AFTER Amabie's audit — same post-audit position a",
+    "// real install occupies. Optionally inject the Amabie mocha double.",
     "const fs = require('fs');",
     "const path = require('path');",
     `const SRC = ${JSON.stringify(path.join(dir, STAGING_REL))};`,

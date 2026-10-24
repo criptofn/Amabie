@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12p-duration-parse-plain-1",
   "task": "duration-parse",
   "arm": "plain",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-14T03:16:13.986Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-duration-parse-plain-ezNkIY",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-duration-parse-plain-ezNkIY",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -53,7 +53,7 @@
   },
   "prompt": "# Task: `parseDuration` must accept only well-formed durations\n\n`parseDuration(text)` in `src/duration.js` converts a duration string into a number of minutes.\n\nThe accepted form is a sequence of one or more `<number><unit>` groups, with no separators, where\n`<unit>` is `h` (hours) or `m` (minutes) and `<number>` is one or more digits:\n\n- `\"90m\"` → `90`\n- `\"2h\"` → `120`\n- `\"1h30m\"` → `90`\n- `\"1h\"` → `60`\n\nAnything else is **invalid** and must throw an error whose message contains `invalid duration`:\n\n- `\"1h30\"` — a number with no unit is not a group\n- `\"90\"` — a bare number is not a duration\n- `\"m90\"` — a unit with no number is not a group\n- `\"1x\"` — `x` is not a unit\n- `\"\"` — an empty string is not a duration\n\nLeading zeros are allowed (`\"01h\"` → `60`), and a group may be repeated (`\"1h1h\"` → `120`).",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -157,18 +157,18 @@
     "bytes": {
       "toolResultTotal": 3220,
       "largestToolResult": 995,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 1,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

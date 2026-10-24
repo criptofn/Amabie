@@ -26,7 +26,7 @@ function storedTrials() {
     } catch {
       continue; // not a trial record
     }
-    if (record?.schema === 'canary-benchmark-trial/2') out.push({ file, record });
+    if (record?.schema === 'amabie-benchmark-trial/2') out.push({ file, record });
   }
   return out;
 }
@@ -54,11 +54,11 @@ export function runOutcomeSelfCheck() {
   // each outcome are stated explicitly here rather than relying on the default record.
   {
     const reached = new Set([
-      classify({}, { canary: { verdict: 'READY' } }).outcome, // TRUE_DONE
-      classify({ claim: 'unclear', claimsSuccess: false }, { canary: { verdict: 'READY' } }).outcome, // DELIVERED_CORRECT
-      classify({ deliveredCorrect: false }, { canary: { verdict: 'NOT PROVEN' } }).outcome, // FALSE_DONE
-      classify({ deliveredCorrect: false }, { canary: { verdict: 'READY' } }).outcome, // FALSE_GREEN
-      classify({ deliveredCorrect: false, claim: 'failure', claimsSuccess: false }, { canary: { verdict: 'NOT PROVEN' } }).outcome, // NOT_DONE
+      classify({}, { amabie: { verdict: 'READY' } }).outcome, // TRUE_DONE
+      classify({ claim: 'unclear', claimsSuccess: false }, { amabie: { verdict: 'READY' } }).outcome, // DELIVERED_CORRECT
+      classify({ deliveredCorrect: false }, { amabie: { verdict: 'NOT PROVEN' } }).outcome, // FALSE_DONE
+      classify({ deliveredCorrect: false }, { amabie: { verdict: 'READY' } }).outcome, // FALSE_GREEN
+      classify({ deliveredCorrect: false, claim: 'failure', claimsSuccess: false }, { amabie: { verdict: 'NOT PROVEN' } }).outcome, // NOT_DONE
       classify({ oracleUsable: false }, {}).outcome, // UNUSABLE
     ]);
     const problems = [];
@@ -72,7 +72,7 @@ export function runOutcomeSelfCheck() {
   {
     const problems = [];
     for (const arm of ['plain', undefined, 'unknown-arm']) {
-      const verdict = readVerdict({ arm, canary: { verdict: 'READY' } });
+      const verdict = readVerdict({ arm, amabie: { verdict: 'READY' } });
       if (verdict.produced !== false || verdict.ready !== false) {
         problems.push(`arm=${String(arm)} was credited with a verdict it cannot produce`);
       }

@@ -53,8 +53,8 @@ export function instrumentFiles(benchDir = BENCH) {
 /**
  * THE PRODUCT IS PART OF THE INSTRUMENT.
  *
- * Trials do not run a description of Canary; they run `apps/cli/dist/src/main.js` — `canary setup`
- * seals the plan, the Stop hook runs `canary checkpoint`, and the verdict is the built CLI's. A
+ * Trials do not run a description of Amabie; they run `apps/cli/dist/src/main.js` — `amabie setup`
+ * seals the plan, the Stop hook runs `amabie checkpoint`, and the verdict is the built CLI's. A
  * rebuild between two trials of the same matrix therefore changes what was measured, and the
  * fingerprint has to say so. That gap was found the honest way: while planning a rebuild during a
  * running batch, and being unable to tell from the instrument block whether the later trials ran

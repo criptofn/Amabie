@@ -1,4 +1,4 @@
-# Canary v1.0.0 closure evidence
+# Amabie v1.0.0 closure evidence
 
 The final commit containing this report is the release subject. Its exact SHA
 and tree are recorded in the release metadata and delivery message (embedding
@@ -40,10 +40,10 @@ hold; every remaining subjective duty must be accepted for that same subject.
 | F4-GATE-2 | Missing/deleted/malformed frozen intent cannot restore a legacy PASS. |
 | Evidence attacks | Planted or stale PASS bundles never authorize promotion. Live verification is always repeated. |
 | Environment | Trusted npm/Git resolution survives PATH liars. NODE_OPTIONS, NODE_PATH, npm_config and GIT environment poison do not reach proof-authoritative children. |
-| Recognition | Bare Canary calls the same status implementation. Untrusted/corrupt config, missing wiring, linked worktrees, nested repositories and missing project state receive honest recognition. Status makes no project command and no write call. |
+| Recognition | Bare Amabie calls the same status implementation. Untrusted/corrupt config, missing wiring, linked worktrees, nested repositories and missing project state receive honest recognition. Status makes no project command and no write call. |
 | Persistence | Live observation is authoritative; bundles are best-effort. A deliberately unavailable evidence store can retain a live candidate PASS with an explicit storage-unavailable warning, never a fabricated durable artifact. |
 
-`canary-acceptance/3` binds candidate name, commit/tree, frozen base commit/tree,
+`amabie-acceptance/3` binds candidate name, commit/tree, frozen base commit/tree,
 sealed authority identity (including Git store, plan, script digests and proof
 bindings), complete frozen/live task identities, and subjective duty IDs.
 `at` and `acceptedBy` describe the record but are not cryptographic identity.
@@ -132,7 +132,7 @@ identity at both verification invocations. Split output grows by 181 bytes to
 name the independent aesthetic duty. Status byte differences include fixture
 path length. These are byte counts, not inferred model-token counts.
 
-Happy path: five Canary commands including one-time setup, then four on later
+Happy path: five Amabie commands including one-time setup, then four on later
 tasks. Subjective path: one additional `accept` command and one typed candidate
 name. Commit the actual reviewed state before acceptance; dirty review no longer
 authorizes different committed bytes. Numerical targets use the inspectable

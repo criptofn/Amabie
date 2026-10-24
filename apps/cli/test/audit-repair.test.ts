@@ -10,7 +10,7 @@ import { ALL_CONTROLS, CONFINED_RECORD_NAME, CONFINED_RECORD_SCHEMA, CONFINED_RE
 // Validator counterexamples, not isolation observations. A deliberately known
 // attacker key models the earlier disclosure; a signature must not bless prose.
 function withRecord(mutate: (record: ConfinedMeasurementRecord) => void, expected: RegExp): void {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-repair-regression-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-repair-regression-'));
   try {
     fs.writeFileSync(path.join(root, 'custody-key-material.txt'), 'attacker-knows-the-old-key');
     const record = {
@@ -39,9 +39,9 @@ test('signed malformed observations refuse without throwing', () => withRecord(r
   r.controls[0]!.positiveControl = 7 as unknown as string;
 }, /malformed/));
 test('host user is checked independently from host name', () => withRecord(r => { r.host.user = 'different-user'; }, /host\/user/));
-test('arbitrary claims cannot activate custody', () => withRecord(() => {}, /required fact|observation/));
+test('arbitrary claims cannot activate custody', () => withRecord(() => {}, /required fact|observation|boundary tools/));
 test('non-finite or enlarged freshness limit cannot disable expiry', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-repair-age-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-repair-age-'));
   try {
     fs.writeFileSync(path.join(root, CONFINED_RECORD_NAME), JSON.stringify({ schema: CONFINED_RECORD_SCHEMA,
       source: CONFINED_RECORD_SOURCE, platform: process.platform, measuredAt: new Date().toISOString(),

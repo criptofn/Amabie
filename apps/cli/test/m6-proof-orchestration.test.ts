@@ -17,11 +17,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
 import {
   inferTaskKinds, parseNameStatus, parsePorcelain, delPaths, obligationsFor,
-  readConfig, writeConfig, type CanaryConfig, type DiffSignals, type TaskKind,
+  readConfig, writeConfig, type AmabieConfig, type DiffSignals, type TaskKind,
 } from '../src/onboarding.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
@@ -31,7 +31,7 @@ assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 const fx = (f: string): string => `node "${path.join(FIXTURES, f)}"`;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m6-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m6-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const sha256 = (s: string): string => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -45,22 +45,22 @@ function makeProject(name: string): string {
   return root;
 }
 
-function canary(args: string[], cwd?: string, input?: string) {
+function amabie(args: string[], cwd?: string, input?: string) {
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd, input, encoding: 'utf8', timeout: 120_000,
   });
 }
 
 const checkpoint = (root: string, extra: Record<string, unknown> = {}) => {
-  const r = canary(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
+  const r = amabie(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
   assert.equal(r.status, 0, `wire contract: checkpoint must exit 0 (got ${r.status})\n${r.output.join('')}`);
   const out = r.stdout ?? '';
   return out.trim() ? JSON.parse(out) : null; // '' = silent pass
 };
 const readState = (root: string): any =>
-  JSON.parse(fs.readFileSync(path.join(root, '.canary', 'last-checkpoint.json'), 'utf8'));
+  JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'last-checkpoint.json'), 'utf8'));
 const taskRecord = (root: string): any =>
-  JSON.parse(fs.readFileSync(path.join(root, '.canary', 'task', 'current.json'), 'utf8'));
+  JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'task', 'current.json'), 'utf8'));
 
 /** Inject any signal state — obligationsFor is pure over it. */
 const sig = (over: Partial<DiffSignals> = {}): DiffSignals => ({
@@ -210,7 +210,7 @@ describe('obligationsFor — the one-way obligation engine', () => {
     // completion path (a HUMAN accept), never a dead end.
     const declared = obligationsFor(kinds(['dependency']), sig(), new Set(['tests']), 0);
     assert.match(ob(declared, 'dependency-change')!.note, /touches no dependency file/);
-    assert.match(ob(declared, 'dependency-change')!.note, /canary accept <candidate>/);
+    assert.match(ob(declared, 'dependency-change')!.note, /amabie accept <candidate>/);
   });
   it('performance/UI: met ONLY through a human-sealed bench/e2e step; else UNPROVEN with the honest exit', () => {
     const met = obligationsFor(kinds(['performance', 'ui']), sig(), new Set(['tests', 'bench', 'e2e']), 0);
@@ -218,7 +218,7 @@ describe('obligationsFor — the one-way obligation engine', () => {
     assert.equal(ob(met, 'ui-proof')?.status, 'met');
     const bare = obligationsFor(kinds(['performance', 'ui']), sig(), new Set(['tests']), 0);
     assert.equal(ob(bare, 'performance-proof')?.status, 'unproven');
-    assert.match(ob(bare, 'performance-proof')!.note, /canary setup/); // the re-seal path, spelled out
+    assert.match(ob(bare, 'performance-proof')!.note, /amabie setup/); // the re-seal path, spelled out
     assert.match(ob(bare, 'ui-proof')!.note, /not pretend-deterministic/);
   });
   it('multi-part: counted requirements and the one-concise-question variant', () => {
@@ -239,16 +239,16 @@ describe('obligationsFor — the one-way obligation engine', () => {
   });
 });
 
-describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
+describe('amabie task — an AGENT_REPORTED hint with zero authority', () => {
   it('setup + register: digest-only storage, inferred kinds, explicit zero-authority line', () => {
     const root = makeProject('task-register');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const r = canary(['task', 'upgrade the lodash dependency to v5'], root);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const r = amabie(['task', 'upgrade the lodash dependency to v5'], root);
     assert.equal(r.status, 0, r.output.join(''));
     assert.match(r.stdout, /task registered: dependency/);
     assert.match(r.stdout, /zero authority/);
     const rec = taskRecord(root);
-    assert.equal(rec.schema, 'canary-task/2');
+    assert.equal(rec.schema, 'amabie-task/2');
     assert.deepEqual(rec.kinds, ['dependency']);
     assert.equal(rec.trustClass, 'AGENT_REPORTED');
     assert.match(rec.authority, /only ADD proof obligations/);
@@ -256,21 +256,33 @@ describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
     assert.equal(JSON.stringify(rec).includes('lodash'), false);
     assert.equal(rec.taskDigest, sha256('upgrade the lodash dependency to v5'));
   });
+  it('stores subjective eligibility per criterion without retaining the criterion text', () => {
+    const root = makeProject('task-subjective-digests');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const subjective = 'the dialog looks nicer';
+    const objective = 'saving a record persists it after reload';
+    const r = amabie(['task', 'make the dialog prettier', '--requirement', subjective, '--requirement', objective], root);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const rec = taskRecord(root);
+    assert.deepEqual(rec.subjectiveRequirementDigests, [sha256(subjective)]);
+    assert.equal(JSON.stringify(rec).includes(subjective), false, 'the classification stores a digest, not subjective prose');
+    assert.equal(JSON.stringify(rec).includes(objective), false, 'objective requirement prose is not persisted either');
+  });
   it('--kind ADDS to inference and never removes it; --requirement forces multi; hostile input is usage, not a crash', () => {
     const root = makeProject('task-flags');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    assert.equal(canary(['task', 'touch the parser', '--kind', 'bugfix', '--requirement', 'a', '--requirement', 'b'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['task', 'touch the parser', '--kind', 'bugfix', '--requirement', 'a', '--requirement', 'b'], root).status, 0);
     let rec = taskRecord(root);
     assert.deepEqual(rec.kinds, ['bugfix', 'multi']);
     assert.equal(rec.requirementCount, 2);
     // blocker 3 laundering gate: an agent-picked --kind must not drop an
     // inferred material kind — "fix the crash AND make it pretty" with
     // --kind bugfix still carries the ui duty.
-    assert.equal(canary(['task', 'fix the crash and make the dialog prettier', '--kind', 'bugfix'], root).status, 0);
+    assert.equal(amabie(['task', 'fix the crash and make the dialog prettier', '--kind', 'bugfix'], root).status, 0);
     assert.deepEqual(taskRecord(root).kinds, ['bugfix', 'ui']);
-    assert.equal(canary(['task', 'x', '--kind=bogus'], root).status, 3);
-    assert.equal(canary(['task'], root).status, 3); // bare usage
-    assert.match(canary(['task'], root).stdout, /usage: canary task/);
+    assert.equal(amabie(['task', 'x', '--kind=bogus'], root).status, 3);
+    assert.equal(amabie(['task'], root).status, 3); // bare usage
+    assert.match(amabie(['task'], root).stdout, /usage: amabie task/);
   });
   /**
    * MEASURED defect this pins (v1.2, found by tooling/probes/v12-fixture-configurations.mjs, not by
@@ -278,45 +290,100 @@ describe('canary task — an AGENT_REPORTED hint with zero authority', () => {
    * skipped every remaining `--` token — so fixture `cli-exit-codes`' own requirement
    * `"--strict moves warnings into errors rather than dropping them"` was neither registered nor
    * reported. EIGHT stated requirements became SEVEN recorded duties, silently. Same defect class as
-   * the `canary work` bug in orchestrate.test.ts REG-R1, one layer down.
+   * the `amabie work` bug in orchestrate.test.ts REG-R1, one layer down.
    */
   it('a requirement whose TEXT begins with "--" is registered verbatim; a misuse is REFUSED', () => {
     const root = makeProject('task-dash-requirement');
-    assert.equal(canary(['setup', '--yes', root], root).status, 0);
+    assert.equal(amabie(['setup', '--yes', root], root).status, 0);
     const dash = '--strict moves warnings into errors rather than dropping them';
-    const r = canary(['task', 'harden the validator', '--requirement', 'a normal one', '--requirement', dash], root);
+    const r = amabie(['task', 'harden the validator', '--requirement', 'a normal one', '--requirement', dash], root);
     assert.equal(r.status, 0, `a dash-leading requirement must register: ${r.stdout}${r.stderr}`);
     const rec = taskRecord(root);
     assert.equal(rec.requirementCount, 2);
     assert.equal(new Set(rec.requirementDigests).size, 2);
     assert.match(r.stdout, /2 requirement\(s\)/);
-    const recordPath = path.join(root, '.canary', 'task', 'current.json');
+    const recordPath = path.join(root, '.amabie', 'task', 'current.json');
     const bytes = fs.readFileSync(recordPath, 'utf8');
     // a missing value and an unrecognised option are BOTH refused, and a refusal writes nothing —
     // ignoring a typo would register ZERO duties while the operator believes otherwise.
-    assert.equal(canary(['task', 'intent', '--requirement'], root).status, 3);
-    assert.equal(canary(['task', 'intent', '--requirment', 'x'], root).status, 3);
+    assert.equal(amabie(['task', 'intent', '--requirement'], root).status, 3);
+    assert.equal(amabie(['task', 'intent', '--requirment', 'x'], root).status, 3);
     assert.equal(fs.readFileSync(recordPath, 'utf8'), bytes, 'a refused registration must leave the record untouched');
+  });
+  it('task guidance reflects sealed bindings and still requires a kind-matched objective proof', () => {
+    const plainRoot = makeProject('task-bound-guidance');
+    assert.equal(amabie(['setup', '--yes', plainRoot]).status, 0);
+    const plainRequirement = 'the greeting trims leading and trailing whitespace';
+    const plainDigest = sha256(plainRequirement);
+    const unbound = amabie(['task', 'add a trimming greeting', '--requirement', plainRequirement], plainRoot);
+    assert.equal(unbound.status, 0, unbound.stdout + unbound.stderr);
+    assert.match(unbound.stdout, /needs sealed proof/);
+    assert.match(unbound.stdout, /trusted operator action/);
+    assert.match(unbound.stdout, /same-UID workers can invoke CLI in LOCAL/);
+    assert.match(unbound.stdout, /amabie bind <sealed plan script> --requirement "<exact registered text>" --reseal/);
+
+    const plainPackagePath = path.join(plainRoot, 'package.json');
+    const plainPackage = JSON.parse(fs.readFileSync(plainPackagePath, 'utf8')) as Record<string, any>;
+    plainPackage.amabie = { proofs: { [plainDigest]: 'test' } };
+    fs.writeFileSync(plainPackagePath, JSON.stringify(plainPackage, null, 2));
+    assert.equal(amabie(['setup', '--yes', plainRoot]).status, 0);
+    const bound = amabie(['task', 'add a trimming greeting', '--requirement', plainRequirement], plainRoot);
+    assert.equal(bound.status, 0, bound.stdout + bound.stderr);
+    assert.match(bound.stdout, /bound to sealed proof "test"/);
+    assert.doesNotMatch(bound.stdout, /trusted operator action/);
+
+    const targetRoot = makeProject('task-target-guidance');
+    const targetPackagePath = path.join(targetRoot, 'package.json');
+    const targetPackage = JSON.parse(fs.readFileSync(targetPackagePath, 'utf8')) as Record<string, any>;
+    targetPackage.scripts.bench = fx('f-pass.js');
+    assert.equal(amabie(['setup', '--yes', targetRoot]).status, 0);
+    const targetRequirement = 'benchmark under 200 ms for 10k rows';
+    const targetDigest = sha256(targetRequirement);
+    targetPackage.amabie = { proofs: { [targetDigest]: 'test' } };
+    fs.writeFileSync(targetPackagePath, JSON.stringify(targetPackage, null, 2));
+    assert.equal(amabie(['setup', '--yes', targetRoot]).status, 0);
+    const wrongKind = amabie(['task', 'improve runtime', '--requirement', targetRequirement], targetRoot);
+    assert.equal(wrongKind.status, 0, wrongKind.stdout + wrongKind.stderr);
+    assert.match(wrongKind.stdout, /objective bench target: .*needs a matching sealed proof binding/);
+    assert.match(wrongKind.stdout, /trusted operator action .*sealed bench script/);
+    assert.match(wrongKind.stdout, /amabie bind <sealed bench script> --requirement "<exact registered text>" --reseal/);
+
+    targetPackage.amabie = { proofs: {} };
+    fs.writeFileSync(targetPackagePath, JSON.stringify(targetPackage, null, 2));
+    assert.equal(amabie(['setup', '--yes', targetRoot]).status, 0);
+    const rejectedBind = amabie(['bind', 'test', '--requirement', targetRequirement], targetRoot);
+    assert.equal(rejectedBind.status, 2, rejectedBind.stdout + rejectedBind.stderr);
+    assert.match(rejectedBind.stdout, /cannot prove this objective bench target/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(targetPackagePath, 'utf8')).amabie.proofs, {}, 'wrong-kind binding must write nothing');
+    const acceptedBind = amabie(['bind', 'bench', '--requirement', targetRequirement], targetRoot);
+    assert.equal(acceptedBind.status, 0, acceptedBind.stdout + acceptedBind.stderr);
+    assert.equal(JSON.parse(fs.readFileSync(targetPackagePath, 'utf8')).amabie.proofs[targetDigest], 'bench');
+    assert.equal(amabie(['setup', '--yes'], targetRoot).status, 0);
+    const targetBound = amabie(['task', 'improve runtime', '--requirement', targetRequirement], targetRoot);
+    assert.equal(targetBound.status, 0, targetBound.stdout + targetBound.stderr);
+    assert.match(targetBound.stdout, /objective bench target: .*bound to sealed "bench" check/);
+    assert.match(targetBound.stdout, /requirement \[objective bench target bound to "bench"\]/);
+    assert.doesNotMatch(targetBound.stdout, /trusted operator action/);
   });
   it('registering a task against no setup / no git says so; nothing is written', () => {
     const bare = path.join(TMP, 'task-nosetup');
     fs.mkdirSync(path.join(bare, '.git'), { recursive: true });
-    assert.equal(canary(['task', 'whatever'], bare).status, 2); // no config yet
-    assert.equal(fs.existsSync(path.join(bare, '.canary', 'task', 'current.json')), false);
+    assert.equal(amabie(['task', 'whatever'], bare).status, 2); // no config yet
+    assert.equal(fs.existsSync(path.join(bare, '.amabie', 'task', 'current.json')), false);
   });
 });
 
 describe('checkpoint/doctor integration — the sealed plan passes, obligations decide the tone', () => {
   it('no task record, no prose, fake git: byte-identical pre-M6 silence (additive)', () => {
     const root = makeProject('ck-silent');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     assert.equal(checkpoint(root), null);
     assert.equal(readState(root).status, 'pass');
   });
   it('registered bugfix with no test change: an open OBJECTIVE obligation now FAILS CLOSED (block), not a note', () => {
     const root = makeProject('ck-bugfix');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    assert.equal(canary(['task', 'fix the broken parser'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['task', 'fix the broken parser'], root).status, 0);
     const out = checkpoint(root);
     // THE INVARIANT THIS PINS: "every objective requirement must have a frozen proof obligation or
     // remain NOT PROVEN. Missing or ambiguous proof must fail closed, never degrade to PASS." Before
@@ -328,7 +395,7 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
   });
   it('hook-stdin task prose infers kinds even without a registration', () => {
     const root = makeProject('ck-stdin');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     const out = checkpoint(root, { task: 'refactor the module and add e2e coverage' });
     const text = `${String(out?.reason ?? '')} ${String(out?.systemMessage ?? '')}`;
     assert.match(text, /UNPROVEN|NOT PROVEN/);
@@ -336,8 +403,8 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
   });
   it('a malformed/hand-planted record degrades to the no-record posture, hostile kinds filtered', () => {
     const root = makeProject('ck-malformed');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const p = path.join(root, '.canary', 'task', 'current.json');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const p = path.join(root, '.amabie', 'task', 'current.json');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, '{"kinds":["total-nonsense","<script>x</script>"],"requirementCount":"12"}');
     assert.equal(checkpoint(root), null, 'filtered kinds = [] and a non-integer count = 0 -> pre-M6 silence');
@@ -349,10 +416,10 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
   });
   it('fake git makes diff signals unresolvable: a registered refactor is NOT PROVEN and fails closed', () => {
     const root = makeProject('ck-refactor');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    assert.equal(canary(['task', 'refactor the auth module'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['task', 'refactor the auth module'], root).status, 0);
     // fake .git => collectDiffSignals cannot answer; resolved=false must hold there
-    const cfg = readConfig(root) as CanaryConfig;
+    const cfg = readConfig(root) as AmabieConfig;
     assert.equal(cfg.baseline?.resolved, false, 'fake git must not resolve an identity');
     const out = checkpoint(root);
     const text = `${String(out?.reason ?? '')} ${String(out?.systemMessage ?? '')}`;
@@ -364,9 +431,9 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
   });
   it('doctor refuses READY while an obligation is open (NOT PROVEN), and names it in verbose mode', () => {
     const root = makeProject('doctor-obligations');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    assert.equal(canary(['task', 'fix the crash'], root).status, 0);
-    const r = canary(['doctor', root]);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['task', 'fix the crash'], root).status, 0);
+    const r = amabie(['doctor', root]);
     // FAIL CLOSED: this used to print READY and merely note the open obligations — the READY that
     // the benchmark then recorded as a false green.
     assert.equal(r.status, 2, 'an open obligation must not be a zero-exit READY');
@@ -377,13 +444,13 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
   });
   it('config rewrite keeps the seal: obligations never execute anything unsealed', () => {
     const root = makeProject('no-exec');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
-    assert.equal(canary(['task', 'benchmark the tokenizer', '--requirement', 'p1'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
+    assert.equal(amabie(['task', 'benchmark the tokenizer', '--requirement', 'p1'], root).status, 0);
     const out = checkpoint(root);
     // v1.2: an unbound requirement is now an OBJECTIVE duty, so the hook must carry it — and it is
     // OPERATOR-ONLY, so the hook must NOT order the worker to keep working on it. Blocking with the old
-    // note ("bind each digest … and re-run canary setup", an operator act) is what made a model burn 39
+    // note ("bind each digest … and re-run amabie setup", an operator act) is what made a model burn 39
     // turns and 537,583 tokens on this host; the measured repair is to state the duty plainly as not the
     // worker's to close. Both halves are asserted, because "the duty got quieter" would be the bug this
     // test exists to catch.
@@ -394,8 +461,8 @@ describe('checkpoint/doctor integration — the sealed plan passes, obligations 
     assert.match(text, /NONE of them is yours to close/, 'and must not read as an instruction to the worker');
     assert.notEqual(out?.decision, 'block', 'an operator-only duty must not trap the worker in a repair loop');
     // nothing ran beyond the sealed plan: obligations are evaluation, not execution
-    const b = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'evidence',
-      fs.readdirSync(path.join(root, '.canary', 'evidence')).filter((d) => d.endsWith('-checkpoint')).sort().at(-1)!,
+    const b = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'evidence',
+      fs.readdirSync(path.join(root, '.amabie', 'evidence')).filter((d) => d.endsWith('-checkpoint')).sort().at(-1)!,
       'verification.json'), 'utf8'));
     assert.deepEqual(b.steps.map((s: any) => s.argv), cfg.plan.map(() => ['npm', 'run', 'test']));
   });

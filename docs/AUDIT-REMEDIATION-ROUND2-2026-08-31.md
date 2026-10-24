@@ -244,4 +244,4 @@ provenance/signature (no trust root); POSIX sweep/env/tar + the Linux/CI legs
 are written and unit-constructed but UNEXECUTED on Linux this session (no
 Linux host; `npm ci`/tests/proof run only on push, which is prohibited) —
 stated in SECURITY.md "Platform status", not hidden. One historical fixture.
-This is a v0.1 verification core under hardening, not "Canary released".
+This is a v0.1 verification core under hardening, not "Amabie released".

@@ -13,7 +13,7 @@ machinery beyond the frozen-authority gate; M7/M8/M9 unchanged.
   task at verify time, the derived duty floor (tests-green) was satisfied by
   the sealed green plan, verify PASSed, promotion ACCEPTED, base moved.
 - **F4-GATE-2** — deleting `rec.intent` from the agent-writable record
-  `<base>/.canary/candidates/<name>.json` after isolation made the record
+  `<base>/.amabie/candidates/<name>.json` after isolation made the record
   read as a pre-M10 legacy record; the compat posture returned the taskless
   bypass; PASS + promotion.
 
@@ -55,7 +55,7 @@ if (!frozenKinds.length) {
   non-empty frozen snapshot + matching live registration is byte-equivalent to
   a real re-isolation — the documented same-UID ceiling, not a gate gap.
 
-`apps/cli/src/main.ts` — file header, `canary task` help, and `isolate
+`apps/cli/src/main.ts` — file header, `amabie task` help, and `isolate
 --verify` help now state frozen authority + re-isolate recovery ("there is no
 opt-out"). `candidate.ts` header + ladder comments rewritten to the actual
 trust boundary (Fix 5; the M10.1 claims removed are annotated in the night-1

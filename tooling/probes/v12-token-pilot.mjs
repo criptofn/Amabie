@@ -1,9 +1,9 @@
-// Paired token pilot: PLAIN vs the REAL Canary confined production path.
+// Paired token pilot: PLAIN vs the REAL Amabie confined production path.
 //
 //   node tooling/probes/v12-token-pilot.mjs --task <fixture> [--label <name>]
 //
-// The Canary arm is the executable production path, not an imitation of it:
-//   trusted preflight (`canary setup` + `canary task` with the fixture's own requirements)
+// The Amabie arm is the executable production path, not an imitation of it:
+//   trusted preflight (`amabie setup` + `amabie task` with the fixture's own requirements)
 //   -> operator enrollment -> REAL Claude transport with the REAL model
 //   -> every file edit, shell command and Git operation crosses the confined executor
 //   -> broker-owned review and promotion of the worker's bytes
@@ -20,32 +20,33 @@ import net from 'node:net';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const arg = (name, fallback) => { const i = process.argv.indexOf(`--${name}`); return i < 0 ? fallback : process.argv[i + 1]; };
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const fixtures = path.join(repo, 'tooling/benchmark/fixtures');
 const results = path.join(repo, 'tooling/benchmark/results');
-const gitExe = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const gitExe = hostGit();
 const claude = path.join(os.homedir(), '.local/bin/claude.exe');
 const task = arg('task', 'bound-requirements');
 const label = arg('label', 'v12pilot');
 const model = arg('model', 'qwen3.8-flash');
 const timeoutMin = Number(arg('timeout-min', 25));
 const plainRecordPath = arg('plain-record', path.join(results, `v12tok-main-${task}-plain-1.json`));
-const outRecord = arg('out', path.join(results, `${label}-${task}-canary-1.json`));
+const outRecord = arg('out', path.join(results, `${label}-${task}-amabie-1.json`));
 if (fs.existsSync(outRecord)) { console.error(`refusing to overwrite existing evidence: ${outRecord}`); process.exit(2); }
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-token-pilot-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-token-pilot-'));
 const base = path.join(temp, 'project'), work = path.join(temp, 'candidate'), store = path.join(temp, 'store');
 const promptFile = path.join(temp, 'prompt.txt');
 let enrolled, broker, stub, failure = null;
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd = base, expect = 0, timeout = 300000) => {
   const r = spawnSync(exe, args, { cwd, env, encoding: 'utf8', windowsHide: true, timeout });
   if (expect !== null) assert.equal(r.status, expect, `${exe} ${args.join(' ')}\n${r.stdout}${r.stderr}`); return r;
 };
-const canary = (args, expect = 0) => run(process.execPath, [cli, ...args], base, expect);
+const amabie = (args, expect = 0) => run(process.execPath, [cli, ...args], base, expect);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const meta = JSON.parse(fs.readFileSync(path.join(fixtures, task, 'fixture.json'), 'utf8'));
 const taskText = fs.readFileSync(path.join(fixtures, task, 'TASK.md'), 'utf8');
@@ -63,22 +64,22 @@ try {
 
   // ── trusted preflight: seal the plan, declare the fixture's own requirements ──
   // MEASURED product behaviour the harness itself records: on a repository whose own
-  // checks currently FAIL, `canary setup` exits 2 with NEEDS ATTENTION and still seals
+  // checks currently FAIL, `amabie setup` exits 2 with NEEDS ATTENTION and still seals
   // the plan and installs the wiring. Exit 0 is therefore not the condition for a usable
   // arm; a sealed plan plus a registered task record is.
-  const setup = canary(['setup', '--yes'], null);
-  const sealedPath = path.join(base, '.canary', 'canary.local.json');
+  const setup = amabie(['setup', '--yes'], null);
+  const sealedPath = path.join(base, '.amabie', 'amabie.local.json');
   assert.ok(fs.existsSync(sealedPath), `the plan was not sealed (setup exit ${setup.status})`);
   const setupState = { exitCode: setup.status, readme: /READY/.test(setup.stdout) ? 'READY' : (/NEEDS ATTENTION/.test(setup.stdout) ? 'NEEDS ATTENTION' : 'other') };
   // No --kind: the declared requirements are the duty, and inference is the documented
   // default (an unknown kind is REFUSED, exit 3, per the verbatim-or-refused rule).
   const requirements = Array.isArray(meta.requirements) ? meta.requirements : [];
-  canary(['task', meta.intent ?? task, ...requirements.flatMap(r => ['--requirement', r])]);
+  amabie(['task', meta.intent ?? task, ...requirements.flatMap(r => ['--requirement', r])]);
   // The operator commits their own wiring, exactly as the production probe does: the
   // broker's promotion readback requires the trusted base to be CLEAN, and an uncommitted
-  // `.canary`/`.claude` would make it refuse to CONFIRM a promotion it had applied.
+  // `.amabie`/`.claude` would make it refuse to CONFIRM a promotion it had applied.
   run(gitExe, ['add', '-A']); run(gitExe, ['commit', '--allow-empty', '-m', 'operator wiring']);
-  enrolled = JSON.parse(canary(['provider', 'enroll', base, store]).stdout);
+  enrolled = JSON.parse(amabie(['provider', 'enroll', base, store]).stdout);
   // The candidate is the same starting bytes the Plain arm gets: the fixture project.
   fs.cpSync(path.join(fixtures, task, 'project'), work, { recursive: true });
   run(gitExe, ['init', '-b', 'main'], work); run(gitExe, ['config', 'user.name', 'Pilot'], work);
@@ -87,7 +88,7 @@ try {
   fs.writeFileSync(promptFile, taskText);
 
   // ── the broker that owns review and promotion ──
-  const { challenge } = JSON.parse(canary(['provider', 'measurement-begin', store]).stdout);
+  const { challenge } = JSON.parse(amabie(['provider', 'measurement-begin', store]).stdout);
   broker = spawn(process.execPath, [cli, 'provider', 'serve-production', store], { cwd: temp, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let brokerLog = ''; broker.stdout.on('data', x => brokerLog += x); broker.stderr.on('data', x => brokerLog += x);
   let ready = false;
@@ -134,7 +135,7 @@ try {
   const code = await Promise.race([new Promise(r => child.once('exit', r)), sleep(timeoutMin * 60000).then(() => 'timeout')]);
   if (code === 'timeout') child.kill();
   const durationMs = Date.now() - t0;
-  fs.writeFileSync(path.join(os.tmpdir(), `canary-token-pilot-${task}-transport.log`), stdout + stderr);
+  fs.writeFileSync(path.join(os.tmpdir(), `amabie-token-pilot-${task}-transport.log`), stdout + stderr);
 
   // The transport streams the CLI's own stream-json: token accounting is the CLI's own.
   const events = stdout.split('\n').filter(l => l.trim().startsWith('{')).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
@@ -172,7 +173,7 @@ try {
   fs.copyFileSync(path.join(repo, 'tooling/test-support/fixtures/production-caller.cjs'), path.join(work, 'caller.cjs'));
   let brokerResult = null, promoteDetail = null;
   try {
-    canary(['provider', 'launch', store, work, process.execPath, '--preserve-symlinks-main', path.join(work, 'caller.cjs'), config]);
+    amabie(['provider', 'launch', store, work, process.execPath, '--preserve-symlinks-main', path.join(work, 'caller.cjs'), config]);
     const rows = JSON.parse(fs.readFileSync(callerOut, 'utf8'));
     brokerResult = Object.fromEntries(rows.map(x => [x.id, x.response]));
     promoteDetail = brokerResult.promote?.detail ?? null;
@@ -196,8 +197,8 @@ try {
 
   const plain = fs.existsSync(plainRecordPath) ? JSON.parse(fs.readFileSync(plainRecordPath, 'utf8')) : null;
   const record = {
-    schema: 'canary-token-pilot/1', label, task, arm: 'canary-confined-transport', variant: 'normal',
-    model, transport: 'canary provider model-transport (real Claude CLI, real AppContainer, real model)',
+    schema: 'amabie-token-pilot/1', label, task, arm: 'amabie-confined-transport', variant: 'normal',
+    model, transport: 'amabie provider model-transport (real Claude CLI, real AppContainer, real model)',
     startedAt, finishedAt: new Date().toISOString(), durationMs, startingBytes,
     requirements, workerLaunches: workerRan ? 1 : 0, refusedBeforeModel: !workerRan, setup: setupState,
     agentResult: { exitCode: code, usage, turns, toolRequests, parseFailure: resultEvent === undefined, costUsd: resultEvent?.total_cost_usd ?? null },
@@ -211,7 +212,7 @@ try {
   fs.mkdirSync(path.dirname(outRecord), { recursive: true });
   fs.writeFileSync(outRecord, JSON.stringify(record, null, 2) + '\n', { flag: 'wx' });
 
-  console.log(`Canary confined transport: exit=${code} turns=${turns} tokens=${usage.totalTokens} (in ${usage.inputTokens} / out ${usage.outputTokens} / cacheRead ${usage.cacheReadTokens} / cacheWrite ${usage.cacheCreationTokens})`);
+  console.log(`Amabie confined transport: exit=${code} turns=${turns} tokens=${usage.totalTokens} (in ${usage.inputTokens} / out ${usage.outputTokens} / cacheRead ${usage.cacheReadTokens} / cacheWrite ${usage.cacheCreationTokens})`);
   console.log(`changed=${JSON.stringify(changed)} broker review=${record.broker.review} promote=${record.broker.promote}`);
   console.log(`hidden on promoted bytes: ${promotedOracle.passing}/${promotedOracle.total} (exit ${promotedOracle.exitCode}); visible suite exit ${candidateVisible.exitCode}`);
   if (plain) {
@@ -219,9 +220,9 @@ try {
     const delta = usage.totalTokens - p.usage.totalTokens;
     console.log(`PLAIN (recorded, same fixture/model/CLI): turns=${p.numTurns} tokens=${p.usage.totalTokens} hidden=${plain.hidden.passing}/${plain.hidden.total} visible=${plain.visible.exitCode === 0}`);
     console.log(`DELTA: ${delta} tokens (${((delta / p.usage.totalTokens) * 100).toFixed(1)}%)  turns ${p.numTurns} -> ${turns}`);
-    console.log(`CORRECTNESS: plain ${plain.hidden.passing}/${plain.hidden.total} vs canary ${promotedOracle.passing}/${promotedOracle.total}`);
+    console.log(`CORRECTNESS: plain ${plain.hidden.passing}/${plain.hidden.total} vs amabie ${promotedOracle.passing}/${promotedOracle.total}`);
   } else {
-    console.log(`no plain record at ${plainRecordPath}; Canary arm recorded only`);
+    console.log(`no plain record at ${plainRecordPath}; Amabie arm recorded only`);
   }
   console.log(`record: ${outRecord}`);
 } catch (e) { failure = e; } finally {

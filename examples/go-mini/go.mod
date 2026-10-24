@@ -1,3 +1,3 @@
-module example.com/canary-example-go
+module example.com/amabie-example-go
 
 go 1.21

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r6-cross-file-refactor-plain-3",
   "task": "cross-file-refactor",
   "arm": "plain",
@@ -26,7 +26,7 @@
     ]
   },
   "startedAt": "2026-09-12T08:18:14.957Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-cross-file-refactor-plain-yCgOFG",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-cross-file-refactor-plain-yCgOFG",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -47,7 +47,7 @@
   },
   "prompt": "# Task: make money formatting currency-aware\n\nThe package formats money in US dollars only, across three files. Add currency\nsupport without breaking what callers already depend on.\n\nCreate `src/currency.js` exporting `format(amountCents, currency)`:\n\n1. an explicit table of currencies — USD (`$`), EUR (`€`), GBP (`£`) — holding each\n   code's symbol;\n2. the amount is rendered in that currency's minor units as a decimal string with\n   two decimals and the symbol prefixed: `format(12.35, 'EUR')` → `€12.35`,\n   `format(13, 'USD')` → `$13.00`; the plain number form must not gain a thousands\n   separator;\n3. `amount` may arrive either as a number or as a numeric string (`'12.35'`);\n4. an unknown currency code must throw an `Error` whose message contains the\n   offending code.\n\nKeep `formatMoney(amount)` in `src/money.js` working EXACTLY as it does today\n(`$12.35` for both `12.35` and `'12.35'`); it is now a deprecated alias for\n`format(amount, 'USD')`.\n\nMake the cart currency-aware: `Cart.total(currency = 'USD')` returns the summed\nline items formatted in the requested currency, and `'USD'` stays the default.\nKeep `src/index.js` exporting the public surface: `formatMoney`, `format` and\n`Cart`.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -164,18 +164,18 @@
     "bytes": {
       "toolResultTotal": 5785,
       "largestToolResult": 1264,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 2,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

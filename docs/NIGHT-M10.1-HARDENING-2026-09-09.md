@@ -27,7 +27,7 @@ none live, none frozen at isolation** — gets one objective duty prepended:
 
 ```
 obligation [task-authority] UNPROVEN (objective): NO task-obligation
-authority: ... Register the work (canary task "..." --kind ...) and
+authority: ... Register the work (amabie task "..." --kind ...) and
 re-verify; omitting registration is not a way through §10, it is exactly
 what makes §10 unprovable.
 ```
@@ -35,13 +35,13 @@ what makes §10 unprovable.
 `NOT PROVEN → exit 2`, honest `'unproven'` bundle carrying the executed steps;
 `isolate --promote` gate 1 re-verifies LIVE, rides the same refusal, and — as
 throughout M8 — writes **zero promotion bundles** and leaves the base HEAD
-byte-unchanged. No obligation is fabricated and no task is guessed: Canary
+byte-unchanged. No obligation is fabricated and no task is guessed: Amabie
 only refuses to claim completion it holds no authority to judge.
 
 **No escape hatch exists:** no flag, no env var, no agent-writable metadata.
-Pinned by contract test F4-F (`CANARY_NO_TASK_OK=1`,
-`CANARY_SKIP_TASK_AUTHORITY=1`, `--no-task-ok` all inert) — and structurally:
-the only state that opens the door is a `canary task` registration, which
+Pinned by contract test F4-F (`AMABIE_NO_TASK_OK=1`,
+`AMABIE_SKIP_TASK_AUTHORITY=1`, `--no-task-ok` all inert) — and structurally:
+the only state that opens the door is a `amabie task` registration, which
 requires the work to actually satisfy its derived duties.
 
 **The trustworthy architectural distinction** kept intact: **pre-M10 records
@@ -126,9 +126,9 @@ own names (`r3-`/`r4-` prefixed intermediates vs the canonical finals).
 
 ## R5 — the corrected claim (replaces the unconditional M10 wording)
 
-Canary at the candidate boundary now guarantees:
+Amabie at the candidate boundary now guarantees:
 
-- **Canary will not claim task completion without task authority.** A
+- **Amabie will not claim task completion without task authority.** A
   candidate whose record holds an intent snapshot and zero registered task
   kinds (none now, none frozen at isolation) is `CANDIDATE NOT PROVEN`
   (exit 2, obligation `[task-authority]` named), **never PASS**.
@@ -141,7 +141,7 @@ Canary at the candidate boundary now guarantees:
   trustworthy distinction, itself protected by M9's fingerprint sandwich.
 
 Corrected in tracked wording: `tooling/verify-productization.mjs` item 14d
-(+ new 14e), `apps/cli/src/main.ts` help (`canary task`,
+(+ new 14e), `apps/cli/src/main.ts` help (`amabie task`,
 `isolate --verify`), `apps/cli/src/candidate.ts` §10/§10.1 comments,
 `m10-obligations.mjs` and `m10-obligations.test.ts` headers.
 Commit `d6757df` is NOT amended; this document and the new commit carry the
@@ -198,14 +198,14 @@ what was believed at delivery; the claims were wrong as stated and are fixed
 in M10.2 (see `NIGHT-M10.2-FROZEN-AUTHORITY-2026-09-09.md`).
 
 1. **Line 41 — "no agent-writable metadata." WRONG as a protection claim.**
-   The candidate record (`<base>/.canary/candidates/<name>.json`) is
+   The candidate record (`<base>/.amabie/candidates/<name>.json`) is
    agent-writable bytes OUTSIDE the execution window; M9's fingerprint
    sandwich covers only the window DURATION, so deleting `rec.intent` after
    isolation (F4-GATE-2) was invisible to it. M10.2 closes this not by
    protecting the bytes but by making a missing snapshot FAIL SAFE — absence
    now proves nothing instead of proving "legacy", so no metadata edit
    reaches PASS.
-2. **Lines 47–49 — "the only state that opens the door is a `canary task`
+2. **Lines 47–49 — "the only state that opens the door is a `amabie task`
    registration, which requires the work to actually satisfy its derived
    duties." WRONG mechanism.** M10.1 discharged authority from the LIVE task
    at verify time, so a `refactor` registered AFTER isolation self-minted

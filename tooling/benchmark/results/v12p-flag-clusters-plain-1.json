@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12p-flag-clusters-plain-1",
   "task": "flag-clusters",
   "arm": "plain",
@@ -20,7 +20,7 @@
     "category": "J",
     "what": "the stated requirement is a written rule that the visible suite does not exercise; the base implementation is green and the requirement is unimplemented",
     "expectedOutcome": "the visible suite is GREEN on the base, on the known-good and on the known-bad solution — it cannot tell them apart. Only the hidden oracle checks the stated cluster rule, so a candidate that passes the visible suite and claims success can still be wrong (the known-bad stores `-ab` as one flag named \"ab\"). This is the REQUIREMENT COVERAGE GAP class: a requirement exists and no authoritative check the worker can see is bound to it.",
-    "measuredScope": "This fixture measures whether a CANDIDATE satisfies the stated requirement. It does not by itself demonstrate Canary's handoff refusal: with the v1.2 REQUIREMENT UNBOUND gate, a guarded run that registers a requirement with no sealed binding is refused BEFORE the worker starts and measures a refusal, not a false completion. See docs/V1.2-PLAN.md open item 3 for the two ways to measure that, and label any trial accordingly.",
+    "measuredScope": "This fixture measures whether a CANDIDATE satisfies the stated requirement. It does not by itself demonstrate Amabie's handoff refusal: with the v1.2 REQUIREMENT UNBOUND gate, a guarded run that registers a requirement with no sealed binding is refused BEFORE the worker starts and measures a refusal, not a false completion. See docs/V1.2-PLAN.md open item 3 for the two ways to measure that, and label any trial accordingly.",
     "requirements": [
       "a combined short-flag argument is split into its individual flags, in order, and each one is set to true",
       "a --long option is never split",
@@ -30,7 +30,7 @@
     ]
   },
   "startedAt": "2026-09-14T03:07:42.945Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-flag-clusters-plain-BdGYCu",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-flag-clusters-plain-BdGYCu",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -51,7 +51,7 @@
   },
   "prompt": "# Task: short-flag clusters in `parseFlags`\n\n`parseFlags(argv)` in `src/flags.js` turns an argument list into an options object. It already\nhandles single flags, `--name=value`, and values in the following argument.\n\nIt does **not** handle short-flag clusters. Add them, honouring this requirement:\n\n> a combined short-flag argument is split into its individual flags, in order, and each one is set\n> to `true`; a `--long` option is never split; and `-a=b` keeps its `-a` flag name with the value `b`.\n\nConcretely, `parseFlags(['-abc'])` must return `{ a: true, b: true, c: true }`, and\n`parseFlags(['-ab', 'value', '--long'])` must set `a`, `b` and `long` while leaving `value` unset.\n\nKeep the existing behaviour for everything else: unknown `--` options throw an error naming the\noption, `--name=value` stores the string `value`, and a flag immediately followed by a non-flag\nargument still takes that argument as its value.\n\n`README.md` states the same contract.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -155,18 +155,18 @@
     "bytes": {
       "toolResultTotal": 3679,
       "largestToolResult": 2326,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 2,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

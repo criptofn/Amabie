@@ -15,7 +15,7 @@
  *
  *   - a user may lower the integrity label of a directory they own (`icacls /setintegritylevel`);
  *   - a user may (in principle) start a process at a lower integrity level (`runas /trustlevel`);
- *   - and then the KERNEL — not Canary, not a check, not a convention — refuses that process
+ *   - and then the KERNEL — not Amabie, not a check, not a convention — refuses that process
  *     write access to the higher-integrity objects.
  *
  * WHAT WAS HISTORICALLY MEASURED BEFORE THE WIN32 HELPER (`tooling/probes/v12-integrity-boundary.mjs`, which writes its record
@@ -162,7 +162,7 @@ export function containedRun(
  * deliberately rather than creating a dependency from the product onto `tooling/`.
  */
 function run(command: string, args: string[], timeoutMs = 30_000): { exitCode: number | null; stdout: string; stderr: string } {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-il-run-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-il-run-'));
   const outPath = path.join(dir, 'stdout.txt');
   const errPath = path.join(dir, 'stderr.txt');
   const outFd = fs.openSync(outPath, 'w');
@@ -207,7 +207,7 @@ export function observeIntegrityPrimitive(platform: NodeJS.Platform = process.pl
     const hasIcacls = icacls.exitCode === 0;
     observations.push(`icacls: ${hasIcacls ? 'present' : 'MISSING'}`);
 
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-il-observe-'));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-il-observe-'));
     applyAuthorityLabel(scratch, 'low');
     const launchers: LevelLauncher[] = [];
     try {
@@ -325,6 +325,6 @@ export function boundaryScope(primitive?: IntegrityPrimitive): string {
 export function authorityPaths(projectRoot: string, storeRoot: string): string[] {
   return [
     storeRoot,
-    path.join(projectRoot, '.canary'),
+    path.join(projectRoot, '.amabie'),
   ];
 }

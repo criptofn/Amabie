@@ -6,7 +6,7 @@
 // missing, but whether the GUARANTEE it is for is missing with it. The guarantee is: nothing is ever
 // blessed on the strength of a stored record; a verdict is about the bytes in front of it, now.
 //
-// Canary's design says the checkpoint file and the evidence bundles are "NEVER read back to produce a
+// Amabie's design says the checkpoint file and the evidence bundles are "NEVER read back to produce a
 // verdict" (apps/cli/src/onboarding.ts). That is a claim in a comment, and this repository's own doctrine
 // is that a claim is not evidence. So this probe attacks it directly, with the most convincing forgery it
 // can build — a checkpoint record whose shape is byte-identical to what a real green run writes,
@@ -21,11 +21,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-verified-bytes-'));
+const git = hostGit();
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-verified-bytes-'));
 const project = path.join(temp, 'project');
 let failures = 0;
 const check = (name, fn) => {
@@ -36,9 +37,9 @@ const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // The trust store lives OUTSIDE the repository, as the default one does: pointing it inside makes the
 // repo genuinely dirty and the gate then answers a different question (learned in the vocabulary probe).
-const env = { ...process.env, CANARY_TRUST_STORE: path.join(temp, 'local-trust') };
+const env = { ...process.env, AMABIE_TRUST_STORE: path.join(temp, 'local-trust') };
 const run = (exe, args, cwd) => spawnSync(exe, args, { cwd, env, encoding: 'utf8', windowsHide: true, timeout: 300000 });
-const canary = (args) => run(process.execPath, [cli, ...args], project);
+const amabie = (args) => run(process.execPath, [cli, ...args], project);
 const out = (r) => `${r.stdout ?? ''}${r.stderr ?? ''}`;
 
 /** The hook's whole contract: a refusal is a JSON line with decision "block". An allow is silence. */
@@ -49,7 +50,7 @@ const blocked = (r) => (r.stdout ?? '').split('\n')
 
 const GREETING = 'module.exports = (name) => `Hello, ${name}!`;\n';
 const BROKEN = 'module.exports = (name) => `Goodbye, ${name}!`;\n';
-const checkpointPath = path.join(project, '.canary', 'last-checkpoint.json');
+const checkpointPath = path.join(project, '.amabie', 'last-checkpoint.json');
 
 try {
   fs.mkdirSync(project, { recursive: true });
@@ -69,16 +70,16 @@ try {
     + "assert.strictEqual(require('./greeting.cjs')('a'), 'Hello, a!');\n");
 
   // Its OWN git repository: `findRepoRoot` walks up, so a bare temp dir answers about whatever encloses it.
-  for (const args of [['init', '-b', 'main'], ['config', 'user.email', 'bytes@canary.local'],
+  for (const args of [['init', '-b', 'main'], ['config', 'user.email', 'bytes@amabie.local'],
     ['config', 'user.name', 'Verified Bytes Probe'], ['add', '-A'], ['commit', '-m', 'base']]) {
     const r = run(git, args, project);
     assert(r.status === 0, `fixture git ${args[0]} failed: ${r.stdout}${r.stderr}`);
   }
-  const setup = canary(['setup', '--yes']);
+  const setup = amabie(['setup', '--yes']);
   assert(setup.status === 0, `setup must succeed:\n${out(setup)}`);
 
   // ── CONTROL 1: a green tree is ALLOWED, so "block" below means something ──
-  const green = canary(['checkpoint']);
+  const green = amabie(['checkpoint']);
   check('CONTROL-a-green-tree-is-allowed (otherwise every attack below would pass for the wrong reason)', () => {
     assert(green.status === 0, `checkpoint exited ${green.status} on a green tree:\n${out(green)}`);
     assert(!blocked(green), `a green tree was BLOCKED:\n${out(green)}`);
@@ -86,7 +87,7 @@ try {
 
   // ── the verdict follows the BYTES, not the earlier green run ──
   fs.writeFileSync(path.join(project, 'greeting.cjs'), BROKEN);
-  const onBroken = canary(['checkpoint']);
+  const onBroken = amabie(['checkpoint']);
   check('A1-breaking-the-code-BLOCKS-even-though-a-green-checkpoint-record-exists', () => {
     assert(blocked(onBroken), `the completion was allowed on a repository whose checks fail:\n${out(onBroken)}`);
   });
@@ -98,14 +99,14 @@ try {
   console.log(`INFO forged record: ${JSON.stringify(forgery)}`);
   console.log(`INFO (the real record from the failing run was: status=${realRecord.status} failed=${JSON.stringify(realRecord.failed)} source=${realRecord.source})`);
 
-  const afterForge = canary(['checkpoint']);
+  const afterForge = amabie(['checkpoint']);
   check('A2-a-forged-PASS-record-cannot-allow-a-completion-on-failing-bytes', () => {
     assert(blocked(afterForge),
       'a forged checkpoint record produced an ALLOW on a repository whose checks fail — the record is '
       + `being read back to produce a verdict:\n${out(afterForge)}`);
   });
 
-  const doctorForged = canary(['doctor']);
+  const doctorForged = amabie(['doctor']);
   check('A3-doctor-is-not-READY-on-failing-bytes-while-the-forgery-is-present', () => {
     assert(doctorForged.status !== 0, `doctor exited 0 (READY) with a forged pass record present:\n${out(doctorForged)}`);
     assert(!/READY/.test(out(doctorForged).match(/^.*(READY|NOT PROVEN|NEEDS ATTENTION|UNSUPPORTED).*$/m)?.[0] ?? ''),
@@ -114,7 +115,7 @@ try {
 
   // ── CONTROL 2: with the forgery STILL on disk, repairing the code must allow again ──
   fs.writeFileSync(path.join(project, 'greeting.cjs'), GREETING);
-  const repaired = canary(['checkpoint']);
+  const repaired = amabie(['checkpoint']);
   check('CONTROL-repairing-the-bytes-allows-again-with-the-forgery-still-on-disk', () => {
     assert(repaired.status === 0, `checkpoint exited ${repaired.status} after repair:\n${out(repaired)}`);
     assert(!blocked(repaired),
@@ -123,7 +124,7 @@ try {
   });
 
   // ── and the forgery must be labelled as what it is, not silently trusted ──
-  const status = canary(['status']);
+  const status = amabie(['status']);
   check('A4-status-labels-a-stored-record-as-NOT-a-claim-about-now', () => {
     const text = out(status);
     assert(/NOT a claim about now/i.test(text),

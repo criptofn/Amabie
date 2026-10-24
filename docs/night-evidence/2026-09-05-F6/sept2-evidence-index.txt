@@ -1,4 +1,4 @@
-EVIDENCE INDEX — canary-observation-hardening night-run attempt-2 — HEAD b3a5069 — 2026-09-02
+EVIDENCE INDEX — amabie-observation-hardening night-run attempt-2 — HEAD b3a5069 — 2026-09-02
 
 == primary evidence files (this worktree, git-ignored) ==
 0 ..
@@ -23,11 +23,11 @@ EVIDENCE INDEX — canary-observation-hardening night-run attempt-2 — HEAD b3a
 
 == golden assertion verdict line ==
 EXPERIMENT axios-mock-adapter-1.21.1: CONFIRMED_REGRESSION (rule 5) — all 3 candidate rounds failed while baseline passed — regression confirmed
-CANARY REGRESSION PROOF: PASS — 36 assertion(s) held (all of them, host-exact included, ON the proof host)
+AMABIE REGRESSION PROOF: PASS — 36 assertion(s) held (all of them, host-exact included, ON the proof host)
 
 == golden run dir ==
 artifacts
-canary-observer.cjs
+amabie-observer.cjs
 empty.npmrc
 fixture
 fixture.tgz

@@ -7,7 +7,7 @@
  * none of them. So this file is deliberately the pure half of the feature:
  *
  *   - `validateStepPaths` checks a project's declaration before it is SEALED
- *     (setup refuses a malformed one, exactly like `canary.proofs`);
+ *     (setup refuses a malformed one, exactly like `amabie.proofs`);
  *   - `pathMatchesGlobs` answers "is this path inside the declared set?";
  *   - `decideFastPath` answers which steps must still run, and WHY for each one.
  *
@@ -64,7 +64,7 @@ function validateGlob(glob: unknown, where: string): string {
 }
 
 /**
- * Validate the `canary.paths` declaration that setup will seal.
+ * Validate the `amabie.paths` declaration that setup will seal.
  *
  * `plan` is the plan being sealed: a key that is not in it is refused, so the
  * declaration can never describe a check that does not exist (or one that was
@@ -72,16 +72,16 @@ function validateGlob(glob: unknown, where: string): string {
  */
 export function validateStepPaths(raw: unknown, plan: readonly PlanStep[]): Record<string, string[]> {
   if (raw === undefined || raw === null) return {};
-  if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('canary.paths must be an object mapping plan checks to path patterns');
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw new Error('amabie.paths must be an object mapping plan checks to path patterns');
   const known = new Set(plan.map((s) => stepKey(s)));
   const out: Record<string, string[]> = {};
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!known.has(key)) {
-      throw new Error(`canary.paths declares paths for "${key}", which is not a check in the sealed plan (known: ${[...known].sort().join(', ') || 'none'})`);
+      throw new Error(`amabie.paths declares paths for "${key}", which is not a check in the sealed plan (known: ${[...known].sort().join(', ') || 'none'})`);
     }
-    if (!Array.isArray(value) || value.length === 0) throw new Error(`canary.paths["${key}"] must be a non-empty array of path patterns`);
-    if (value.length > MAX_GLOBS_PER_STEP) throw new Error(`canary.paths["${key}"] declares more than ${MAX_GLOBS_PER_STEP} patterns`);
-    out[key] = value.map((g) => validateGlob(g, `canary.paths["${key}"]`));
+    if (!Array.isArray(value) || value.length === 0) throw new Error(`amabie.paths["${key}"] must be a non-empty array of path patterns`);
+    if (value.length > MAX_GLOBS_PER_STEP) throw new Error(`amabie.paths["${key}"] declares more than ${MAX_GLOBS_PER_STEP} patterns`);
+    out[key] = value.map((g) => validateGlob(g, `amabie.paths["${key}"]`));
   }
   return out;
 }
@@ -115,7 +115,7 @@ export function pathMatchesGlobs(p: string, globs: readonly string[]): boolean {
  * Which steps still have to run?
  *
  * `changedPaths` is what the repository reports as touched since the sealed
- * baseline. `declared` is the SEALED `canary.paths` map (keys are `stepKey`s).
+ * baseline. `declared` is the SEALED `amabie.paths` map (keys are `stepKey`s).
  */
 export function decideFastPath(
   plan: readonly PlanStep[],

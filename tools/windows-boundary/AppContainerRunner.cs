@@ -9,7 +9,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 
-public static class CanaryAppContainer {
+public static class AmabieAppContainer {
   [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] struct SI {
     public uint cb; public string reserved,desktop,title; public uint x,y,xSize,ySize,xChars,yChars,fill,flags;
     public ushort show,reservedSize; public IntPtr reserved2,stdin,stdout,stderr;
@@ -90,12 +90,12 @@ public static class CanaryAppContainer {
       throw new ArgumentException("sandbox must be a disposable directory below the OS temp directory");
     for(var p=new DirectoryInfo(directory);p!=null;p=p.Parent)
       if((p.Attributes&FileAttributes.ReparsePoint)!=0) throw new ArgumentException("reparse ancestor refused");
-    string name="Canary.Probe."+Guid.NewGuid().ToString("N");
+    string name="Amabie.Probe."+Guid.NewGuid().ToString("N");
     IntPtr current=IntPtr.Zero,restricted=IntPtr.Zero,low=IntPtr.Zero,package=IntPtr.Zero;
     IntPtr attributes=IntPtr.Zero,environment=IntPtr.Zero,job=IntPtr.Zero;
     PI child=new PI(); bool profile=false,initialized=false; FileSystemAccessRule grant=null;
     try {
-      Marshal.ThrowExceptionForHR(CreateAppContainerProfile(name,name,"Canary disposable restricted runner",IntPtr.Zero,0,out package)); profile=true;
+      Marshal.ThrowExceptionForHR(CreateAppContainerProfile(name,name,"Amabie disposable restricted runner",IntPtr.Zero,0,out package)); profile=true;
       var packageIdentity=new SecurityIdentifier(package);
       grant=new FileSystemAccessRule(packageIdentity,FileSystemRights.Modify|FileSystemRights.Synchronize,
         InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow);

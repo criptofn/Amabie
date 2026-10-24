@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
 import {
   readTaskRecord, readAcceptance, writeAcceptance,
@@ -21,7 +21,7 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ascope-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ascope-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function makeProject(name: string): string {
@@ -120,8 +120,8 @@ describe('task record — requirementDigests identity, prose never stored', () =
       assert.equal(g.status, 0, `git ${args.join(' ')}: ${g.stderr}`);
     };
     git('init', '-b', 'main');
-    git('config', 'user.email', 'test@canary.local');
-    git('config', 'user.name', 'Canary Test');
+    git('config', 'user.email', 'test@amabie.local');
+    git('config', 'user.name', 'Amabie Test');
     git('add', '-A');
     git('commit', '-m', 'init');
     const s = spawnSync(process.execPath, [CLI, 'setup', '--yes', root], { encoding: 'utf8', timeout: 120_000 });
@@ -136,13 +136,17 @@ describe('task record — requirementDigests identity, prose never stored', () =
     assert.deepEqual(rec.requirementDigests, [sha256('make dialog warmer'), sha256('improve icon spacing')].sort());
     const raw = fs.readFileSync(path.join(root, CONFIG_DIR, TASK_FILE), 'utf8');
     assert.ok(!raw.includes('improve icon spacing'), 'requirement prose must NOT be persisted — digests only');
+    const stored = JSON.parse(raw) as Record<string, unknown>;
+    stored.schema = 'amabie-task/2';
+    fs.writeFileSync(path.join(root, CONFIG_DIR, TASK_FILE), JSON.stringify(stored));
+    assert.ok(readTaskRecord(root), 'Amabie must retain task authority from a migrated Amabie record');
   });
 
   it('legacy records fail closed to missing authority', () => {
     const root = makeProject('legacy');
     fs.mkdirSync(path.join(root, CONFIG_DIR, 'task'), { recursive: true });
     fs.writeFileSync(path.join(root, CONFIG_DIR, TASK_FILE),
-      JSON.stringify({ schema: 'canary-task/1', kinds: ['ui'], requirementCount: 2 }));
+      JSON.stringify({ schema: 'amabie-task/1', kinds: ['ui'], requirementCount: 2 }));
     const rec = readTaskRecord(root);
     assert.equal(rec, null, 'legacy identity cannot authorize current completion');
   });
@@ -152,7 +156,7 @@ describe('task record — requirementDigests identity, prose never stored', () =
     fs.mkdirSync(path.join(root, CONFIG_DIR, 'task'), { recursive: true });
     const many = Array.from({ length: 70 }, (_, i) => sha256(`r${i}`));
     fs.writeFileSync(path.join(root, CONFIG_DIR, TASK_FILE),
-      JSON.stringify({ schema: 'canary-task/1', kinds: ['ui'], requirementCount: 3,
+      JSON.stringify({ schema: 'amabie-task/1', kinds: ['ui'], requirementCount: 3,
         requirementDigests: [...many, 'zz', 'Z'.repeat(64).toLowerCase().replace(/0/g, '0'), 42, 'deadbeef'] }));
     const rec = readTaskRecord(root);
     assert.equal(rec, null, 'malformed or oversized identity is refused, never filtered into authority');
@@ -180,7 +184,7 @@ describe('readAcceptance — v2 fail-closed shapes', () => {
     const subject = { candidate: name, candidateCommit: 'b'.repeat(40), candidateTree: 'c'.repeat(40),
       baseHead: 'a'.repeat(40), baseTree: 'd'.repeat(40), baseAuthorityIdentity: sha256('authority'),
       frozenTask: declaredTask('ui', ['ui'], []), liveTask: declaredTask('ui', ['ui'], []), subjectiveDuties: ['ui-proof'] };
-    return { schema: 'canary-acceptance/3', at: new Date().toISOString(), candidate: name, subject, subjectDigest: subjectDigest(subject), acceptedBy: 'tty-human' };
+    return { schema: 'amabie-acceptance/3', at: new Date().toISOString(), candidate: name, subject, subjectDigest: subjectDigest(subject), acceptedBy: 'tty-human' };
   };
   const put = (root: string, rec: unknown): void => {
     const dir = path.join(root, CONFIG_DIR, ACCEPTANCE_SUBDIR);
@@ -196,9 +200,15 @@ describe('readAcceptance — v2 fail-closed shapes', () => {
     assert.equal(rec.subjectDigest, subjectDigest(rec.subject));
   });
 
+  it('reads current acceptance records from migrated Amabie state', () => {
+    const root = makeProject('acc-legacy-brand');
+    put(root, { ...valid('c'), schema: 'amabie-acceptance/3' });
+    assert.ok(readAcceptance(root, 'c'));
+  });
+
   it('a v1 record (no scope binding) fails CLOSED — it cannot authorize anything', () => {
     const root = makeProject('acc-v1');
-    put(root, { schema: 'canary-acceptance/1', at: 'x', candidate: 'c', baseHead: 'a'.repeat(40),
+    put(root, { schema: 'amabie-acceptance/1', at: 'x', candidate: 'c', baseHead: 'a'.repeat(40),
       candidateHead: 'b'.repeat(40), intentDigest: sha256('i'), acceptedBy: 'tty-human' });
     assert.equal(readAcceptance(root, 'c'), null);
   });

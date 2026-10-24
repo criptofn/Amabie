@@ -30,7 +30,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const keep = process.argv.includes('--keep');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-stream-shape-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-stream-shape-'));
 fs.writeFileSync(path.join(TMP, 'VERSION.txt'), 'shape-fixture\n');
 
 // A prompt that forces exactly one tool call and then an answer: two requests, so per-request

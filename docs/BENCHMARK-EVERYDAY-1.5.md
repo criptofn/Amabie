@@ -13,7 +13,7 @@
 
 > **Headline, with its limits attached — WITHDRAWN, kept only as the record of what was
 > claimed and why it failed.** Over two independent runs of the same three
-> fixtures, the everyday Canary path (`guarded`) used **83.21 %** of the tokens a plain
+> fixtures, the everyday Amabie path (`guarded`) used **83.21 %** of the tokens a plain
 > agent used — **−16.79 %** in aggregate — at **equal measured correctness** and with
 > **no false done in either arm**. The run-to-run figures were **−19.26 %** and
 > **−13.39 %**.
@@ -25,7 +25,7 @@
 > cost 543,518 tokens in run 1 and 394,733 in run 2 — a **27 % drift between runs of an
 > identical configuration**. A −16.79 % aggregate delta is smaller than that drift, so
 > this measures a **direction that was consistent in both runs**, not a stable effect
-> size. On one of the three fixtures Canary was **more expensive in both runs**.
+> size. On one of the three fixtures Amabie was **more expensive in both runs**.
 
 ## The withdrawn headline, and what replaced it
 
@@ -80,14 +80,14 @@ the identical configuration**.
 
 **Therefore no token-saving claim is supported, and none is made.** Not a smaller saving, not a
 different percentage — *none*. The honest summary is that this benchmark, at n=1 per cell on
-Canary-authored fixtures, **cannot resolve an effect of this size in either direction**, and the
+Amabie-authored fixtures, **cannot resolve an effect of this size in either direction**, and the
 two runs that could be measured disagreed in sign. The `r4` result is also the more credible of
 the two for a mundane reason worth stating: it is the only run whose tree was frozen while it
 measured, so it is the only one whose six cells are unambiguously one experiment.
 
 What this document still establishes, because it rests on direct observation rather than
 on a pooled ratio: the standing MCP payload is genuinely **inside** the measurement
-(6/6 guarded trials advertised `mcp__canary`, 0/6 plain), and it costs about **438 tokens**
+(6/6 guarded trials advertised `mcp__amabie`, 0/6 plain), and it costs about **438 tokens**
 measured provider-natively rather than the ~1,432 that `bytes ÷ 4` implied.
 
 ## Reproduce the aggregate without trusting this document or the benchmark reporter:
@@ -111,7 +111,7 @@ becomes an advertisement.
 | tool messages visible to the model | yes | inside the session total |
 | retries / repair turns | yes | they are ordinary turns in the session |
 | verification prompts sent to the model | yes | inside the session total |
-| other persistent Canary context | yes | inside the session total |
+| other persistent Amabie context | yes | inside the session total |
 
 **Accounting method, stated exactly:** `result.usage` from the real Claude Code CLI
 (`--output-format stream-json`), the same provider-native ledger the harness has always
@@ -123,10 +123,10 @@ two were measured 2.6–2.8 % apart). No component is silently mixed between met
 
 ## The defect this release fixed
 
-The historical everyday figure (**Plain 409,824 / Canary 379,792 = 92.7 %**) ran the
+The historical everyday figure (**Plain 409,824 / Amabie 379,792 = 92.7 %**) ran the
 agent with `--strict-mcp-config` and **no `--mcp-config`**. That kept a developer's own
 MCP servers out of the measurement — good — but it also meant the `.mcp.json` that
-`canary setup` had just written was never loaded, so the Canary server's instructions
+`amabie setup` had just written was never loaded, so the Amabie server's instructions
 and tool schemas never entered the session and the provider-native total never contained
 them. It was a **configuration gap, not an estimator gap**.
 
@@ -134,7 +134,7 @@ Two things were measured rather than assumed:
 
 1. **The payload can be loaded.** `tooling/probes/v15-mcp-standing-payload.mjs` runs two
    otherwise identical sessions differing only by `--mcp-config`:
-   **3/3** sessions mentioned `mcp__canary` with the flag, **0/3** without.
+   **3/3** sessions mentioned `mcp__amabie` with the flag, **0/3** without.
 2. **What it costs, provider-natively.** The same probe measured a delta of **~438
    tokens** per session — corroborated by the cached prefix differing by exactly
    **434** (15,571 − 15,137). The old `bytes ÷ 4` derivation implied **~1,432**, i.e. it
@@ -142,7 +142,7 @@ Two things were measured rather than assumed:
    four bytes per token. `bytes ÷ 4` must not be quoted as tokens.
 
 The harness now records `agent.mcpConfig` and `agent.mcpToolsAdvertised` per trial, so a
-future regression that drops the payload — and thereby flatters Canary — is visible in
+future regression that drops the payload — and thereby flatters Amabie — is visible in
 the record and fails `tooling/probes/v13-standing-context.mjs` (check A4, inverted in
 v1.5 for exactly this reason).
 
@@ -152,9 +152,9 @@ Same three historical fixtures, same model, same arm instructions, same starting
 same hidden-oracle evaluation, same stopping condition (`--trials 1`, matching the
 historical n=1-per-cell design). **The only intended difference is the arm.**
 
-`plain` never runs `canary setup`, so it has no `.mcp.json` and correctly receives no
-standing Canary payload. **That asymmetry is the measurement, not a flaw in it:** what a
-Canary user actually pays is what the `guarded` arm now measures.
+`plain` never runs `amabie setup`, so it has no `.mcp.json` and correctly receives no
+standing Amabie payload. **That asymmetry is the measurement, not a flaw in it:** what a
+Amabie user actually pays is what the `guarded` arm now measures.
 
 ## Per task, per run — every cell, nothing pooled away
 
@@ -187,28 +187,28 @@ Canary user actually pays is what the `guarded` arm now measures.
 | cells | 6 (3 tasks × 2 runs) | 6 |
 | hidden-oracle summary | identical in both arms | identical in both arms |
 | false done | **0** | **0** |
-| Canary blocked a completion | — | **0** |
+| Amabie blocked a completion | — | **0** |
 
 **Both arms were equally correct, so no correctness benefit was observed and none is
-claimed.** In this run Canary blocked nothing, because the agent's work passed the sealed
+claimed.** In this run Amabie blocked nothing, because the agent's work passed the sealed
 checks. A benchmark in which the gate never fires cannot demonstrate that the gate works;
 that evidence lives in `docs/REAL-WORLD-EVIDENCE-1.5.md` and in the productization
 battery instead.
 
-## Where Canary was NOT worth it
+## Where Amabie was NOT worth it
 
 Reported because the point is evidence, not advertising:
 
-- **`bug-sum` cost more with Canary in both runs (+43.8 %, +22.5 %).** It is the smallest
+- **`bug-sum` cost more with Amabie in both runs (+43.8 %, +22.5 %).** It is the smallest
   fixture, so the fixed overhead (the standing payload plus the arm instructions) is
-  large relative to a short task. On small tasks Canary is a net cost.
+  large relative to a short task. On small tasks Amabie is a net cost.
 - **`bound-requirements` is a coin-flip** (+0.2 % in run 1, −23.8 % in run 2): the sign
   is not stable, so nothing should be claimed about it.
 - **The gate never fired in either arm**, so these six cells contain no evidence that
-  Canary prevents a false done — only that it did not cause one.
+  Amabie prevents a false done — only that it did not cause one.
 - **`stateful-replay` carries the aggregate.** It is the long task, and it was cheaper
   both times (−38.7 %, −18.8 %); remove it and the remaining two fixtures are, if
-  anything, slightly more expensive with Canary.
+  anything, slightly more expensive with Amabie.
 
 ## Measurement limits
 
@@ -218,7 +218,7 @@ Reported because the point is evidence, not advertising:
   across them.
 - **One model, one CLI version** (Claude Code 2.1.278), one host, one agent
   configuration.
-- **The fixtures are Canary-authored.** They are reused deliberately, so the change from
+- **The fixtures are Amabie-authored.** They are reused deliberately, so the change from
   the historical figure is interpretable, but they are not evidence about arbitrary
   real-world tasks; see `docs/REAL-WORLD-EVIDENCE-1.5.md`.
 - **`configMismatch` on stored cells:** the historical everyday cells were recorded with
@@ -242,9 +242,9 @@ Reported because the point is evidence, not advertising:
   configuration** (22.17 points against 44.3 % plain-arm drift). It is an observation with a
   limitation, never a headline;
 - the standing payload costs **~438 tokens** per session, measured provider-natively, and it is
-  genuinely inside the guarded sessions (**6/6** guarded advertised `mcp__canary`, **0/6** plain);
+  genuinely inside the guarded sessions (**6/6** guarded advertised `mcp__amabie`, **0/6** plain);
 - the **withdrawn** generation's per-task spread (**+43.8 %** more expensive to **−38.7 %** cheaper)
-  remains a description of *those* cells, not of Canary.
+  remains a description of *those* cells, not of Amabie.
 
 **Withdrawn as current claims (historical only):**
 
@@ -252,7 +252,7 @@ Reported because the point is evidence, not advertising:
   run whose tree changed mid-measurement. Withdrawn in `README.md`, `docs/CLAIM-EVIDENCE-MATRIX-1.5.md`
   and here; the aggregate probe asserts the figure is **not reproducible** from eligible cells;
 - the historical **92.7 % / −7.3 %** figure — it excluded the standing payload and must
-  not be quoted as Canary's current footprint;
+  not be quoted as Amabie's current footprint;
 - **`5,726 bytes ≈ 1,432 tokens`** — a derived figure that overstated the measured
   payload by 3.3×.
 

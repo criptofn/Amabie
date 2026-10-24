@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12-gate-cli-exit-codes-guarded-1",
   "task": "cli-exit-codes",
   "arm": "guarded",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-13T19:19:46.385Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-cli-exit-codes-guarded-QFO0J5",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-cli-exit-codes-guarded-QFO0J5",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -57,10 +57,10 @@
     "secs": 2.6,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 2,
     "verdict": "NOT PROVEN",
     "hookFired": true,
@@ -113,7 +113,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json canary.proofs and re-run canary setup — or take the work through a candidate (canary work <name> … → canary finish <name>) and have a human accept it there\n  - UNPROVEN [per-requirement] (objective): multi-part task: 7 registered requirement(s), 7 with NO sealed proof — a green plan proves the plan, NOT each part. Bind each uncovered digest in package.json canary.proofs to a script your plan runs and re-run canary setup (acceptance cannot replace measurement for an objective requirement) — until then UNPROVEN, never permanently dead\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json amabie.proofs and re-run amabie setup — or take the work through a candidate (amabie work <name> … → amabie finish <name>) and have a human accept it there\n  - UNPROVEN [per-requirement] (objective): multi-part task: 7 registered requirement(s), 7 with NO sealed proof — a green plan proves the plan, NOT each part. Bind each uncovered digest in package.json amabie.proofs to a script your plan runs and re-run amabie setup (acceptance cannot replace measurement for an objective requirement) — until then UNPROVEN, never permanently dead\n"
   },
   "agentResult": {
     "isError": true,
@@ -195,7 +195,7 @@
   "taskRegistration": {
     "requirements": 8,
     "exit": 0,
-    "stdoutTail": "requirement [needs proof or acceptance]: 8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219 — \"a missing, unreadable or non-JSON config file exits 3 with an error on stderr and nothing \"\n  bind it: package.json \"canary\": { \"proofs\": { \"8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236 — \"a missing required argument or an unknown argument exits 3 with an error and the usage blo\"\n  bind it: package.json \"canary\": { \"proofs\": { \"cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359 — \"validate(config, { strict }) returns { errors, warnings } with every entry shaped '<field>\"\n  bind it: package.json \"canary\": { \"proofs\": { \"f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359\": \"<script name from your plan>\" } }, then: canary setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
+    "stdoutTail": "requirement [needs proof or acceptance]: 8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219 — \"a missing, unreadable or non-JSON config file exits 3 with an error on stderr and nothing \"\n  bind it: package.json \"amabie\": { \"proofs\": { \"8bcc4a97990e3ec9e8c7ce285fb01642e0677483dd8610c4f0b9505859cd7219\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236 — \"a missing required argument or an unknown argument exits 3 with an error and the usage blo\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"cedb33daabe150a8960465b317f7629bf3bd8f9fe7125fbeb6946b698ffa7236\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359 — \"validate(config, { strict }) returns { errors, warnings } with every entry shaped '<field>\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"f77f8e309f005505c70aa682d3eeaa4d73746fd01ec30a45f91f0ce43db83359\": \"<script name from your plan>\" } }, then: amabie setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
   },
   "stream": {
     "lines": 6634,
@@ -228,20 +228,20 @@
     "bytes": {
       "toolResultTotal": 83782,
       "largestToolResult": 11761,
-      "canaryVisible": 2077,
+      "amabieVisible": 2077,
       "hookOutput": 0
     },
     "commands": {
       "total": 11,
-      "canary": 1,
+      "amabie": 1,
       "checks": 4,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-cli-exit-codes-guarded-QFO0J5/project\" && canary --version && canary status"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-cli-exit-codes-guarded-QFO0J5/project\" && amabie --version && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

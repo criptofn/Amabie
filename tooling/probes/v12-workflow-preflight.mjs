@@ -6,11 +6,11 @@ import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const repo = path.resolve(import.meta.dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-preflight-audit-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-preflight-audit-'));
 const marker = path.join(temp, 'worker-launches.txt');
 const observer = pathToFileURL(path.join(repo, 'tooling/test-support/fixtures/benchmark-worker-tripwire.mjs')).href;
-const env = { ...process.env, NODE_OPTIONS: `--import=${observer}`, CANARY_TEST_WORKER_TRIPWIRE: marker,
-  CANARY_TRUST_STORE: path.join(temp, 'trust') };
+const env = { ...process.env, NODE_OPTIONS: `--import=${observer}`, AMABIE_TEST_WORKER_TRIPWIRE: marker,
+  AMABIE_TRUST_STORE: path.join(temp, 'trust') };
 try {
   // Positive control: the observer must actually detect a launch.
   const control = spawnSync(process.execPath, [path.join(repo, 'tooling/test-support/fixtures/benchmark-worker-tripwire-control.mjs')], { env, encoding: 'utf8' });
@@ -27,7 +27,7 @@ try {
     const result = spawnSync(process.execPath, args, { cwd: repo, env, encoding: 'utf8', timeout: 300000 });
     assert.equal(result.status, 2, `${task}: ${result.stderr}`);
     const record = JSON.parse(fs.readFileSync(out, 'utf8'));
-    assert.equal(record.schema, 'canary-benchmark-preflight/1');
+    assert.equal(record.schema, 'amabie-benchmark-preflight/1');
     assert.equal(record.reason, reason, JSON.stringify(record));
     assert.equal(record.stratum, stratum);
     assert.deepEqual(record.worker, { calls: 0, tokens: 0, turns: 0 });

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12-stateful-replay-plain",
   "task": "stateful-replay",
   "arm": "plain",
@@ -34,7 +34,7 @@
     "what": "State transitions spanning cache, batch mutation and replay; no implementation paths given in task."
   },
   "startedAt": "2026-09-16T16:57:43.222Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stateful-replay-plain-g5Tad4",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stateful-replay-plain-g5Tad4",
   "configMismatch": null,
   "agent": {
     "command": "claude",
@@ -54,9 +54,9 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Repair the tenant ledger\n\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\n\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\n\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in canary.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
+  "prompt": "# Repair the tenant ledger\n\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\n\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\n\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in amabie.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -86,7 +86,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now: `node run-tests.js`, the declared check `node checks/contract.cjs` (via the hash-pinned entry in `canary.project.json` — unchanged), and the new `node checks/deep-contract.cjs` all pass. Committed as `ff85d3b`.\n\n**What was broken and what I changed** (all four defects trace to contract lines 6–9; the API surface is preserved, no checks weakened):\n\n1. **`src/storage.js` — tenant isolation.** `key(tenant, id)` returned just `id`, so the same id in different tenants collided. Now returns `JSON.stringify([tenant, id])`, which decodes back to exactly one pair — collision-free even for delimiter-bearing strings like `a,\"b`/`c` vs `a`/`b\",c`.\n\n2. **`src/replay.js` — replay dropped deletions.** `replay` filtered to `op === 'put'`, so `open(exportJournal())` resurrected deleted pairs. Now applies every event in order, so replayed state (including deletions) matches, and repeated replay stays equivalent.\n\n3. **`src/api.js` `batch` — ignored the event op.** It unconditionally did `rows.set(k, e.value)`, turning a batched `delete` into a stored `undefined` instead of a removal. Batch now routes each event through the existing `mutate`/`apply` path, so ops, ordering, and journal cloning are uniform across put/remove/batch.\n\n4. **`src/api.js` cache — never invalidated.** `get` cached both hits and misses, and no mutation path cleared them, so reads went stale after put/remove/batch. `apply` now deletes the affected key's cache entry, making every read fresh on every mutation path (including after journal replay).\n\n5. **`checks/deep-contract.cjs` (new) — tests** for the clauses the smoke check missed: cross-tenant and delimiter-hostile key independence, cached-hit and cached-miss freshness on all mutation paths, batch delete of absent pairs, exact journal order through batch, replay fidelity across three generations with post-replay mutations, export/input-history detachment, and replayed-miss freshness.\n\nDeliberately untouched: `docs/CONTRACT.md`, `checks/contract.cjs`, `canary.project.json` — the `proofs` entry binds a hash to the declared check and I couldn't reproduce its format, so I left the declared suite and its proof intact rather than risk invalidating it; the new tests run standalone."
+    "finalText": "Everything works now: `node run-tests.js`, the declared check `node checks/contract.cjs` (via the hash-pinned entry in `amabie.project.json` — unchanged), and the new `node checks/deep-contract.cjs` all pass. Committed as `ff85d3b`.\n\n**What was broken and what I changed** (all four defects trace to contract lines 6–9; the API surface is preserved, no checks weakened):\n\n1. **`src/storage.js` — tenant isolation.** `key(tenant, id)` returned just `id`, so the same id in different tenants collided. Now returns `JSON.stringify([tenant, id])`, which decodes back to exactly one pair — collision-free even for delimiter-bearing strings like `a,\"b`/`c` vs `a`/`b\",c`.\n\n2. **`src/replay.js` — replay dropped deletions.** `replay` filtered to `op === 'put'`, so `open(exportJournal())` resurrected deleted pairs. Now applies every event in order, so replayed state (including deletions) matches, and repeated replay stays equivalent.\n\n3. **`src/api.js` `batch` — ignored the event op.** It unconditionally did `rows.set(k, e.value)`, turning a batched `delete` into a stored `undefined` instead of a removal. Batch now routes each event through the existing `mutate`/`apply` path, so ops, ordering, and journal cloning are uniform across put/remove/batch.\n\n4. **`src/api.js` cache — never invalidated.** `get` cached both hits and misses, and no mutation path cleared them, so reads went stale after put/remove/batch. `apply` now deletes the affected key's cache entry, making every read fresh on every mutation path (including after journal replay).\n\n5. **`checks/deep-contract.cjs` (new) — tests** for the clauses the smoke check missed: cross-tenant and delimiter-hostile key independence, cached-hit and cached-miss freshness on all mutation paths, batch delete of absent pairs, exact journal order through batch, replay fidelity across three generations with post-replay mutations, export/input-history detachment, and replayed-miss freshness.\n\nDeliberately untouched: `docs/CONTRACT.md`, `checks/contract.cjs`, `amabie.project.json` — the `proofs` entry binds a hash to the declared check and I couldn't reproduce its format, so I left the declared suite and its proof intact rather than risk invalidating it; the new tests run standalone."
   },
   "visible": {
     "exitCode": 0,
@@ -160,20 +160,20 @@
     "bytes": {
       "toolResultTotal": 6540,
       "largestToolResult": 1089,
-      "canaryVisible": 1019,
+      "amabieVisible": 1019,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "canary --version 2>&1; canary status 2>&1 | head -40"
+      "amabieCommands": [
+        "amabie --version 2>&1; amabie status 2>&1 | head -40"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

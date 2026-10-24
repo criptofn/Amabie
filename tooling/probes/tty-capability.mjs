@@ -43,7 +43,7 @@ const WSL = process.platform === 'win32' ? firstExisting(['C:\\WINDOWS\\system32
 
 function banner(t) { console.log(`\n${'='.repeat(70)}\n${t}\n${'='.repeat(70)}`); }
 function run(label, cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 60_000, input: 'canary-typed\n', ...opts });
+  const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 60_000, input: 'amabie-typed\n', ...opts });
   const out = `${r.stdout ?? ''}${r.stderr ?? ''}`.trim();
   console.log(`\n--- ${label} ---`);
   console.log(`cmd: ${cmd} ${args.map((a) => (a.includes(' ') ? `"${a}"` : a)).join(' ')}`);
@@ -73,7 +73,7 @@ if (WINPTY !== null) {
   banner('2c. winpty, new console, -Xallow-non-tty (spawn collect)');
   {
     const r = spawnSync(WINPTY, ['-Xallow-non-tty', process.execPath, FX],
-      { cwd: REPO, encoding: 'utf8', timeout: 60_000, input: 'canary-typed\n', detached: true, windowsHide: false, shell: false });
+      { cwd: REPO, encoding: 'utf8', timeout: 60_000, input: 'amabie-typed\n', detached: true, windowsHide: false, shell: false });
     const out = `${r.stdout ?? ''}${r.stderr ?? ''}`.trim();
     console.log(`status=${r.status} error=${r.error ? r.error.code : 'none'}`);
     for (const line of out.split(/\r?\n/)) if (line.trim()) console.log(`| ${line}`);
@@ -101,5 +101,5 @@ if (WSL !== null) {
 
 banner('SUMMARY');
 console.log('A line "TTY stdin=true stdout=true" identifies a facility that gives the child a');
-console.log('real terminal — the precondition `canary accept` asserts, and the reason');
+console.log('real terminal — the precondition `amabie accept` asserts, and the reason');
 console.log('pre10-acceptance needed util-linux `script`.');

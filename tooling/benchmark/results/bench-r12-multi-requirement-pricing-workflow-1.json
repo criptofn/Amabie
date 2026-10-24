@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r12-multi-requirement-pricing-workflow-1",
   "task": "multi-requirement-pricing",
   "arm": "workflow",
@@ -28,7 +28,7 @@
     ]
   },
   "startedAt": "2026-09-13T03:48:01.797Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -53,10 +53,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -114,7 +114,7 @@
       }
     ],
     "baseMoved": true,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n✓ bench: npm run bench (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n✓ bench: npm run bench (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -145,7 +145,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. Canary **promoted** the candidate (`main` fast-forwarded `c476118 → 19b526a`, POST-PROOF PASS), and `canary doctor` reports **READY — no proof obligation is open**.\n\n## What changed (all developed and committed in the candidate, then promoted)\n\n- **`src/pricing.js`** — implemented `discountedTotal`:\n  - applies the rate from the tier with the **highest `min` ≤ subtotal** (subtotals below the first paid tier, including 0, come back unchanged);\n  - rounds **half-up** to whole cents (a true `.5` always rounds away from zero, never to even — with an 8-decimal snap so float noise like `10% of 10025 → 9022.499999…` can't flip a real `.5`);\n  - **fails closed**: a missing (`undefined`/`null`), malformed (no/empty/non-array `tiers`, tier without a numeric `min`/`rate`), or non-monotonic tier list (out of order or repeated boundary) throws an `Error` whose message names the exact problem — never a silent subtotal passthrough.\n- **`config/pricing.json`** — untouched; it keeps exactly `0/0`, `10000/0.1`, `50000/0.2`, and a new test pins that.\n- **`README.md`** — `Discount rates` table corrected: `10000 → 10%` and `50000 → 20%` (was stale 5% / 25%).\n- **`tests/pricing.test.js`** — grew from 3 to 14 tests: tier boundaries (9999/10000/49999/50000), half-up cases (10005→9005, 10015→9014, 10025→9023, 10050→9045), every fail-closed config class, the exact tier list, and a mechanical check that the README table mirrors `config/pricing.json`. The original three tests still pass, and `formatCents` was not touched.\n- **`bench/rounding.js`** (new) — objective proof asserting the declared rounding targets; its exit code is the measurement.\n- **`package.json`** — added the `bench` script and a `canary.proofs` map binding each of the five registered requirement digests to the sealed check that proves it (the rounding target → `bench`, the other four → `test`).\n\n## Process notes\n\n- All five requirements were declared at registration, one `--requirement` each.\n- The first `finish` verified **PASS** but refused promotion because the base had an uncommitted tracked change — my `package.json` binding edit (which Canary's own `work` output directed me to make, then `canary setup`). I resolved it exactly as the refusal offered: stashed the base copy (identical bytes were already committed in the candidate), re-ran `finish` → promoted, then popped the stash (clean no-op; base working tree is clean apart from the pre-existing untracked `.claude/`).\n- `canary setup` recorded a smoke red for `bench` on the pre-work base — correct and intentional: the proof discriminates, failing on the base commit and passing on the candidate, so the verdict isn't `NOT PROVEN`.\n- The candidate record/worktree remains at `.canary/candidates/tiered-discounts` as evidence; `canary isolate --remove tiered-discounts` is available if you want it cleaned up."
+    "finalText": "Everything works now. Amabie **promoted** the candidate (`main` fast-forwarded `c476118 → 19b526a`, POST-PROOF PASS), and `amabie doctor` reports **READY — no proof obligation is open**.\n\n## What changed (all developed and committed in the candidate, then promoted)\n\n- **`src/pricing.js`** — implemented `discountedTotal`:\n  - applies the rate from the tier with the **highest `min` ≤ subtotal** (subtotals below the first paid tier, including 0, come back unchanged);\n  - rounds **half-up** to whole cents (a true `.5` always rounds away from zero, never to even — with an 8-decimal snap so float noise like `10% of 10025 → 9022.499999…` can't flip a real `.5`);\n  - **fails closed**: a missing (`undefined`/`null`), malformed (no/empty/non-array `tiers`, tier without a numeric `min`/`rate`), or non-monotonic tier list (out of order or repeated boundary) throws an `Error` whose message names the exact problem — never a silent subtotal passthrough.\n- **`config/pricing.json`** — untouched; it keeps exactly `0/0`, `10000/0.1`, `50000/0.2`, and a new test pins that.\n- **`README.md`** — `Discount rates` table corrected: `10000 → 10%` and `50000 → 20%` (was stale 5% / 25%).\n- **`tests/pricing.test.js`** — grew from 3 to 14 tests: tier boundaries (9999/10000/49999/50000), half-up cases (10005→9005, 10015→9014, 10025→9023, 10050→9045), every fail-closed config class, the exact tier list, and a mechanical check that the README table mirrors `config/pricing.json`. The original three tests still pass, and `formatCents` was not touched.\n- **`bench/rounding.js`** (new) — objective proof asserting the declared rounding targets; its exit code is the measurement.\n- **`package.json`** — added the `bench` script and a `amabie.proofs` map binding each of the five registered requirement digests to the sealed check that proves it (the rounding target → `bench`, the other four → `test`).\n\n## Process notes\n\n- All five requirements were declared at registration, one `--requirement` each.\n- The first `finish` verified **PASS** but refused promotion because the base had an uncommitted tracked change — my `package.json` binding edit (which Amabie's own `work` output directed me to make, then `amabie setup`). I resolved it exactly as the refusal offered: stashed the base copy (identical bytes were already committed in the candidate), re-ran `finish` → promoted, then popped the stash (clean no-op; base working tree is clean apart from the pre-existing untracked `.claude/`).\n- `amabie setup` recorded a smoke red for `bench` on the pre-work base — correct and intentional: the proof discriminates, failing on the base commit and passing on the candidate, so the verdict isn't `NOT PROVEN`.\n- The candidate record/worktree remains at `.amabie/candidates/tiered-discounts` as evidence; `amabie isolate --remove tiered-discounts` is available if you want it cleaned up."
   },
   "visible": {
     "exitCode": 0,
@@ -227,27 +227,27 @@
     "bytes": {
       "toolResultTotal": 85054,
       "largestToolResult": 7800,
-      "canaryVisible": 8142,
+      "amabieVisible": 8142,
       "hookOutput": 0
     },
     "commands": {
       "total": 25,
-      "canary": 8,
+      "amabie": 8,
       "checks": 2,
-      "canaryCommands": [
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" work --help 2>&1 | head -60",
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" status 2>&1 | head -40; find \"C:\\Users\\Johannes\\Desktop\\canary\" -maxdepth 2 -iname \"AGENTS.md\" 2>/dev/null | head -5",
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" work tiered-discounts \"Implement tiered discount lookup, half-up rounding and fail-closed config validation in discountedTotal; sync README rate table\" --kind multi \\\n  --requirement 'the applicable rate is the one from the tier with the highest min that is less than or equal to the subtotal in cents, and config/pricing.json keeps its given tiers (0/0, 10000/0.1, 50000/0.2)' \\\n  --requirement 'the discounted result is rounded half-up to whole cents (10% off 10005 cents is 9004.5, which rounds up to 9005, never to even)' \\\n  --requirement 'a missing, malformed or non-monotonic config fails closed by throwing an Error whose message names the problem, instead of silently returning the undiscounted subtotal' \\\n  --requirement 'the Discount rates table in README.md matches config/pricing.json exactly: the same boundaries in cents and the same rates, with no stale or missing row' \\\n  --requirement 'formatCents keeps its current behaviour (1234 -> $12.34) and subtotals below the first paid tier, including 0, are still returned unchanged' 2>&1",
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" setup 2>&1",
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" finish tiered-discounts 2>&1",
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" finish tiered-discounts 2>&1",
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && git stash pop; git status --porcelain; git log --oneline -3 && npm test --silent 2>&1 | tail -2 && npm run bench --silent 2>&1 | tail -1 && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" status 2>&1 | head -8",
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" doctor 2>&1 | tail -15"
+      "amabieCommands": [
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" work --help 2>&1 | head -60",
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" status 2>&1 | head -40; find \"C:\\Users\\Johannes\\Desktop\\amabie\" -maxdepth 2 -iname \"AGENTS.md\" 2>/dev/null | head -5",
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" work tiered-discounts \"Implement tiered discount lookup, half-up rounding and fail-closed config validation in discountedTotal; sync README rate table\" --kind multi \\\n  --requirement 'the applicable rate is the one from the tier with the highest min that is less than or equal to the subtotal in cents, and config/pricing.json keeps its given tiers (0/0, 10000/0.1, 50000/0.2)' \\\n  --requirement 'the discounted result is rounded half-up to whole cents (10% off 10005 cents is 9004.5, which rounds up to 9005, never to even)' \\\n  --requirement 'a missing, malformed or non-monotonic config fails closed by throwing an Error whose message names the problem, instead of silently returning the undiscounted subtotal' \\\n  --requirement 'the Discount rates table in README.md matches config/pricing.json exactly: the same boundaries in cents and the same rates, with no stale or missing row' \\\n  --requirement 'formatCents keeps its current behaviour (1234 -> $12.34) and subtotals below the first paid tier, including 0, are still returned unchanged' 2>&1",
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" setup 2>&1",
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" finish tiered-discounts 2>&1",
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" finish tiered-discounts 2>&1",
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && git stash pop; git status --porcelain; git log --oneline -3 && npm test --silent 2>&1 | tail -2 && npm run bench --silent 2>&1 | tail -1 && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" status 2>&1 | head -8",
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-workflow-9Wgpc6\\project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" doctor 2>&1 | tail -15"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

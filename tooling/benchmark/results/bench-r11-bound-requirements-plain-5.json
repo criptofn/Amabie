@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r11-bound-requirements-plain-5",
   "task": "bound-requirements",
   "arm": "plain",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -27,7 +27,7 @@
     ]
   },
   "startedAt": "2026-09-12T22:23:51.006Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-ZUDrOR",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-ZUDrOR",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -46,9 +46,9 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`canary.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -78,7 +78,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Canary was never connected in this temp repo, and the task didn't ask to connect it — so instead I ran the declared proof commands directly, exactly as the sealed plan defines them (`node checks/check-<name>.cjs`, the verbatim `argv` from `canary.project.json`). Each is the check bound to its requirement digest; none was weakened, deleted, or re-pointed.\n\n## What I changed\n\nOnly one file: `src/text.js`\n\n1. **Implemented `normalize`** (was `return String(text)`):\n\n```js\nfunction normalize(text) {\n  const trimmed = String(text).trim();\n  if (trimmed === '') return 'empty';\n  return trimmed.toLowerCase();\n}\n```\n\n- Requirement 1: result is trimmed (`'  ada  '` → `'ada'`)\n- Requirement 2: empty/whitespace-only input → `'empty'` (`''`, `'   '`, `'\\t'`)\n- Requirement 3: result is lower-case (`'AbC'` → `'abc'`)\n- The `String(text)` coercion is preserved, so non-string inputs behave as before.\n\n2. Updated the stale header comment that said the function \"returns the input unchanged.\"\n\n## Verification\n\n- `check-trim` → `ok: every case satisfies requirement 1` (exit 0)\n- `check-empty` → `ok: every case satisfies requirement 2` (exit 0)\n- `check-case` → `ok: every case satisfies requirement 3` (exit 0)\n- Visible suite `node run-tests.js` → `1 passing` (identity case still green)\n- `canary.project.json` untouched; no check was altered, so the requirement digests still bind to their original proofs.\n\nEverything works now: all three requirement proofs pass by exit code, and the visible test suite is green. Changes are in the working tree, uncommitted (you didn't ask for a commit — say the word and I'll make it a local milestone commit)."
+    "finalText": "Amabie was never connected in this temp repo, and the task didn't ask to connect it — so instead I ran the declared proof commands directly, exactly as the sealed plan defines them (`node checks/check-<name>.cjs`, the verbatim `argv` from `amabie.project.json`). Each is the check bound to its requirement digest; none was weakened, deleted, or re-pointed.\n\n## What I changed\n\nOnly one file: `src/text.js`\n\n1. **Implemented `normalize`** (was `return String(text)`):\n\n```js\nfunction normalize(text) {\n  const trimmed = String(text).trim();\n  if (trimmed === '') return 'empty';\n  return trimmed.toLowerCase();\n}\n```\n\n- Requirement 1: result is trimmed (`'  ada  '` → `'ada'`)\n- Requirement 2: empty/whitespace-only input → `'empty'` (`''`, `'   '`, `'\\t'`)\n- Requirement 3: result is lower-case (`'AbC'` → `'abc'`)\n- The `String(text)` coercion is preserved, so non-string inputs behave as before.\n\n2. Updated the stale header comment that said the function \"returns the input unchanged.\"\n\n## Verification\n\n- `check-trim` → `ok: every case satisfies requirement 1` (exit 0)\n- `check-empty` → `ok: every case satisfies requirement 2` (exit 0)\n- `check-case` → `ok: every case satisfies requirement 3` (exit 0)\n- Visible suite `node run-tests.js` → `1 passing` (identity case still green)\n- `amabie.project.json` untouched; no check was altered, so the requirement digests still bind to their original proofs.\n\nEverything works now: all three requirement proofs pass by exit code, and the visible test suite is green. Changes are in the working tree, uncommitted (you didn't ask for a commit — say the word and I'll make it a local milestone commit)."
   },
   "visible": {
     "exitCode": 0,
@@ -152,20 +152,20 @@
     "bytes": {
       "toolResultTotal": 4328,
       "largestToolResult": 719,
-      "canaryVisible": 432,
+      "amabieVisible": 432,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-ZUDrOR\\project\" && canary --version && canary status"
+      "amabieCommands": [
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-ZUDrOR\\project\" && amabie --version && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

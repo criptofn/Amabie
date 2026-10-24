@@ -1,7 +1,7 @@
 /**
  * Self-tests for the five-outcome layer, as suite tests.
  *
- * The instrument that decides whether Canary beat a plain agent is itself a thing that can
+ * The instrument that decides whether Amabie beat a plain agent is itself a thing that can
  * lie, so it is tested before it is trusted with a single model token. The RULES live in
  * `outcome-cases.mjs` and the walker lives in `outcome-selftest.mjs`; this file adapts them to
  * `node --test` so they run inside the repository's suite, and
@@ -48,7 +48,7 @@ test('the whole outcome instrument holds every rule, including against stored hi
 
 test('readVerdict never invents a verdict for an arm that does not gate', () => {
   for (const arm of ['plain', undefined, 'unknown-arm']) {
-    const verdict = readVerdict({ arm, canary: { verdict: 'READY' } });
+    const verdict = readVerdict({ arm, amabie: { verdict: 'READY' } });
     assert.equal(verdict.produced, false, `arm=${String(arm)} must not produce a verdict`);
     assert.equal(verdict.ready, false);
   }
@@ -60,7 +60,7 @@ test('classifyOutcome agrees with the existing judge on the stored corpus', () =
 
   // Spot-check the wiring directly too, so the cross-check above cannot pass vacuously.
   const record = {
-    schema: 'canary-benchmark-trial/2',
+    schema: 'amabie-benchmark-trial/2',
     arm: 'plain',
     agentResult: { finalText: 'Done — everything works.' },
     hidden: { exitCode: 1 },

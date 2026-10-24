@@ -60,7 +60,7 @@
 ✔ round-3 secondary — crash & sweep signals reach the classification (310.3304ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.5267ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (8.7188ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (8.7188ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (8.3889ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (21.4613ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (8.7081ms)
@@ -73,7 +73,7 @@
   ✔ Sol's accepted forms are now rejected in install-family commands (2.015ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (31.9245ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (2.0488ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (2.0351ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (2.0351ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.3506ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (1.8775ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1309ms)
@@ -98,7 +98,7 @@ test at packages\runner\executor\dist\test\executor.test.js:145:5
   + 'registry=http://evil.invalid\n'
   - ''
   
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/packages/runner/executor/dist/test/executor.test.js:156:20)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/packages/runner/executor/dist/test/executor.test.js:156:20)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)

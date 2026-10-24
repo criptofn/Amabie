@@ -1,7 +1,7 @@
 'use strict';
 /**
  * The project's own (VISIBLE) test runner: no dependencies, no install step, so a
- * trial never spends its budget on npm. It matches the runner-summary shape Canary's
+ * trial never spends its budget on npm. It matches the runner-summary shape Amabie's
  * Node adapter already understands ("N passing" / "N failing").
  *
  * NOTE, for the benchmark: the suite below uses SMALL inputs only, so it cannot see

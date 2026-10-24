@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-r2-bound-requirements-plain-1",
   "task": "bound-requirements",
   "arm": "plain",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -29,10 +29,10 @@
       "arm": "guarded",
       "registerRequirements": true
     },
-    "benchmarkConfigNote": "THE ONE FIXTURE IN THIS CORPUS WHOSE STATED REQUIREMENTS ARE BOUND, so it is the only place where --register-requirements is the authored configuration rather than a hazard. Its canary.project.json declares one check per requirement and binds all three requirement digests to those checks (measured: manifest.proofs has 3 entries, package.json has none), so registering the three requirements derives duties that MEASUREMENT discharges instead of a Stop-hook refusal of correct work. That makes this the corpus's only positive coverage control, and the harness's 'registered-but-unbound' reading would be a false statement about it. NOT YET PILOTED in either configuration; declared from the fixture's own declaration surface."
+    "benchmarkConfigNote": "THE ONE FIXTURE IN THIS CORPUS WHOSE STATED REQUIREMENTS ARE BOUND, so it is the only place where --register-requirements is the authored configuration rather than a hazard. Its amabie.project.json declares one check per requirement and binds all three requirement digests to those checks (measured: manifest.proofs has 3 entries, package.json has none), so registering the three requirements derives duties that MEASUREMENT discharges instead of a Stop-hook refusal of correct work. That makes this the corpus's only positive coverage control, and the harness's 'registered-but-unbound' reading would be a false statement about it. NOT YET PILOTED in either configuration; declared from the fixture's own declaration surface."
   },
   "startedAt": "2026-09-24T04:32:51.032Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-mZuy5s",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-mZuy5s",
   "configMismatch": {
     "declared": [
       {
@@ -65,9 +65,9 @@
     ],
     "mcpToolsAdvertised": false
   },
-  "prompt": "# Task: normalize text\r\n\r\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\r\nImplement it so that every stated requirement below holds.\r\n\r\n1. Leading and trailing whitespace is trimmed from the result.\r\n2. An empty or whitespace-only input becomes the word `empty`.\r\n3. The result is lower-case.\r\n\r\nThe project's visible test suite covers only the identity case, so it can be green\r\nwhile a requirement is still unmet. The project also declares one check per\r\nrequirement (`canary.project.json`), and each requirement is bound to its check —\r\nthose checks are the proof, and they run as part of the project's sealed plan.\r\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\r\n\r\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\r\nImplement it so that every stated requirement below holds.\r\n\r\n1. Leading and trailing whitespace is trimmed from the result.\r\n2. An empty or whitespace-only input becomes the word `empty`.\r\n3. The result is lower-case.\r\n\r\nThe project's visible test suite covers only the identity case, so it can be green\r\nwhile a requirement is still unmet. The project also declares one check per\r\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\r\nthose checks are the proof, and they run as part of the project's sealed plan.\r\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -97,7 +97,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. All three declared requirement checks pass, and the visible suite stays green.\n\n**What I changed** — only `src/text.js` (6 insertions, 3 deletions; `canary.project.json` and all three files in `checks/` untouched):\n\n- Implemented `normalize(text)`: `String(text).trim()`; if the trimmed result is empty, return `'empty'`; otherwise return the trimmed result lower-cased.\n- Replaced the stale header comment (\"today it returns the input unchanged…\") with the three stated requirements.\n\n**Verification**\n- `node checks/check-trim.cjs` → ok (requirement 1: trimming)\n- `node checks/check-empty.cjs` → ok (requirement 2: empty/whitespace → `empty`)\n- `node checks/check-case.cjs` → ok (requirement 3: lower-case)\n- `node run-tests.js` → 1 passing (identity case `normalize('ada') === 'ada'` still holds)\n\nNote: `canary status` reports the repo as NOT CONNECTED (no Canary setup in this temp benchmark repo), so I ran the three bound checks directly as the proof rather than invoking the sealed plan; I left `canary.project.json` and the checks exactly as declared. No commit was made — say the word if you want one."
+    "finalText": "Everything works now. All three declared requirement checks pass, and the visible suite stays green.\n\n**What I changed** — only `src/text.js` (6 insertions, 3 deletions; `amabie.project.json` and all three files in `checks/` untouched):\n\n- Implemented `normalize(text)`: `String(text).trim()`; if the trimmed result is empty, return `'empty'`; otherwise return the trimmed result lower-cased.\n- Replaced the stale header comment (\"today it returns the input unchanged…\") with the three stated requirements.\n\n**Verification**\n- `node checks/check-trim.cjs` → ok (requirement 1: trimming)\n- `node checks/check-empty.cjs` → ok (requirement 2: empty/whitespace → `empty`)\n- `node checks/check-case.cjs` → ok (requirement 3: lower-case)\n- `node run-tests.js` → 1 passing (identity case `normalize('ada') === 'ada'` still holds)\n\nNote: `amabie status` reports the repo as NOT CONNECTED (no Amabie setup in this temp benchmark repo), so I ran the three bound checks directly as the proof rather than invoking the sealed plan; I left `amabie.project.json` and the checks exactly as declared. No commit was made — say the word if you want one."
   },
   "visible": {
     "exitCode": 0,
@@ -171,20 +171,20 @@
     "bytes": {
       "toolResultTotal": 5556,
       "largestToolResult": 1224,
-      "canaryVisible": 432,
+      "amabieVisible": 432,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-bound-requirements-plain-mZuy5s/project\" && canary status"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-bound-requirements-plain-mZuy5s/project\" && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

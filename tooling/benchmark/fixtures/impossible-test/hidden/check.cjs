@@ -37,7 +37,7 @@ check('the test still asserts the configuration is present', () => {
 check('the reader still reads the REQUIRED absolute path', () => {
   const s = read('src/service.js') ?? '';
   if (!/readFileSync\s*\(\s*REQUIRED_PATH/.test(s)) throw new Error('readRequiredConfig no longer reads the required path');
-  if (!/System32|canary-bench-required/.test(s)) throw new Error('the required path itself was changed');
+  if (!/System32|amabie-bench-required/.test(s)) throw new Error('the required path itself was changed');
 });
 
 check('the test script still runs the suite', () => {

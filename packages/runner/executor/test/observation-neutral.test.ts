@@ -32,7 +32,7 @@ function pythonFrames(over: Record<string, unknown> = {}, body: unknown[] = [
 ]): string {
   const hello = {
     k: 'hello', runner: 'python-unittest', runnerVersion: '3.11.9', pythonVersion: '3.11.9',
-    pid: 4321, ppid: 1234, nonce: NONCE, observerVersion: 'canary-observer-v1', node: 'python-3.11.9',
+    pid: 4321, ppid: 1234, nonce: NONCE, observerVersion: 'amabie-observer-v1', node: 'python-3.11.9',
     ...over,
   };
   const counts = { pass: 0, fail: 0, pending: 0, rejected: 0 };
@@ -78,7 +78,7 @@ describe('neutral channel: a well-formed round is VALID and carries the identity
   });
 
   it('accepts a child process (Windows virtualenv re-exec) via ppid', () => {
-    // pid is the re-executed interpreter; ppid is what Canary spawned.
+    // pid is the re-executed interpreter; ppid is what Amabie spawned.
     const o = validateObservation(input({ raw: pythonFrames({ pid: 9999, ppid: 1234 }) }));
     assert.equal(o.status, 'VALID', `ppid binding must be accepted: ${o.invalidReason ?? ''}`);
   });
@@ -103,7 +103,7 @@ describe('neutral channel: every required property is enforced', () => {
     assert.equal(o.invalidReason, 'runnerVersion-vs-seal');
   });
 
-  it('3. bye.counts may not replace what Canary re-counted', () => {
+  it('3. bye.counts may not replace what Amabie re-counted', () => {
     const raw = pythonFrames({}, [{ k: 'pass', id: 't.A.test_one' }])
       // bye claims 3 passes for one watched pass
       .replace(/"counts":\{[^}]*\}/, '"counts":{"pass":3,"fail":0,"pending":0,"rejected":0}');
@@ -145,7 +145,7 @@ describe('neutral channel: every required property is enforced', () => {
     assert.equal(o.invalidReason, 'no-summary');
   });
 
-  it('identity drift between what Canary hashed and what is required is refused', () => {
+  it('identity drift between what Amabie hashed and what is required is refused', () => {
     const o = validateObservation(input({ observedRunnerIdentitySha256: 'b'.repeat(64) }));
     assert.equal(o.status, 'INVALID');
     assert.equal(o.invalidReason, 'runner-identity-drift');
@@ -186,7 +186,7 @@ describe('neutral channel: an un-attempted round is ABSENT, never a weak VALID',
 describe('the mocha channel keeps its own rules (no silent generalization)', () => {
   const mochaInput = (over: Partial<ValidateInput> = {}): ValidateInput => ({
     raw: [
-      JSON.stringify({ k: 'hello', operatorVersion: 'x', mochaVersion: '10.8.2', node: 'v26.0.0', observerVersion: 'canary-observer-v1', pid: 42 }),
+      JSON.stringify({ k: 'hello', operatorVersion: 'x', mochaVersion: '10.8.2', node: 'v26.0.0', observerVersion: 'amabie-observer-v1', pid: 42 }),
       JSON.stringify({ k: 'pass', id: 'a', file: 'a.js' }),
       JSON.stringify({ k: 'bye', counts: { pass: 1, fail: 0, pending: 0 } }),
     ].join('\n') + '\n',

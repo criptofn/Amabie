@@ -36,7 +36,7 @@ function cell(name, fn) {
   console.log(`${outcome.ok ? 'PASS' : 'FAIL'} ${name}${outcome.ok ? '' : ` — ${outcome.why}`}`);
 }
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-host-cap-'));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-host-cap-'));
 
 try {
   cell('spawnSync with stdio "pipe" captures stdout', () => {
@@ -90,7 +90,7 @@ const passed = results.filter((r) => r.ok).length;
 console.log(`\nhost capabilities: ${passed}/${results.length}`);
 console.log('platform:', process.platform, 'node:', process.version, 'user:', process.env.USERNAME ?? 'unknown');
 fs.writeFileSync(
-  path.join(os.tmpdir(), 'canary-host-capabilities.json'),
+  path.join(os.tmpdir(), 'amabie-host-capabilities.json'),
   JSON.stringify({ at: new Date().toISOString(), platform: process.platform, node: process.version, results }, null, 2),
 );
 process.exit(0);

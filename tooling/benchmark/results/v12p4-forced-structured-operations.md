@@ -1,4 +1,4 @@
-# Forced structured operations: measured effect on the Canary arm
+# Forced structured operations: measured effect on the Amabie arm
 
 Date: 2026-09-19. Model `qwen3.8-flash`, real Claude CLI, real confined transport, the
 repository's own fixtures, the recorded Plain arm as baseline. Evidence, not a release claim.
@@ -15,7 +15,7 @@ exact one-operation contract and report shape they were verified against.
 
 ## The measurement (same fixtures, same starting bytes, same oracle, same model)
 
-| task | Plain | Canary before | Canary forced | Δ vs Plain | turns Plain → forced | correctness |
+| task | Plain | Amabie before | Amabie forced | Δ vs Plain | turns Plain → forced | correctness |
 |---|---|---|---|---|---|---|
 | bound-requirements | 126,977 | 34,278–60,931 | **20,472** | **−83.9%** | 12 → 6 | 12/12 vs **12/12** |
 | bug-sum | 70,070 | 111,321 | **26,970** | **−61.5%** | 7 → 8 | 15/15 vs **15/15** |

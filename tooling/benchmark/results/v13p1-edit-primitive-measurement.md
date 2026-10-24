@@ -20,7 +20,7 @@ Three things were measured, at three different costs. All numbers are from execu
 | an ambiguous anchor is **refused**, file untouched | `find occurs more than once` — never "the first match" |
 | a missing anchor, and a no-op edit, are refused | file untouched in both cases |
 | `find:""` replaces the whole file | wholesale regeneration is still possible, so no capability is lost |
-| **containment is unchanged** | `edit` of an absolute path outside the sandbox, of a parent-traversal path, and of the sealed `.canary/canary.local.json` are all DENIED, and every victim is byte-unchanged |
+| **containment is unchanged** | `edit` of an absolute path outside the sandbox, of a parent-traversal path, and of the sealed `.amabie/amabie.local.json` are all DENIED, and every victim is byte-unchanged |
 
 And the size of the thing itself, for a representative change (one line added to a 2,499 B source):
 
@@ -53,7 +53,7 @@ confirmed it. That is the opposite of the `batch` outcome, and it costs 14 K tok
 `node tooling/probes/v12-token-pilot.mjs --task stateful-replay --label v13edit` (real model, real
 confined transport, real broker, hidden oracle on the promoted bytes).
 
-| | plain (recorded) | Canary v1.2 (recorded) | **Canary + `edit` (this run)** |
+| | plain (recorded) | Amabie v1.2 (recorded) | **Amabie + `edit` (this run)** |
 |---|---|---|---|
 | total tokens | 212,777 | 585,337 | **595,419** |
 | turns | 18 | 22 | **24** |
@@ -105,7 +105,7 @@ aimed, and loses when the model is regenerating a file it is still designing.
 - Any token saving attributable to this change. The aggregate moved from +175.1 % to +179.8 %, which is
   noise; the honest statement is *"output per turn fell 22.5 %, the total did not move."*
 - That `edit` is sufficient. It is necessary and insufficient.
-- Generality from one run per cell: n = 1 for the Canary arm, and the plain baseline is a *recorded*
+- Generality from one run per cell: n = 1 for the Amabie arm, and the plain baseline is a *recorded*
   run from a different day, not a paired one (the harness's known hygiene gap).
 - Any correctness change: 406/406 in both arms, before and after.
 

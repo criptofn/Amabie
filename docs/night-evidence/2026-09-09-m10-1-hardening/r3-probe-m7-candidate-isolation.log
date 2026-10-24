@@ -11,7 +11,7 @@ PASS spaces and Unicode in --path work for create and verify (argv plumbing, no 
 PASS remove refuses a dirty candidate without --discard; --discard removes exactly worktree + record
 PASS vanished candidate (crash/deleted dir): list LOST, verify blocks honestly, remove prunes the stale registration
 PASS a forged record pointing at an UNRELATED real repo is caught by git-common-dir binding; that repo is untouched
-PASS unregistered worktrees are reported and NEVER touched (user work, not Canary's)
+PASS unregistered worktrees are reported and NEVER touched (user work, not Amabie's)
 PASS a COMMITTED gitlink blocks as submodule even with NO .gitmodules — the old existence gate was blind to this
 PASS .npmrc IDENTICAL to base passes; CHANGED in the candidate blocks; checkout restores
 PASS EMPTY on-disk plan blocks honestly — no plan, no fake green (pre-M5-shaped hand edit)

@@ -1,7 +1,7 @@
 {
   "label": "H2",
-  "arm": "canary",
-  "repo": "C:\\Users\\Johannes\\Desktop\\canary-ws5-scratch\\hermes-agent",
+  "arm": "amabie",
+  "repo": "C:\\Users\\Johannes\\Desktop\\amabie-ws5-scratch\\hermes-agent",
   "startedAt": "2026-09-24T04:57:41.746Z",
   "wallSeconds": 195.2,
   "agentExitCode": 0,

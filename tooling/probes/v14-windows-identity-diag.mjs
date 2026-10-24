@@ -89,7 +89,7 @@ info('gitExe()', String(gitExe()));
 info('trustedDirs()', JSON.stringify(trustedDirs()));
 
 section('(B) CONTAINMENT — a real fixture repo, resolved by the product');
-const FIXTURE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-identity-diag-'));
+const FIXTURE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-identity-diag-'));
 try {
   const { spawnSync } = await import('node:child_process');
   const exe = gitExe();

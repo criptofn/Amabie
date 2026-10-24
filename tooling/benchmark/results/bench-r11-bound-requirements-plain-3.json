@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r11-bound-requirements-plain-3",
   "task": "bound-requirements",
   "arm": "plain",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -27,7 +27,7 @@
     ]
   },
   "startedAt": "2026-09-12T22:22:03.471Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-FBjGUD",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-FBjGUD",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -46,9 +46,9 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`canary.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -78,7 +78,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Canary isn't set up in this temp project, and connecting it isn't part of the task — the sealed plan's checks are declared in `canary.project.json` and the harness runs them; I've verified each one directly with the exact commands the plan declares (`node checks/check-*.cjs`). The checks were not modified.\n\n## Result\n\n**Everything works now.** All three requirement proofs and the visible suite pass against the current working tree:\n\n- `check-trim` → `ok: every case satisfies requirement 1`\n- `check-empty` → `ok: every case satisfies requirement 2`\n- `check-case` → `ok: every case satisfies requirement 3`\n- `run-tests.js` → `1 passing` (visible identity test still green)\n\n## What I changed\n\nOnly one file: `src/text.js`.\n\n- Implemented `normalize` (previously `return String(text)`): it now trims the input, returns `'empty'` when the trimmed result is an empty string, and otherwise returns the lower-cased trimmed text. Trim runs before the empty check so whitespace-only inputs (`'   '`, `'\\t'`) correctly become `'empty'`.\n- Updated the stale doc comment that described the unimplemented state, replacing it with the three requirements.\n\nNo checks, no `canary.project.json`, and no test files were touched — the proof digests still bind to the original checks. The change is uncommitted in the working tree for the harness/plan to verify."
+    "finalText": "Amabie isn't set up in this temp project, and connecting it isn't part of the task — the sealed plan's checks are declared in `amabie.project.json` and the harness runs them; I've verified each one directly with the exact commands the plan declares (`node checks/check-*.cjs`). The checks were not modified.\n\n## Result\n\n**Everything works now.** All three requirement proofs and the visible suite pass against the current working tree:\n\n- `check-trim` → `ok: every case satisfies requirement 1`\n- `check-empty` → `ok: every case satisfies requirement 2`\n- `check-case` → `ok: every case satisfies requirement 3`\n- `run-tests.js` → `1 passing` (visible identity test still green)\n\n## What I changed\n\nOnly one file: `src/text.js`.\n\n- Implemented `normalize` (previously `return String(text)`): it now trims the input, returns `'empty'` when the trimmed result is an empty string, and otherwise returns the lower-cased trimmed text. Trim runs before the empty check so whitespace-only inputs (`'   '`, `'\\t'`) correctly become `'empty'`.\n- Updated the stale doc comment that described the unimplemented state, replacing it with the three requirements.\n\nNo checks, no `amabie.project.json`, and no test files were touched — the proof digests still bind to the original checks. The change is uncommitted in the working tree for the harness/plan to verify."
   },
   "visible": {
     "exitCode": 0,
@@ -152,20 +152,20 @@
     "bytes": {
       "toolResultTotal": 5085,
       "largestToolResult": 1224,
-      "canaryVisible": 432,
+      "amabieVisible": 432,
       "hookOutput": 0
     },
     "commands": {
       "total": 4,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-bound-requirements-plain-FBjGUD/project\" && canary status 2>&1 | head -60"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-bound-requirements-plain-FBjGUD/project\" && amabie status 2>&1 | head -60"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

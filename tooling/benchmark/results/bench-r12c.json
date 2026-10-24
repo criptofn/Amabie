@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark/2",
+  "schema": "amabie-benchmark/2",
   "label": "bench-r12c",
   "generatedAt": "2026-09-13T06:16:11.134Z",
   "instrument": {
@@ -51,7 +51,7 @@
         "A_candidate_wrong": 1
       },
       "regressions": 0,
-      "canaryTrials": 1,
+      "amabieTrials": 1,
       "falseGreen": 0,
       "falseRed": 0,
       "suiteRedAfterClaim": 0,
@@ -73,12 +73,12 @@
       "turnsMean": 47,
       "wallSecsMean": 1500,
       "agentVisibleBytesMean": 182970,
-      "canaryVisibleBytesMean": 2626,
+      "amabieVisibleBytesMean": 2626,
       "checkRunsByModelMean": 0,
-      "canaryCommandsByModelMean": 1,
+      "amabieCommandsByModelMean": 1,
       "tokensAfterCodeCorrect": null,
       "tokensAfterCodeCorrectTrials": 0,
-      "canaryHookSeenInStream": 0,
+      "amabieHookSeenInStream": 0,
       "assistantEventsMean": 109,
       "hookOutputBytesMean": 0,
       "tokenSource": [
@@ -108,7 +108,7 @@
           "A_candidate_wrong": 1
         },
         "regressions": 0,
-        "canaryTrials": 1,
+        "amabieTrials": 1,
         "falseGreen": 0,
         "falseRed": 0,
         "suiteRedAfterClaim": 0,
@@ -130,12 +130,12 @@
         "turnsMean": 47,
         "wallSecsMean": 1500,
         "agentVisibleBytesMean": 182970,
-        "canaryVisibleBytesMean": 2626,
+        "amabieVisibleBytesMean": 2626,
         "checkRunsByModelMean": 0,
-        "canaryCommandsByModelMean": 1,
+        "amabieCommandsByModelMean": 1,
         "tokensAfterCodeCorrect": null,
         "tokensAfterCodeCorrectTrials": 0,
-        "canaryHookSeenInStream": 0,
+        "amabieHookSeenInStream": 0,
         "assistantEventsMean": 109,
         "hookOutputBytesMean": 0,
         "tokenSource": [
@@ -147,7 +147,7 @@
   },
   "tokenDelta": {},
   "kpi": {},
-  "canaryAgreement": {
+  "amabieAgreement": {
     "trials": 1,
     "correctnessTrials": 1,
     "falseGreen": 0,
@@ -165,8 +165,8 @@
         "task": "multi-requirement-pricing",
         "arm": "workflow",
         "oracleKind": "correctness",
-        "canaryVerdict": "NOT PROVEN",
-        "canaryGreen": false,
+        "amabieVerdict": "NOT PROVEN",
+        "amabieGreen": false,
         "hiddenGreen": false,
         "falseGreen": false,
         "falseRed": false,
@@ -209,9 +209,9 @@
       "turns": 47,
       "secs": 1500,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 1,
+      "amabieCommandsByModel": 1,
       "agentVisibleBytes": 182970,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     }
   ]

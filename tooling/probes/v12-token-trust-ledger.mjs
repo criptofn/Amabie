@@ -20,7 +20,7 @@ for(const file of Object.keys(originals).filter(f=>/^v12tok-(main|guarded)-.+-(p
       cacheCreation:u.cacheCreationTokens,total:u.totalTokens,turns:record.agentResult.numTurns,uniqueMessages:record.stream.messages,
       model:record.agent.model,cliVersion:null,rawAvailable:false,visibleBytes:record.stream.bytes.toolResultTotal,
       partialUsage:!record.stream.streamedUsageUsable,hidden:record.hidden,visible:record.visible,configMismatch:record.configMismatch,
-      claimsDone:record.claimsDone,falseDone:record.falseDone,canaryVerdict:record.canary?.verdict});
+      claimsDone:record.claimsDone,falseDone:record.falseDone,amabieVerdict:record.amabie?.verdict});
     continue;
   }
   const raw=fs.readFileSync(streamFile,'utf8');
@@ -62,7 +62,7 @@ for(const file of Object.keys(originals).filter(f=>/^v12tok-(main|guarded)-.+-(p
     rawAvailable:true,rawHash:sha(raw),visibleBytes:sum(outputs,'bytes'),recordVisibleBytes:record.stream.bytes.toolResultTotal,
     candidateCorrect:record.hidden?.oracleError === false && record.hidden?.exitCode === 0 && record.hidden?.passing === record.hidden?.total,
     hidden:record.hidden,visible:record.visible,claimsDone:record.claimsDone,falseDone:record.falseDone,
-    canaryVerdict:record.canary?.verdict,promoted:record.canary?.baseMoved === true && record.canary?.acceptedPromotionBundles?.length > 0,
+    amabieVerdict:record.amabie?.verdict,promoted:record.amabie?.baseMoved === true && record.amabie?.acceptedPromotionBundles?.length > 0,
     configMismatch:record.configMismatch,unboundResponses:unbound.length,bindingActions:selfBinding.length,
     partialUsage:[...messages.values()].some(m=>!m.usage?.output_tokens),
     initKeys:Object.keys(init??{}),resultKeys:Object.keys(result)};
@@ -87,10 +87,10 @@ const category=m=>{
   const calls=m.tools.map(t=>JSON.stringify(t.input)).join('\n');
   if(!m.tools.length) return 'narration';
   if(/proofs|\bbind\b/.test(calls)) return 'binding';
-  if(/apps[\\/]+cli[\\/]+src|onboarding\.(ts|js)|candidate\.(ts|js)/.test(calls)) return 'canary-source-investigation';
-  if(/\bsetup\b/.test(calls)&&/main\.js|canary/.test(calls)) return 'setup-reseal';
-  if(/\bwork\s/.test(calls)&&/main\.js|canary/.test(calls)) return 'candidate-creation-or-refusal';
-  if(/\bfinish\b|--promote/.test(calls)&&/main\.js|canary/.test(calls)) return 'finish-or-retry';
+  if(/apps[\\/]+cli[\\/]+src|onboarding\.(ts|js)|candidate\.(ts|js)/.test(calls)) return 'amabie-source-investigation';
+  if(/\bsetup\b/.test(calls)&&/main\.js|amabie/.test(calls)) return 'setup-reseal';
+  if(/\bwork\s/.test(calls)&&/main\.js|amabie/.test(calls)) return 'candidate-creation-or-refusal';
+  if(/\bfinish\b|--promote/.test(calls)&&/main\.js|amabie/.test(calls)) return 'finish-or-retry';
   if(/\b(doctor|checkpoint|result|status)\b/.test(calls)&&/main\.js/.test(calls)) return 'status-verification';
   if(/\b(stash|restore|reset|checkout|clean)\b/.test(calls)&&/git/.test(calls)) return 'git-recovery';
   if(/npm (?:run )?test|node .*run-tests|--verify|checks[\\/]/.test(calls)) return 'tests-verification';
@@ -112,7 +112,7 @@ if(sum(Object.values(categories),'delta')!==totals.workflow.turns-totals.plain.t
 const report={originals,totals,originalStrata,delta,deltaPercent:100*delta/totals.plain.total,cacheShare:100*(totals.workflow.cacheRead-totals.plain.cacheRead)/delta,
   guardedDeltaPercent:100*(totals.guarded.total/totals.plain.total-1),stratumA:strata,guardedStratumADeltaPercent:100*(strata.guarded/strata.plain-1),categories,
   accountingLimit:'Categories assign unique assistant message IDs by explicit command precedence, not causal counterfactual turns. The remaining CLI count is unattributable; all per-category billed token costs are unavailable, not zero.',rows,traces};
-const out=path.join(os.tmpdir(),'canary-v12-token-trust-ledger.json');
+const out=path.join(os.tmpdir(),'amabie-v12-token-trust-ledger.json');
 fs.writeFileSync(out,JSON.stringify(report,null,2));
 console.log(JSON.stringify({...report,originals:undefined,traces:undefined,rows:rows.map(({file,task,arm,total,turns,uniqueMessages,model,cliVersion,visibleBytes,unboundResponses,bindingActions,partialUsage})=>({file,task,arm,total,turns,uniqueMessages,model,cliVersion,visibleBytes,unboundResponses,bindingActions,partialUsage}))},null,2));
 console.log(`PASS raw result/record reconciliation for ${rows.filter(r=>r.rawAvailable).length} trials; ${rows.filter(r=>!r.rawAvailable).length} have stored records ONLY. Ledger: ${out}`);

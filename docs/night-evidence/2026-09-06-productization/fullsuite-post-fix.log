@@ -1,9 +1,9 @@
 
-> canary-reliability-network@0.0.0 test
+> amabie-reliability-network@0.0.0 test
 > npm run build && node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js"
 
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 ▶ panel K layer 1 — the validator refuses hostile frame streams
@@ -32,10 +32,10 @@
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (5763.5518ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (5763.7721ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (5732.5715ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (5930.3559ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (11663.2186ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (11663.2186ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✔ check on honest evidence exits 0 and prints PASS (8897.4219ms)
   ✔ check on a tampered artifact exits 3 and names the tampered file (7962.9933ms)
@@ -49,10 +49,10 @@
   ✔ test command node -e printing mocha-shaped prose is never PASS (7717.9132ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (7475.2142ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (23328.1432ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.4104ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.3743ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (4.038ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (4.038ms)
 ▶ detection (pure)
   ✔ lockfiles pick the package manager, first match wins in declared order (3.064ms)
   ✔ plan is conservative, ordered, and exact-name only (0.9165ms)
@@ -62,7 +62,7 @@
 ✔ detection (pure) (10.6894ms)
 ▶ setup
   ✔ happy path: READY, hook registered, evidence written, user repo untouched otherwise (1298.5129ms)
-  ✔ re-run is idempotent: one Canary entry, no duplicates, user entry preserved (1332.6187ms)
+  ✔ re-run is idempotent: one Amabie entry, no duplicates, user entry preserved (1332.6187ms)
   ✔ malformed settings.json: refuse, exit NEEDS ATTENTION, bytes untouched (124.3288ms)
   ✔ S5: valid JSON with a non-list hooks section gets a plain-words refusal, not an internal crash (245.3306ms)
   ✔ failing project checks never print READY (NO PROOF, NO DONE) (1524.3605ms)
@@ -74,7 +74,7 @@
   ✔ pass -> silent allow (human never interrupted) (1166.9144ms)
   ✔ failure -> decision:block with the reason (agent gets a repair turn) (1191.172ms)
   ✔ loop guard: stop_hook_active allows with an honest systemMessage, never re-blocks (1237.2394ms)
-  ✔ repo without Canary wiring: exit 0, silent (stay out of the way) (108.2251ms)
+  ✔ repo without Amabie wiring: exit 0, silent (stay out of the way) (108.2251ms)
   ✔ S2: a config written by a different installation never executes — loud UNVERIFIED instead (706.9489ms)
   ✔ S7: a parseable-but-wrong-shape config is treated as corrupt everywhere, never a crash (1544.022ms)
 ✔ checkpoint (harness entry) (5954.9503ms)
@@ -82,9 +82,9 @@
   ✔ READY after a green setup; hook deletion is detected loudly; --run still works (now always-on) (3350.4184ms)
   ✔ S4: a FORGED or stale checkpoint file can never produce READY — only this run can (1512.9936ms)
   ✔ never set up -> NEEDS ATTENTION with the one command; outside git -> UNSUPPORTED (219.8752ms)
-  ✔ uninstall removes exactly Canary, preserves everything else; repeat is safe (1524.9385ms)
+  ✔ uninstall removes exactly Amabie, preserves everything else; repeat is safe (1524.9385ms)
   ✔ S1: an out-of-repo touched path in the config is refused, untouched, loudly (803.3164ms)
-  ✔ S6: partial cleanup keeps .canary so the promised retry can actually finish (792.9443ms)
+  ✔ S6: partial cleanup keeps .amabie so the promised retry can actually finish (792.9443ms)
   ✔ S2-adjacent: uninstall of a foreign-cliPath config is refused (cannot prove ownership) (608.79ms)
 ✔ doctor + uninstall (8813.7925ms)
 ▶ degenerate empty plan (hand-edited config must not fake green)
@@ -95,7 +95,7 @@
   ✔ setup refuses outright when a managed file is a link (dangling included) (103.3856ms)
 ✔ link containment (S3) (1599.2177ms)
 ▶ hook entry shape + ownership
-  ✔ hasCanaryEntry matches exact command only (0.2034ms)
+  ✔ hasAmabieEntry matches exact command only (0.2034ms)
 ✔ hook entry shape + ownership (0.2793ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✔ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (8692.0499ms)
@@ -372,7 +372,7 @@
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.142ms)
 ✔ post-GLM — execution-observation gate (rule 14) (3.2211ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.2689ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.2689ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.1551ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.1352ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.1555ms)
@@ -578,7 +578,7 @@
 ✔ round-3 secondary — crash & sweep signals reach the classification (485.2992ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.1227ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (11.5365ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (11.5365ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (12.3456ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (28.9594ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (14.1743ms)
@@ -594,7 +594,7 @@
   ✔ Sol's accepted forms are now rejected in install-family commands (2.1453ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (37.1744ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (60.2098ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (8.6468ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (8.6468ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.503ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (5.7205ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1432ms)
@@ -644,7 +644,7 @@
 ✔ audit F6 — child env observation: declared == observed (1637.7499ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (5.2472ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3907ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.3907ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (6.9682ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.3393ms)

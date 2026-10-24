@@ -8,7 +8,7 @@
 > Task :testClasses UP-TO-DATE
 > Task :test
 
-[Incubating] Problems report is available at: file:///C:/Users/Johannes/Desktop/canary-ws5-scratch/schniedelsmp/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///C:/Users/Johannes/Desktop/amabie-ws5-scratch/schniedelsmp/build/reports/problems/problems-report.html
 
 BUILD SUCCESSFUL in 3s
 4 actionable tasks: 2 executed, 2 up-to-date

@@ -1,13 +1,13 @@
 /**
- * Canary classification — the decision table from docs/PLAN.md section 6.
+ * Amabie classification — the decision table from docs/PLAN.md section 6.
  *
  * This function is TOTAL, PURE, and DETERMINISTIC. It consumes only run
  * facts produced by the executor. Nothing probabilistic, nothing LLM-driven.
- * The security of Canary's whole claim rests here — and since the post-GLM
+ * The security of Amabie's whole claim rests here — and since the post-GLM
  * observation hardening it rests on TWO channels, precisely because the old
  * one was alone insufficient: the text channel (exit codes, structural output
  * properties) says what the subject PRINTED, and the execution-observation
- * channel says what Canary WATCHED happen inside a pinned-bytes runner it
+ * channel says what Amabie WATCHED happen inside a pinned-bytes runner it
  * injected. Strong and execution-claim labels (STRONG_EXECUTION_LABELS)
  * require every round of both arms to carry a VALID observation whose counts
  * and identities agree with the text; without that, rule 14 sends the
@@ -74,7 +74,7 @@ export interface RoundFact {
    *  recorded internally but omitted from evidence/classification). */
   sweepFailed?: boolean | undefined;
   /**
-   * POST-GLM OBSERVATION HARDENING — Canary's OWN record of execution for
+   * POST-GLM OBSERVATION HARDENING — Amabie's OWN record of execution for
    * this round (see packages/runner/executor/src/observation.ts for what the
    * channel is and what it honestly proves). REQUIRED on every round in the
    * evidence contract; typed optional here so classification stays total over
@@ -116,39 +116,39 @@ export interface ObservedCounts {
 export interface ExecutionObservation {
   status: ObservationStatus;
   /** Always present: [] when no VALID stream produced failures. Sorted,
-   *  deduped canonical ' > ' titlePath identities Canary WATCHED fail. */
+   *  deduped canonical ' > ' titlePath identities Amabie WATCHED fail. */
   observedFailingIdentities: readonly string[];
   /** sha256 of the retained fd-3 bytes (empty-file hash when nothing arrived). */
   framesSha256: string;
   /** Number of NDJSON frames in the retained bytes. */
   frameCount: number;
   observedCounts?: ObservedCounts;
-  /** Pinned-release version the observer was injected against (Canary truth). */
+  /** Pinned-release version the observer was injected against (Amabie truth). */
   expectedMochaVersion?: string;
   /** hello.mochaVersion as emitted by the in-process observer. */
   observedMochaVersion?: string;
-  /** Pin-table hash the injection decision used (Canary-repo value). */
+  /** Pin-table hash the injection decision used (Amabie-repo value). */
   expectedRunnerTreeSha256?: string;
-  /** Hash Canary computed over the resolved package directory at expansion. */
+  /** Hash Amabie computed over the resolved package directory at expansion. */
   observedRunnerTreeSha256?: string;
   /**
    * PROVIDER-NEUTRAL CHANNEL IDENTITY (v1.1 Phase 2).
    *
    * The mocha fields above were the only channel identity that existed, which
    * made "strong label" structurally synonymous with "pinned mocha". These
-   * fields carry the same facts for any adapter — the runner Canary required,
-   * the version it required, and a digest of the runner's own bytes as Canary
+   * fields carry the same facts for any adapter — the runner Amabie required,
+   * the version it required, and a digest of the runner's own bytes as Amabie
    * hashed them on disk — so a non-package runner (a stdlib test framework, a
    * toolchain binary) can be bound just as tightly without inventing a second
    * observation vocabulary. They are ABSENT on mocha rounds, which keeps every
    * existing iff-rule and every existing bundle byte-identical.
    */
   runner?: string;
-  /** The version Canary required (from its own pin/sealed identity), and what
+  /** The version Amabie required (from its own pin/sealed identity), and what
    *  the observer reported. Present iff a non-mocha channel was attempted. */
   expectedRunnerVersion?: string;
   observedRunnerVersion?: string;
-  /** sha256 of the runner's own bytes: Canary-computed (observed) and required
+  /** sha256 of the runner's own bytes: Amabie-computed (observed) and required
    *  (expected). Present iff a non-mocha channel carried an identity pin. */
   expectedRunnerIdentitySha256?: string;
   observedRunnerIdentitySha256?: string;
@@ -360,7 +360,7 @@ export const STRONG_EXECUTION_LABELS: readonly Classification[] = [
  *      and the two channels must AGREE, not merely "not contradict";
  *  (3) Set(observedFailingIdentities) == Set(failingTestNames ?? []);
  *  (4) no exit-code contradiction: failing==0 with exit!=0 means the process
- *      died outside the tests Canary watched (and with VALID, printed-zero
+ *      died outside the tests Amabie watched (and with VALID, printed-zero
  *      text is pinned to INFRA by ungated rule 1); failing>0 with exit==0 is
  *      a masked failure — kept here as defense-in-depth even though agreement
  *      routes it via rule 1 today. NOTE (post-glm F6b): exit==-1 (killed) is
@@ -376,7 +376,7 @@ export function observationGateIssue(rounds: readonly RoundFact[]): string | nul
   for (const r of rounds) {
     const o = r.executionObservation;
     if (!o || o.status !== 'VALID') {
-      return `round ${r.arm}#${r.round} has executionObservation=${o ? o.status : 'missing'} — strong labels require a VALID Canary observation on every round`;
+      return `round ${r.arm}#${r.round} has executionObservation=${o ? o.status : 'missing'} — strong labels require a VALID Amabie observation on every round`;
     }
     const oc = o.observedCounts;
     if (!oc) return `round ${r.arm}#${r.round} is VALID without observedCounts`;
@@ -456,7 +456,7 @@ export function classify(rounds: readonly RoundFact[]): ClassificationResult {
   return {
     classification: 'INCONCLUSIVE',
     rule: 14,
-    reason: `execution unattested / channel contradicted: ${gate} — no strong or execution-claim label without a Canary-observed, pinned-runner execution on every round (previously rule ${inner.rule} ${inner.classification})`,
+    reason: `execution unattested / channel contradicted: ${gate} — no strong or execution-claim label without an Amabie-observed, pinned-runner execution on every round (previously rule ${inner.rule} ${inner.classification})`,
     details: {
       baselinePass: view.filter((r) => r.arm === 'baseline').every(pass),
       baselineUnanimous: unanimous(view.filter((r) => r.arm === 'baseline')),
@@ -581,7 +581,7 @@ function classifyTable(rounds: readonly RoundFact[]): ClassificationResult {
   //
   // The same-experiment invariant implemented here is CARDINALITY PLUS
   // FAILING-SET CONTAINMENT, not full identity correspondence. In the
-  // attested view failingTestNames ARE Canary-observed identities, so
+  // attested view failingTestNames ARE Amabie-observed identities, so
   // PRE_EXISTING_FAILURE ("every candidate failure was already failing under
   // baseline") is contradicted by containment violations: a watched
   // pass->fail transition (regression) must never be swallowed into
@@ -589,7 +589,7 @@ function classifyTable(rounds: readonly RoundFact[]): ClassificationResult {
   // comparable transition at all. Renamed/added PASSING tests at equal
   // totals (suite-composition substitution) remain inside the stated F3/
   // §8.1 ceiling — binding identity strings across two package versions
-  // needs a semantic root Canary does not have, and enforcing it would deny
+  // needs a semantic root Amabie does not have, and enforcing it would deny
   // strong verdicts to legitimate test renames.
   const wouldBeStrong =
     (bPass && (cAllPass || cAllFail)) || (!bPass && cAllFail);

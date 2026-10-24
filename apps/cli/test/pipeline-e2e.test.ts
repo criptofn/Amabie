@@ -22,24 +22,24 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { runExperiment, InfraAbort } from '../src/pipeline.js';
-import { validateBundle, structuralIssues, type EvidenceBundle } from '@canary-rn/evidence-schema';
+import { validateBundle, structuralIssues, type EvidenceBundle } from '@amabie/evidence-schema';
 import { assertProof, actualHostFingerprint, verifyArtifacts, verifyRunIdentity, verifyClassificationDerivation, type ProofExpectation } from '../src/prove.js';
-import { sha256hex } from '@canary-rn/hashing';
+import { sha256hex } from '@amabie/hashing';
 import { writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript, WIDGET_PKGS, assertDoubleObservation } from './stub-harness.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-e2e-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-e2e-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FAKE_SHA = 'a'.repeat(40);
 // Round-3 B4: the fetch seam must declare the ACTUAL digest of the bytes it
 // hands over — the pipeline retains fixture.tgz and the prove gate re-hashes
 // it (verifyRunIdentity), so a synthetic digest no byte matches dies.
-const FAKE_BYTES = Buffer.from('canary-offline-fake-tarball-bytes');
+const FAKE_BYTES = Buffer.from('amabie-offline-fake-tarball-bytes');
 const FAKE_BLOB = { bytes: FAKE_BYTES, sha256: sha256hex(FAKE_BYTES) };
 
 /**
  * A downstream repo whose test.js PASSES under widget@1 and FAILS (a REAL
- * executed failure under the pinned Canary mocha double) under widget@2.
+ * executed failure under the pinned Amabie mocha double) under widget@2.
  * `driftSwap` additionally bumps an unrelated dep (left-pad) so the candidate
  * tree drifts OUTSIDE the studied dependency subtree.
  *
@@ -89,7 +89,7 @@ async function offlineRun(driftSwap: boolean): Promise<
   makeStub(stub, { driftSwap });
   const proj = 'downstream';
   const result = await runExperiment(specFor(), repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ ...FAKE_BLOB }),
     extract: (_tgz, wsRoot) => {
       const target = path.join(wsRoot, `${proj}-${FAKE_SHA}`);
@@ -120,7 +120,7 @@ describe('audit M8 — offline pipeline end-to-end', () => {
       'candidate round must persist failing-test identities');
     assert.equal(cand.reportedFailing, 1);
     // Post-GLM Finding A: this rule-5 was EARNED, not printed — every round
-    // carries a VALID Canary observation of the pinned double executing the
+    // carries a VALID Amabie observation of the pinned double executing the
     // very counts and identities the text claims.
     assertDoubleObservation(bundle.rounds);
     // And a well-formed proof expectation passes assertProof against the logs.

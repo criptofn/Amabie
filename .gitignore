@@ -1,7 +1,9 @@
 .claude/settings.local.json
 
-# Canary run workspaces (disposable, never committed)
-.canary-runs/
+# Amabie run workspaces (disposable, never committed)
+.amabie-runs/
+# Project-local Amabie settings and trust state (machine-local)
+.amabie/
 
 # Node
 node_modules/

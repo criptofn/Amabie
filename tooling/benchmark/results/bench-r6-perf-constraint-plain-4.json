@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r6-perf-constraint-plain-4",
   "task": "perf-constraint",
   "arm": "plain",
@@ -26,7 +26,7 @@
     ]
   },
   "startedAt": "2026-09-12T09:32:12.006Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-perf-constraint-plain-eXJHF4",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-perf-constraint-plain-eXJHF4",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -47,7 +47,7 @@
   },
   "prompt": "# Task: make `aggregate` scale without changing what it returns\n\n`aggregate(rows, field)` in `src/aggregate.js` groups rows by the value of their\n`field` property. It must keep returning one entry per distinct key, in the order the\nkeys FIRST APPEAR in `rows`:\n\n```\n[{ key, count, sum }, ...]\n```\n\n- `count` counts every row whose `field` value is a non-empty string.\n- `sum` adds `row.value` only when it is a finite number. A row with a missing or\n  non-numeric `value` still counts; it just contributes `0`.\n- A row whose `field` value is not a non-empty string is skipped entirely.\n\nThe current implementation is correct but quadratic: for every row it scans the output\narray built so far. Grouping **50,000 rows with 50,000 distinct keys** must not take\nquadratic time — assume the row count can grow, and make the work per row independent\nof how many keys have been seen.\n\nKeep every behaviour above exactly as it is, including the result order and the\n`{ key, count, sum }` entry shape. Do not mutate the caller's `rows` array and do not\nmutate the row objects it contains. Keep the export `aggregate(rows, field)` in\n`src/aggregate.js` and do not add any dependency.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -151,18 +151,18 @@
     "bytes": {
       "toolResultTotal": 3921,
       "largestToolResult": 1572,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

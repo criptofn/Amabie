@@ -24,10 +24,10 @@
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (4850.9123ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (4851.119ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (4848.0298ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (4835.4273ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (9683.7167ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (9683.7167ms)
 ℹ tests 20
 ℹ suites 5
 ℹ pass 20

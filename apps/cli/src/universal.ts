@@ -1,21 +1,21 @@
 /**
- * THE UNIVERSAL PROJECT CONTRACT (v1.1) — Canary at the project level without
+ * THE UNIVERSAL PROJECT CONTRACT (v1.1) — Amabie at the project level without
  * knowing a programming language.
  *
- * WHY THIS EXISTS. Canary's native adapters (Node, Python, Rust, Go) each know how
+ * WHY THIS EXISTS. Amabie's native adapters (Node, Python, Rust, Go) each know how
  * one ecosystem declares its checks. Everything else — C/C++, C#/.NET, Java/Kotlin,
- * Swift, Zig, PHP, Ruby, Elixir — had no path at all, not because Canary could not
- * verify them but because nothing could TELL Canary what their commands are. So a
+ * Swift, Zig, PHP, Ruby, Elixir — had no path at all, not because Amabie could not
+ * verify them but because nothing could TELL Amabie what their commands are. So a
  * repository becomes verifiable through two doors:
  *
- *   1. DISCOVERY (the normal path): Canary reads the project's EXISTING, EXECUTABLE
+ *   1. DISCOVERY (the normal path): Amabie reads the project's EXISTING, EXECUTABLE
  *      truth — its CI workflow commands, its Makefile/Taskfile/justfile targets, its
  *      CMake/CTest/Meson configuration, its Gradle/Maven/dotnet/Swift/Zig/PHP/Ruby
  *      declarations — and proposes the plan those artifacts anchor. The user does not
- *      need to know their build system, or Canary's adapter model, or that this file
+ *      need to know their build system, or Amabie's adapter model, or that this file
  *      exists.
  *   2. THE MANIFEST (the escape hatch and the explicit-authority format):
- *      `canary.project.json`, for a repository whose commands are not discoverable,
+ *      `amabie.project.json`, for a repository whose commands are not discoverable,
  *      or whose author wants to state them exactly.
  *
  * NOTHING IS INVENTED. A command is proposed only when a repository artifact anchors
@@ -23,7 +23,7 @@
  * registration in its build files, or a wrapper the repository ships. Convention
  * alone (a `.gradle` file implying "there is probably a test task") is a WEAKER
  * anchor and is recorded as such in the evidence. When two equally-anchored
- * interpretations claim the same check kind, Canary does NOT pick: it reports one
+ * interpretations claim the same check kind, Amabie does NOT pick: it reports one
  * concise clarification and seals nothing.
  *
  * WHAT IT CANNOT DO, stated here rather than discovered later:
@@ -44,7 +44,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { TOOLCHAIN_ENV_KEYS } from '@canary-rn/support';
+import { TOOLCHAIN_ENV_KEYS } from '@amabie/support';
 
 import {
   assertStepArgv, parseJsonOrNull, planAuthorityDrift, sealPlanAuthority,
@@ -53,18 +53,18 @@ import {
 } from './project.js';
 
 /** The explicit-authority manifest (the escape hatch, never required). */
-export const UNIVERSAL_MANIFEST = 'canary.project.json';
-export const UNIVERSAL_MANIFEST_SCHEMA = 'canary-project/1';
+export const UNIVERSAL_MANIFEST = 'amabie.project.json';
+export const UNIVERSAL_MANIFEST_SCHEMA = 'amabie-project/1';
 
 /** What the capability levels mean, as data, so no surface has to remember them. */
 export interface ContractLevels {
   /** Any command-driven project: representable through this contract. */
   universal: string;
-  /** Canary has ecosystem-specific discovery/defaults for it. */
+  /** Amabie has ecosystem-specific discovery/defaults for it. */
   native: string[];
-  /** Canary has runner-specific execution observation for it. */
+  /** Amabie has runner-specific execution observation for it. */
   observed: string[];
-  /** Canary has sufficient independent observation AND binding for it. */
+  /** Amabie has sufficient independent observation AND binding for it. */
   strong: string[];
 }
 
@@ -85,7 +85,7 @@ interface ManifestScope { path: string; checks: ManifestCheck[] }
 const PLAN_KINDS: readonly PlanKind[] = ['tests', 'build', 'typecheck', 'bench', 'e2e'];
 
 /** The kinds a universal check may declare. A universal check can be a test, a
- *  build, a type check or a lint; anything else is not a verification kind Canary
+ *  build, a type check or a lint; anything else is not a verification kind Amabie
  *  has an obligation model for, so it is refused rather than invented. */
 function asPlanKind(v: unknown): PlanKind | null {
   return typeof v === 'string' && (PLAN_KINDS as readonly string[]).includes(v) ? v as PlanKind : null;
@@ -133,9 +133,9 @@ function argvProblem(argv: unknown, at: string): string | null {
   }
   for (const a of argv as string[]) {
     if (a.includes('\0') || /[\r\n]/.test(a)) return `${at}: an argv entry contains a control character`;
-    // `$...` tokens are Canary's own spec vocabulary; a project manifest does not
+    // `$...` tokens are Amabie's own spec vocabulary; a project manifest does not
     // get to name them.
-    if (a.startsWith('$')) return `${at}: "${a}" starts with '$' — that is Canary's own spec token vocabulary, not a command`;
+    if (a.startsWith('$')) return `${at}: "${a}" starts with '$' — that is Amabie's own spec token vocabulary, not a command`;
   }
   return null;
 }
@@ -146,26 +146,28 @@ export interface UniversalManifestRead {
 }
 
 /**
- * Read + validate `canary.project.json`. Every problem is a REFUSAL, never a
- * silently dropped check: a manifest Canary cannot honour must stop setup rather
+ * Read + validate `amabie.project.json`. Every problem is a REFUSAL, never a
+ * silently dropped check: a manifest Amabie cannot honour must stop setup rather
  * than seal a plan that quietly omits what the author declared.
  */
 export function readUniversalManifest(root: string): UniversalManifestRead {
   const file = path.join(root, UNIVERSAL_MANIFEST);
+  const fileName = UNIVERSAL_MANIFEST;
+  const schema = UNIVERSAL_MANIFEST_SCHEMA;
   if (!fs.existsSync(file)) return { manifest: null, problems: [] };
   const raw = parseJsonOrNull(file) as { schema?: unknown; scopes?: unknown; proofs?: unknown } | null;
-  if (raw === null) return { manifest: null, problems: [`${UNIVERSAL_MANIFEST} is not valid JSON`] };
-  if (raw.schema !== UNIVERSAL_MANIFEST_SCHEMA) {
-    return { manifest: null, problems: [`${UNIVERSAL_MANIFEST} must declare "schema": "${UNIVERSAL_MANIFEST_SCHEMA}" (found ${JSON.stringify(raw.schema)})`] };
+  if (raw === null) return { manifest: null, problems: [`${fileName} is not valid JSON`] };
+  if (raw.schema !== schema) {
+    return { manifest: null, problems: [`${fileName} must declare "schema": "${schema}" (found ${JSON.stringify(raw.schema)})`] };
   }
   if (!Array.isArray(raw.scopes) || raw.scopes.length === 0) {
-    return { manifest: null, problems: [`${UNIVERSAL_MANIFEST} must declare a non-empty "scopes" array — an empty declaration is ambiguous, so delete the file instead`] };
+    return { manifest: null, problems: [`${fileName} must declare a non-empty "scopes" array — an empty declaration is ambiguous, so delete the file instead`] };
   }
   const problems: string[] = [];
   const scopes: ManifestScope[] = [];
   const seenScope = new Set<string>();
   for (const [i, entry] of raw.scopes.entries()) {
-    const at = `${UNIVERSAL_MANIFEST} scopes[${i}]`;
+    const at = `${fileName} scopes[${i}]`;
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) { problems.push(`${at} must be an object { path, checks }`); continue; }
     const { path: p, checks } = entry as { path?: unknown; checks?: unknown };
     if (typeof p !== 'string' || p === '') { problems.push(`${at}: "path" must be a non-empty repository-relative directory (use "." for the repository root)`); continue; }
@@ -210,9 +212,9 @@ export function readUniversalManifest(root: string): UniversalManifestRead {
   }
   if (problems.length > 0) return { manifest: null, problems };
   /**
-   * REQUIREMENT BINDINGS, for a project that has no `package.json` to carry them.
+   * REQUIREMENT BINDINGS, including manifests alongside a native project.
    *
-   * MEASURED gap this closes: `canary.proofs` is read from `package.json`, so a Python, Rust, Go or
+   * MEASURED gap this closes: `amabie.proofs` is read from `package.json`, so a Python, Rust, Go or
    * any other non-Node project could not bind a stated requirement to a sealed check AT ALL — the
    * invariant ("every objective requirement must have a frozen proof obligation or remain NOT
    * PROVEN") was satisfiable only in Node projects, and everything else could only end in human
@@ -223,11 +225,11 @@ export function readUniversalManifest(root: string): UniversalManifestRead {
   const proofs: Record<string, string> = {};
   if (raw.proofs !== undefined) {
     if (typeof raw.proofs !== 'object' || raw.proofs === null || Array.isArray(raw.proofs)) {
-      return { manifest: null, problems: [`${UNIVERSAL_MANIFEST} "proofs" must be an object mapping a 64-hex requirement digest to a check name this manifest declares`] };
+      return { manifest: null, problems: [`${fileName} "proofs" must be an object mapping a 64-hex requirement digest to a check name this manifest declares`] };
     }
     for (const [digest, name] of Object.entries(raw.proofs as Record<string, unknown>)) {
-      if (!/^[0-9a-f]{64}$/.test(digest)) { problems.push(`${UNIVERSAL_MANIFEST} proofs["${digest}"]: the key must be a full 64-hex requirement digest (get it from: canary task --requirement "<text>")`); continue; }
-      if (typeof name !== 'string' || !declared.has(name)) { problems.push(`${UNIVERSAL_MANIFEST} proofs["${digest}"]: "${String(name)}" is not a check this manifest declares (${[...declared].sort().join(', ')})`); continue; }
+      if (!/^[0-9a-f]{64}$/.test(digest)) { problems.push(`${fileName} proofs["${digest}"]: the key must be a full 64-hex requirement digest (get it from: amabie task --requirement "<text>")`); continue; }
+      if (typeof name !== 'string' || !declared.has(name)) { problems.push(`${fileName} proofs["${digest}"]: "${String(name)}" is not a check this manifest declares (${[...declared].sort().join(', ')})`); continue; }
       proofs[digest] = name;
     }
   }
@@ -551,7 +553,7 @@ export function discoverUniversalChecks(root: string): UniversalDiscovery {
     const tied = sorted.filter((c) => rank[c.anchor] === top);
     const distinct = new Set(tied.map((c) => path.basename(c.argv[0]!).toLowerCase()));
     if (distinct.size > 1) {
-      ambiguity ??= `the ${kind} check is ambiguous: ${tied.map((c) => `\`${c.argv.join(' ')}\` (${c.evidence})`).join(' and ')} are equally anchored — Canary will not choose between them; declare the intended one in ${UNIVERSAL_MANIFEST}`;
+      ambiguity ??= `the ${kind} check is ambiguous: ${tied.map((c) => `\`${c.argv.join(' ')}\` (${c.evidence})`).join(' and ')} are equally anchored — Amabie will not choose between them; declare the intended one in ${UNIVERSAL_MANIFEST}`;
       continue;
     }
     winners.push(tied[0]!);
@@ -608,10 +610,10 @@ export const universalAdapter: ProjectAdapter = {
         }
       }
       const note = `${UNIVERSAL_MANIFEST}: ${plan.length} declared check(s) across ${manifest.manifest.scopes.length} scope(s)`;
-      // The bindings ride `source.canary` so setup seals them through the SAME path a Node project's
-      // `package.json` canary block uses — one sealing rule, two declaration surfaces.
+      // The bindings ride `source.amabie` so setup seals them through the SAME path a Node project's
+      // `package.json` amabie block uses — one sealing rule, two declaration surfaces.
       const proofs = manifest.manifest.proofs;
-      return { pm: 'universal', note, plan, source: Object.keys(proofs).length > 0 ? { canary: { proofs } } : {} };
+      return { pm: 'universal', note, plan, source: Object.keys(proofs).length > 0 ? { amabie: { proofs } } : {} };
     }
     const found = discoverUniversalChecks(root);
     if (found.ambiguity !== undefined) return { pm: 'universal', note: found.ambiguity, plan: [], source: {} };

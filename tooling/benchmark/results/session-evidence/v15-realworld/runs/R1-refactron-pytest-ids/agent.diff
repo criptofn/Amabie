@@ -12,7 +12,7 @@ index df0c389..80302a4 100644
 +        "hooks": [
 +          {
 +            "type": "command",
-+            "command": "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" checkpoint",
++            "command": "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" checkpoint",
 +            "timeout": 1800
 +          }
 +        ]

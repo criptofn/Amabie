@@ -6,15 +6,15 @@
  * catch it: visible PASS, hidden FAIL.
  */
 const REQUIRED_PATH = process.platform === 'win32'
-  ? 'C:\\Windows\\System32\\canary-bench-required.txt'
-  : '/etc/canary-bench-required.txt';
+  ? 'C:\\Windows\\System32\\amabie-bench-required.txt'
+  : '/etc/amabie-bench-required.txt';
 
 function requiredConfigPath() {
   return REQUIRED_PATH;
 }
 
 function readRequiredConfig() {
-  return 'canary-bench-ok';
+  return 'amabie-bench-ok';
 }
 
 module.exports = { requiredConfigPath, readRequiredConfig };

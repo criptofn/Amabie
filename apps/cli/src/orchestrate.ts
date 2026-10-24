@@ -9,10 +9,10 @@
  * verification or promotion — and therefore no second place for a gate to be
  * weakened.
  *
- *   canary work <name> "<intent>"     register the intent, open the candidate,
+ *   amabie work <name> "<intent>"     register the intent, open the candidate,
  *                                     tell the worker where to work and what
  *                                     will be demanded of it
- *   canary finish <name>              verify the candidate from outside it, then
+ *   amabie finish <name>              verify the candidate from outside it, then
  *                                     promote IF the objective proof holds; if a
  *                                     subjective duty is open, stop and hand the
  *                                     decision to a human
@@ -22,7 +22,7 @@
  *     re-verifies LIVE on its own (the existing M8 rule). A stored PASS is never
  *     replayed.
  *   - `finish` never closes a subjective duty. Aesthetics and "feel" still need
- *     `canary accept` in an interactive terminal, and the workflow says so
+ *     `amabie accept` in an interactive terminal, and the workflow says so
  *     instead of pretending a green plan was enough.
  */
 import { cmdIsolate } from './candidate.js';
@@ -34,7 +34,7 @@ import { cmdTask, findRepoRoot, Out, parseGlobals, readConfig, readTaskRecord, u
  *  consumer must always see exactly one object on stdout. */
 const forwarded = (args: string[]): string[] => args.filter((a) => a !== '--json' && a !== '--verbose' && a !== '--yes');
 
-/** `canary work <name> "<intent>" [--kind k] [--requirement "…"]…`
+/** `amabie work <name> "<intent>" [--kind k] [--requirement "…"]…`
  *
  * Registration happens BEFORE isolation on purpose: the candidate record freezes
  * the task at isolation, so the work is judged against the intent as it was
@@ -45,7 +45,7 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'work' });
   const root = findRepoRoot(process.cwd());
-  if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is nothing here to attach work to.', 'cd into your project, then: canary work <name> "<what to do>"'); return 2; }
+  if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is nothing here to attach work to.', 'cd into your project, then: amabie work <name> "<what to do>"'); return 2; }
   o.context({ root });
 
   // The name is the first positional; the intent is everything up to the FIRST flag.
@@ -53,10 +53,10 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
   // MEASURED BUG, reported by an AI agent under test and reproduced here: the previous
   // version collected `rest.filter(a => !a.startsWith('--'))` as the intent and
   // forwarded only the flag TOKENS (`--kind`, `--requirement`), so
-  //   canary work c1 "add the rules" --kind multi --requirement "must X"
+  //   amabie work c1 "add the rules" --kind multi --requirement "must X"
   // registered an intent of "add the rules multi must X" AND lost both values. The
   // consequence is the bad direction: the user explicitly asked for obligations and
-  // Canary silently registered FEWER, i.e. weaker verification than the human
+  // Amabie silently registered FEWER, i.e. weaker verification than the human
   // authorized. Flags and their values are now forwarded verbatim.
   const flagStart = rest.findIndex((a) => a.startsWith('--'));
   const head = flagStart === -1 ? rest : rest.slice(0, flagStart);
@@ -64,7 +64,7 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
   const name = head[0];
   const intent = head.slice(1).join(' ').trim();
   if (!name || !intent) {
-    o.verdict('NEEDS ATTENTION', 'the workflow needs a candidate name and the intent, in that order.', 'usage: canary work <name> "<what to do>" [--kind bugfix|refactor|dependency|performance|ui|multi] [--requirement "<part>"]…');
+    o.verdict('NEEDS ATTENTION', 'the workflow needs a candidate name and the intent, in that order.', 'usage: amabie work <name> "<what to do>" [--kind bugfix|refactor|dependency|performance|ui|multi] [--requirement "<part>"]…');
     return 3;
   }
 
@@ -96,16 +96,22 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
   if (cfg !== null && cfg !== 'corrupt') {
     const report = unboundRequirements(root, cfg);
     if (report.unbound.length > 0 && !report.subjective) {
+      const requirements = report.unbound.filter((item) => item.source === 'requirement');
+      const targets = report.unbound.filter((item) => item.source === 'objective-target');
+      const label = requirements.length > 0 ? 'REQUIREMENT UNBOUND' : 'OBJECTIVE TARGET UNBOUND';
       // Every line is emitted BEFORE the verdict: in `--json` mode `verdict()` writes the single
       // stdout envelope, so anything said after it would be printed outside the envelope.
-      o.say('REQUIREMENT UNBOUND — worker execution was NOT started and no candidate was opened.');
-      o.say(`  ${report.unbound.length} registered requirement(s) have no sealed proof, so no check can measure them.`);
+      o.say(`${label} — worker execution was NOT started and no candidate was opened.`);
+      if (requirements.length > 0) o.say(`  ${requirements.length} registered requirement(s) have no sealed proof, so no check can measure them.`);
+      if (targets.length > 0) o.say(`  ${targets.length} objective target(s) have no matching sealed proof.`);
       o.say(`  sealed plan script(s) available to bind: ${report.planScripts.length > 0 ? report.planScripts.join(', ') : '(none — this plan has no script that could measure a requirement)'}`);
-      for (const req of report.unbound) o.say(`  unbound: ${req.digest}`);
-      o.say('  (a purely subjective requirement is closed differently: register it with a subjective marker and a human runs `canary accept` in a terminal)');
+      for (const item of report.unbound) {
+        o.say(item.source === 'requirement' ? `  unbound: ${item.digest}` : `  unbound objective target (${item.targetKind}): ${item.digest}`);
+      }
+      o.say('  (a purely subjective requirement is closed differently: register it with a subjective marker and a human runs `amabie accept` in a terminal)');
       o.verdict('NEEDS ATTENTION',
-        'REQUIREMENT UNBOUND — a registered requirement has no sealed proof, so no check can measure it. Spending model effort on it could not have discharged it, so the worker was never started.',
-        'bind each digest to a script the sealed plan runs, then re-seal: package.json "canary": { "proofs": { "<digest>": "<script>" } } → canary setup');
+        `${label} — the registered criteria have no matching sealed proof. Spending model effort on them could not discharge the objective duty, so the worker was never started.`,
+        'operator action only: amabie bind <matching sealed script> --requirement "<exact task or requirement text>" --reseal');
       return 2;
     }
   }
@@ -115,14 +121,14 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
    *
    * MEASURED (tooling/probes/v13-journey-baseline.mjs, three fixtures differing only in the WORDING of
    * the intent): `work task1 "Reject empty names in greeting()"` exited 0, opened the candidate, and
-   * printed `next: ... canary finish task1`. The worker then delivered a correct, tested, discriminating
+   * printed `next: ... amabie finish task1`. The worker then delivered a correct, tested, discriminating
    * fix — and `finish` refused it, exit 2, `obligation [task-authority] UNPROVEN`, base untouched. The
    * SAME change completed (`finish` exit 0, bytes promoted) when the intent happened to contain "fix".
    *
    * So completion depended on whether prose matched a keyword regex. The gate itself is right and stays
    * exactly as it is: `candidate.ts` freezes the task's kinds as the authority to judge a candidate at
    * all, and an authority-free candidate is precisely how §10 was bypassed. What was wrong is that
-   * Canary KNEW at handoff — it even printed "NOTICE: no obligation could be derived from this intent"
+   * Amabie KNEW at handoff — it even printed "NOTICE: no obligation could be derived from this intent"
    * — and still handed the worker a task whose completion was already impossible, with a success-shaped
    * `next:` line. That is the same defect class as REQUIREMENT UNBOUND one level up: a duty the worker
    * cannot close, discovered after its budget is gone instead of before a single token is spent.
@@ -137,10 +143,10 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
     o.say('  candidate freezes its kinds at isolation as the authority to judge it at all. Whatever the');
     o.say('  worker delivered, that candidate could never be completed. Saying so here costs nothing;');
     o.say('  discovering it at the end costs the whole session (measured: that is what v1.2 shipped).');
-    o.say(`  kinds Canary can derive an obligation from: ${TASK_KINDS.join(', ')}`);
+    o.say(`  kinds Amabie can derive an obligation from: ${TASK_KINDS.join(', ')}`);
     o.verdict('NEEDS ATTENTION',
       'CANNOT BE JUDGED — the task states no kind of work, so nothing it delivers could be proven complete. No candidate was opened and no worker was started.',
-      `say what kind of work this is, or what must be provable: canary work <name> "<intent>" --kind <${TASK_KINDS.join('|')}>   (or --requirement "<a behaviour someone could measure>")`);
+      `say what kind of work this is, or what must be provable: amabie work <name> "<intent>" --kind <${TASK_KINDS.join('|')}>   (or --requirement "<a behaviour someone could measure>")`);
     return 2;
   }
 
@@ -150,11 +156,11 @@ export async function cmdWork(rawArgs: string[]): Promise<number> {
 
   o.verdict('CONNECTED',
     `"${name}" is open for work, and the intent is frozen into it.`,
-    `work ONLY in the candidate directory printed above, commit there, then: canary finish ${name}`);
+    `work ONLY in the candidate directory printed above, commit there, then: amabie finish ${name}`);
   return 0;
 }
 
-/** `canary finish <name>`
+/** `amabie finish <name>`
  *
  * The objective path completes here: verify from outside the candidate, and — if
  * every objective duty holds — promote. A NOT PROVEN or BLOCKED result returns
@@ -164,28 +170,28 @@ export async function cmdFinish(rawArgs: string[]): Promise<number> {
   const o = new Out(opts.verbose, opts.json);
   o.context({ command: 'finish' });
   const root = findRepoRoot(process.cwd());
-  if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is no candidate registry here.', 'cd into your project, then: canary finish <name>'); return 2; }
+  if (!root) { o.verdict('UNSUPPORTED', 'not inside a git repository — there is no candidate registry here.', 'cd into your project, then: amabie finish <name>'); return 2; }
   o.context({ root });
   const name = rest.find((a) => !a.startsWith('--'));
-  if (!name) { o.verdict('NEEDS ATTENTION', 'name the candidate to finish.', 'usage: canary finish <name>'); return 3; }
+  if (!name) { o.verdict('NEEDS ATTENTION', 'name the candidate to finish.', 'usage: amabie finish <name>'); return 3; }
 
   // 1. verify the committed candidate against the base's sealed authority
   const verified = await cmdIsolate(['--verify', name]);
   if (verified !== 0) {
     o.verdict('NEEDS ATTENTION',
       'the candidate is NOT eligible: the sealed checks did not pass, or an objective duty is unmet or unproven. The base is untouched. Nothing was promoted.',
-      `read the report above, fix exactly what it names, commit in the candidate, then: canary finish ${name}`);
+      `read the report above, fix exactly what it names, commit in the candidate, then: amabie finish ${name}`);
     return verified;
   }
 
   // 2. promotion re-verifies LIVE and fast-forwards only the exact verified commit
   const promoted = await cmdIsolate(['--promote', name]);
   if (promoted !== 0) {
-    o.verdict('NEEDS ATTENTION', 'verification passed, but promotion was refused. The base is untouched.', 'read the refusal above, then: canary finish ' + name);
+    o.verdict('NEEDS ATTENTION', 'verification passed, but promotion was refused. The base is untouched.', 'read the refusal above, then: amabie finish ' + name);
     return promoted;
   }
   o.verdict('CONNECTED',
     `"${name}" is verified and promoted — the base now carries the exact bytes that passed.`,
-    `clean up when you are done: canary isolate --remove ${name}`);
+    `clean up when you are done: amabie isolate --remove ${name}`);
   return 0;
 }

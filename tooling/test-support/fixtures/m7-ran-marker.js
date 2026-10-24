@@ -7,5 +7,5 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-fs.writeFileSync(process.argv[2] ?? path.join(os.tmpdir(), 'canary-m7-swap-ran.txt'), `ran by pid ${process.pid}\n`);
+fs.writeFileSync(process.argv[2] ?? path.join(os.tmpdir(), 'amabie-m7-swap-ran.txt'), `ran by pid ${process.pid}\n`);
 process.exit(0);

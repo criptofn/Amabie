@@ -38,7 +38,7 @@ const git = (dir, ...args) => {
   assert.equal(r.status, 0, `git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 };
-const canary = (args, cwd, input) =>
+const amabie = (args, cwd, input) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, input, encoding: 'utf8', timeout: 120_000 });
 
 if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing'); process.exit(1); }
@@ -47,9 +47,9 @@ if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing');
   if (v.status !== 0) { console.log('FAIL git is required for this probe but did not run'); process.exit(1); }
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m4-probe-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m4-probe-'));
 const bundleDir = (root, source) => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   const dirs = fs.readdirSync(d).filter((x) => x.endsWith(`-${source}`)).sort();
   assert.ok(dirs.length > 0, `no ${source} bundle`);
   return path.join(d, dirs.at(-1));
@@ -61,7 +61,7 @@ function makeRealGitRepo(name, testCmd) {
   const root = path.join(TMP, name);
   fs.mkdirSync(root, { recursive: true });
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
   git(root, 'config', 'user.name', 'probe');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: testCmd ?? `node "${FX('f-pass.js')}"` } }, null, 2));
@@ -75,7 +75,7 @@ try {
   // ---- 1. real bytes: head AND tree identity, baseline stamped at wiring
   const root = makeRealGitRepo('identity');
   check('setup binds the bundle to the real commit AND tree, baseline = same moment', () => {
-    const r = canary(['setup', '--yes', root]);
+    const r = amabie(['setup', '--yes', root]);
     assert.equal(r.status, 0, r.stdout);
     const b = latestBundle(root, 'setup');
     assert.equal(b.candidate.resolved, true);
@@ -98,7 +98,7 @@ try {
     fs.writeFileSync(path.join(root, 'extra.txt'), 'moved on\n');
     git(root, 'add', 'extra.txt');
     git(root, 'commit', '-m', 'move');
-    const out = canary(['checkpoint'], root, JSON.stringify({ cwd: root }));
+    const out = amabie(['checkpoint'], root, JSON.stringify({ cwd: root }));
     assert.equal(out.status, 0);
     assert.ok(!out.stdout.trim(), `expected silent pass, got: ${out.stdout}`);
     const b = latestBundle(root, 'checkpoint');
@@ -113,15 +113,15 @@ try {
   const liar = makeRealGitRepo('wire', `node "${FX('f-liar.js')}"`);
   const task = 'Make the liar fixture honest and ship it';
   check('checkpoint with task: block unchanged, taskDigest stored, prose never stored', () => {
-    canary(['setup', '--yes', liar]);
-    const out = canary(['checkpoint'], liar, JSON.stringify({ cwd: liar, task }));
+    amabie(['setup', '--yes', liar]);
+    const out = amabie(['checkpoint'], liar, JSON.stringify({ cwd: liar, task }));
     assert.equal(out.status, 0); // wire contract unchanged
     assert.equal(JSON.parse(out.stdout).decision, 'block');
     const b = latestBundle(liar, 'checkpoint');
     assert.equal(b.provenance.taskDigest, sha256(task));
     const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) =>
       e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
-    for (const f of walk(path.join(liar, '.canary'))) {
+    for (const f of walk(path.join(liar, '.amabie'))) {
       assert.ok(!fs.readFileSync(f, 'utf8').includes('honest and ship'), `${f} must not carry raw task prose`);
     }
   });
@@ -137,15 +137,15 @@ try {
     fs.writeFileSync(jsonPath, bytes.replace('"status": "fail"', '"status": "pass"'));
     assert.notEqual(sha256(fs.readFileSync(jsonPath, 'utf8')), rec.sha256, 'tamper must show');
     // tampered bytes are never read back: the real checkpoint still blocks on execution
-    const out = canary(['checkpoint'], liar, JSON.stringify({ cwd: liar }));
+    const out = amabie(['checkpoint'], liar, JSON.stringify({ cwd: liar }));
     assert.equal(JSON.parse(out.stdout).decision, 'block');
   });
 
   // ---- 5. doctor carries the same provenance forward
   check('doctor bundle inherits the setup-time baseline from trusted config', () => {
-    const r = canary(['doctor', root]);
+    const r = amabie(['doctor', root]);
     assert.equal(r.status, 0, r.stdout);
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
     const b = latestBundle(root, 'doctor');
     assert.deepEqual(b.provenance.baseline, cfg.baseline);
     assert.match(b.provenance.planDigest, /^[0-9a-f]{64}$/);

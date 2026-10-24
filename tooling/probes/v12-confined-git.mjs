@@ -25,15 +25,16 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { productionTool, native } from '../../apps/cli/dist/src/provider/production.js';
 import { removeMeasurementAuthority } from '../../apps/cli/dist/src/provider/production-measurement.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..'), cli = path.join(repo, 'apps/cli/dist/src/main.js');
 const worker = path.join(repo, 'tooling/test-support/fixtures/git-escape-worker.cjs');
 const dosScript = path.join(repo, 'tooling/test-support/fixtures/dos-device.ps1');
 const powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const git = hostGit();
 const controlsOnly = process.argv.includes('--controls');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-confined-git-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-confined-git-'));
 const base = path.join(root, 'base'), work = path.join(root, 'work'), template = path.join(root, 'template');
 const outside = path.join(root, 'outside'), helpers = path.join(outside, 'helpers'), store = path.join(root, 'store');
 const slash = p => p.replaceAll('\\', '/');
@@ -45,7 +46,7 @@ const readSignal = id => ctx => ctx.row?.kind === 'read' ? ctx.row.allowed === t
 const helperSignal = id => ctx => ctx.row?.escaped === true || ctx.markers.has(id);
 // A work-tree listing is proof of an outside read only when it names a file that
 // exists OUTSIDE the sandbox and nowhere inside it.
-const listingSignal = ctx => ctx.row?.status === 0 && /ESCAPE_CANARY_UNTRACKED/.test(ctx.row.stdout ?? '');
+const listingSignal = ctx => ctx.row?.status === 0 && /ESCAPE_AMABIE_UNTRACKED/.test(ctx.row.stdout ?? '');
 const mapSignal = (letter, expect) => ctx => {
   const now = ctx.devices[letter], before = ctx.before[letter];
   if (now === undefined) return false;
@@ -94,8 +95,11 @@ const ESCAPE_VECTORS = {
     includeIf: { attribution: ['rb-outside-secret'] },
     'core.worktree-status': { attribution: ['rb-outside-listing'], signal: listingSignal },
   },
+  // `core.editor` is NOT tested: with stdin from /dev/null, Windows git 2.55 launches no editor (verified: `commit -m x -e` and a bare
+  // `commit` both run none), so the positive control never fired. Linux git 2.43 does launch it without a terminal, so this is
+  // platform-specific. Recorded as non-coverage, like core.pager.
   'git-exec': Object.fromEntries(['hooksPath-hookrun', 'hooksPath-commit', 'external-diff', 'GIT_EXTERNAL_DIFF', 'textconv',
-    'filter-clean', 'fsmonitor', 'editor', 'sshCommand', 'gpgProgram'].map(id => [id, { attribution: ['rb-helper-listing'], signal: helperSignal(id) }])),
+    'filter-clean', 'fsmonitor', 'sshCommand', 'gpgProgram'].map(id => [id, { attribution: ['rb-helper-listing'], signal: helperSignal(id) }])),
   alias: {
     'subst-create-y-trusted': { attribution: ['rb-trusted-checkout-listing'], signal: ctx => ctx.devices['Y:'] !== undefined },
     'alias-created-read': { attribution: ['rb-trusted-checkout-listing'], control: ['reads', 'trusted-checkout-listing'] },
@@ -124,7 +128,7 @@ let aliasRemovals = [];
 
 let enrolled;
 let baselineDevices = {};
-const report = { schema: 'canary-confined-git-escape/2', host: {}, environment: {}, vectors: [], positives: [], reconnaissance: {} };
+const report = { schema: 'amabie-confined-git-escape/2', host: {}, environment: {}, vectors: [], positives: [], reconnaissance: {} };
 let CFG_REPORT, cfgObject;
 
 const run = (exe, args, cwd = base, timeout = 300000) => {
@@ -145,7 +149,7 @@ const devices = () => dos('list').map;
 const markerNames = () => fs.readdirSync(outside).filter(f => /^ran-.*\.txt$/.test(f)).map(f => f.slice(4, -4));
 const clearMarkers = () => { for (const f of fs.readdirSync(outside)) if (/^ran-.*\.txt$/.test(f)) fs.rmSync(path.join(outside, f)); };
 const markerPath = id => path.join(outside, `ran-${id}.txt`);
-const helperText = id => `#!/bin/sh\necho ESCAPE_CANARY\necho ran > "${slash(markerPath(id))}"\n`;
+const helperText = id => `#!/bin/sh\necho ESCAPE_AMABIE\necho ran > "${slash(markerPath(id))}"\n`;
 
 function buildTemplate() {
   fs.mkdirSync(template);
@@ -251,18 +255,18 @@ try {
   }
   run(git, ['add', '.'], base); run(git, ['commit', '-m', 'base'], base);
   run(git, ['add', '.'], outside); run(git, ['commit', '-m', 'outside base'], outside);
-  fs.writeFileSync(path.join(outside, 'secret.config'), '[canary]\nprobe = ESCAPE_CANARY\n');
-  fs.writeFileSync(path.join(outside, 'ESCAPE_CANARY'), 'ESCAPE_CANARY\n');
-  run(git, ['config', 'canary.probe', 'ESCAPE_CANARY'], outside);
-  run(git, ['add', 'ESCAPE_CANARY'], outside);
+  fs.writeFileSync(path.join(outside, 'secret.config'), '[amabie]\nprobe = ESCAPE_AMABIE\n');
+  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE'), 'ESCAPE_AMABIE\n');
+  run(git, ['config', 'amabie.probe', 'ESCAPE_AMABIE'], outside);
+  run(git, ['add', 'ESCAPE_AMABIE'], outside);
   run(git, ['commit', '-m', 'outside secret'], outside);
-  for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'editor', 'sshCommand']) {
+  for (const id of ['external-diff', 'GIT_EXTERNAL_DIFF', 'textconv', 'filter-clean', 'fsmonitor', 'gpgProgram', 'sshCommand']) {
     fs.writeFileSync(path.join(helpers, `ran-${id}.sh`), helperText(id));
   }
   fs.writeFileSync(path.join(helpers, 'pre-commit'), helperText('hooksPath'));
   // A file that exists only OUTSIDE, so a work-tree listing naming it is proof of an
   // outside read even when the outside repo's tracked content is also named.
-  fs.writeFileSync(path.join(outside, 'ESCAPE_CANARY_UNTRACKED'), 'ESCAPE_CANARY\n');
+  fs.writeFileSync(path.join(outside, 'ESCAPE_AMABIE_UNTRACKED'), 'ESCAPE_AMABIE\n');
   buildTemplate();
 
   // ── trusted-side path forms a confined worker could not compute for itself ──
@@ -282,9 +286,11 @@ try {
   const shortSecret = report.environment.shortIsDistinct ? path.join(short.short, 'secret.config') : null;
   const ntSecret = ntDevicePath + outside.slice(2) + '\\secret.config';
 
+  // A linked worktree has a FILE as .git and keeps its config in the shared common dir, so ask git where it is.
+  const trustedGitConfig = path.resolve(repo, run(git, ['rev-parse', '--git-path', 'config'], repo).trim());
   const cfg = {
     git, base, work, store, repo, outside, outsideSlash: slash(outside), helperDirSlash: slash(helpers),
-    secretObject: run(git, ['hash-object', 'ESCAPE_CANARY'], outside).trim(),
+    secretObject: run(git, ['hash-object', 'ESCAPE_AMABIE'], outside).trim(),
     ntSecret, shortSecret, uncSecret, runTimeout: 6000,
     report: path.join(work, 'escape-report.json'), descendantReport: path.join(work, 'descendant.json'),
     descendantReads: { 'outside-secret': path.join(outside, 'secret.config'), 'trusted-checkout': path.join(repo, 'package.json') },
@@ -292,12 +298,12 @@ try {
       'absolute-checkout': path.join(base, 'package.json'),
       'parent-traversal': path.join(work, '..', 'base', 'package.json'),
       junction: path.join(work, 'outside-junction', 'secret.config'),
-      'proof-authority': path.join(base, '.canary', 'canary.local.json'),
+      'proof-authority': path.join(base, '.amabie', 'amabie.local.json'),
       'broker-key': path.join(store, 'producer.key'),
       'extended-path': '\\\\?\\' + path.join(base, 'package.json'),
       'outside-secret': path.join(outside, 'secret.config'),
       'outside-git-config': path.join(outside, '.git', 'config'),
-      'trusted-checkout-config': path.join(repo, '.git', 'config'),
+      'trusted-checkout-config': trustedGitConfig,
     },
     listings: {
       'outside-listing': outside,
@@ -319,7 +325,7 @@ try {
   CFG_REPORT = cfg.report;
   report.environment.readTargets = cfg.reads;
   freshWork();
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-confined-git-escape.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-confined-git-escape.json'), JSON.stringify(report, null, 2));
 
   run(process.execPath, [cli, 'setup', '--yes', base]);
   run(process.execPath, [cli, 'task', 'confined Git escape audit'], base);
@@ -350,7 +356,8 @@ try {
     assert.match(report.positives[2].result.stdout, /confined change/);
     assert.equal(report.positives[3].result.stdout, '');
     assert.match(report.positives[5].result.stdout, /confined change/);
-    assert.equal(report.positives[0].result.stdout.trim(), 'Z:/', 'the confined workspace root is the sandbox alias root');
+    // Git canonicalises the alias it was started in (cwd Z:\) to the real sandbox directory, so compare identity, not spelling.
+    assert.equal(fs.realpathSync.native(report.positives[0].result.stdout.trim()), fs.realpathSync.native(work), 'the confined workspace root is the sandbox work directory');
     // Independent readback by the TRUSTED side: the worker's index is really staged.
     assert.match(run(git, ['diff', '--cached'], work), /confined change/);
     console.log(`PASS ${positives.length} confined Git positive controls; trusted-side index readback; self-contained .git`);
@@ -418,9 +425,9 @@ try {
   const stillMapped = Object.keys(report.reconnaissance.devicesAfterCleanup).filter(k => baseline[k] === undefined);
   assert.deepEqual(stillMapped, [], `device namespace left dirty: ${JSON.stringify(stillMapped)}`);
 
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-confined-git-escape.json'), JSON.stringify(report, null, 2));
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-confined-git-escape.json'), JSON.stringify(report, null, 2));
   if (controlsOnly) {
-    console.log(`CONTROLS-ONLY mode: no security verdict is reported. Evidence: ${path.join(os.tmpdir(), 'canary-confined-git-escape.json')}`);
+    console.log(`CONTROLS-ONLY mode: no security verdict is reported. Evidence: ${path.join(os.tmpdir(), 'amabie-confined-git-escape.json')}`);
   } else {
     const counts = report.vectors.reduce((a, v) => (a[v.verdict] = (a[v.verdict] ?? 0) + 1, a), {});
     console.log(`Confined Git escape battery: ${JSON.stringify(counts)}`);

@@ -18,7 +18,7 @@ import { anchorPath, PRODUCTION_MEASUREMENT, readProductionMeasurement } from '.
 import type { Enrollment } from '../src/provider/production.js';
 
 const repo = path.resolve(import.meta.dirname, '../../../..');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-real-activation-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-real-activation-'));
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 type Payload = NonNullable<ReturnType<typeof readProductionMeasurement>['payload']>;
 type RecordFile = { payload: Payload; signature: string };
@@ -61,8 +61,8 @@ const OFF_WINDOWS = process.platform === 'win32' ? false : 'this required native
  * full, and a machine that CAN confine gets no skip. A SKIP is never a PASS: the
  * count shows it and the reason carries the measured refusal verbatim.
  */
-const HOST_CANNOT_CONFINE = process.env['CANARY_CONFINED_HOST'] === 'unmeasurable'
-  ? (process.env['CANARY_CONFINED_HOST_REASON'] ?? 'this host measurably cannot execute inside the native confinement')
+const HOST_CANNOT_CONFINE = process.env['AMABIE_CONFINED_HOST'] === 'unmeasurable'
+  ? (process.env['AMABIE_CONFINED_HOST_REASON'] ?? 'this host measurably cannot execute inside the native confinement')
   : false;
 const SUITE_SKIP = OFF_WINDOWS || HOST_CANNOT_CONFINE;
 // A skip that only zeroes out five describes is invisible in node:test's totals
@@ -168,8 +168,8 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
     assert.equal(new RestrictedRunner(null,status.confinement).assertUsable(),null);
   });
   it('production capability reporter and CLI agree', () => {
-    const saved = process.env.CANARY_TRUST_STORE;
-    process.env.CANARY_TRUST_STORE = store;
+    const saved = process.env.AMABIE_TRUST_STORE;
+    process.env.AMABIE_TRUST_STORE = store;
     try {
       assert.equal(securityCapability().level,'HARDENED');
       const r = spawnSync(process.execPath,[cli,'provider','status','--json'],{cwd:repo,encoding:'utf8',windowsHide:true});
@@ -179,7 +179,7 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
       assert.equal(envelope.security.level,'HARDENED');
       assert.match(r.stderr,/MEASURED \+ LIVE BROKER VERIFIED/);
     } finally {
-      if (saved === undefined) delete process.env.CANARY_TRUST_STORE; else process.env.CANARY_TRUST_STORE = saved;
+      if (saved === undefined) delete process.env.AMABIE_TRUST_STORE; else process.env.AMABIE_TRUST_STORE = saved;
     }
   });
   it('configured provider is store specific', () => {
@@ -258,7 +258,7 @@ describe('retired schema and malformed evidence', { skip: SUITE_SKIP },()=>{
   it('schema 1 can never activate even with caller-owned signing material',()=>{
     const legacy=path.join(root,'legacy');fs.mkdirSync(legacy);
     fs.writeFileSync(path.join(legacy,'custody-key-material.txt'),'caller-owned');
-    put(path.join(legacy,'confined-caller-measurement.json'),{schema:'canary-confined-measurement/1',deployment:{complete:true},battery:{pass:100,fail:0,inconclusive:0},controls:ALL_CONTROLS.map(control=>({control,available:true}))});
+    put(path.join(legacy,'confined-caller-measurement.json'),{schema:'amabie-confined-measurement/1',deployment:{complete:true},battery:{pass:100,fail:0,inconclusive:0},controls:ALL_CONTROLS.map(control=>({control,available:true}))});
     assert.equal(readConfinedMeasurement(legacy,{}).valid,false);
     assert.equal(measureBoundary({root:legacy},{}).hardenedAvailable,false);
   });

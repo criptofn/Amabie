@@ -5,8 +5,8 @@ import unittest
 
 from helpers import REPO_ROOT  # noqa: F401
 
-from canary.config import Check
-from canary.runner import STATUS_ERROR, STATUS_OK, run_check
+from amabie.config import Check
+from amabie.runner import STATUS_ERROR, STATUS_OK, run_check
 
 PY = sys.executable
 
@@ -38,8 +38,8 @@ class RunnerTests(unittest.TestCase):
 
     def test_env_visible(self):
         r = run_check(Check(name="t", argv=[PY, "-c",
-                          "import os; print(os.environ['CANARY_TEST_VAR'])"],
-                          env={"CANARY_TEST_VAR": "zzz"}), self.root)
+                          "import os; print(os.environ['AMABIE_TEST_VAR'])"],
+                          env={"AMABIE_TEST_VAR": "zzz"}), self.root)
         self.assertEqual(r.stdout.strip(), "zzz")
 
     def test_forced_env_wins(self):

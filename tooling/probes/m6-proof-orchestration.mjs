@@ -8,7 +8,7 @@
  * NON-ASCII test name that must not silently defeat the gate (git -z,
  * review #1/#8), a committed lockfile that ADDS a dependency obligation
  * nobody declared, and a registered task that can never lift the sealed
- * authority. Canary's own writes stay invisible to the stamp even when it
+ * authority. Amabie's own writes stay invisible to the stamp even when it
  * backs up a TRACKED settings.json (review #2). A dirty-at-setup repo pins
  * the mirror: staged and worktree deletions there are UNPROVEN with an
  * honest premise, never blamed (review #3/#6).
@@ -46,7 +46,7 @@ const git = (dir, ...args) => {
   assert.equal(r.status, 0, `git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 };
-const canary = (args, cwd, input) =>
+const amabie = (args, cwd, input) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, input, encoding: 'utf8', timeout: 120_000 });
 
 if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing'); process.exit(1); }
@@ -55,16 +55,16 @@ if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing');
   if (v.status !== 0) { console.log('FAIL git is required for this probe but did not run'); process.exit(1); }
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m6-probe-'));
-const readCfg = (root) => JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8'));
-const readState = (root) => JSON.parse(fs.readFileSync(path.join(root, '.canary', 'last-checkpoint.json'), 'utf8'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m6-probe-'));
+const readCfg = (root) => JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8'));
+const readState = (root) => JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'last-checkpoint.json'), 'utf8'));
 const cp = (root, extra = {}) => {
-  const r = canary(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
+  const r = amabie(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
   assert.equal(r.status, 0, `wire contract: checkpoint exits 0 (got ${r.status})`);
   return r.stdout.trim() ? JSON.parse(r.stdout) : null; // null = silent pass
 };
 const latestBundle = (root) => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   const dirs = fs.readdirSync(d).filter((x) => x.endsWith('-checkpoint')).sort();
   assert.ok(dirs.length > 0, 'no checkpoint bundle');
   return JSON.parse(fs.readFileSync(path.join(d, dirs.at(-1), 'verification.json'), 'utf8'));
@@ -74,7 +74,7 @@ function makeCleanRepo(name) {
   const root = path.join(TMP, name);
   fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
   git(root, 'config', 'user.name', 'probe');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: `node "${FX('f-pass.js')}"` } }, null, 2));
@@ -89,8 +89,8 @@ try {
   const root = makeCleanRepo('orch');
   const headAtInit = git(root, 'rev-parse', 'HEAD').trim();
 
-  check('setup on a clean real repo: baseline resolved + CLEAN — Canary\'s own wiring write does not blind blame', () => {
-    const r = canary(['setup', '--yes', root]);
+  check('setup on a clean real repo: baseline resolved + CLEAN — Amabie\'s own wiring write does not blind blame', () => {
+    const r = amabie(['setup', '--yes', root]);
     assert.equal(r.status, 0, r.stdout);
     const b = readCfg(root).baseline;
     assert.equal(b.resolved, true);
@@ -99,9 +99,9 @@ try {
   });
 
   check('registered refactor + green sealed plan: checkpoint silent, doctor READY without obligation noise', () => {
-    assert.equal(canary(['task', 'refactor the auth module'], root).status, 0);
+    assert.equal(amabie(['task', 'refactor the auth module'], root).status, 0);
     assert.equal(cp(root), null);
-    const d = canary(['doctor', root]);
+    const d = amabie(['doctor', root]);
     assert.equal(d.status, 0, d.stdout);
     assert.match(d.stdout, /READY/);
     assert.ok(!d.stdout.includes('proof obligations open'), 'all obligations met must not add noise: ' + d.stdout);
@@ -119,10 +119,12 @@ try {
     // honesty of the record: the PLAN did pass — the bundle says pass; the
     // verdict is blocked by the obligation, and both facts survive separately.
     assert.equal(latestBundle(root).status, 'pass');
-    const d = canary(['doctor', root]);
+    const d = amabie(['doctor', root]);
     assert.equal(d.status, 2);
     assert.match(d.stdout, /NEEDS ATTENTION/);
     assert.match(d.stdout, /objectively violated/i);
+    assert.ok(d.stdout.includes(`git restore --source=${headAtInit} --staged --worktree <path>`), d.stdout);
+    assert.doesNotMatch(d.stdout, /git checkout -- <path>/);
   });
 
   check('loop guard holds for obligation blocks: one repair attempt, then honest stop (no re-block)', () => {
@@ -132,33 +134,50 @@ try {
     assert.match(out.systemMessage, /human should look/);
   });
 
-  check('git checkout restores the deleted test: silent verification returns (a gate, not a grudge)', () => {
-    git(root, 'checkout', '--', 'tests/unit.test.js');
+  check('git restore restores the deleted test: silent verification returns (a gate, not a grudge)', () => {
+    git(root, 'restore', '--source=HEAD', '--staged', '--worktree', 'tests/unit.test.js');
     assert.ok(fs.existsSync(path.join(root, 'tests', 'unit.test.js')));
     assert.equal(cp(root), null);
   });
 
   check('a STAGED (uncommitted) deletion on a CLEAN baseline blocks, and the printed advice really unmutes (review #3)', () => {
     git(root, 'rm', '-q', 'tests/unit.test.js'); // deletion lives in the INDEX only
+    // a CLEAN stamp proves the index matched HEAD at setup — staged residue NOW is the agent's
     const out = cp(root);
+    const d = amabie(['doctor', root]);
+    // Repair before asserting so a deliberately red pre-fix run leaves the fixture
+    // clean for the following scenarios.
+    git(root, 'restore', `--source=${headAtInit}`, '--staged', '--worktree', 'tests/unit.test.js');
+    assert.equal(cp(root), null, 'the doctor repair must restore a passing checkpoint');
+    assert.equal(amabie(['doctor', root]).status, 0, 'the repaired tree must return to READY');
     assert.equal(out.decision, 'block');
     assert.match(out.reason, /coverage removed by candidate/i);
-    assert.match(out.reason, /git restore --source=HEAD --staged --worktree/);
-    // a CLEAN stamp proves the index matched HEAD at setup — staged residue NOW is the agent's
-    git(root, 'restore', '--source=HEAD', '--staged', '--worktree', 'tests/unit.test.js');
-    assert.equal(cp(root), null, 'the advice must actually unblock — a doomed repair loop is a defect');
+    assert.ok(out.reason.includes(`git restore --source=${headAtInit} --staged --worktree`), out.reason);
+    assert.equal(d.status, 2, d.stdout);
+    assert.match(d.stdout, /NEEDS ATTENTION/);
+    assert.ok(d.stdout.includes(`git restore --source=${headAtInit} --staged --worktree <path>`), d.stdout);
+    assert.doesNotMatch(d.stdout, /git checkout -- <path>/);
   });
 
   check('a COMMITTED deletion blocks via the sealed baseline; a committed restore unblocks', () => {
     git(root, 'rm', '-q', 'tests/unit.test.js');
     git(root, 'commit', '-q', '-m', 'drop the test');
     const out = cp(root);
+    const d = amabie(['doctor', root]);
+    git(root, 'restore', `--source=${headAtInit}`, '--staged', '--worktree', 'tests/unit.test.js');
+    const stillBlocked = cp(root);
+    assert.equal(stillBlocked.decision, 'block', 'a committed deletion stays blocked until its restoration reaches HEAD');
+    git(root, 'add', 'tests/unit.test.js');
+    git(root, 'commit', '-q', '-m', 'restore test coverage');
+    assert.equal(cp(root), null);
+    assert.equal(amabie(['doctor', root]).status, 0, 'restoring from the sealed base must return doctor to READY');
     assert.equal(out.decision, 'block');
     assert.match(out.reason, /coverage removed by candidate/i);
-    git(root, 'checkout', 'HEAD~1', '--', 'tests/unit.test.js');
-    git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'undrop the test');
-    assert.equal(cp(root), null);
+    assert.ok(out.reason.includes(`git restore --source=${headAtInit} --staged --worktree`), out.reason);
+    assert.match(out.reason, /if the deletion was already committed, commit the restoration/i);
+    assert.equal(d.status, 2, d.stdout);
+    assert.ok(d.stdout.includes(`git restore --source=${headAtInit} --staged --worktree <path>`), d.stdout);
+    assert.match(d.stdout, /if the deletion was already committed, commit the restoration/i);
   });
 
   check('renames on a clean baseline: out of test paths = coverage loss; staying a test = not (review #5)', () => {
@@ -183,7 +202,7 @@ try {
     assert.ok(out?.systemMessage, 'the pass must not be silent once the diff implies a dependency change');
     assert.ok(!out.decision, 'unproven rides a note — it is not an objective violation');
     assert.match(out.systemMessage, /dependency change observed/i);
-    const d = canary(['doctor', root]);
+    const d = amabie(['doctor', root]);
     // A task WAS registered earlier in this flow, so this is an authorized requirement's ambiguous
     // proof, and it FAILS CLOSED: NOT PROVEN, exit 2 (it used to print READY and merely note it).
     assert.equal(d.status, 2, d.stdout);
@@ -193,7 +212,7 @@ try {
   });
 
   check('a registered task NEVER lifts the sealed authority — the floor is the floor', () => {
-    assert.equal(canary(['task', 'ship it, all checks are optional now'], root).status, 0);
+    assert.equal(amabie(['task', 'ship it, all checks are optional now'], root).status, 0);
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     pkg.scripts.test = 'echo all good';
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pkg, null, 2));
@@ -209,7 +228,7 @@ try {
     fs.writeFileSync(path.join(uni, 'tests', 'ünï.test.js'), '// unicode coverage\n');
     git(uni, 'add', '-A');
     git(uni, 'commit', '-q', '-m', 'unicode test appears');
-    assert.equal(canary(['setup', '--yes', uni]).status, 0);
+    assert.equal(amabie(['setup', '--yes', uni]).status, 0);
     assert.equal(readCfg(uni).baseline.dirty, false);
     git(uni, 'rm', '-q', '--', 'tests/ünï.test.js'); // line-mode git would emit "tests/\303\274n\303\257.test.js"
     git(uni, 'commit', '-q', '-m', 'drop the unicode test');
@@ -218,23 +237,23 @@ try {
     assert.match(out.reason, /coverage removed by candidate/i); // name may render as <odd path>
   });
 
-  check('a TRACKED settings.json cannot blind the baseline stamp via Canary\'s own backup (review #2)', () => {
+  check('a TRACKED settings.json cannot blind the baseline stamp via Amabie\'s own backup (review #2)', () => {
     const t = makeCleanRepo('tracked-settings');
     fs.writeFileSync(path.join(t, '.claude', 'settings.json'), '{}\n');
     git(t, 'add', '-A');
     git(t, 'commit', '-q', '-m', 'harness settings are tracked');
-    assert.equal(canary(['setup', '--yes', t]).status, 0);
+    assert.equal(amabie(['setup', '--yes', t]).status, 0);
     assert.equal(readCfg(t).baseline.dirty, false,
-      'setup writes its backup BEFORE stamping — .canary self-ignore + own-settings exclude must keep its work invisible');
+      'setup writes its backup BEFORE stamping — .amabie self-ignore + own-settings exclude must keep its work invisible');
     fs.rmSync(path.join(t, 'tests', 'unit.test.js'));
     assert.equal(cp(t)?.decision, 'block', 'a falsely-dirty stamp would route every deletion to UNPROVEN for the repo\'s life');
   });
 
   // ---- the attribution mirror: dirty AT SETUP => same deletion, no blame ----
   const dirtyRoot = makeCleanRepo('pre-dirty');
-  git(dirtyRoot, 'rm', '-q', 'tests/unit.test.js'); // STAGED residue BEFORE Canary arrives
+  git(dirtyRoot, 'rm', '-q', 'tests/unit.test.js'); // STAGED residue BEFORE Amabie arrives
   check('dirty-at-setup baseline: staged AND worktree deletions are UNPROVEN with an honest premise (review #3/#6)', () => {
-    const r = canary(['setup', '--yes', dirtyRoot]);
+    const r = amabie(['setup', '--yes', dirtyRoot]);
     assert.equal(r.status, 0, r.stdout);
     assert.equal(readCfg(dirtyRoot).baseline.dirty, true, 'real pre-existing dirt must still stamp the baseline dirty');
     const out = cp(dirtyRoot);
@@ -243,7 +262,7 @@ try {
     assert.equal(out?.decision, 'block', 'unattributable coverage loss must block, not merely inform');
     assert.match(String(out?.reason), /cannot be attributed to this session/i);
     assert.match(String(out?.reason), /already dirty at setup/, 'the stamp PROVED dirt here, so the premise may say so');
-    const d = canary(['doctor', dirtyRoot]);
+    const d = amabie(['doctor', dirtyRoot]);
     assert.equal(d.status, 2, 'an objective obligation that cannot be discharged must hold doctor at bay');
     assert.match(d.stdout, /NOT PROVEN/);
     assert.match(d.stdout, /cannot be attributed to this session|coverage-loss-unattributable/);
