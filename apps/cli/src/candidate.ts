@@ -302,7 +302,42 @@ export function isolateCreate(root: string, cfg: AmabieConfig, o: Out, name: str
     ?? { status: null, stdout: '', stderr: "git is not resolvable in Amabie's trusted environment" };
   if (add.status !== 0) {
     o.say(`isolate: git worktree add failed — nothing was registered:`);
-    for (const l of (add.stderr || add.stdout || String(add.error?.message ?? '')).trim().split(/\r?\n/).slice(-4)) o.say(`  ${l}`);
+    o.say(`  git result: ${JSON.stringify({
+      status: add.status, signal: add.signal ?? null, pid: add.pid ?? null, callerPid: process.pid,
+      durationMs: add.durationMs ?? null, startedAt: add.startedAt ?? null, finishedAt: add.finishedAt ?? null,
+      errorCode: add.errorCode ?? null, errorMessage: add.error?.message ?? null,
+    })}`);
+    for (const output of [add.stderr, add.stdout]) {
+      if (!output.trim()) continue;
+      const lines = output.trim().split(/\r?\n/);
+      const excerpt = lines.length > 8 ? [...lines.slice(0, 4), `[${lines.length - 8} intervening lines omitted]`, ...lines.slice(-4)] : lines;
+      for (const line of excerpt) o.say(`  ${line}`);
+    }
+    // Observe partial creation only: never repair, prune or retry a failed add.
+    try {
+      const present = (file: string): boolean | null => {
+        try { fs.lstatSync(file); return true; }
+        catch (error) { return (error as NodeJS.ErrnoException).code === 'ENOENT' ? false : null; }
+      };
+      const list = gitCommand(root, ['worktree', 'list', '--porcelain', '-z'], 5_000);
+      const trees = list?.status === 0 ? list.stdout.split('\0').filter((line) => line.startsWith('worktree ')) : null;
+      const matches = trees?.map((line): boolean | null => {
+        try { return path.relative(canonicalPath(target), canonicalPath(line.slice('worktree '.length))) === ''; }
+        catch { return null; }
+      });
+      const lock = gitCommand(root, ['rev-parse', '--path-format=absolute', '--git-path', 'index.lock'], 5_000);
+      o.say(`  git failure state: ${JSON.stringify({
+        targetExists: present(target), worktreeListStatus: list?.status ?? null,
+        worktreeListInvoked: list !== null, worktreeListSignal: list?.signal ?? null, worktreeListErrorCode: list?.errorCode ?? null,
+        worktreeCount: trees?.length ?? null,
+        targetListed: matches?.includes(true) ? true : !matches || matches.includes(null) ? null : false,
+        indexLockQueryStatus: lock?.status ?? null,
+        indexLockQueryInvoked: lock !== null, indexLockQuerySignal: lock?.signal ?? null, indexLockQueryErrorCode: lock?.errorCode ?? null,
+        indexLockExists: lock?.status === 0 && lock.stdout.trim() ? present(lock.stdout.trim()) : null,
+      })}`);
+    } catch (error) {
+      o.say(`  git failure state unavailable: ${JSON.stringify({ errorCode: (error as NodeJS.ErrnoException).code ?? null })}`);
+    }
     return 2;
   }
   // post-check: what git checked out must BE the resolved commit AND be

@@ -26,3 +26,6 @@ packages/support/test/fixtures/runner-manifests/** text eol=lf
 
 # Rehearsal fixture source is digest-pinned at run time; keep checkout bytes == committed bytes.
 tooling/test-support/fixtures/p2e-rehearsal-sales.csv text eol=lf
+
+# Git executes this checked-in hook fixture through its shebang on both hosts.
+tooling/test-support/fixtures/git-post-checkout-fail.sh text eol=lf

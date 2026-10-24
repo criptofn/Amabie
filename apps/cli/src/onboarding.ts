@@ -1164,11 +1164,17 @@ export function gitExe(): string | null {
 
 /** One hardened raw git call — the ONLY way product code spawns git.
  *  null = git is not resolvable in the trusted environment: fail closed. */
-export interface GitResult { status: number | null; stdout: string; stderr: string; error?: Error | undefined }
+export interface GitResult {
+  status: number | null; stdout: string; stderr: string; error?: Error | undefined;
+  pid?: number; signal?: NodeJS.Signals | null; errorCode?: string | undefined;
+  durationMs?: number; startedAt?: string; finishedAt?: string;
+}
 export function gitCommand(root: string, args: string[], timeoutMs = 15_000): GitResult | null {
   const exe = gitExe();
   if (exe === null) return null;
   const controller = controllerExecution.getStore();
+  const startedAt = new Date().toISOString();
+  const started = performance.now();
   const r = spawnSync(exe, [...(controller ? ['-c', `core.hooksPath=${controller.hooksDirectory}`, '-c', 'core.fsmonitor=false', '-c', 'commit.gpgsign=false'] : []), '-C', root, ...args], {
     // 32MB maxBuffer: the 1MB default would turn a large repo's `ls-tree -r`
     // (M7's submodule probe) into a spurious null.
@@ -1177,7 +1183,11 @@ export function gitCommand(root: string, args: string[], timeoutMs = 15_000): Gi
       ...(controller ? { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null' } : {}) }, shell: false, windowsHide: true,
     maxBuffer: 32 * 1024 * 1024,
   });
-  return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '', error: r.error };
+  return {
+    status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '', error: r.error,
+    pid: r.pid, signal: r.signal, errorCode: (r.error as NodeJS.ErrnoException | undefined)?.code,
+    durationMs: performance.now() - started, startedAt, finishedAt: new Date().toISOString(),
+  };
 }
 
 /** Resolve the package manager to TRUSTED bytes — PATH is never consulted.
