@@ -218,48 +218,7 @@ describe('1.1 plan-step foundation (byte-compatible with 1.0 seals)', () => {
       'backend/package.json': pkg({ test: 'node backend.js' }),
     });
     const plan: PlanStep[] = ['web', 'backend'].map((scope) => ({ kind: 'tests', script: 'test', adapter: 'node', scope }));
-    // Capture the original failing filesystem operation without exposing paths or manifest contents.
-    const tracing = process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1';
-    const observations: unknown[] = [];
-    const originalRealpath = fs.realpathSync;
-    const originalRead = fs.readFileSync;
-    let canonicalRoot: string | undefined;
-    const observe = <T extends (...args: never[]) => unknown>(op: string, original: T): T => new Proxy(original, {
-      apply(target, receiver, args) {
-        const input = String(args[0]);
-        const component = path.basename(input) === 'package.json' ? path.basename(path.dirname(input)) : path.basename(input);
-        const role = input === root ? 'root' : ['web', 'backend'].includes(component) ? component : 'other';
-        try {
-          const value = Reflect.apply(target, receiver, args);
-          if (op === 'realpath' && input === root) canonicalRoot = String(value);
-          const relative = op === 'realpath' && canonicalRoot ? path.relative(canonicalRoot, String(value)) : null;
-          observations.push({ op, role, digest: sha256(String(value)), length: String(value).length,
-            outsideRoot: relative === null ? null : relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative) });
-          return value;
-        } catch (error) {
-          observations.push({ op, role, code: error instanceof Error ? (error as NodeJS.ErrnoException).code ?? error.name : typeof error });
-          throw error;
-        }
-      },
-    });
-    let seal: PlanAuthority;
-    try {
-      if (tracing) {
-        fs.realpathSync = observe('realpath', originalRealpath);
-        fs.readFileSync = observe('read', originalRead);
-        assert.equal(fs.realpathSync.native, originalRealpath.native, 'observation must preserve native method access');
-        assert.throws(() => fs.readFileSync(path.join(root, 'diagnostic-absent.json')), { code: 'ENOENT' });
-        assert.deepEqual(observations.at(-1), { op: 'read', role: 'other', code: 'ENOENT' });
-        observations.length = 0; // Exclude this successful diagnostic self-check from real failure observations.
-      }
-      seal = project.sealPlanAuthority(plan, project.planScriptTexts(root, plan, { test: 'node decoy.js' }));
-    } catch (error) {
-      if (!tracing) throw error;
-      throw new Error(`scoped manifest seal failed; filesystem observations: ${JSON.stringify(observations)}`, { cause: error });
-    } finally {
-      fs.realpathSync = originalRealpath;
-      fs.readFileSync = originalRead;
-    }
+    const seal = project.sealPlanAuthority(plan, project.planScriptTexts(root, plan, { test: 'node decoy.js' }));
     assert.equal(seal.scriptDigests['web::test'], sha256('node web.js'));
     assert.equal(seal.scriptDigests['backend::test'], sha256('node backend.js'));
     assert.equal(project.planAuthorityDrift(root, { plan, planAuthority: seal }), null);

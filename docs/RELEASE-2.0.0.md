@@ -6,6 +6,14 @@ Unpublished local candidate; joint quality validation rechecked 23 October 2026.
 
 Public release remains **BLOCKED**. Draft [PR #11](https://github.com/criptofn/Amabie/pull/11) is for current CI and review; it is not a public package release.
 
+### Follow-up — 24 October 2026
+
+Hosted diagnostic run [40027699342](https://github.com/criptofn/Amabie/actions/runs/40027699342), source `0e47726`, completed with Windows 1,606 passed, 4 failed and 8 skipped (1,618 tests); the other five jobs passed. One retained PowerShell sweep invocation exited 2148734499 before its first script trace, with no overlapping retained kill request. This identifies the failing phase, not its root cause. There is still no proven cross-sweep host kill, and incomplete stderr coverage prevents refutation.
+
+The scoped manifest failure now has a locally reproduced cause: `scopeDir` returned a native canonical path, but the subsequent manifest/root comparison used JavaScript `realpathSync`, which can retain a Windows 8.3 short alias. A real OS-created short alias reproduced the refusal before the fix. Both sides of that comparison now use native canonical paths. The regression also verifies exact scoped script authority, unchanged seals, and refusal after redirecting the scope outside the repository. No containment rule is removed. Temporary filesystem observation wrappers were removed after obtaining the diagnosis; the original assertions remain.
+
+Local affected targets passed 69/69 with no skips, plus the scoped setup/checkpoint target 1/1. Complete validation of the corrected runtime is pending. The separate Node child exit 0xFFFFFFFF and PowerShell startup failures remain unresolved. No final package or release readiness is claimed from these focused checks.
+
 - Latest complete local Windows run, source `47cb988`: 1,678 tests, 1,670 passed, 1 failed, 7 skipped, 0 cancelled. The confined regression pipeline returned INFRASTRUCTURE_FAILURE after cleanup could not be confirmed. A retained Windows CLR event reports a PowerShell console startup failure (0xE9); its underlying cause remains unverified.
 - Latest complete hosted run, [40022437581](https://github.com/criptofn/Amabie/actions/runs/40022437581), source `47cb988`: Windows 1,618 tests, 1,607 passed, 3 failed, 8 skipped. The three failures are empty checkpoint JSON, a scoped manifest read failure, and a cleanroom Node child exiting 0xFFFFFFFF. They are not assumed to have a single cause. The other five jobs passed.
 - Opt-in sweep traces contain no exact PID/creation-time match showing another sweep host being killed. Captured stderr does not cover every nested invocation, so this does not refute the interference hypothesis. A conhost kill request also occurs in a passing lifecycle control; its name alone is not evidence of interference. A separate 128-launch read-only PowerShell control had no failures or timeout kills, which does not exclude a rare startup fault.

@@ -239,8 +239,9 @@ export interface AuthorityCarrier {
 function scopedPackage(root: string, step: PlanStep): Record<string, unknown> | null {
   if (!step.scope || scopePathProblem(step.scope) !== null) return null;
   try {
-    const file = fs.realpathSync(path.join(scopeDir(root, step), 'package.json'));
-    const relative = path.relative(fs.realpathSync(root), file);
+    // Match scopeDir's native identity: JS realpath can retain a Windows short root alias.
+    const file = fs.realpathSync.native(path.join(scopeDir(root, step), 'package.json'));
+    const relative = path.relative(fs.realpathSync.native(root), file);
     if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
     return parseJsonOrNull(file);
   } catch { return null; }

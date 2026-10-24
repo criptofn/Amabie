@@ -41,6 +41,7 @@ import { spawnSync } from 'node:child_process';
 
 import { canonicalPath, canonicalPathOrNull, sameFilesystemIdentity, containsPath } from '@amabie/support';
 import { containedRealPath, candidateIdentity, gitExe } from '../src/onboarding.js';
+import { planScriptTexts, sealPlanAuthority, planAuthorityDrift, type PlanStep } from '../src/project.js';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-path-identity-'));
 const mk = (name: string): string => { const d = path.join(TMP, name); fs.mkdirSync(d, { recursive: true }); return d; };
@@ -67,6 +68,31 @@ function initRepo(dir: string): void {
 }
 
 describe('filesystem identity — the long/short (8.3) spelling is ONE identity', () => {
+  it('scoped script authority accepts canonical roots and Windows short aliases but rejects an outside scope', (t) => {
+    const root = mk('scoped-manifest-long-directory-name');
+    const web = path.join(root, 'web');
+    fs.mkdirSync(web);
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ scripts: { test: 'node decoy.js' } }));
+    fs.writeFileSync(path.join(web, 'package.json'), JSON.stringify({ scripts: { test: 'node scoped.js' } }));
+    const short = process.platform === 'win32' ? shortPathOf(root) : root;
+    if (short === null || process.platform === 'win32' && short.toLowerCase() === root.toLowerCase()) {
+      t.skip('this filesystem produced no distinct 8.3 short name for the fixture');
+      return;
+    }
+    assert.equal(fs.realpathSync.native(short), fs.realpathSync.native(root));
+    const plan: PlanStep[] = [{ kind: 'tests', script: 'test', adapter: 'node', scope: 'web' }];
+    const texts = planScriptTexts(short, plan, { test: 'node decoy.js' });
+    assert.equal(texts['web::test'], 'node scoped.js', 'the scoped manifest, never the root decoy, supplies authority');
+    const seal = sealPlanAuthority(plan, texts);
+    assert.equal(planAuthorityDrift(short, { plan, planAuthority: seal }), null);
+    const outside = mk('scoped-manifest-outside');
+    fs.writeFileSync(path.join(outside, 'package.json'), JSON.stringify({ scripts: { test: 'node outside.js' } }));
+    fs.rmSync(web, { recursive: true });
+    fs.symlinkSync(outside, web, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(() => planScriptTexts(short, plan, {}), /scoped package.json script cannot be read/);
+    assert.notEqual(planAuthorityDrift(short, { plan, planAuthority: seal }), null);
+  });
+
   it('a real short alias and its long name are the same identity, by the OS', (t) => {
     const long = mk('a-long-directory-name');
     const short = shortPathOf(long);
