@@ -212,7 +212,7 @@ export function readUniversalManifest(root: string): UniversalManifestRead {
   }
   if (problems.length > 0) return { manifest: null, problems };
   /**
-   * REQUIREMENT BINDINGS, for a project that has no `package.json` to carry them.
+   * REQUIREMENT BINDINGS, including manifests alongside a native project.
    *
    * MEASURED gap this closes: `amabie.proofs` is read from `package.json`, so a Python, Rust, Go or
    * any other non-Node project could not bind a stated requirement to a sealed check AT ALL — the

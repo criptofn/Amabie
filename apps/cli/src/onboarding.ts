@@ -72,6 +72,7 @@ export type { TaskKind, TaskIdentity, AuthorizationSubject };
 // names it used to own so every existing importer (candidate.ts, the contract
 // tests) compiles and behaves unchanged while the seam gains a second owner.
 import { ADAPTERS, adapterFor, adapterForStep, assertStepArgv, composePlan, LOCKFILES, nodeAdapter, parseJsonOrNull, planAuthorityDrift, planDigest, planForScope, planProblemsForConfig, planScriptTexts, scopeDir, SCOPES_FILE, SCOPES_SCHEMA, sealPlanAuthority, sha256, stepArgv, stepKey } from './project.js';
+import { readUniversalManifest } from './universal.js';
 // v1.5 BLOCKER 6: the sealed toolchain (operator-authorized executable directories) and the
 // MEASURED decision of whether a failing check is the project's fault or Amabie's own environment.
 import { attributeFailures, inventoryOperatorToolchain, npmScriptDirs, pathEntries, TOOLCHAIN_CANDIDATES, validateToolchainDir, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
@@ -3610,6 +3611,35 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
       priorCodexHooks,
     )
     : [];
+  let seal: PlanAuthority;
+  try {
+    // Validate the same declarations for --check and the actual setup. A Node
+    // root must not hide the universal manifest that bind writes alongside it.
+    const universal = readUniversalManifest(root);
+    if (universal.problems.length) throw new Error(universal.problems.join('; '));
+    const amabieBlock = rootDisc?.source.amabie as { proofs?: unknown; paths?: unknown } | undefined;
+    const proofs: Record<string, unknown> = Object.create(null);
+    for (const declared of [amabieBlock?.proofs, universal.manifest?.proofs]) {
+      if (declared === undefined) continue;
+      if (!isRecord(declared)) throw new Error('proofs must be an object mapping requirement digests to checks');
+      for (const [digest, check] of Object.entries(declared)) {
+        if (Object.hasOwn(proofs, digest) && proofs[digest] !== check) {
+          throw new Error(`conflicting proof bindings for requirement ${digest}`);
+        }
+        proofs[digest] = check;
+      }
+    }
+    // One seal and its existing validation still cover the complete plan;
+    // neither a duplicate declaration nor a declaration alone grants authority.
+    seal = sealPlanAuthority(plan, planScriptTexts(root, plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>),
+      proofs, amabieBlock?.paths);
+  } catch (e) {
+    const problem = (e as Error).message;
+    if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })),
+      [problem], 'fix the proof or check declaration, then rerun: amabie setup --check');
+    o.detail(`the declaration was refused: ${problem}`);
+    o.verdict('NEEDS ATTENTION', 'Amabie could not record which checks to run here, so it will not wire this repository. Nothing was changed.', 'run: amabie setup --verbose to see the exact declaration that was refused'); return 2;
+  }
   if (setupArgs.check) {
     const harnesses = detectHarnesses(root);
     const issues: string[] = [];
@@ -3637,23 +3667,6 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     }));
     return setupCheckResult(o, root, planRows, harnesses.found.map((h) => ({ name: h.name, supported: h.supported })), issues,
       issues.length ? 'resolve the listed setup issue, then rerun: amabie setup --check' : `to install and run these checks: amabie setup --mcp-profile ${mcpProfile}`);
-  }
-  let seal: PlanAuthority;
-  try {
-    // ONE seal over the whole composite plan. Each step is digested by what its
-    // own ecosystem declared: an argv step by its exact command, a Node script
-    // step by the package.json script text (unchanged M5 semantics). The
-    // project's fast-path declaration is sealed HERE too, so a check may only be
-    // left out on authority the project gave at setup.
-    const amabieBlock = rootDisc?.source.amabie as { proofs?: unknown; paths?: unknown } | undefined;
-    seal = sealPlanAuthority(plan, planScriptTexts(root, plan, (rootDisc?.source.scripts ?? {}) as Record<string, unknown>),
-      amabieBlock?.proofs, amabieBlock?.paths);
-  } catch (e) {
-    // v1.4 §E — this used to be `REFUSED — <raw internal throw>`, which is not a sentence a
-    // person can act on. The refusal, its reason and its exit code are unchanged; the internal
-    // text moves behind --verbose, where the detail belongs.
-    o.detail(`the declaration was refused: ${(e as Error).message}`);
-    o.verdict('NEEDS ATTENTION', 'Amabie could not record which checks to run here, so it will not wire this repository. Nothing was changed.', 'run: amabie setup --verbose to see the exact declaration that was refused'); return 2;
   }
 
   o.say(`repo: ${root}`);
@@ -5392,7 +5405,7 @@ function porcelainPath(line: string): string | null {
   return unquoted.split(path.sep).join('/');
 }
 
-/** Minimal record guard, local to cmdBind: a hand-edited non-object here must never crash the write. */
+/** A hand-edited non-object must never become a declaration or crash a binding write. */
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }

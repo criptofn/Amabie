@@ -1304,3 +1304,78 @@ describe('hook entry shape + ownership', () => {
     assert.ok(!hasAmabieEntry({ hooks: {} }, new Set([cmd])));
   });
 });
+
+describe('mixed Node and universal proof declarations', () => {
+  const requirement = 'preserve the documented contract';
+  const digest = materialDigest(requirement);
+  function mixed(name: string, nodeProofs: unknown = {}, manifestProofs: unknown = {}): string {
+    const root = makeProject(name);
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    pkg.amabie = { proofs: nodeProofs };
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pkg));
+    fs.writeFileSync(path.join(root, 'amabie.project.json'), JSON.stringify({
+      schema: 'amabie-project/1',
+      scopes: [{ path: '.', checks: [{ name: 'contract-check', kind: 'tests', argv: [process.execPath, path.join(FIXTURES, 'f-pass.js')] }] }],
+      proofs: manifestProofs,
+    }));
+    return root;
+  }
+  it('setup seals both declared proof surfaces without requiring duplicate bindings', () => {
+    const nativeDigest = materialDigest('preserve the native behavior');
+    const root = mixed('mixed-proof-surfaces', { [nativeDigest]: 'test' }, { [digest]: 'contract-check' });
+    const setup = amabie(['setup', '--yes', root]);
+    assert.equal(setup.status, 0, setup.stdout + setup.stderr);
+    assert.deepEqual(readCfg(root).planAuthority?.proofBindings, { [nativeDigest]: 'test', [digest]: 'contract-check' });
+  });
+  it('a binding written by bind into the universal manifest survives the next setup seal', () => {
+    const root = mixed('mixed-bind-reseal');
+    const initial = amabie(['setup', '--yes', root]);
+    assert.equal(initial.status, 0, initial.stdout + initial.stderr);
+    const bound = amabie(['bind', 'contract-check', '--requirement', requirement], root);
+    assert.equal(bound.status, 0, bound.stdout + bound.stderr);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'amabie.project.json'), 'utf8'));
+    assert.equal(manifest.proofs[digest], 'contract-check');
+    assert.equal(readCfg(root).planAuthority?.proofBindings?.[digest], undefined, 'a declaration alone must never change sealed authority');
+    const reseal = amabie(['setup', '--yes', root]);
+    assert.equal(reseal.status, 0, reseal.stdout + reseal.stderr);
+    assert.equal(readCfg(root).planAuthority?.proofBindings?.[digest], 'contract-check');
+  });
+  it('conflicting declarations refuse setup rather than choosing an authority source', () => {
+    const root = mixed('mixed-conflicting-proofs', { [digest]: 'test' }, { [digest]: 'contract-check' });
+    const setup = amabie(['setup', '--yes', '--verbose', root]);
+    assert.equal(setup.status, 2, setup.stdout + setup.stderr);
+    assert.match(setup.stdout + setup.stderr, /conflicting proof bindings/i);
+    assert.equal(fs.existsSync(cfgFile(root)), false);
+  });
+  it('matching duplicated declarations remain valid and yield one sealed binding', () => {
+    const root = mixed('mixed-matching-proofs', { [digest]: 'contract-check' }, { [digest]: 'contract-check' });
+    const setup = amabie(['setup', '--yes', root]);
+    assert.equal(setup.status, 0, setup.stdout + setup.stderr);
+    assert.deepEqual(readCfg(root).planAuthority?.proofBindings, { [digest]: 'contract-check' });
+  });
+  it('an invalid universal proof declaration is not hidden by a valid Node project', () => {
+    const root = mixed('mixed-invalid-proofs', {}, { invalid: 'contract-check' });
+    const setup = amabie(['setup', '--yes', '--verbose', root]);
+    assert.equal(setup.status, 2, setup.stdout + setup.stderr);
+    assert.match(setup.stdout + setup.stderr, /64-hex requirement digest/);
+    assert.equal(fs.existsSync(cfgFile(root)), false);
+  });
+  it('setup --check reports invalid manifest authority without wiring the project', () => {
+    const root = mixed('mixed-invalid-proof-preflight', {}, { invalid: 'contract-check' });
+    const check = amabie(['setup', '--check', '--json', root]);
+    assert.equal(check.status, 2, check.stdout + check.stderr);
+    assert.match(check.stdout + check.stderr, /64-hex requirement digest/);
+    assert.equal(fs.existsSync(cfgFile(root)), false);
+  });
+  it('malformed native bindings cannot be hidden or polluted during the merge', () => {
+    for (const [name, proofs] of [
+      ['array', []], ['prototype', Object.fromEntries([['__proto__', { polluted: true }]])],
+    ] as const) {
+      const root = mixed(`mixed-native-${name}`, proofs, { [digest]: 'contract-check' });
+      const setup = amabie(['setup', '--yes', '--verbose', root]);
+      assert.equal(setup.status, 2, setup.stdout + setup.stderr);
+      assert.match(setup.stdout + setup.stderr, /proofs/);
+      assert.equal(fs.existsSync(cfgFile(root)), false);
+    }
+  });
+});

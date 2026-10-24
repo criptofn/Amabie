@@ -56,6 +56,14 @@ reviewed adapter code, and a project-supplied `env` is REFUSED rather than merge
 no per-check `cwd` (a working directory is a declared, validated, sealed SCOPE), and
 no shell wrappers. Each of those refusals has a test.
 
+A native project may also carry this manifest. Setup seals requirement bindings
+from both the native `package.json` `amabie.proofs` block and the manifest's
+`proofs` map. Identical duplicates are accepted; conflicting checks for one
+requirement are refused. A malformed manifest is refused even when native checks
+are available, including by `setup --check`. Writing a binding with `amabie bind`
+is still only a declaration: rerun setup to seal it, and execute the checks to
+obtain evidence. Bindings neither create checks nor prove requirements by themselves.
+
 **Two ceilings stated rather than implied**, in the same spirit as everything else
 here:
 
