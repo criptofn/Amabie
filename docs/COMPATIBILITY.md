@@ -64,9 +64,10 @@ are available, including by `setup --check`. Writing a binding with `amabie bind
 is still only a declaration: rerun setup to seal it, and execute the checks to
 obtain evidence. A root Node-script binding is written beside its script in
 `package.json`. Any other binding goes into the manifest only when the manifest
-declares a check of that name; otherwise it goes into `package.json`. An invalid
-manifest makes `bind` refuse with nothing written, and so does a requirement
-already bound to a different check on the other surface. Bindings neither
+declares a check of that name; otherwise it goes into `package.json`. For this
+non-root-Node selection path, an invalid manifest makes `bind` refuse with
+nothing written. A requirement already bound to a different check on the other
+surface also makes `bind` refuse. Bindings neither
 create checks nor prove requirements by themselves.
 
 When several sealed steps share one script name, a binding to that name is

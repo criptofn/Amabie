@@ -1,5 +1,32 @@
 # Amabie 2.0.0 release candidate
 
+## Current integration checkpoint — 25 October 2026
+
+Exact `3e94185` [Hosted CI 40188133250](https://github.com/criptofn/Amabie/actions/runs/40188133250)
+passes all six jobs: Windows 1,652 PASS / 0 FAIL / 8 SKIP; Linux 1,631 PASS /
+0 FAIL / 27 SKIP. Both OS pass cleanroom 7/7 and architecture plus installed
+architecture 39/39. Linux catches all 13 mutations, including M12/M13; Windows
+skips that Linux-only workflow step. Axios holds all 37 host-exact assertions.
+Standalone artifacts build and execute on Windows, Linux and macOS; a full native
+macOS product suite is not claimed. Hosted Windows native confinement is
+explicitly unavailable, not passed.
+
+The local integration now includes Claude's `6fac83e` bind fix and its two new
+regressions: bindings select only a declared manifest check and refuse conflicting
+cross-surface declarations before writing. Four targeted files report 145/145.
+Its local full suite nevertheless records five native negative-control failures;
+the signed shared fixture expired before those broker assertions could run.
+The [test-only clock correction](NATIVE-ACTIVATION-TEST-CLOCK-2026-10-25.md)
+reproduces that failure and passes the entire native file 63/63 without changing
+production freshness or weakening the original reason assertions.
+
+**NOT READY:** combined-source validation and a final reproducible, installed
+package remain required. Earlier native CLR/V8 failures retain their actual
+failed evidence and unproven causality. No main merge or publication is authorized
+by these results. Earlier checkpoints below retain their own source identities.
+
+## Historical checkpoints
+
 Latest follow-up: exact e4fa98d Hosted validation finishes Windows1,650PASS/
 1FAIL/8SKIP; Linux1,631PASS/0FAIL/26SKIP; Axios37assertions and allthree native
 standalone jobs pass. The single Windows failure is independently reproduced:

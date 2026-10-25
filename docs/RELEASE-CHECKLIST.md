@@ -1,6 +1,17 @@
 # Amabie 2.0 release candidate checklist
 
-## Current blockers — 25 October 2026
+## Current integration checkpoint — 25 October 2026
+
+This section supersedes the historical checkpoints below. **NOT READY.**
+
+- [x] Exact `3e94185` [Hosted CI 40188133250](https://github.com/criptofn/Amabie/actions/runs/40188133250) completes all six jobs: Windows 1,652 PASS / 0 FAIL / 8 SKIP; Linux 1,631 PASS / 0 FAIL / 27 SKIP. Architecture and installed-package architecture each pass 39/39, cleanroom 7/7 on both OS. Linux catches M1-M13 (13/13); Windows does not run that Linux-only mutation step. Axios holds all 37 host-exact proof assertions. All three native standalone builds execute. Skips are not passes; the hosted Windows confinement fixture remains unavailable.
+- [x] Preserve and locally import Claude's immutable `6fac83e` bind correction, based on `3e94185`, without changing his checkout. Its four targeted files actually report 145 PASS / 0 FAIL / 0 SKIP. This does not make its failed full local suite green.
+- [x] Reproduce and correct native negative-control fixture aging without changing runtime security: new regression first fails; complete native file then passes 63/63 with no skips. See [test-clock evidence](NATIVE-ACTIVATION-TEST-CLOCK-2026-10-25.md).
+- [ ] Confirm the combined bind/test-clock source, then its exact full Hosted gate. The 63-case native fixture invokes bind, so its combined-source run is separate from the earlier 63-pass result.
+- [ ] Build reproducibly and clean-install the final combined package, retaining source identity, checksums and regression/NOT PROVEN/tampering evidence. Older packages are not the final artifact.
+- [ ] Retain unresolved native CLR/V8 crash causality and platform/host limitations explicitly. A later pass does not prove a cause or cure. Resolve final acceptance and account/publication approvals separately; do not promote experimental capabilities to stable claims.
+
+## Historical checkpoint before the successful 3e94185 gate
 
 This checkpoint supersedes readiness inferences from the historical checked items below. **NOT READY.**
 

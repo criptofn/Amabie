@@ -109,8 +109,9 @@ function changed(mutate: (p: Payload) => void, foreignKey = false): void {
   put(recordFile, next);
   put(anchorFile, {...anchor, current: crypto.createHash('sha256').update(JSON.stringify(next)).digest('hex')});
 }
-function closed(reason?: RegExp): void {
-  const boundary = measureBoundary({root: store}, {});
+function closed(reason?: RegExp, now = record.payload.finishedAt): void {
+  // Isolate each negative predicate from fixture aging; freshness has explicit controls below.
+  const boundary = measureBoundary({root: store}, {}, now);
   assert.equal(boundary.hardenedAvailable, false);
   assert.notEqual(measuredCapabilities(boundary).level, 'HARDENED');
   for (const control of ALL_CONTROLS) {
@@ -191,6 +192,13 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
 });
 
 describe('one broken custody or deployment requirement closes HARDENED', { skip: SUITE_SKIP }, () => {
+  it('an unrelated wall-clock delay does not mask the negative predicate under test', () => {
+    changed(p => { p.tools = '0'.repeat(64); });
+    const realNow = Date.now;
+    Date.now = () => record.payload.startedAt + 15 * 60 * 1000 + 1;
+    try { closed(/toolchain/); }
+    finally { Date.now = realNow; }
+  });
   const cases: Array<[string,(p:Payload)=>void,RegExp]> = [
     ['stale',p=>{p.startedAt-=3600000;p.finishedAt-=3600000;},/stale/],
     ['future',p=>{p.startedAt+=3600000;p.finishedAt+=3600000;},/future/],
@@ -271,8 +279,15 @@ describe('retired schema and malformed evidence', { skip: SUITE_SKIP },()=>{
 });
 
 describe('saved evidence requires a current authenticated live broker', { skip: SUITE_SKIP },()=>{
+  it('an expired signed transcript is refused even while the real broker is live', () => {
+    const expiredAt = record.payload.startedAt + 15 * 60 * 1000 + 1;
+    const expired = readProductionMeasurement(store, expiredAt);
+    assert.equal(expired.valid, false);
+    assert.match(expired.reason, /stale or future measurement/);
+    closed(/stale or future measurement/, expiredAt);
+  });
   it('same saved evidence with dead broker -> NOT HARDENED',()=>{
-    assert.equal(readProductionMeasurement(store).valid,true);
+    assert.equal(readProductionMeasurement(store, record.payload.finishedAt).valid,true);
     const r=spawnSync('taskkill',['/PID',String(brokerPid),'/T','/F'],{windowsHide:true,encoding:'utf8'});
     assert.equal(r.status,0,r.stderr);
     closed(/live production broker unavailable/);
