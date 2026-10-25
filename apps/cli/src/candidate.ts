@@ -131,7 +131,7 @@ import { digest, canonicalTask, taskWeakening, subjectDigest, TASK_KINDS, type T
 import {
   ACCEPTANCE_SUBDIR, CLI_ENTRY, CONFIG_DIR, ENV_POLICY, EVIDENCE_DIR, Out, candidateDiffSignals, candidateIdentity, containedRealPath, configPath, ensureAmabieSelfIgnore,
   discriminationObligation, execDigest, findRepoRoot, gitCommand, gitExe, gitWithinRoot, hasAmabieEntry, obligationsFor, parseGlobals, parseJsonOrNull, planAuthorityDrift, planDigest, readAcceptance, readConfig,
-  readTaskRecord, runPlanStep, planWithFreshTests, settingsPath, TASK_FILE, untrustedConfigReason, writeAcceptance, writeFileAtomic, writeVerificationBundle,
+  readTaskRecord, runPlanSteps, planWithFreshTests, settingsPath, TASK_FILE, untrustedConfigReason, writeAcceptance, writeFileAtomic, writeVerificationBundle,
   type AcceptanceRecord, type AmabieConfig, type GitResult, type PlanStep, type StepResult, type TaskKind,
 } from './onboarding.js';
 import { authorityDrift, quarantineInfo, QUARANTINE_FILE, shortState, snapshotAuthority, snapshotTree, stampQuarantine, treeDrift, type AuthorityChange } from './authority.js';
@@ -598,7 +598,7 @@ export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: s
     return null;
   };
   try {
-    results = planWithFreshTests(cfg.plan).map((step) => runPlanStep(rec.root, cfg.pm, step));
+    results = runPlanSteps(rec.root, cfg.pm, planWithFreshTests(cfg.plan));
     if (sink) sink.results = results;
     // Both executions stay inside the authority sandwich. The comparison uses
     // the frozen isolation base, never setup's possibly older baseline.

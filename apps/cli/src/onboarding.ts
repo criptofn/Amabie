@@ -1481,6 +1481,17 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   return result;
 }
 
+/** A measured nonzero exit may collect further checks; an unmeasured process must halt them. */
+export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[], timeoutMs = 600_000): StepResult[] {
+  const results: StepResult[] = [];
+  for (const step of plan) {
+    const result = runPlanStep(root, pm, step, timeoutMs);
+    results.push(result);
+    if (result.exitCode === null) break;
+  }
+  return results;
+}
+
 // ---------- M2 evidence: claims are not evidence ----------
 
 /** M4 identity shape: candidate and baseline share it. `tree` is the git TREE
@@ -2498,7 +2509,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
         if (!overlaid.includes(p) && gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) === null) continue;
         if (!copyInto(root, controlTree, p)) return unknown(`comparison input control could not copy ${safePath(p)}`, changed);
       }
-      const control = planWithFreshTests(cfg.plan).map((s) => runPlanStep(controlTree!, cfg.pm, s, timeoutMs));
+      const control = runPlanSteps(controlTree!, cfg.pm, planWithFreshTests(cfg.plan), timeoutMs);
       if (control.some((r) => !r.ok)) {
         const provenance = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
         const baseEvidence = writeComparison(root, 'baseline', ran, 'fail', provenance, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });
@@ -3959,6 +3970,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     ran.push(r);
     o.step(r);
     if (!r.ok) { allOk = false; failed.push(r); }
+    if (r.exitCode === null) break;
   }
   const setupEvidence = writeVerificationBundle(root, 'setup', ran, allOk ? 'pass' : 'fail', { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null });
   writeCheckpoint(root, allOk ? 'pass' : 'fail', failed.map((f) => f.kind), 'setup', {
@@ -4581,6 +4593,7 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
     scriptRuns.push(r);
     ranByScript.set(s.script, scriptRuns);
     o.step(r); if (!r.ok) failed.push(r);
+    if (r.exitCode === null) break;
   }
   let promptEvidenceReport: VerificationReport | undefined;
   if (promptEvidenceRequest !== null) {
@@ -4958,6 +4971,7 @@ export async function cmdCheckpoint(): Promise<number> {
     try { r = runPlanStep(root, cfg.pm, s); } catch (e) { infra = String(e); break; }
     ran.push(r);
     if (!r.ok) failed.push(r);
+    if (r.exitCode === null) break;
   }
   if (infra) {
     const evidenceDir = writeVerificationBundle(root, 'checkpoint', ran, 'infra', prov);

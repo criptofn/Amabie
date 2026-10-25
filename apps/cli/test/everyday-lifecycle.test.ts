@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto';
 // Tests execute from dist/test; keep the shared test helper in the source tree.
 const { cleanupOwnedFixture } = await import(new URL('../../../../tooling/test-support/owned-fixture-cleanup.mjs', import.meta.url).href) as
   typeof import('../../../tooling/test-support/owned-fixture-cleanup.mjs');
-import { runPlanStep } from '../src/onboarding.js';
+import { cmdSetup, runPlanStep, runPlanSteps } from '../src/onboarding.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-everyday-lifecycle-'));
 const pids = new Set<number>();
@@ -121,4 +121,65 @@ it('refuses a successful check when containment cannot be measured', () => {
     mock.restoreAll();
     syncBuiltinESMExports();
   }
+});
+
+it('setup stops before the next check after containment becomes unmeasurable', async () => {
+  const project = path.join(root, 'halt-plan');
+  fs.mkdirSync(path.join(project, '.git'), { recursive: true });
+  fs.mkdirSync(path.join(project, '.claude'), { recursive: true });
+  const first = path.join(project, 'first-ran');
+  const later = path.join(project, 'later-ran');
+  fs.writeFileSync(path.join(project, 'build.cjs'), "require('node:fs').writeFileSync('first-ran', 'observed');");
+  fs.writeFileSync(path.join(project, 'test.cjs'), "require('node:fs').writeFileSync('later-ran', 'must not execute');");
+  fs.writeFileSync(path.join(project, 'package.json'), JSON.stringify({
+    name: 'containment-halt', scripts: { build: 'node build.cjs', test: 'node test.cjs' },
+  }));
+  const originalSpawnSync = childProcess.spawnSync;
+  const originalReadDir = fs.readdirSync;
+  mock.method(childProcess, 'spawnSync', (...args: Parameters<typeof originalSpawnSync>) => {
+    const program = String(args[0]);
+    if (fs.existsSync(first) && (/powershell|pwsh/i.test(path.basename(program)) || program.endsWith('/ps'))) {
+      throw new Error('controlled loss of cleanup measurement after real build');
+    }
+    return originalSpawnSync(...args);
+  });
+  if (process.platform !== 'win32') {
+    mock.method(fs, 'readdirSync', (...args: Parameters<typeof originalReadDir>) => {
+      if (fs.existsSync(first) && String(args[0]) === '/proc') throw new Error('controlled loss of process table');
+      return originalReadDir(...args);
+    });
+  }
+  const previousTrustStore = process.env.AMABIE_TRUST_STORE;
+  process.env.AMABIE_TRUST_STORE = path.join(root, 'halt-plan-trust');
+  syncBuiltinESMExports();
+  try {
+    assert.equal(await cmdSetup(['--yes', project]), 2, 'cleanup uncertainty stays fail-closed');
+    assert.equal(fs.existsSync(first), true, 'the build actually ran before cleanup failed');
+    assert.equal(fs.existsSync(later), false, 'no later command may run after unconfirmed cleanup');
+    const batch = runPlanSteps(project, 'npm', [
+      { kind: 'build', script: 'build', adapter: 'node', argv: [process.execPath, path.join(project, 'build.cjs')] },
+      { kind: 'tests', script: 'test', adapter: 'node', argv: [process.execPath, path.join(project, 'test.cjs')] },
+    ]);
+    assert.equal(batch.length, 1, 'candidate/control batches also stop at the unmeasured process');
+    assert.equal(batch[0]!.exitCode, null);
+    assert.equal(fs.existsSync(later), false, 'batch execution cannot launch the later check either');
+  } finally {
+    if (previousTrustStore === undefined) delete process.env.AMABIE_TRUST_STORE;
+    else process.env.AMABIE_TRUST_STORE = previousTrustStore;
+    mock.restoreAll();
+    syncBuiltinESMExports();
+  }
+});
+
+it('ordered checks still collect ordinary measured project failures', () => {
+  const project = path.join(root, 'ordinary-failure-plan');
+  fs.mkdirSync(project);
+  fs.writeFileSync(path.join(project, 'first.cjs'), 'process.exit(7);');
+  fs.writeFileSync(path.join(project, 'later.cjs'), "require('node:fs').writeFileSync('later-ran', 'observed');");
+  const results = runPlanSteps(project, 'npm', [
+    { kind: 'build', script: 'build', adapter: 'node', argv: [process.execPath, path.join(project, 'first.cjs')] },
+    { kind: 'tests', script: 'test', adapter: 'node', argv: [process.execPath, path.join(project, 'later.cjs')] },
+  ]);
+  assert.deepEqual(results.map(result => result.exitCode), [7, 0]);
+  assert.equal(fs.readFileSync(path.join(project, 'later-ran'), 'utf8'), 'observed');
 });
