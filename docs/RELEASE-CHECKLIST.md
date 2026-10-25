@@ -4,9 +4,10 @@
 
 This checkpoint supersedes readiness inferences from the historical checked items below. **NOT READY.**
 
-- [ ] Fix general Windows root-PID reuse: a controlled later-owner snapshot still causes one wrong mocked kill and a clean result. The new observer/root identity refusal covers only the independently observed observer collision. See `WINDOWS-OBSERVER-ROOT-IDENTITY-2026-10-25.md`; this is a security/reliability blocker, not a passed gate.
+- [ ] Validate the implemented original-root lifetime and native descendant-handle correction on a full exact-source gate. Four complete focused Windows files pass44/44; Linux23PASS/21explicit platformSKIP after supplying the matching native esbuild binary to the shared-checkout test. Production numeric roots without retained ownership now refuse; probes use owned ChildProcess objects. The original wrong-kill controls are retained. See `WINDOWS-OBSERVER-ROOT-IDENTITY-2026-10-25.md`; focused passes are not a complete release gate.
+- [ ] Resolve the two actual local broader Windows failures:299total/297PASS/2FAIL/0SKIP. One PowerShell Add-Type invocation terminated with Internal CLR error0x80131506/access violation; a separate dependency-tree npm process terminated with a fatal V8 assertion. Both pristine provenance prerequisites fail closed. No native-crash cure is claimed. The initial Linux broader run276PASS/1FAIL/20SKIP lacked Linux esbuild in the Windows node_modules; corrected native dependency setup passes the full affected four files without mutating Windows dependencies. Do not relabel the earlier failed run as passed.
 - [ ] Resolve or substantiate the native Windows failures, including project exit3221225794; the protocol doctor failure needs retained nested output. Exact `0390b5f` Hosted run40168699922 failed two Windows tests (1,633 passed/eight skipped); Linux1,624 passed/17skipped and other four jobs passed.
-- [ ] Obtain a complete corrected-source gate and build/reproduce/install its final package. Observer-guard affected tests Windows64/64; Linux51PASS/13explicit Windows-specificSKIP. Those focused results do not validate the open general-root case.
+- [ ] Obtain a complete corrected-source gate and build/reproduce/install its final package. Original-root/descendant handles and updated probe callers are local changes; no current final package or successful current full Hosted run is claimed. Scale probes pass Windows/Linux; Windows stress12/12 (six idle/six loaded) passes. Broader native failures remain open despite these focused passes.
 
 ## Historical checklist
 

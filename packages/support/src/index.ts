@@ -12,7 +12,9 @@
  * the permanent observation test (test/env.test.ts), not by prose.
  */
 
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, ChildProcess, type SpawnSyncReturns } from 'node:child_process';
+import { windowsSyncProcess, type WindowsSyncOptions } from './windowsSyncProcess.js';
+import { WINDOWS_PROCESS_IDENTITY_BOOTSTRAP } from './windowsProcessIdentity.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -494,6 +496,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     let obs = '';
     let obsTruncated = false;
     let killed = false;
+    let exitSweep: SweepResult | undefined;
     child.stdout?.setEncoding('utf8');
     child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', (d: string) => { stdout = cap(stdout + d); });
@@ -537,6 +540,13 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     // hello-bye-boundary/flood ⇒ INVALID regardless: this window trades a
     // 600s hang for a 2s delay, it cannot forge or rescue anything.
     child.on('exit', () => {
+      clearTimeout(timer);
+      if (process.platform === 'win32') {
+        // libuv releases the kernel process handle after this callback returns.
+        // Sweep synchronously here while that original identity still reserves
+        // its PID; waiting for drained stdio/'close' permits PID recycling.
+        exitSweep = sweepRetainedWindowsRoot(childPid, spawnedAtMs);
+      }
       if (!f3stream || f3stream.destroyed) return;
       setTimeout(() => { try { f3stream?.destroy(); } catch { /* already ended */ } }, POST_EXIT_DRAIN_MS);
     });
@@ -560,10 +570,12 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
       // Audit F5: containment must hold on NORMAL exit too, not just timeout.
       // The child is gone but its descendants may live on (a runner's helper
       // daemons holding ports/files poison later rounds asymmetrically).
-      // Sweeps AFTER exit are still precise: Windows keeps the numeric PPID of
-      // a dead parent in its process records, and on POSIX the child was
-      // spawned detached into its own process group which outlives it.
-      const sweep = sweepDescendants(childPid, spawnedAtMs);
+      // Windows has already measured cleanup inside exit while the original
+      // process handle is retained. Never fall back to a later numeric-PID sweep.
+      // POSIX retains the existing own-session/group cleanup path.
+      const sweep = process.platform === 'win32'
+        ? (exitSweep ?? { killed: [], failed: true })
+        : sweepDescendants(childPid, spawnedAtMs);
       resolve({
         exitCode: killed ? -1 : (code ?? (signal ? -1 : -1)),
         killedByTimeout: killed,
@@ -614,16 +626,48 @@ export interface SweepResult {
   failed: boolean;
 }
 
+// An in-process lifetime scope, never an environment variable or agent claim.
+const retainedWindowsRoots = new Set<number>();
+function sweepRetainedWindowsRoot(pid: number | undefined, spawnedAtMs: number): SweepResult {
+  if (pid === undefined) return { killed: [], failed: true };
+  retainedWindowsRoots.add(pid);
+  try { return sweepDescendants(pid, spawnedAtMs); }
+  finally { retainedWindowsRoots.delete(pid); }
+}
+
+/** @internal Attach before exit; the getter never reopens a stale numeric root. */
+export function cleanupWindowsChildOnExit(child: ChildProcess, spawnedAtMs: number): () => SweepResult | undefined {
+  let measured: SweepResult | undefined;
+  if (!(child instanceof ChildProcess) || child.exitCode !== null || child.signalCode !== null) {
+    return () => ({ killed: [], failed: true });
+  }
+  child.once('exit', () => { measured = sweepRetainedWindowsRoot(child.pid, spawnedAtMs); });
+  return () => measured;
+}
+
+/** Sweep a still-owned live ChildProcess; its exit callback cannot release its handle during this synchronous call. */
+export function sweepLiveChild(child: ChildProcess, spawnedAtMs: number): SweepResult {
+  if (!(child instanceof ChildProcess) || child.exitCode !== null || child.signalCode !== null) return { killed: [], failed: true };
+  return process.platform === 'win32' ? sweepRetainedWindowsRoot(child.pid, spawnedAtMs) : sweepDescendants(child.pid, spawnedAtMs);
+}
+
+/** @internal Windows sync checks keep their original process handle through cleanup. */
+export function runWindowsProcessSync(file: string, args: readonly string[], options: WindowsSyncOptions): SpawnSyncReturns<string> {
+  return windowsSyncProcess(file, args, options, containmentEnv(), sweepRetainedWindowsRoot);
+}
+
 const SWEEP_MAX_PROCESSES = 200;
 
 /**
  * Audit F5: after the spawned child has EXITED (normal or killed), sweep any
- * descendants that outlived it. Precise on both platforms post-exit:
+ * descendants that outlived it. Bounded, fail-closed LOCAL cleanup:
  *  - Windows: `Win32_Process.ParentProcessId` keeps the numeric PPID of a dead
  *    parent, so a BFS over stale-PPID lineage finds grandchildren even when
- *    intermediate ancestors are gone. A CreationDate >= spawn-time filter
- *    guards against PID-reuse collateral (a recycled PPID belongs to a newer
- *    unrelated tree).
+ *    intermediate ancestors are gone. Callers must retain the original root
+ *    kernel handle through cleanup. The sweep reads native root creation,
+ *    pins accepted descendants, matches CIM microsecond identities to native
+ *    creation times and terminates through those handles. This is not a kernel
+ *    sandbox or a guarantee that every escaped/unobserved process is discoverable.
  *  - POSIX: the child was spawned `detached` => it led its own process GROUP
  *    and SESSION (setsid ⇒ sid == childPid). Members still alive after close
  *    are found via /proc (or `ps`) by SESSION or group membership (audit S1:
@@ -639,6 +683,9 @@ const SWEEP_MAX_PROCESSES = 200;
  */
 export function sweepDescendants(pid: number | undefined, spawnedAtMs: number): SweepResult {
   if (!pid || pid <= 0) return { killed: [], failed: false };
+  // A PID/time pair is not Windows ownership. Production entry points establish
+  // the scope only while the ORIGINAL ChildProcess kernel handle is retained.
+  if (process.platform === 'win32' && !retainedWindowsRoots.has(pid)) return { killed: [], failed: true };
   try {
     return process.platform === 'win32'
       ? sweepWin32(pid, spawnedAtMs)
@@ -816,6 +863,12 @@ function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
         startedAt: invocationStartedAt, endedAt: new Date().toISOString(),
         status: r.status, signal: r.signal ?? null,
         errorCode: (r.error as NodeJS.ErrnoException | undefined)?.code ?? null,
+        // A three-line human summary loses the native stack needed to diagnose
+        // CLR failures. Keep a bounded, explicitly marked payload only on opt-in
+        // failed invocations. JSON escaping prevents multiline record forgery.
+        ...((r.status !== 0 || r.error) ? { failureStderr: {
+          text: r.stderr.slice(0, 16_384), length: r.stderr.length, truncated: r.stderr.length > 16_384,
+        } } : {}),
       })}\n`);
       for (const line of r.stderr.split(/\r?\n/u)) {
         if (line.startsWith(WIN32_SWEEP_TRACE_PREFIX)) process.stderr.write(`${line}\n`);
@@ -975,10 +1028,6 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
   if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isFinite(spawnedAtMs)) {
     throw new RangeError('Windows sweep requires a positive PID and finite spawn time');
   }
-  // CIM CreationDate is only precise to a second on supported hosts. Two
-  // seconds of slack covers truncation without admitting an unrelated process
-  // that reused a parent PID minutes before this child was spawned.
-  const cut = new Date(spawnedAtMs - 2_000).toISOString();
   const properties = `ProcessId,ParentProcessId,CreationDate${trace ? ',Name' : ''}`;
   const traceSetup = trace
     ? `function Write-SweepTrace { param([string]$Event,[hashtable]$Data); try{` +
@@ -1022,7 +1071,8 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
     // Refuse before any snapshot/kill instead of certifying ambiguous ancestry.
     `if(${pid} -eq $PID){throw 'sweep root PID has been reused by containment observer'};` +
     traceSetup +
-    `$cut=[DateTime]::Parse('${cut}').ToUniversalTime();` +
+    WINDOWS_PROCESS_IDENTITY_BOOTSTRAP +
+    `$script:owned=@{}; try{ $script:owned[${pid}]=Open-SweepIdentity -ProcessId ${pid} -Root;` +
     `$all=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($all.Count -le 0){ throw 'empty process snapshot' };` +
     traceHost +
@@ -1036,9 +1086,12 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
     `foreach($ancestor in $script:desc){ $aid=[int]$ancestor.ProcessId; if($byId.ContainsKey($aid)){ $current=$byId[$aid]; if(-not $current.CreationDate){$script:uncertain=$true;continue}; if($current.CreationDate.ToUniversalTime().Ticks -ne $ancestor.CreationDate.ToUniversalTime().Ticks){continue} }; $q.Enqueue($aid) };` +
     `$seen=New-Object System.Collections.Generic.HashSet[int]; $done=New-Object System.Collections.Generic.HashSet[int];` +
     `while($q.Count -gt 0){ $parent=$q.Dequeue(); if(-not $done.Add($parent)){continue}; if(-not $byParent.ContainsKey($parent)){continue};` +
-    `foreach($child in $byParent[$parent]){ $childId=[int]$child.ProcessId; if($childId -eq ${pid} -or -not $seen.Add($childId)){continue}; if(-not $child.CreationDate){$script:uncertain=$true;continue}; if($child.CreationDate.ToUniversalTime() -lt $cut){continue};` +
+    `foreach($child in $byParent[$parent]){ $childId=[int]$child.ProcessId; if($childId -eq ${pid} -or -not $seen.Add($childId)){continue}; if(-not $child.CreationDate){$script:uncertain=$true;continue};` +
+    `$childTicks=$child.CreationDate.ToUniversalTime().Ticks; $parentTicks=$script:owned[$parent].CreationTicks; if($childTicks+9 -lt $parentTicks){continue};` +
     `$identity=('{0}:{1}' -f $childId, $child.CreationDate.ToUniversalTime().Ticks);` +
-    `if(-not $script:descIds.Contains($identity)){ if($script:desc.Count -ge ${SWEEP_MAX_PROCESSES}){ $script:limited=$true; break }; [void]$script:descIds.Add($identity); [void]$script:desc.Add($child) }; $q.Enqueue($childId) }; if($script:limited){break} } };` +
+    `if(-not $script:descIds.Contains($identity)){ if($script:desc.Count -ge ${SWEEP_MAX_PROCESSES}){ $script:limited=$true; break };` +
+    `try{$pin=Open-SweepIdentity -ProcessId $childId -ExpectedTicks $childTicks -ParentTicks $parentTicks}catch{$script:uncertain=$true;continue}; if($null -eq $pin){continue};` +
+    `if($script:owned.ContainsKey($childId)){$pin.Dispose();$script:uncertain=$true;continue}; $script:owned[$childId]=$pin; [void]$script:descIds.Add($identity); [void]$script:desc.Add($child) }; $q.Enqueue($childId) }; if($script:limited){break} } };` +
     `Add-Descendants $all;` +
     `$before=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($before.Count -le 0){ throw 'empty pre-kill process snapshot' }; Add-Descendants $before;` +
@@ -1051,7 +1104,7 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
     `$roundKills=New-Object System.Collections.Generic.List[int];` +
     `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
     `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key) -and $attempted.Add($key)){` + traceRequest +
-    `try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k.Add($id); $roundKills.Add($id); ${trace ? "Write-SweepTrace 'kill-requested' $traceFields" : ''} }catch{${trace ? "Write-SweepTrace 'kill-request-failed' $traceFields" : ''}} } };` +
+    `try{ if(Stop-ProcessIdentity -Identity $script:owned[$id]){ $k.Add($id); $roundKills.Add($id); ${trace ? "Write-SweepTrace 'kill-requested' $traceFields" : ''} } }catch{$script:uncertain=$true;${trace ? "Write-SweepTrace 'kill-request-failed' $traceFields" : ''}} } };` +
     `if($roundKills.Count -gt 0){ try{ Wait-Process -Id $roundKills.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
     `$after=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
     `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
@@ -1064,7 +1117,8 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
     `Write-Output ('limit=' + $(if($script:limited){1}else{0}));` +
     `Write-Output ('uncertain=' + $(if($script:uncertain){1}else{0}));` +
     `Write-Output ('killed=' + ($k -join ','));` +
-    `Write-Output ('survivors=' + ($survivors -join ','))`);
+    `Write-Output ('survivors=' + ($survivors -join ','))` +
+    `}finally{foreach($owned in $script:owned.Values){$owned.Dispose()}}`);
 }
 
 /** Strictly decode Windows sweep output. Unknown/truncated output is failure, never an empty tree. */

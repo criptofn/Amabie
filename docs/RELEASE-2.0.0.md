@@ -1,5 +1,25 @@
 # Amabie 2.0.0 release candidate
 
+Latest local checkpoint,25 October: original-root lifetime and native descendant
+identity correction is implemented, including the synchronous held-exit Worker
+bridge. Unretained numeric Windows roots refuse; accepted descendant handles stay
+pinned through termination. Four full focused files pass Windows44/44 and
+Linux23PASS/21explicit platformSKIP. Linux needs its own matching esbuild binary
+when tests share a checkout installed under Windows; the corrected environment
+does not replace Windows node_modules. Probe callers now retain their actual
+ChildProcess ownership; scale probes pass on both OS, recorded-probe contract
+passes on both, and Windows stress passes12/12 (six idle/six loaded).
+
+The larger Windows run still failed two pristine provenance prerequisites:
+297PASS/2FAIL/0SKIP,299total. One PowerShell Add-Type process crashed with internal
+CLR error/access violation, and a separate npm dependency-tree process produced a
+fatal V8 assertion and empty stdout. Amabie refused both as insufficient evidence.
+Full failed-host stderr is now bounded and JSON-escaped in opt-in diagnostics;
+its actual RED/GREEN regression preserves exit/status and no-retry semantics.
+These corrections do not prove a native-crash cure. **NOT READY**; exact-source
+Hosted validation and a newly reproduced/clean-installed final package remain
+required. The earlier checkpoints below preserve their own source identities.
+
 Latest checkpoint,25 October: exact `0390b5f` [CI40168699922](https://github.com/criptofn/Amabie/actions/runs/40168699922) failed two Windows cases (1,633 passed/eight skipped); Linux1,624 passed/17skipped and the other four jobs passed. The [observer/root PID collision correction](WINDOWS-OBSERVER-ROOT-IDENTITY-2026-10-25.md) independently reproduced and refuses one wrong-ancestry case before any kill. Complete affected files passed Windows64/64 and Linux51PASS/13explicit Windows-specificSKIP. A separate controlled probe still demonstrates wrong termination authority for a different later owner of the numeric root: **general root-PID reuse remains a release blocker**. The protocol fixture retains failed CLI output without changing assertions. These local corrections are not a successful current full gate or final package. Release remains NOT READY; native failure causality is unproven.
 
 Current checkpoint,25 October: exact source `a16a7e5` Hosted Windows failed three cases (1,630 passed/eight skipped), while the other five jobs passed. The [ordered-plan fail-stop correction](PLAN-FAIL-STOP-2026-10-25.md) fixes an independently reproduced continuation after unmeasured cleanup: setup, doctor, checkpoint and candidate/control batches now stop before launching another project check. All seven affected files passed locally on Windows146/146 and Linux144/144, without skips; after isolating the new setup test's trust store, its complete file passed again6/6 on each OS. Exact-current full Hosted validation remains required. Neither this correction nor the preceding [owned test fixture cleanup](TEST-FIXTURE-CLEANUP-2026-10-25.md) is claimed to solve the native process incident. Public release is still BLOCKED; older results below retain their original source identities.

@@ -6,6 +6,7 @@
  * compared with the sweep's own killed PID list. This is diagnostic only.
  */
 import crypto from 'node:crypto';
+import { cleanupOwnedFixture } from '../test-support/owned-fixture-cleanup.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -37,7 +38,8 @@ if (fs.existsSync(outDir)) {
 }
 fs.mkdirSync(outDir, { recursive: true });
 const support = await import(pathToFileURL(modulePath).href);
-if (typeof support.sweepDescendants !== 'function') throw new Error('release dist does not export sweepDescendants');
+if (typeof support.sweepLiveChild !== 'function') throw new Error('release dist does not export sweepLiveChild');
+const OWNER_TOKEN = `amabie-test-owner:${crypto.randomUUID()}`;
 const testPath = path.join(root, 'packages/support/dist/test/lifecycle.test.js');
 const metadata = {
   schema: 'amabie-v15-windows-sweep-trace/1',
@@ -51,7 +53,7 @@ const metadata = {
   startedAt: new Date().toISOString(),
 };
 fs.writeFileSync(path.join(outDir, 'run.json'), `${JSON.stringify(metadata, null, 2)}\n`, { flag: 'wx' });
-const survivorArgs = ['-e', 'setTimeout(()=>{}, 300000)'];
+const survivorArgs = ['-e', 'setTimeout(()=>{}, 300000)', OWNER_TOKEN];
 const childScript = [
   "const { spawn } = require('node:child_process');",
   `const c = spawn(process.execPath, ${JSON.stringify(survivorArgs)}, { stdio: 'ignore', windowsHide: true });`,
@@ -107,7 +109,7 @@ for (let i = 0; i < runs; i++) {
   const dir = path.join(outDir, `attempt-${String(i + 1).padStart(2, '0')}`);
   fs.mkdirSync(dir);
   const workers = scenario === 'loaded' ? startWorkers(loadWorkers) : [];
-  const parent = spawn(process.execPath, ['-e', childScript], {
+  const parent = spawn(process.execPath, ['-e', childScript, OWNER_TOKEN], {
     stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true,
   });
   let childPid = null;
@@ -126,7 +128,7 @@ for (let i = 0; i < runs; i++) {
     const spawnedAtMs = Date.now() - 1_000;
     before = observe([parentPid, childPid]);
     const aliveImmediatelyBeforeSweep = { parent: alive(parentPid), child: alive(childPid) };
-    sweep = support.sweepDescendants(parentPid, spawnedAtMs);
+    sweep = support.sweepLiveChild(parent, spawnedAtMs);
     const aliveImmediatelyAfterSweep = { parent: alive(parentPid), child: alive(childPid) };
     after = observe([parentPid, childPid]);
     const gone = !alive(childPid);
@@ -155,8 +157,8 @@ for (let i = 0; i < runs; i++) {
     results.push({ number: i + 1, scenario, startedAt, finishedAt: new Date().toISOString(), elapsedMs: Date.now() - start, parentPid: parent.pid ?? null, childPid, before, sweep, after, error });
     console.log(`FAIL attempt ${i + 1}/${runs} ${scenario}: ${String(e?.message ?? e)}`);
   } finally {
-    if (childPid && alive(childPid)) spawnSync('taskkill.exe', ['/PID', String(childPid), '/F'], { timeout: 15_000, windowsHide: true });
-    if (parent.pid && alive(parent.pid)) spawnSync('taskkill.exe', ['/PID', String(parent.pid), '/T', '/F'], { timeout: 15_000, windowsHide: true });
+    if (childPid) cleanupOwnedFixture(childPid, OWNER_TOKEN);
+    if (parent.pid) cleanupOwnedFixture(parent.pid, OWNER_TOKEN);
     await stopWorkers(workers);
     await sleep(100);
   }

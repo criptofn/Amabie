@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
-import { killTree, sweepDescendants } from '../../packages/support/dist/src/index.js';
+import { killTree, sweepDescendants, cleanupWindowsChildOnExit } from '../../packages/support/dist/src/index.js';
 
 /** Record live output and contain the owned child before restoring mutated files. */
 export function runProbe(command, args, { cwd, timeout, prefix, shell = false } = {}) {
@@ -12,10 +12,15 @@ export function runProbe(command, args, { cwd, timeout, prefix, shell = false } 
     const decoders = [new StringDecoder('utf8'), new StringDecoder('utf8')];
     let timer;
     const child = spawn(command, args, { cwd, shell, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+    const windowsSweep = process.platform === 'win32' ? cleanupWindowsChildOnExit(child, startedAt) : undefined;
     const cleanup = () => {
       if (cleaned) return;
+      // Interrupt/timeout may request cleanup before exit is delivered. Keep
+      // ownership until the actual exit-held measurement; do not mark it clean.
+      const sweep = windowsSweep ? windowsSweep() : undefined;
+      if (windowsSweep && child.pid && sweep === undefined && child.exitCode === null && child.signalCode === null) return;
       cleaned = true;
-      if (child.pid && sweepDescendants(child.pid, startedAt).failed) error ??= Object.assign(new Error('Probe descendant cleanup could not be confirmed'), { code: 'ECLEANUP' });
+      if (child.pid && (windowsSweep ? sweep?.failed ?? true : sweepDescendants(child.pid, startedAt).failed)) error ??= Object.assign(new Error('Probe descendant cleanup could not be confirmed'), { code: 'ECLEANUP' });
     };
     const stop = () => { if (child.exitCode === null && child.pid) { killTree(child.pid); child.kill('SIGKILL'); } };
     const interrupted = () => { error = Object.assign(new Error('Probe interrupted'), { code: 'EINTR' }); stop(); cleanup(); };
@@ -30,7 +35,7 @@ export function runProbe(command, args, { cwd, timeout, prefix, shell = false } 
       });
     }
     child.once('error', e => { error = e; });
-    child.once('exit', cleanup);
+    child.once('exit', () => { clearTimeout(timer); cleanup(); });
     child.once('close', (status, signal) => {
       clearTimeout(timer); cleanup();
       stdout += decoders[0].end(); stderr += decoders[1].end();

@@ -15,7 +15,7 @@ import {
   type VerifierAdapter,
   type VerificationReport,
 } from '@amabie/prompt-evidence';
-import { killTree, sweepDescendants } from '@amabie/support';
+import { killTree, sweepDescendants, sweepLiveChild, cleanupWindowsChildOnExit } from '@amabie/support';
 import { isolateCreate, loadRecord, verifyCandidate, type CandidateRecord } from './candidate.js';
 import { CLI_ENTRY, Out, containedRealPath, findRepoRoot, planDigest, planWithFreshTests, readConfig, readTaskRecord, type AmabieConfig, type StepResult } from './onboarding.js';
 import { CODING_SEALED_PLAN_ADAPTER, createCodingSealedPlanAdapter, type SealedStepResult } from './prompt-evidence.js';
@@ -132,13 +132,17 @@ function runBoundedProcess(
     let settled = false;
     let timer: NodeJS.Timeout | undefined;
     let forceClose: NodeJS.Timeout | undefined;
+    const windowsSweep = process.platform === 'win32' ? cleanupWindowsChildOnExit(child, spawnedAtMs) : undefined;
+    child.once('exit', () => { if (timer) clearTimeout(timer); });
 
     const finish = (exitCode: number | null, processError?: string): void => {
       if (settled) return;
       settled = true;
       if (timer) clearTimeout(timer);
       if (forceClose) clearTimeout(forceClose);
-      const sweep = child.pid ? sweepDescendants(child.pid, spawnedAtMs) : { killed: [], failed: false };
+      const sweep = !child.pid ? { killed: [], failed: false }
+        : windowsSweep ? windowsSweep() ?? sweepLiveChild(child, spawnedAtMs)
+          : sweepDescendants(child.pid, spawnedAtMs);
       const stdoutRaw = Buffer.concat(stdout);
       const stderrRaw = Buffer.concat(stderr);
       resolve({
@@ -157,7 +161,7 @@ function runBoundedProcess(
     const terminate = (reason: 'timeout' | 'output'): void => {
       if (reason === 'timeout') timedOut = true;
       else outputExceeded = true;
-      if (child.pid) killTree(child.pid);
+      if (child.pid && child.exitCode === null && child.signalCode === null) killTree(child.pid);
       else child.kill('SIGKILL');
       forceClose = setTimeout(() => {
         child.stdin.destroy();

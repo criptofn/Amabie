@@ -3,6 +3,8 @@
 // attempts while a separate, throttled CPU worker is active. No network or
 // project scripts are involved.
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { cleanupOwnedFixture } from '../test-support/owned-fixture-cleanup.mjs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -13,7 +15,8 @@ if (process.platform !== 'win32') {
 }
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const { sweepDescendants } = await import(pathToFileURL(path.join(repo, 'packages/support/dist/src/index.js')).href);
+const { sweepLiveChild } = await import(pathToFileURL(path.join(repo, 'packages/support/dist/src/index.js')).href);
+const OWNER_TOKEN = `amabie-test-owner:${randomUUID()}`;
 const fixtureDir = path.join(repo, 'packages/support/test/fixtures');
 const parentScript = path.join(fixtureDir, 'process-tree-parent.cjs');
 const loadScript = path.join(fixtureDir, 'process-tree-load.cjs');
@@ -41,18 +44,18 @@ async function childPidOf(parent) {
 
 function killTree(pid) {
   if (!Number.isFinite(pid) || pid <= 0) return;
-  spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { timeout: 15_000, windowsHide: true });
+  cleanupOwnedFixture(pid, OWNER_TOKEN);
 }
 
 async function attempt(label, index) {
   const startedAt = Date.now();
-  const parent = spawn(process.execPath, [parentScript], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
+  const parent = spawn(process.execPath, [parentScript, OWNER_TOKEN], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
   if (!parent.pid) throw new Error(`${label} ${index}: parent process has no pid`);
   let child = 0;
   try {
     child = await childPidOf(parent);
     assert.ok(alive(child), `${label} ${index}: child did not start`);
-    const result = sweepDescendants(parent.pid, startedAt);
+    const result = sweepLiveChild(parent, startedAt);
     assert.equal(result.failed, false, `${label} ${index}: sweep reported failure: ${JSON.stringify(result)}`);
     assert.ok(result.killed.includes(child), `${label} ${index}: child ${child} absent from ${JSON.stringify(result.killed)}`);
     assert.ok(!result.killed.includes(parent.pid), `${label} ${index}: root ${parent.pid} was reported as a descendant kill`);
@@ -70,7 +73,7 @@ async function attempt(label, index) {
 let load;
 try {
   for (let i = 1; i <= 6; i += 1) await attempt('idle', i);
-  load = spawn(process.execPath, [loadScript], { stdio: 'ignore', detached: true, windowsHide: true });
+  load = spawn(process.execPath, [loadScript, OWNER_TOKEN], { stdio: 'ignore', detached: true, windowsHide: true });
   if (!load.pid) throw new Error('load process has no pid');
   await sleep(200);
   assert.ok(alive(load.pid), 'load process did not start');

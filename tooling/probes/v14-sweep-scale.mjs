@@ -34,6 +34,8 @@
  * Exit: 0 all checks passed; 1 a check failed.
  */
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { cleanupOwnedFixture } from '../test-support/owned-fixture-cleanup.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -53,7 +55,8 @@ if (!fs.existsSync(BUILT)) {
   console.error(`FAIL: no built support package at ${BUILT} - run \`npm run build\` first`);
   process.exit(1);
 }
-const { sweepDescendants } = await import(`file://${BUILT.replace(/\\/g, '/')}`);
+const { sweepDescendants, sweepLiveChild, cleanupWindowsChildOnExit } = await import(`file://${BUILT.replace(/\\/g, '/')}`);
+const OWNER_TOKEN = `amabie-test-owner:${randomUUID()}`;
 
 // ---------------------------------------------------------------- A. shape ---
 console.log('=== A. the sweep uses bounded snapshots, not one query per process ===');
@@ -83,16 +86,17 @@ check('the enumeration result is required to be non-empty before "no survivors" 
 console.log('\n=== B. a real tree with several survivors is still swept ===');
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const killIfAlive = (pid) => { if (pid !== undefined && isAlive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } } };
+const killIfAlive = (pid) => cleanupOwnedFixture(pid, OWNER_TOKEN);
 
 const mid = spawn(process.execPath, ['-e',
   "const { spawn } = require('node:child_process');" +
   'const pids = [];' +
   `for (let i = 0; i < ${DESCENDANTS}; i++) {` +
-  "  const c = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 120000)'], { stdio: 'ignore', windowsHide: true, detached: true });" +
+  `  const c = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 120000)', ${JSON.stringify(OWNER_TOKEN)}], { stdio: 'ignore', windowsHide: true, detached: true });` +
   '  c.unref(); pids.push(c.pid); }' +
   "console.log(pids.join(' '));" +
   'setTimeout(()=>{}, 180000);',
+  OWNER_TOKEN,
 ], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
 
 let out = '';
@@ -114,7 +118,7 @@ try {
     kidPids.length === DESCENDANTS && kidPids.every(isAlive));
 
   const started = Date.now();
-  const res = sweepDescendants(mid.pid, Date.now() - 1_000);
+  const res = sweepLiveChild(mid, Date.now() - 1_000);
   const secs = Math.round((Date.now() - started) / 100) / 10;
   info('sweep result', JSON.stringify(res));
   info('sweep wall time', `${secs}s`);
@@ -138,10 +142,14 @@ info('sweepDescendants(undefined)', JSON.stringify(none));
 check('no pid -> no kill, and NOT failed', none.failed === false && none.killed.length === 0);
 
 const ghost = spawn(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'ignore', windowsHide: true });
+const ghostSweep = process.platform === 'win32' ? cleanupWindowsChildOnExit(ghost, Date.now()) : undefined;
 await new Promise((r) => ghost.on('close', r));
-const after = sweepDescendants(ghost.pid, Date.now() - 5_000);
+const after = ghostSweep ? ghostSweep() ?? { killed: [], failed: true } : sweepDescendants(ghost.pid, Date.now() - 5_000);
 info('sweepDescendants(dead child)', JSON.stringify(after));
 check('a child that left nothing behind -> not failed (no false alarm)', after.failed === false);
+if (process.platform === 'win32') {
+  check('an unretained numeric root cannot authorize Windows cleanup', sweepDescendants(ghost.pid, Date.now()).failed === true);
+}
 
 console.log('');
 if (failures > 0) {

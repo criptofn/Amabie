@@ -24,11 +24,12 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
 import { randomUUID } from 'node:crypto';
+import { mockProcessIdentity } from './fixtures/mock-process-identity.js';
 // Tests execute from dist/test; keep the shared test helper in the source tree.
 const { cleanupOwnedFixture } = await import(new URL('../../../../tooling/test-support/owned-fixture-cleanup.mjs', import.meta.url).href) as
   typeof import('../../../tooling/test-support/owned-fixture-cleanup.mjs');
 
-import { runCommand, sweepDescendants, buildWin32SweepScript, parseWin32SweepOutput, posixSessionMember, windowsPowerShellCandidates, runWin32SweepWithFallback, type RunOutcome, type WorkspaceLayout } from '../src/index.js';
+import { runCommand, sweepLiveChild, buildWin32SweepScript, parseWin32SweepOutput, posixSessionMember, windowsPowerShellCandidates, runWin32SweepWithFallback, type RunOutcome, type WorkspaceLayout } from '../src/index.js';
 
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
@@ -223,7 +224,7 @@ describe('audit F5 — sweep mechanism (live parent, positive proof)', () => {
       assert.ok(isAlive(kidPid), 'precondition: child should be alive before sweep');
       // Include one second of test scheduling slack; the production sweep allows two.
       const spawnedAtMs = Date.now() - 1_000;
-      const res = sweepDescendants(mid.pid, spawnedAtMs);
+      const res = sweepLiveChild(mid, spawnedAtMs);
       /*
        * v1.5 post-audit: this assertion fired ONCE on the hosted Windows runner and never locally.
        *
@@ -300,7 +301,7 @@ describe('Windows sweep diagnostic trace', () => {
         `function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force); if($Id -ne ${childPid}){throw 'unexpected kill target'} }`,
         'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout) }',
       ].join(';');
-      fs.writeFileSync(file, `${setup}; ${buildWin32SweepScript(rootPid, started, trace)}\n`);
+      fs.writeFileSync(file, `${setup}; ${mockProcessIdentity(buildWin32SweepScript(rootPid, started, trace))}\n`);
       const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-File', file], {
         encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
       });
@@ -499,7 +500,7 @@ describe('Windows sweep snapshot refresh', () => {
     // These tests exercise generated-script semantics with mocked process
     // snapshots, not Windows PowerShell 5.1 itself. Prefer installed PowerShell
     // Core when the inbox host is unavailable or crashes on CIM enumeration.
-    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; Write-Output ('test-waits=' + $script:waitCalls); Write-Output ('test-kills=' + $script:killCalls); Write-Output ('test-snapshots=' + $script:enumerations)`], {
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${mockProcessIdentity(buildWin32SweepScript(rootPid, spawnedAtMs))}; Write-Output ('test-waits=' + $script:waitCalls); Write-Output ('test-kills=' + $script:killCalls); Write-Output ('test-snapshots=' + $script:enumerations)`], {
       encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
     });
     assert.equal(result.status, 0, result.stderr);
@@ -540,7 +541,7 @@ describe('Windows sweep snapshot refresh', () => {
       'function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); if(($Property -join ",") -ne "ProcessId,ParentProcessId,CreationDate"){throw "unexpected process snapshot properties"}; $script:enumerations++; if($script:enumerations -eq 1){$script:first} elseif($script:enumerations -eq 2){$script:before} else {$script:after} }',
       'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
     ].join(';');
-    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${buildWin32SweepScript(rootPid, spawnedAtMs)}; [Console]::Error.WriteLine('processIdReads=' + $script:processIdReads)`], {
+    const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command', `${setup}; ${mockProcessIdentity(buildWin32SweepScript(rootPid, spawnedAtMs))}; [Console]::Error.WriteLine('processIdReads=' + $script:processIdReads)`], {
       encoding: 'utf8', timeout: 15_000, windowsHide: true, maxBuffer: 1_000_000,
     });
     assert.equal(result.status, 0, result.stderr);
@@ -694,12 +695,13 @@ describe('Windows sweep snapshot refresh', () => {
     const root = processRow(rootPid, 100, created);
     const setup = [
       '$script:enumerations=0',
+      `$script:root=${root}`,
       `function Get-CimInstance { [CmdletBinding()] param([string]$ClassName,[string[]]$Property); $script:enumerations++; ${root}; for($n=3;$n -le $script:enumerations;$n++){ [pscustomobject]@{ProcessId=(52300+$n);ParentProcessId=${rootPid};CreationDate=[DateTime]::Parse('${created}')} } }`,
       'function Stop-Process { [CmdletBinding()] param([int]$Id,[switch]$Force) }',
       'function Wait-Process { [CmdletBinding()] param([int[]]$Id,[int]$Timeout) }',
     ].join(';');
     const result = spawnSync(testPowerShellHost(), ['-NoProfile', '-NonInteractive', '-Command',
-      `${setup}; ${buildWin32SweepScript(rootPid, started)}; [Console]::Error.WriteLine('snapshots=' + $script:enumerations)`],
+      `${setup}; ${mockProcessIdentity(buildWin32SweepScript(rootPid, started))}; [Console]::Error.WriteLine('snapshots=' + $script:enumerations)`],
     { encoding: 'utf8', timeout: 15_000, windowsHide: true });
     assert.equal(result.status, 0, result.stderr);
     const sweep = parseWin32SweepOutput(result.stdout);

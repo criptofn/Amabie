@@ -59,7 +59,7 @@ import { fileURLToPath } from 'node:url';
 // outside a SEA build, so this import costs nothing in the ordinary case.
 import sea from 'node:sea';
 import { buildFailurePayload, doctorCheckCommand } from './failure-payload.js';
-import { resolveNpmCli, sanitizedEnv, canonicalPath, sweepDescendants } from '@amabie/support';
+import { resolveNpmCli, sanitizedEnv, canonicalPath, sweepDescendants, runWindowsProcessSync } from '@amabie/support';
 import { parseSummaryCountsFor } from '@amabie/comparator';
 
 // M9 §9.5 — the quarantine marker filename. authority.ts imports only node
@@ -1385,8 +1385,10 @@ function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string, timeou
     detached: process.platform !== 'win32',
     maxBuffer: 32 * 1024 * 1024,
   };
-  const result = spawnSync(resolved.spawnArgv[0], [...resolved.spawnArgv.slice(1), ...args], spawnOptions);
-  if (result.pid > 0 && sweepDescendants(result.pid, spawnedAtMs).failed) {
+  const result = process.platform === 'win32'
+    ? runWindowsProcessSync(resolved.spawnArgv[0], [...resolved.spawnArgv.slice(1), ...args], spawnOptions)
+    : spawnSync(resolved.spawnArgv[0], [...resolved.spawnArgv.slice(1), ...args], spawnOptions);
+  if (process.platform !== 'win32' && result.pid > 0 && sweepDescendants(result.pid, spawnedAtMs).failed) {
     result.error ??= new Error('post-run containment sweep could not confirm zero surviving descendants');
   }
   return result;
