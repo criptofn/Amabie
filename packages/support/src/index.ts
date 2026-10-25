@@ -1017,6 +1017,10 @@ export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = 
   // The input root itself is only traversed; it is never put in the kill list.
   return (
     `$ErrorActionPreference='Stop';` +
+    // This host is spawned after the subject exits. If it received that PID,
+    // its children belong to the observer, never to the original subject.
+    // Refuse before any snapshot/kill instead of certifying ambiguous ancestry.
+    `if(${pid} -eq $PID){throw 'sweep root PID has been reused by containment observer'};` +
     traceSetup +
     `$cut=[DateTime]::Parse('${cut}').ToUniversalTime();` +
     `$all=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +

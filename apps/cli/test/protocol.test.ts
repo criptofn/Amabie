@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
 process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
@@ -24,7 +25,7 @@ const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-protocol-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const amabie = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 });
+const amabie = (args: string[]) => retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 }));
 const same = (a: string, b: string): boolean => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 const makeProject = (name: string): string => {
   const root = path.join(TMP, name);

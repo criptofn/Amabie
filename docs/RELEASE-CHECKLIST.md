@@ -1,5 +1,15 @@
 # Amabie 2.0 release candidate checklist
 
+## Current blockers — 25 October 2026
+
+This checkpoint supersedes readiness inferences from the historical checked items below. **NOT READY.**
+
+- [ ] Fix general Windows root-PID reuse: a controlled later-owner snapshot still causes one wrong mocked kill and a clean result. The new observer/root identity refusal covers only the independently observed observer collision. See `WINDOWS-OBSERVER-ROOT-IDENTITY-2026-10-25.md`; this is a security/reliability blocker, not a passed gate.
+- [ ] Resolve or substantiate the native Windows failures, including project exit3221225794; the protocol doctor failure needs retained nested output. Exact `0390b5f` Hosted run40168699922 failed two Windows tests (1,633 passed/eight skipped); Linux1,624 passed/17skipped and other four jobs passed.
+- [ ] Obtain a complete corrected-source gate and build/reproduce/install its final package. Observer-guard affected tests Windows64/64; Linux51PASS/13explicit Windows-specificSKIP. Those focused results do not validate the open general-root case.
+
+## Historical checklist
+
 Mission started 2026-10-12. Current status: BLOCKED pending exact-candidate hosted validation, clean-default-Windows validation, npm CLI authentication, and successful live provider correction acceptance. No publication is authorised.
 
 This isolated worktree snapshots the existing renamed source; it does not replace or reset any other worktree. The authoritative cross-project checklist/progress log is `docs/RELEASE-MISSION.md` in the website repository. Exact source snapshot is recorded under that repository's ignored `artifacts/release/` directory.
