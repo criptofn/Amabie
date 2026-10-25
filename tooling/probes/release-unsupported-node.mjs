@@ -61,7 +61,7 @@ try {
   console.log('PASS engine-strict refuses unsupported Node');
   const ordinary = install('ordinary-install', false);
   assert.equal(ordinary.result.status, 0, ordinary.result.stderr);
-  const pkgDir = path.join(ordinary.dir, 'node_modules', '@amabie', 'cli');
+  const pkgDir = path.join(ordinary.dir, 'node_modules', 'amabie-cli');
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
   report.package = { name: pkg.name, version: pkg.version, engines: pkg.engines };
   assert.equal(pkg.engines?.node, '>=22');

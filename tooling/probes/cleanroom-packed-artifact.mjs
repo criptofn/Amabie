@@ -85,6 +85,7 @@ check(2, 'bundled third-party notices ship and name the inlined cross-spawn pack
 check(2, 'no node_modules / .night-run / cage / secrets / absolute paths in the listing',
   !entries.some((e) => /node_modules|[.][ ]?night-run|cage|secret|^package\/[a-zA-Z]:|\\/.test(e)));
 const man = JSON.parse(files.get('package/package.json') ?? '');
+check(2, 'public package identity is amabie-cli@2.0.0', man.name === 'amabie-cli' && man.version === '2.0.0');
 check(2, 'manifest: zero runtime deps, not private, bin -> dist/main.js',
   man.dependencies === undefined && man.private === undefined && man.bin?.amabie === 'dist/main.js' && man.type === 'module');
 check(2, 'consumer documentation and minimal example are the reviewed source bytes',
@@ -123,12 +124,12 @@ try {
 
   const inst = sh(`npm install --no-audit --no-fund --ignore-scripts "${TGZ}"`, { cwd: REPO });
   check(3, 'npm install of the EXACT tarball exits 0 (offline-capable: no scripts, no deps)', inst.status === 0, (inst.stdout ?? '') + (inst.stderr ?? ''));
-  const INSTALLED = path.join(REPO, 'node_modules', '@amabie', 'cli', 'dist', 'main.js');
+  const INSTALLED = path.join(REPO, 'node_modules', 'amabie-cli', 'dist', 'main.js');
   const SHIM = path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'amabie.cmd' : 'amabie');
   const EXAMPLE = path.join(TMP, 'copied quickstart');
   fs.mkdirSync(EXAMPLE);
   for (const name of ['package.json', 'greeting.js', 'greeting.test.js']) {
-    fs.copyFileSync(path.join(REPO, 'node_modules', '@amabie', 'cli', 'examples', 'quickstart', name), path.join(EXAMPLE, name));
+    fs.copyFileSync(path.join(REPO, 'node_modules', 'amabie-cli', 'examples', 'quickstart', name), path.join(EXAMPLE, name));
   }
   const exampleTest = sh('npm test', { cwd: EXAMPLE });
   check(3, 'shipped example copied outside its package runs the documented npm test',
@@ -136,7 +137,7 @@ try {
   check(3, 'installed bundle + bin shim present; no nested node_modules (zero-dep footprint)',
   fs.existsSync(INSTALLED) && fs.existsSync(SHIM)
     && fs.existsSync(path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'amabie.cmd' : 'amabie'))
-    && !fs.existsSync(path.join(REPO, 'node_modules', '@amabie', 'cli', 'node_modules')));
+    && !fs.existsSync(path.join(REPO, 'node_modules', 'amabie-cli', 'node_modules')));
 const LEGACY_SHIM = path.join(REPO, 'node_modules', '.bin', IS_WIN ? 'amabie.cmd' : 'amabie');
 const legacyVersion = sh(`"${LEGACY_SHIM}" --version`, { cwd: REPO });
 check(3, 'legacy amabie bin alias still launches Amabie', legacyVersion.status === 0 && /^amabie \d+\.\d+\.\d+/i.test(legacyVersion.stdout ?? ''), legacyVersion.stdout + (legacyVersion.stderr ?? ''));

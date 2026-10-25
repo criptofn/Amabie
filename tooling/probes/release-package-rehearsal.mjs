@@ -33,7 +33,7 @@ function project(name) {
   fs.mkdirSync(root);
   fs.mkdirSync(path.join(root, '.claude'));
   for (const file of ['package.json', 'greeting.js', 'greeting.test.js']) {
-    fs.copyFileSync(path.join(prefix, 'node_modules/@amabie/cli/examples/quickstart', file), path.join(root, file));
+    fs.copyFileSync(path.join(prefix, 'node_modules/amabie-cli/examples/quickstart', file), path.join(root, file));
   }
   for (const args of [['init', '-b', 'main'], ['config', 'user.name', 'Release rehearsal'],
     ['config', 'user.email', 'release-test@example.invalid'], ['add', '--all'], ['commit', '-m', 'Sealed example']]) {
@@ -82,9 +82,9 @@ function mcpDoctor(root, expected) {
 try {
   fs.mkdirSync(prefix);
   succeeds(run(process.execPath, [npm, 'install', '--prefix', prefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', tarball], scratch));
-  cli = path.join(prefix, 'node_modules/@amabie/cli/dist/main.js');
+  cli = path.join(prefix, 'node_modules/amabie-cli/dist/main.js');
   assert(fs.statSync(cli).isFile());
-  assert(!fs.existsSync(path.join(prefix, 'node_modules/@amabie/cli/node_modules')));
+  assert(!fs.existsSync(path.join(prefix, 'node_modules/amabie-cli/node_modules')));
   const version = succeeds(amabie(scratch, ['--version']));
   assert.equal(version.stdout.trim(), 'amabie 2.0.0');
   succeeds(amabie(scratch, ['--help']));

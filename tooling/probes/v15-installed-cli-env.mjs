@@ -6,9 +6,11 @@ import path from 'node:path';
 export function installedCliEnvironment(cli, env, toolchains = []) {
   const packageRoot = path.dirname(path.dirname(cli));
   const pkg = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json')));
-  assert.equal(pkg.name, '@amabie/cli'); assert.equal(pkg.bin?.amabie, 'dist/main.js');
+  // Historical comparison arms still use the old scoped release candidate.
+  assert.ok(['amabie-cli', '@amabie/cli'].includes(pkg.name), 'Amabie package identity required');
+  assert.equal(pkg.bin?.amabie, 'dist/main.js');
   assert.equal(fs.realpathSync.native(path.join(packageRoot, pkg.bin.amabie)), fs.realpathSync.native(cli));
-  const bin = path.resolve(packageRoot, '../../.bin');
+  const bin = path.resolve(packageRoot, pkg.name === '@amabie/cli' ? '../../.bin' : '../.bin');
   for (const name of process.platform === 'win32' ? ['amabie', 'amabie.cmd', 'amabie.ps1'] : ['amabie']) {
     assert.ok(fs.statSync(path.join(bin, name), { throwIfNoEntry: false })?.isFile(), 'installed package aliases required; no global fallback');
   }

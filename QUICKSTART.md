@@ -3,11 +3,25 @@
 **Your agent says done. Amabie checks the change.** It runs your declared checks
 independently and refuses to treat an agent's success claim as proof.
 
-This is the local release candidate. Do not assume `@amabie/cli@2.0.0` is available in the public npm registry before a release is approved.
+The public npm package is `amabie-cli`; the executable is `amabie`. Internal workspace names such as `@amabie/cli` are not installation commands.
 
 Requirements: Node.js 22 or newer, npm, Git and a terminal. Amabie runs project commands with your local user permissions: inspect untrusted projects before setup. The available capability is LOCAL, not an OS sandbox or HARDENED.
 
-## Install the prepared package
+The 2.0 release validation covers Windows and Linux. macOS has standalone build and version-smoke evidence, not a full native product-suite result. Prompt-to-Evidence and authorization experiments remain opt-in; this release does not claim Universal Agent Assurance or reliable autonomous correction for arbitrary tasks.
+
+## Install
+
+For the public release, install the pinned version from npm:
+
+```sh
+npm install --global amabie-cli@2.0.0
+amabie --version
+amabie --help
+```
+
+Before publication, or when reviewing a supplied release candidate, use the local tarball instead. Registry availability can be checked with `npm view amabie-cli@2.0.0 version`; a missing version is not a successful installation.
+
+### Install a prepared local package
 
 Place the release tarball and its `.sha256` sidecar in the same working directory. In PowerShell, compare the two values explicitly:
 
@@ -71,7 +85,7 @@ PowerShell:
 ```powershell
 New-Item -ItemType Directory -Path amabie-example | Out-Null
 Set-Location amabie-example
-$exampleSource = Join-Path (npm root -g) '@amabie/cli/examples/quickstart'
+$exampleSource = Join-Path (npm root -g) 'amabie-cli/examples/quickstart'
 Copy-Item -LiteralPath "$exampleSource/package.json", "$exampleSource/greeting.js", "$exampleSource/greeting.test.js" -Destination .
 ```
 
@@ -80,7 +94,7 @@ Linux:
 ```sh
 mkdir amabie-example
 cd amabie-example
-example_source="$(npm root -g)/@amabie/cli/examples/quickstart"
+example_source="$(npm root -g)/amabie-cli/examples/quickstart"
 cp "$example_source/package.json" "$example_source/greeting.js" "$example_source/greeting.test.js" .
 ```
 
@@ -175,7 +189,7 @@ In PowerShell, return to the parent directory of the first example:
 Set-Location ..
 New-Item -ItemType Directory -Path amabie-proof-gap | Out-Null
 Set-Location amabie-proof-gap
-$exampleSource = Join-Path (npm root -g) '@amabie/cli/examples/quickstart'
+$exampleSource = Join-Path (npm root -g) 'amabie-cli/examples/quickstart'
 Copy-Item -LiteralPath "$exampleSource/package.json", "$exampleSource/greeting.js", "$exampleSource/greeting.test.js" -Destination .
 ```
 
@@ -185,7 +199,7 @@ On Linux:
 cd ..
 mkdir amabie-proof-gap
 cd amabie-proof-gap
-example_source="$(npm root -g)/@amabie/cli/examples/quickstart"
+example_source="$(npm root -g)/amabie-cli/examples/quickstart"
 cp "$example_source/package.json" "$example_source/greeting.js" "$example_source/greeting.test.js" .
 ```
 

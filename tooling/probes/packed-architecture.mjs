@@ -22,7 +22,7 @@ try {
  const npm=resolveNpmCli();assert.ok(npm,'npm CLI must resolve');
  const install=spawnSync(process.execPath,[npm,'install','--prefix',temp,'--ignore-scripts','--no-audit','--no-fund',tar],{cwd:temp,encoding:'utf8',timeout:120000,windowsHide:true});
  assert.equal(install.status,0,install.stdout+install.stderr);
- const cli=path.join(temp,'node_modules/@amabie/cli/dist/main.js');
+ const cli=path.join(temp,'node_modules/amabie-cli/dist/main.js');
  const r=spawnSync(process.execPath,['tooling/probes/architecture-closure.mjs'],{cwd:repo,env:{...process.env,AMABIE_TEST_CLI:cli,AMABIE_TEST_HELPERS:path.join(repo,'apps/cli/dist/src')},encoding:'utf8',timeout:900000,maxBuffer:8*1024*1024,windowsHide:true});
  console.log(r.stdout+r.stderr);assert.equal(r.status,0);
  console.log('PACKED ARCHITECTURE: PASS (all product commands used installed release bytes)');

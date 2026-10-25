@@ -85,10 +85,13 @@ try {
 
   const cliPkg = JSON.parse(fs.readFileSync(path.join(AMABIE, 'apps', 'cli', 'package.json'), 'utf8'));
   const manifest = {
-    name: '@amabie/cli',
+    name: 'amabie-cli',
     version: cliPkg.version,
     description: 'Amabie: pre-finish verification for coding agents (self-contained bundle).',
     license: 'Apache-2.0',
+    repository: { type: 'git', url: 'git+https://github.com/criptofn/Amabie.git' },
+    homepage: 'https://www.amabie.eu/docs/',
+    bugs: { url: 'https://github.com/criptofn/Amabie/issues' },
     type: 'module',
     bin: { amabie: 'dist/main.js' },
     engines: { node: '>=22' },

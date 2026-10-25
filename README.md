@@ -80,13 +80,15 @@ Amabie's vocabulary to use it.
 ## Install
 
 ```bash
-npm install -g ./amabie-cli-2.0.0.tgz
+npm install --global amabie-cli@2.0.0
 amabie --version                             # amabie 2.0.0
 amabie --version --verbose                   # runtime, CLI path and executable SHA-256
 ```
 
-Amabie 2.0.0 is a **local release candidate**, not a published npm version. The
-prepared tarball has package identity `@amabie/cli` and **zero runtime dependencies**.
+The public package identity is `amabie-cli`, with executable `amabie` and
+**zero runtime dependencies**. Check `npm view amabie-cli@2.0.0 version` for registry
+availability. Before publication, install the reviewed local candidate with
+`npm install -g ./amabie-cli-2.0.0.tgz`.
 Require Node.js 22+, npm and Git. Verify its supplied `.sha256` before installing:
 `Get-FileHash ./amabie-cli-2.0.0.tgz -Algorithm SHA256` in PowerShell, or
 `sha256sum --check amabie-cli-2.0.0.tgz.sha256` on Linux. Do not substitute the
@@ -96,8 +98,8 @@ Start with the runnable [Quickstart](QUICKSTART.md), including a passing change,
 an intentional regression and an uncovered change that stays `NOT PROVEN`.
 The installed package includes the same guide and its three-file example.
 
-> **Version note.** Amabie 2.0.0 is being prepared from the published Amabie v1.5.0 baseline. The latest
-> published artifact is **v1.5.0**, under its original Amabie name, in the
+> **Version note.** Amabie 2.0.0 builds on the v1.5.0 baseline. The
+> earlier artifact is **v1.5.0**, under its historical package name, in the
 > [historical release](https://github.com/criptofn/Canary/releases/tag/v1.5.0).
 > Installing that package does not install Amabie 2.0.0. For a source checkout,
 > run `npm ci` and `npm run build:force`, then use `node apps/cli/dist/src/main.js`;
@@ -810,7 +812,7 @@ For an Amabie 1.5 upgrade, first record the repositories using its hooks and bac
 up their integration settings and local state. Stop active agent sessions before
 replacing the installed CLI. Do not use `npm --force` to overwrite a conflicting
 `amabie` executable. Once you have reviewed the prepared Amabie artifact, remove
-the old `@canary-rn/cli` npm installation, install `@amabie/cli` from its local
+the old `@canary-rn/cli` npm installation, install `amabie-cli` from its local
 tarball, and rerun `amabie setup` in each recorded repository. Setup is an
 operator reseal: inspect its declared checks before accepting them. Run
 `amabie doctor --json` afterward and review the verdict rather than assuming the
@@ -822,7 +824,7 @@ Three ways to get it, in increasing order of what you must already have:
 
 | You have | Use | Result |
 |---|---|---|
-| Node.js 22+, npm and Git | verify the supplied checksum, then `npm install -g ./amabie-cli-2.0.0.tgz` | self-contained `@amabie/cli` bundle, zero runtime dependencies |
+| Node.js 22+, npm and Git | `npm install --global amabie-cli@2.0.0`, or verify and install the supplied local tarball before publication | self-contained `amabie-cli` bundle, zero runtime dependencies |
 | A source checkout with Node.js 22+ | `npm ci`, `npm run build:force`, then `node tooling/pack.mjs` | local npm tarball under `pack/npm/`; building alone does not install a command globally |
 | A source checkout with Node.js 25.5+ | `npm run standalone` | experimental executable for the current host; a build is not proof of a working first-run workflow |
 

@@ -210,7 +210,7 @@ if (tarballs.length > 0) {
   const prefix = path.join(temp, 'prefix');
   fs.mkdirSync(prefix, { recursive: true });
   const inst = run('npm', ['install', '-g', tarballs[0], '--prefix', prefix], { shell: true, timeoutMs: 300_000 });
-  const bundle = path.join(prefix, 'node_modules', '@amabie', 'cli', 'dist', 'main.js');
+  const bundle = path.join(prefix, 'node_modules', 'amabie-cli', 'dist', 'main.js');
   if (inst.status === 0 && fs.existsSync(bundle)) {
     surfaceKind = 'installed tarball';
     surfaceEntry = bundle;

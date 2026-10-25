@@ -30,7 +30,7 @@ try {
   fs.copyFileSync(instrument, path.join(evidence, 'instrument.mjs'));
   fs.writeFileSync(path.join(root, 'package.json'), '{"private":true}');
   requireOk('install exact local tarball', run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', `"${path.join(packs, archives[0])}"`], root, true));
-  const cli = path.join(root, 'node_modules/@amabie/cli/dist/main.js');
+  const cli = path.join(root, 'node_modules/amabie-cli/dist/main.js');
   const args = [instrument, '--cli', cli, '--report', reportFile];
   const result = spawnSync(process.execPath, args,
     { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 600000, maxBuffer: 16 * 1024 * 1024 });
