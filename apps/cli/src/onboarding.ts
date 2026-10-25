@@ -5275,13 +5275,42 @@ export async function cmdBind(rawArgs: string[]): Promise<number> {
   const manifestPath = path.join(root, 'amabie.project.json');
   /**
    * A root Node-script binding belongs beside its package.json script even if
-   * a universal manifest also exists. Other checks keep the manifest surface
-   * when present; a native script must not become an invalid manifest binding.
+   * a universal manifest also exists. Any other check uses the manifest only when the manifest
+   * DECLARES that check name (setup rejects a manifest binding to anything else); otherwise it
+   * falls back to package.json, which accepts any sealed plan script by bare name.
    */
   const rootNodeScript = !boundStep.scope && boundStep.argv === undefined && adapterForStep(cfg, boundStep).id === 'node';
-  const targetPath = !rootNodeScript && fs.existsSync(manifestPath) ? manifestPath : pkgPath;
+  let manifestDeclares = false;
+  if (!rootNodeScript && fs.existsSync(manifestPath)) {
+    const read = readUniversalManifest(root);
+    if (read.manifest === null) {
+      o.verdict('NEEDS ATTENTION', `amabie.project.json is not valid (${read.problems.map(safePath).join('; ').slice(0, 200)}); no binding was written.`, 'fix the manifest, then re-run');
+      return 2;
+    }
+    manifestDeclares = read.manifest.scopes.some((s) => s.checks.some((c) => c.name === script));
+  }
+  const targetPath = manifestDeclares ? manifestPath : pkgPath;
   const isNode = targetPath === pkgPath;
   const surface = isNode ? 'package.json' : 'amabie.project.json';
+  // Setup merges both declaration surfaces and refuses a digest bound differently on each. Refuse here,
+  // before anything is written or (with --reseal) committed, instead of after.
+  const otherPath = isNode ? manifestPath : pkgPath;
+  let otherProofs: unknown;
+  try {
+    const other = JSON.parse(fs.readFileSync(otherPath, 'utf8')) as Record<string, unknown>;
+    otherProofs = isNode ? other.proofs : (isRecord(other.amabie) ? (other.amabie as Record<string, unknown>).proofs : undefined);
+  } catch { otherProofs = undefined; }
+  if (isRecord(otherProofs)) {
+    for (const r of requirements) {
+      const d = materialDigest(r);
+      const existing = (otherProofs as Record<string, unknown>)[d];
+      if (existing !== undefined && existing !== script) {
+        o.verdict('NEEDS ATTENTION', `this requirement is already bound to "${safePath(String(existing))}" in ${isNode ? 'amabie.project.json' : 'package.json'}, so binding it to "${safePath(script)}" would conflict. No binding was written.`,
+          'remove or change the other declaration first, then re-run');
+        return 2;
+      }
+    }
+  }
   let doc: Record<string, unknown>;
   try { doc = JSON.parse(fs.readFileSync(targetPath, 'utf8')) as Record<string, unknown>; }
   catch (e) { o.verdict('NEEDS ATTENTION', `cannot read ${surface} to record the binding (${String(e).slice(0, 120)}).`, 'fix the file, then re-run'); return 2; }

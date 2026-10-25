@@ -63,8 +63,14 @@ requirement are refused. A malformed manifest is refused even when native checks
 are available, including by `setup --check`. Writing a binding with `amabie bind`
 is still only a declaration: rerun setup to seal it, and execute the checks to
 obtain evidence. A root Node-script binding is written beside its script in
-`package.json`; a universal check uses the manifest when present. Bindings
-neither create checks nor prove requirements by themselves.
+`package.json`. Any other binding goes into the manifest only when the manifest
+declares a check of that name; otherwise it goes into `package.json`. An invalid
+manifest makes `bind` refuse with nothing written, and so does a requirement
+already bound to a different check on the other surface. Bindings neither
+create checks nor prove requirements by themselves.
+
+When several sealed steps share one script name, a binding to that name is
+satisfied only if every such step passes. That is deliberate and conservative.
 
 **Two ceilings stated rather than implied**, in the same spirit as everything else
 here:

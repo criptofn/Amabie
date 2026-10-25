@@ -1359,6 +1359,47 @@ describe('mixed Node and universal proof declarations', () => {
     assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).amabie.proofs[digest], 'test');
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'amabie.project.json'), 'utf8')).proofs, {});
   });
+  it('bind never writes a manifest binding for a scoped step the manifest does not declare', () => {
+    const root = mixed('mixed-scoped-bind');
+    fs.mkdirSync(path.join(root, 'web'));
+    fs.writeFileSync(path.join(root, 'web', 'package.json'), JSON.stringify({ name: 'web', scripts: { typecheck: fx('f-pass.js') } }));
+    fs.writeFileSync(path.join(root, 'amabie.scopes.json'), JSON.stringify({ schema: 'amabie-scopes/1', scopes: [{ path: 'web', ecosystem: 'node' }] }));
+    const initial = amabie(['setup', '--yes', root]);
+    assert.equal(initial.status, 0, initial.stdout + initial.stderr);
+    assert.ok(readCfg(root).plan.some((s) => s.script === 'typecheck' && s.scope === 'web'), 'the scoped step is part of the sealed plan');
+    const bound = amabie(['bind', 'typecheck', '--requirement', requirement], root);
+    assert.equal(bound.status, 0, bound.stdout + bound.stderr);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'amabie.project.json'), 'utf8')).proofs, {}, 'the manifest does not declare this check');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).amabie.proofs[digest], 'typecheck');
+    const reseal = amabie(['setup', '--yes', root]);
+    assert.equal(reseal.status, 0, reseal.stdout + reseal.stderr);
+    assert.equal(readCfg(root).planAuthority?.proofBindings?.[digest], 'typecheck');
+  });
+  it('bind refuses, writing nothing, when the other surface already binds the digest differently', () => {
+    const toManifest = mixed('mixed-bind-conflict-manifest');
+    assert.equal(amabie(['setup', '--yes', toManifest]).status, 0);
+    const pkgFile = path.join(toManifest, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+    pkg.amabie = { proofs: { [digest]: 'test' } };
+    fs.writeFileSync(pkgFile, JSON.stringify(pkg));
+    const manifestFile = path.join(toManifest, 'amabie.project.json');
+    const manifestBefore = fs.readFileSync(manifestFile, 'utf8');
+    const refused = amabie(['bind', 'contract-check', '--requirement', requirement], toManifest);
+    assert.equal(refused.status, 2, refused.stdout + refused.stderr);
+    assert.match(refused.stdout + refused.stderr, /already bound|conflict/i);
+    assert.equal(fs.readFileSync(manifestFile, 'utf8'), manifestBefore, 'nothing was written');
+
+    const toPackage = mixed('mixed-bind-conflict-package');
+    assert.equal(amabie(['setup', '--yes', toPackage]).status, 0);
+    const manifestPath = path.join(toPackage, 'amabie.project.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.proofs = { [digest]: 'contract-check' };
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    const pkgBefore = fs.readFileSync(path.join(toPackage, 'package.json'), 'utf8');
+    const refusedPkg = amabie(['bind', 'test', '--requirement', requirement], toPackage);
+    assert.equal(refusedPkg.status, 2, refusedPkg.stdout + refusedPkg.stderr);
+    assert.equal(fs.readFileSync(path.join(toPackage, 'package.json'), 'utf8'), pkgBefore, 'nothing was written');
+  });
   it('matching duplicated declarations remain valid and yield one sealed binding', () => {
     const root = mixed('mixed-matching-proofs', { [digest]: 'contract-check' }, { [digest]: 'contract-check' });
     const setup = amabie(['setup', '--yes', root]);
