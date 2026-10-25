@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
 import { after, describe, it } from 'node:test';
 process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
@@ -46,9 +47,9 @@ function makeProject(name: string): string {
 }
 
 function amabie(args: string[], cwd?: string, input?: string) {
-  return spawnSync(process.execPath, [CLI, ...args], {
+  return retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], {
     cwd, input, encoding: 'utf8', timeout: 120_000,
-  });
+  }));
 }
 
 const checkpoint = (root: string, extra: Record<string, unknown> = {}) => {

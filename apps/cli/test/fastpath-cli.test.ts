@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
 import { after, describe, it } from 'node:test';
 process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
@@ -27,7 +28,7 @@ assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fastpath-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const amabie = (args: string[], cwd: string) => spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 300_000 });
+const amabie = (args: string[], cwd: string) => retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 300_000 }));
 const git = (args: string[], cwd: string) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 const commit = (dir: string, message: string): void => {
   git(['add', '-A'], dir);
