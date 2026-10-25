@@ -1,5 +1,7 @@
 # Amabie 2.0.0 release candidate
 
+Current checkpoint,25 October: exact source `aa9fa92` Hosted Windows failed four cases (1,627 passed/eight skipped), while the other five jobs passed. [Owned test fixture cleanup](TEST-FIXTURE-CLEANUP-2026-10-25.md) now corrects an independently demonstrated stale-PID cleanup hazard in the test harness; affected Windows35/35 and Linux23PASS/12existing platformSKIP checks passed. Product runtime remains unchanged. The historical native process incident is not claimed solved; a new exact-source full gate remains required. Public release is still BLOCKED.
+
 Current repair: [25 October pipeline containment correction](PIPELINE-CONTAINMENT-2026-10-25.md). Exact `c8c6043` Hosted CI and its installed package passed, but detailed trace review exposed an independently reproduced propagation gap outside measurement rounds. The correction requires its own exact-source validation; release remains blocked. Earlier records below retain their original source identities.
 
 Latest checkpoint: [24 October Git diagnostics](WINDOWS-GIT-DIAGNOSTICS-2026-10-24.md) records the current failed Hosted gate and pending diagnostic validation. Older results below retain their original source and artifact identities.

@@ -5,13 +5,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { syncBuiltinESMExports } from 'node:module';
 import { after, it, mock } from 'node:test';
-import { killTree } from '@amabie/support';
+import { randomUUID } from 'node:crypto';
+// Tests execute from dist/test; keep the shared test helper in the source tree.
+const { cleanupOwnedFixture } = await import(new URL('../../../../tooling/test-support/owned-fixture-cleanup.mjs', import.meta.url).href) as
+  typeof import('../../../tooling/test-support/owned-fixture-cleanup.mjs');
 import { runPlanStep } from '../src/onboarding.js';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-everyday-lifecycle-'));
 const pids = new Set<number>();
+const OWNER_TOKEN = `amabie-test-owner:${randomUUID()}`;
 after(() => {
-  for (const pid of pids) killTree(pid);
+  for (const pid of pids) cleanupOwnedFixture(pid, OWNER_TOKEN);
   fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
@@ -43,7 +47,7 @@ function run(file: string, timeoutMs = 10_000) {
 for (const mode of ['normal', 'timeout'] as const) {
   it(`cleans up descendants after ${mode} exit without killing unrelated processes`, async () => {
     const idle = program(`idle-${mode}`, 'setInterval(() => {}, 1000);');
-    const unrelated = childProcess.spawn(process.execPath, [idle], { detached: true, stdio: 'ignore', windowsHide: true });
+    const unrelated = childProcess.spawn(process.execPath, [idle, OWNER_TOKEN], { detached: true, stdio: 'ignore', windowsHide: true });
     assert.ok(unrelated.pid);
     pids.add(unrelated.pid);
     const pidFile = path.join(root, `${mode}.pid`);
@@ -51,7 +55,7 @@ for (const mode of ['normal', 'timeout'] as const) {
     const parent = program(`parent-${mode}`, [
       "const { spawn } = require('node:child_process'); const fs = require('node:fs');",
       `if (process.platform === 'linux') fs.writeFileSync(${JSON.stringify(sessionFile)}, fs.readFileSync('/proc/self/stat'));`,
-      `const child = spawn(process.execPath, [${JSON.stringify(idle)}], { stdio: 'ignore' });`,
+      `const child = spawn(process.execPath, [${JSON.stringify(idle)}, ${JSON.stringify(OWNER_TOKEN)}], { stdio: 'ignore' });`,
       `fs.writeFileSync(${JSON.stringify(pidFile)}, String(child.pid));`,
       mode === 'normal' ? 'child.unref();' : 'setInterval(() => {}, 1000);',
     ].join('\n'));
@@ -70,9 +74,10 @@ for (const mode of ['normal', 'timeout'] as const) {
         assert.equal(Number(fields[3]), pid, 'the synchronous check owns its POSIX session');
       }
       await assertStopped(descendant);
+      pids.delete(descendant);
       assert.equal(alive(unrelated.pid), true, 'the sweep must leave a preexisting unrelated process alone');
     } finally {
-      killTree(unrelated.pid);
+      cleanupOwnedFixture(unrelated.pid, OWNER_TOKEN);
       pids.delete(unrelated.pid);
     }
   });

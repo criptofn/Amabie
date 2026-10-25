@@ -23,12 +23,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
+import { randomUUID } from 'node:crypto';
+// Tests execute from dist/test; keep the shared test helper in the source tree.
+const { cleanupOwnedFixture } = await import(new URL('../../../../tooling/test-support/owned-fixture-cleanup.mjs', import.meta.url).href) as
+  typeof import('../../../tooling/test-support/owned-fixture-cleanup.mjs');
 
 import { runCommand, sweepDescendants, buildWin32SweepScript, parseWin32SweepOutput, posixSessionMember, windowsPowerShellCandidates, runWin32SweepWithFallback, type RunOutcome, type WorkspaceLayout } from '../src/index.js';
 
 const NODE = process.execPath;
 const NODE_DIR = path.dirname(NODE);
-const survivorArgs = ['-e', 'setTimeout(()=>{}, 300000)'];
+const OWNER_TOKEN = `amabie-test-owner:${randomUUID()}`;
+const survivorArgs = ['-e', 'setTimeout(()=>{}, 300000)', OWNER_TOKEN];
 
 const TMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-lifecycle-'));
 after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
@@ -76,14 +81,7 @@ async function untilDead(pid: number, budgetMs = 8_000): Promise<boolean> {
 }
 
 function killIfAlive(pid: number): void {
-  if (!Number.isFinite(pid) || pid <= 0) return;
-  try {
-    if (process.platform === 'win32') {
-      spawnSync('taskkill.exe', ['/PID', String(pid), '/F'], { timeout: 15_000, windowsHide: true });
-    } else {
-      process.kill(pid, 'SIGKILL');
-    }
-  } catch { /* already gone */ }
+  cleanupOwnedFixture(pid, OWNER_TOKEN);
 }
 
 /**
@@ -209,7 +207,7 @@ describe('audit F5 — sweep mechanism (live parent, positive proof)', () => {
     // Intermediate parent that spawns a child then sits on a timer, so the
     // sweep runs while the parent is still alive (mechanism, not race, is
     // what this test pins down).
-    const mid = spawn(process.execPath, [PROCESS_TREE_FIXTURE], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
+    const mid = spawn(process.execPath, [PROCESS_TREE_FIXTURE, OWNER_TOKEN], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
     let out = '';
     mid.stdout?.setEncoding('utf8');
     mid.stdout?.on('data', (d: string) => { out += d; });

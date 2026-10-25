@@ -1,6 +1,6 @@
 const { spawn } = require('node:child_process');
 const path = require('node:path');
-const child = spawn(process.execPath, [path.join(__dirname, 'process-tree-survivor.cjs')], {
+const child = spawn(process.execPath, [path.join(__dirname, 'process-tree-survivor.cjs'), ...process.argv.slice(2)], {
   stdio: 'ignore', windowsHide: true,
 });
 child.unref();
