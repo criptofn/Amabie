@@ -641,7 +641,19 @@ export function cleanupWindowsChildOnExit(child: ChildProcess, spawnedAtMs: numb
   if (!(child instanceof ChildProcess) || child.exitCode !== null || child.signalCode !== null) {
     return () => ({ killed: [], failed: true });
   }
-  child.once('exit', () => { measured = sweepRetainedWindowsRoot(child.pid, spawnedAtMs); });
+  // Some process adapters (cross-spawn on Windows) turn the native exit
+  // emission into an error before registered exit listeners can observe it.
+  // Intercept that emission while libuv still owns the original handle, then
+  // delegate unchanged to the adapter. No private Node fields or late PID query.
+  const originalEmit = child.emit;
+  function retainExit(this: ChildProcess, event: string | symbol, ...args: unknown[]): boolean {
+    if (this === child && event === 'exit' && measured === undefined) {
+      if (child.emit === retainExit) child.emit = originalEmit;
+      measured = sweepRetainedWindowsRoot(child.pid, spawnedAtMs);
+    }
+    return Reflect.apply(originalEmit, this, [event, ...args]);
+  }
+  child.emit = retainExit;
   return () => measured;
 }
 

@@ -1,5 +1,16 @@
 # Amabie 2.0.0 release candidate
 
+Latest follow-up: exact e4fa98d Hosted validation finishes Windows1,650PASS/
+1FAIL/8SKIP; Linux1,631PASS/0FAIL/26SKIP; Axios37assertions and allthree native
+standalone jobs pass. The single Windows failure is independently reproduced:
+cross-spawn translates its native exit to ENOENT before normal exit listeners,
+so the cleanup observer missed the retained original process. The
+[translated-exit correction](WINDOWS-TRANSLATED-EXIT-2026-10-25.md) measures before
+that adapter translation and preserves the original error/refusal semantics.
+All eight complete affected files pass Windows94/94 and Linux72PASS/22explicit
+Windows-onlySKIP. A corrected-source full Hosted gate and current final package
+remain required; **NOT READY**, no native CLR/V8 causal-cure claim.
+
 Latest local checkpoint,25 October: original-root lifetime and native descendant
 identity correction is implemented, including the synchronous held-exit Worker
 bridge. Unretained numeric Windows roots refuse; accepted descendant handles stay

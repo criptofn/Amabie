@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crossSpawn from 'cross-spawn';
+import { cleanupWindowsChildOnExit } from '@amabie/support';
 import {
   AGENT_HELP_PROBES,
   buildCorrectionAgentEnvironment,
@@ -12,6 +13,34 @@ import {
   missingAgentFlags,
   renderCorrectionAgentPrompt,
 } from '../src/prompt-evidence-agents.js';
+
+test('a real cross-spawn missing-command exit is measured before it becomes ENOENT', {
+  skip: process.platform !== 'win32' ? 'Windows cross-spawn exit translation' : false,
+}, async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-translated-agent-exit-'));
+  try {
+    const child = crossSpawn(path.join(root, 'missing-agent-executable'), [], {
+      cwd: root, shell: false, windowsHide: true, stdio: 'ignore',
+    });
+    const originalEmit = child.emit;
+    const cleanup = cleanupWindowsChildOnExit(child, Date.now());
+    let logicalError: NodeJS.ErrnoException | undefined;
+    let measuredAtError: ReturnType<typeof cleanup>;
+    let publicExit = false;
+    child.once('exit', () => { publicExit = true; });
+    child.once('error', error => { logicalError = error; measuredAtError = cleanup(); });
+    await new Promise<void>(resolve => { child.once('close', () => resolve()); });
+    assert.ok(child.pid, 'Windows actually spawned its command host');
+    assert.equal(child.exitCode, 1);
+    assert.equal(logicalError?.code, 'ENOENT', 'the adapter retains its original logical failure');
+    assert.equal(publicExit, false, 'cross-spawn replaces the public exit event with error');
+    assert.ok(measuredAtError, 'cleanup must already be measured inside that translated exit');
+    assert.equal(measuredAtError.failed, false);
+    assert.ok(!measuredAtError.killed.includes(child.pid!));
+    assert.equal(cleanup(), measuredAtError, 'the getter never reopens the root after close');
+    assert.equal(child.emit, originalEmit, 'the original adapter emission function is restored');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
 
 test('Codex resolves the native executable or npm shim and uses the shared stdin process contract', () => {
   const root = path.resolve('sample-project');
