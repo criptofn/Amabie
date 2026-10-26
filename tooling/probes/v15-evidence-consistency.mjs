@@ -41,7 +41,8 @@ import path from 'node:path';
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 
 const FILES = {
-  readme: 'README.md',
+  landing: 'README.md',
+  readme: 'docs/history/README-2.0.md',
   matrix: 'docs/CLAIM-EVIDENCE-MATRIX-1.5.md',
   kit: 'docs/AUDIT-KIT-1.5.md',
   closure: 'docs/POST-AUDIT-CLOSURE-1.5.md',
@@ -158,7 +159,11 @@ check('no document still asserts a statement the closure made false', () => {
  * check by reading the sentence it sits in; losing one means the claim changed.
  */
 const PINS = [
-  ['readme', 'The latest published artifact is **v1.5.0**'],
+  ['landing', 'npm currently provides 2.0.0'],
+  ['landing', 'This checkout prepares 2.0.1'],
+  ['landing', 'No token-saving or comparative superiority claim is established'],
+  ['landing', 'docs/history/README-2.0.md'],
+  ['readme', 'This is a dated reference, not current release status'],
   ['readme', 'the token-saving headline is WITHDRAWN'],
   ['readme', 'claims no token-saving percentage at all'],
   ['readme', '~438 provider-native tokens'],

@@ -88,14 +88,17 @@ try {
     name: 'amabie-cli',
     version: cliPkg.version,
     description: 'Amabie: pre-finish verification for coding agents (self-contained bundle).',
+    keywords: ['ai-agents', 'claude-code', 'codex', 'verification', 'testing', 'mcp', 'tdd'],
     license: 'Apache-2.0',
     repository: { type: 'git', url: 'git+https://github.com/criptofn/Amabie.git' },
-    homepage: 'https://www.amabie.eu/docs/',
+    homepage: 'https://github.com/criptofn/Amabie#readme',
     bugs: { url: 'https://github.com/criptofn/Amabie/issues' },
     type: 'module',
     bin: { amabie: 'dist/main.js' },
     engines: { node: '>=22' },
-    files: ['dist/main.js', 'tools/windows-boundary', 'tooling/test-support/fixtures', 'QUICKSTART.md', 'examples/quickstart', 'THIRD-PARTY-NOTICES.txt'],
+    files: ['dist/main.js', 'tools/windows-boundary',
+      ...['boundary-native-child.cs', 'boundary-native-parent.cs', 'boundary-native-run.ps1', 'confined-listener.cjs', 'confined-caller.cjs', 'medium-pipe.ps1'].map(name => `tooling/test-support/fixtures/${name}`),
+      'QUICKSTART.md', 'examples/quickstart', 'THIRD-PARTY-NOTICES.txt'],
   };
   fs.writeFileSync(path.join(STAGE, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
   // Apache-2.0 §4(a): a recipient of this artifact must receive a copy of the License.
@@ -108,7 +111,9 @@ try {
   if (notices.missing.length > 0) { console.error(`FAIL: bundled packages ship no license file: ${notices.missing.join(', ')}`); process.exit(1); }
   fs.writeFileSync(path.join(STAGE, 'THIRD-PARTY-NOTICES.txt'), notices.text);
   // The consumer receives the runnable first-run guide, without monorepo-only links.
-  copyText('QUICKSTART.md', 'README.md');
+  copyText('README.md');
+  const readmeFile = path.join(STAGE, 'README.md');
+  fs.writeFileSync(readmeFile, fs.readFileSync(readmeFile, 'utf8').replace('](docs/demo.gif)', '](https://raw.githubusercontent.com/criptofn/Amabie/main/docs/demo.gif)'));
   copyText('QUICKSTART.md');
   for (const name of ['package.json', 'greeting.js', 'greeting.test.js']) {
     copyText(path.join('examples', 'quickstart', name));

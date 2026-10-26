@@ -85,11 +85,13 @@ check(2, 'bundled third-party notices ship and name the inlined cross-spawn pack
 check(2, 'no node_modules / .night-run / cage / secrets / absolute paths in the listing',
   !entries.some((e) => /node_modules|[.][ ]?night-run|cage|secret|^package\/[a-zA-Z]:|\\/.test(e)));
 const man = JSON.parse(files.get('package/package.json') ?? '');
-check(2, 'public package identity is amabie-cli@2.0.0', man.name === 'amabie-cli' && man.version === '2.0.0');
+const sourceVersion = JSON.parse(fs.readFileSync(path.join(AMABIE, 'apps/cli/package.json'), 'utf8')).version;
+check(2, `public package identity is amabie-cli@${sourceVersion}`, man.name === 'amabie-cli' && man.version === sourceVersion);
 check(2, 'manifest: zero runtime deps, not private, bin -> dist/main.js',
   man.dependencies === undefined && man.private === undefined && man.bin?.amabie === 'dist/main.js' && man.type === 'module');
 check(2, 'consumer documentation and minimal example are the reviewed source bytes',
-  files.get('package/README.md') === fs.readFileSync(path.join(AMABIE, 'QUICKSTART.md'), 'utf8').replace(/\r\n/g, '\n') &&
+  files.get('package/README.md') === fs.readFileSync(path.join(AMABIE, 'README.md'), 'utf8').replace(/\r\n/g, '\n')
+    .replace('(docs/demo.gif)', '(https://raw.githubusercontent.com/criptofn/Amabie/main/docs/demo.gif)') &&
   files.get('package/QUICKSTART.md') === fs.readFileSync(path.join(AMABIE, 'QUICKSTART.md'), 'utf8').replace(/\r\n/g, '\n') &&
   ['package.json', 'greeting.js', 'greeting.test.js'].every(name =>
     files.get(`package/examples/quickstart/${name}`) === fs.readFileSync(path.join(AMABIE, 'examples', 'quickstart', name), 'utf8').replace(/\r\n/g, '\n')));

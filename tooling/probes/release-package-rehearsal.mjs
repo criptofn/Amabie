@@ -86,7 +86,8 @@ try {
   assert(fs.statSync(cli).isFile());
   assert(!fs.existsSync(path.join(prefix, 'node_modules/amabie-cli/node_modules')));
   const version = succeeds(amabie(scratch, ['--version']));
-  assert.equal(version.stdout.trim(), 'amabie 2.0.0');
+  const sourceVersion = JSON.parse(fs.readFileSync(new URL('../../apps/cli/package.json', import.meta.url), 'utf8')).version;
+  assert.equal(version.stdout.trim(), `amabie ${sourceVersion}`);
   succeeds(amabie(scratch, ['--help']));
   console.log('PASS fresh offline package install, version and help; no source checkout fallback');
 
