@@ -266,7 +266,9 @@ describe('setup', () => {
     assert.match(context, /blocks Claude Code shell, write, agent-delegation and MCP calls until that request is registered; after registration, proof gaps do not block project work/i);
     assert.match(context, /Keep every unbound criterion NOT PROVEN/i);
     assert.match(context, /Amabie runs the sealed base comparison itself; do not switch, reset, or restore this branch/i);
-    assert.match(context, /task tool is missing or unavailable, stop and ask the operator to restore Amabie MCP/i);
+    assert.match(context, /task tool is missing or unavailable, use the CLI registration fallback supplied by the request hook/i);
+    assert.match(context, /--session <id>/);
+    assert.match(context, /If CLI registration also fails, stop and ask the operator to restore Amabie/i);
     assert.match(context, /shell commands are blocked until registration succeeds/i);
     assert.match(context, /file or case filter for early feedback/i);
     assert.match(context, /full sealed checks at completion/i);

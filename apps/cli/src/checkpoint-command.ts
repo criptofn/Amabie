@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildFailurePayload } from './failure-payload.js';
+import { agentToolProblem, isTaskRegistration } from './agent-session-guard.js';
 import { adapterFor, planAuthorityDrift, planDigest, sha256, stepKey } from './project.js';
 import { collectDiffSignals, inferTaskKinds } from './change-signals.js';
 import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep } from './check-runner.js';
@@ -41,7 +42,7 @@ export async function cmdCheckpoint(): Promise<number> {
     if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt, state.promptId);
     return emit({ hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
-      additionalContext: 'Amabie started a fresh task scope for this request. Before project writes, shell commands, delegation, or MCP calls, register the current intent and exact stated criteria with mcp__amabie__amabie_task; use requirements: [] when none were stated.',
+      additionalContext: `Amabie started a fresh task scope for this request. Register the current intent and exact stated criteria with mcp__amabie__amabie_task (requirements: [] when none). If MCP approval is pending, use: amabie task "<intent>" --requirement "<each stated criterion>" --session ${JSON.stringify(sessionId)}. Omit --requirement when none were stated.`,
     } });
   }
   if (input.hook_event_name === 'SessionEnd') {
@@ -93,13 +94,18 @@ export async function cmdCheckpoint(): Promise<number> {
     const drift = planAuthorityDrift(root, cfg);
     if (drift) return deny(`Amabie's sealed verification authority has changed (${drift}). No tool call was allowed; restore the sealed plan or have the operator re-run setup.`);
     if (!turn) return deny('Amabie has no request record for this Claude session. No project change was allowed; submit the current request again so Amabie can start task tracking.');
+    const authorityProblem = agentToolProblem(root, toolName, input.tool_input);
+    if (authorityProblem) return deny(authorityProblem);
     if (input.tool_name === CLAUDE_TASK_TOOL) {
       if (turn.registeredPromptId !== turn.promptId) return 0;
       return turn.task && mcpInputMatchesTask(turn.task, input.tool_input)
         ? 0
         : deny('A different task is already registered for this request. Start a new request before registering another task.');
     }
-    if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny('Amabie task registration is missing for this request. No project change was allowed. Call mcp__amabie__amabie_task with the current intent and every stated criterion verbatim (use requirements: [] when none were stated).');
+    const toolInput = input.tool_input as { command?: unknown } | undefined;
+    if ((toolName === 'Bash' || toolName === 'PowerShell') && sessionId
+      && typeof toolInput?.command === 'string' && isTaskRegistration(toolInput.command, sessionId)) return 0;
+    if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny(`Amabie task registration is missing for this request. Approve the project MCP server in Claude's /mcp menu and call mcp__amabie__amabie_task, or run: amabie task "<intent>" --requirement "<each stated criterion>" --session ${JSON.stringify(sessionId)}. Omit --requirement when none were stated. Project changes remain blocked until registration.`);
     return 0;
   }
   if (!root || cfg === null) return 0; // nothing wired here — stay out of the way
@@ -133,10 +139,8 @@ export async function cmdCheckpoint(): Promise<number> {
       // same no-loop posture as a failed plan: one repair turn, then honest stop
       return emit({ systemMessage: `Amabie: verification authority is still changed (${drift.slice(0, 200)}) after one repair attempt — stopping anyway; a human should look.` });
     }
-    // v1.5 audit finding: "have a human run" implied a step nothing enforces — `amabie setup`
-    // has never checked the caller's identity. The claim is narrowed to what is true, without
-    // adding an internal the everyday vocabulary ratchet budgets.
-    return emit({ decision: 'block', reason: `Amabie blocked completion: verification authority changed by candidate — ${drift}. Amabie will not certify proof commands it never sealed. Restore the sealed checks, or run: amabie setup (re-runs the new command under a visible smoke test and re-seals it — nothing checks who runs it).` });
+    // Guarded sessions cannot approve a replacement verification plan.
+    return emit({ decision: 'block', reason: `Amabie blocked completion: verification authority changed by candidate — ${drift}. Amabie will not certify proof commands it never sealed. Restore the sealed checks, or have the human operator review the new plan and run: amabie setup from a terminal. An agent cannot reseal its own proof through this session.` });
   }
 
   // M4 provenance for every bundle this invocation writes — from the TRUSTED

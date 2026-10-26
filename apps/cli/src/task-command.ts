@@ -5,7 +5,7 @@ import { inferTaskKinds } from './change-signals.js';
 import { Out, parseGlobals } from './cli-output.js';
 import { CONFIG_DIR, TASK_FILE, findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { containedRealPath, rel, safePath, writeFileAtomic } from './local-files.js';
-import { appendTaskRevision } from './task-state.js';
+import { appendTaskRevision, readClaudeTurnState, sameTask, writeClaudeTurnState } from './task-state.js';
 
 /**
  * M6 task-intake: the worker registers what it was ASKED for so Amabie can
@@ -24,6 +24,7 @@ export function cmdTask(rawArgs: string[]): number {
   const distrust = untrustedConfigReason(root, cfg);
   if (distrust) { o.verdict('NEEDS ATTENTION', `Amabie will not record a task against a config it does not trust (${distrust}).`, "run: amabie setup --yes (rewrites it as this machine's own)"); return 2; }
   let kindFlag: string | null = null;
+  let sessionId: string | null = null;
   const prose: string[] = [];
   const requirements: string[] = [];
   /**
@@ -49,9 +50,14 @@ export function cmdTask(rawArgs: string[]): number {
    * operator believes otherwise, and a silent coverage hole is the one outcome this command may
    * never produce.
    */
-  const optionToken = (s: string): boolean => s === '--requirement' || s === '--kind' || s.startsWith('--kind=');
+  const optionToken = (s: string): boolean => s === '--requirement' || s === '--session' || s === '--kind' || s.startsWith('--kind=');
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]!;
+    if (a === '--session') {
+      const value = rest[++i];
+      if (sessionId !== null || !value || value.startsWith('--')) { o.say('REFUSED — --session needs exactly one current Claude session id. Nothing was registered.'); return 3; }
+      sessionId = value; continue;
+    }
     if (a === '--kind') {
       const value = rest[i + 1];
       if (value === undefined || value.startsWith('--')) {
@@ -77,7 +83,7 @@ export function cmdTask(rawArgs: string[]): number {
       requirements.push(rest[++i]!); continue;
     }
     if (a.startsWith('--')) {
-      o.say(`REFUSED — unknown option "${a.slice(0, 40)}". amabie task takes --kind and --requirement only; an ignored option here would silently register FEWER duties than you listed. Nothing was registered.`);
+      o.say(`REFUSED — unknown option "${a.slice(0, 40)}". amabie task takes --kind, --requirement and --session only; an ignored option here would silently register FEWER duties than you listed. Nothing was registered.`);
       return 3;
     }
     prose.push(a);
@@ -99,6 +105,10 @@ export function cmdTask(rawArgs: string[]): number {
   let task: TaskIdentity;
   try { task = declaredTask(text, kinds, requirements); }
   catch (e) { o.say(`REFUSED — ${(e as Error).message}`); return 2; }
+  const turn = sessionId ? readClaudeTurnState(root, sessionId) : null;
+  if (sessionId && (!turn || (turn.registeredPromptId === turn.promptId && !sameTask(turn.task, task)))) {
+    o.say('REFUSED — this session has no current request, or a different task is already registered. Submit a new request before changing its task.'); return 2;
+  }
 
   try {
     if (containedRealPath(root, path.join(root, CONFIG_DIR)) === null) {
@@ -115,6 +125,9 @@ export function cmdTask(rawArgs: string[]): number {
       trustClass: 'AGENT_REPORTED',
       authority: 'ZERO — registering a task can only ADD proof obligations; the sealed plan is the floor no declaration lifts',
     }, null, 2) + '\n');
+    if (sessionId && turn && !writeClaudeTurnState(root, sessionId, { ...turn, registeredPromptId: turn.promptId, task })) {
+      throw new Error('could not bind task registration to the current Claude request');
+    }
   } catch (e) {
     o.verdict('NEEDS ATTENTION', `could not record the task (${String(e).slice(0, 140)}).`, 'fix the file/permission, then re-run'); return 2;
   }

@@ -40,7 +40,7 @@ export function cmdSessionStart(): number {
       'Amabie starts a fresh task scope on every user request. It blocks Claude Code shell, write, agent-delegation and MCP calls until that request is registered; after registration, proof gaps do not block project work. Read tools remain available.',
       'Never edit the plan or hooks, or run setup/bind/accept. Keep every unbound criterion NOT PROVEN.',
       'Amabie runs the sealed base comparison itself; do not switch, reset, or restore this branch to reproduce the baseline.',
-      'If the Amabie MCP task tool is missing or unavailable, stop and ask the operator to restore Amabie MCP before changing files; shell commands are blocked until registration succeeds.',
+      'If the Amabie MCP task tool is missing or unavailable, use the CLI registration fallback supplied by the request hook: amabie task "<intent>" --requirement "<each criterion>" --session <id>. Omit --requirement when none were stated. Other shell commands are blocked until registration succeeds. If CLI registration also fails, stop and ask the operator to restore Amabie.',
       'Use the project test runner\'s file or case filter for early feedback. The Stop hook runs the full sealed checks at completion; do not rerun the full suite just for an Amabie verdict.',
       'If the hook reports a failure, repair that problem and recheck its exact id with amabie_doctor(check). A focused result is PARTIAL.',
       cliPrefix === null

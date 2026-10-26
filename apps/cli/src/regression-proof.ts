@@ -125,7 +125,7 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
    */
   if (disc.modifiedChecks.length > 0) return {
     id: 'regression-evidence', mode: 'objective', status: 'unproven',
-    note: `the sealed checks fail without this change, but the discriminating check text was written by the worker (${disc.modifiedChecks.slice(0, 3).map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`).join(', ')}), so regression evidence is UNPROVEN until an operator-bound check or a human's acceptance covers this change`,
+    note: `the sealed checks fail without this change, but the discriminating check text was written by the worker (${disc.modifiedChecks.slice(0, 3).map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`).join(', ')}), so regression evidence is UNPROVEN until an operator-bound check or a human's acceptance covers this change. For ordinary feature work, keep existing checks intact and add a separate regression test file executed by the sealed command. For independent evidence, have the human review a failing test before the agent starts.`,
     caveat,
   };
   return {

@@ -60,6 +60,8 @@ import {
 import { verifyTreeSnapshots } from './verify-tree.js';
 import { cmdProfile } from './profile.js';
 import { CLI_ENTRY } from './cli-runtime.js';
+import { operatorSessionProblem } from './agent-session-guard.js';
+import { findRepoRoot } from './local-config.js';
 import { cmdSetup } from './setup-command.js';
 import { cmdStatus, cmdUninstall, cmdSessionStart, cmdClaim, cmdResult, cmdAgents } from './status-commands.js';
 import { cmdDoctor } from './doctor-command.js';
@@ -147,6 +149,7 @@ usage:
                             performance|ui|multi, --requirement per part) so completion
                             checks derive the task's proof obligations — a hint with zero
                             authority: it can only ADD obligations, never weaken the plan.
+                            --session <id> binds CLI registration to the current Claude request.
                             M10.2: at the candidate boundary the task FROZEN IN THE
                             CANDIDATE'S OWN RECORD at isolation is the authority to
                             judge completion at all — none frozen = NOT PROVEN, never
@@ -168,7 +171,9 @@ usage:
                             sealed plan. Without a sealed binding a registered requirement
                             stays NOT PROVEN — acceptance cannot replace measurement for an
                             objective requirement. Task registration only adds duties;
-                            LOCAL does not isolate same-UID workers from CLI bind/setup commands
+                            Claude sessions cannot invoke these operator actions; an open session
+                            requires confirmation in a human terminal. LOCAL does not isolate same-UID workers from CLI bind/setup
+                            outside the guarded session; this is not OS isolation.
   amabie work <name> "<intent>" [--kind k] [--requirement "…"]…
                             the ISOLATED expert path: register the intent and
                             open a separate candidate; work there, then verify
@@ -427,6 +432,17 @@ function cmdReport(evidencePath: string | undefined, outPath?: string): number {
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   if (cmd !== 'mcp' && (argv.includes('--help') || argv.includes('-h'))) return usage(0);
+  if (['setup', 'bind', 'accept', 'uninstall'].includes(cmd ?? '') && !(cmd === 'setup' && rest.includes('--check'))) {
+    const target = cmd === 'setup' || cmd === 'uninstall'
+      ? rest.find((arg, index) => !arg.startsWith('-') && !['--mcp-profile', '--toolchain', '--toolchain-dir'].includes(rest[index - 1] ?? ''))
+      : undefined;
+    const problem = await operatorSessionProblem(findRepoRoot(target ?? process.cwd()), cmd!);
+    if (problem) {
+      console.error(`REFUSED — ${problem}`);
+      if (rest.includes('--json')) emitEnvelope({ schema: PROTOCOL_STATUS, command: cmd!, status: 'NEEDS ATTENTION', exitCode: 2, problems: [problem] });
+      return 2;
+    }
+  }
   if (cmd === 'version' || argv.includes('--version')) {
     console.log(`amabie ${AMABIE_VERSION}`);
     if (argv.includes('--verbose')) {

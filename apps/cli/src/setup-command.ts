@@ -554,7 +554,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // That is one interactive step Amabie cannot take for you, so it is named here rather than left to
   // look like a broken integration.
   o.say(`  Claude Code asks you to approve a project's MCP server once — run \`claude\` there and approve it; until then the server is listed but its tools are not available.`);
-  o.detail('authority sealed: the plan and the exact text of every script it runs — candidate edits to the verification surface block completion until setup is re-run. WHO may re-seal is deliberately NOT enforced: `amabie setup` runs unattended and never checks the caller, so a worker with this user\'s authority can re-seal its own commit and plan. That is what HARDENED (a broker with a different OS identity) exists to close, and it is not installed here.');
+  o.say('  If MCP approval is pending, the request hook supplies: amabie task "<intent>" --session <id>. Include each stated criterion with --requirement. No MCP approval is needed for this registration path.');
+  o.detail('authority sealed: candidate edits to the verification surface block completion. Claude hooks protect operator commands and direct authority writes; CLI operator actions refuse known agent execution and require human terminal confirmation while a session is open. LOCAL still shares one OS user and cannot prevent arbitrary same-user bypasses. HARDENED is not installed here.');
   const level = probeTrustLevel(store);
   o.detail(`sealed authority copy: ${store.root} (project ${projectId}) — level ${level.level}: ${level.reasons.join(' ')}`);
 

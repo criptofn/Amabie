@@ -413,7 +413,7 @@ export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: s
   if (q) {
     o.say('AMABIE QUARANTINED — a verification-authority tampering was caught in an earlier Amabie window.');
     o.say(`  ${typeof q === 'string' ? 'the marker is present but unreadable — fail-closed: a file Amabie cannot parse still stands as a marker' : `stamped ${q.when} at ${q.at} — ${q.changes} fingerprinted change(s) recorded in the mandate bundle`}`);
-    o.say('next: the operator restores the authority bytes deliberately and re-runs `amabie setup` — the re-seal is the clearing act, and it does NOT check who runs it, so any same-user caller (including the worker) can do it. Same-UID code can delete the marker by hand; that is the byte-restore/change-and-revert ceiling, stated — what this refusal closes is the AUTOMATED re-run laundering, not a determined hand.');
+    o.say('next: the operator reviews and restores the authority bytes, then runs `amabie setup` from a human terminal. Agent sessions cannot use this clearing act. Same-UID code can still delete the marker by hand; LOCAL is not an OS security boundary.');
     return { code: 2, startHead: null, rec: null };
   }
   const rec = loadRecord(root, name);
@@ -449,7 +449,7 @@ export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: s
       extra: { ...extra, authorityEvent: { when, changes } },
     });
     o.say('AMABIE BLOCKED COMPLETION — Verification authority was modified by the candidate.');
-    if (when !== 'before execution') o.say('AMABIE QUARANTINED — verify and promote refuse this base until amabie setup is re-run (it does not check who runs it, so a same-user caller can clear this); re-running the same tampering cannot re-baseline it into innocence.');
+    if (when !== 'before execution') o.say('AMABIE QUARANTINED — verify and promote refuse this base until an operator reviews it and runs amabie setup from a human terminal. Same-user filesystem bypass remains possible under LOCAL; repeated tampering cannot silently re-baseline itself.');
     // a wholesale evidence wipe turns EVERY file into a change — print a cap,
     // the bundle carries the complete list (evidence stays the full record).
     for (const c of changes.slice(0, 8)) o.say(`  ${c.file}: ${shortState(c.before)} → ${shortState(c.after)} (${when})`);
