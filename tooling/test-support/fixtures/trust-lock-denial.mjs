@@ -11,7 +11,7 @@ let lockAttempts = 0;
 let waits = 0;
 const realMkdir = fs.mkdirSync.bind(fs);
 const realLstat = fs.lstatSync.bind(fs);
-const realWait = Atomics.wait;
+let monotonicMs = 0;
 
 fs.mkdirSync = (...args) => {
   if (path.basename(String(args[0])) === '.authority-lock') {
@@ -27,9 +27,12 @@ fs.lstatSync = (...args) => {
   return realLstat(...args);
 };
 Date.now = () => 10_000;
+// Model scheduler time explicitly: real Windows waits can oversleep under CI load.
+process.hrtime.bigint = () => BigInt(monotonicMs) * 1_000_000n;
 Atomics.wait = (...args) => {
   waits++;
-  return Reflect.apply(realWait, Atomics, args);
+  monotonicMs += Number(args[3]);
+  return 'timed-out';
 };
 
 const started = performance.now();
@@ -38,5 +41,5 @@ try {
   process.exitCode = 2;
 } catch (error) {
   assert.equal(error.code, 'EPERM');
-  process.stdout.write(`${JSON.stringify({ lockAttempts, waits, elapsedMs: performance.now() - started })}\n`);
+  process.stdout.write(`${JSON.stringify({ lockAttempts, waits, elapsedMs: performance.now() - started, monotonicMs })}\n`);
 }

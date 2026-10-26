@@ -228,11 +228,12 @@ describe('1.1 hardening — minting is serialized', () => {
     });
     assert.equal(result.error, undefined, `the lock retry exceeded its bound: ${result.error?.message}`);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    const observed = JSON.parse(result.stdout.trim()) as { lockAttempts: number; waits: number; elapsedMs: number };
+    const observed = JSON.parse(result.stdout.trim()) as { lockAttempts: number; waits: number; elapsedMs: number; monotonicMs: number };
     assert.equal(observed.lockAttempts, observed.waits + 1);
     assert.ok(observed.waits > 100, `the monotonic deadline did not allow the bounded wait: ${observed.waits}`);
-    assert.ok(observed.elapsedMs >= 5_000 && observed.elapsedMs < 9_000,
-      `the retry should track elapsed time despite a frozen wall clock: ${observed.elapsedMs} ms`);
+    assert.ok(observed.monotonicMs >= 5_000 && observed.monotonicMs < 9_000,
+      `the retry should track monotonic time despite a frozen wall clock: ${observed.monotonicMs} ms`);
+    assert.ok(observed.elapsedMs < 9_000, 'the deterministic retry still has a finite execution bound');
   });
 
   it('concurrent minters never share a generation (no lost ledger update)', async () => {
