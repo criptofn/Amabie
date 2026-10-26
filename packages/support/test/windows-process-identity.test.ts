@@ -24,7 +24,7 @@ it('native identity rejects changed birth and exact older-parent ordering, then 
     const file = path.join(dir, 'native-identities.ps1');
     fs.writeFileSync(file, `$ErrorActionPreference='Stop';${WINDOWS_PROCESS_IDENTITY_BOOTSTRAP}
 $root=[AmabieSweep.NativeProcess]::Root(${child.pid})
-$pin=$null;$reopened=$null
+$pin=$null;$reopened=$null;$waiter=$null
 try{
   $row=Get-CimInstance -ClassName Win32_Process -Filter 'ProcessId=${child.pid}' -Property ProcessId,CreationDate -ErrorAction Stop
   if(-not $row){throw 'actual child CIM identity missing'}
@@ -35,12 +35,16 @@ try{
   $pin=[AmabieSweep.NativeProcess]::Child(${child.pid},$ticks,$root.CreationTicks)
   if(-not $pin){throw 'actual CIM identity did not match native process'}
   $same=($pin.CreationTicks -eq $root.CreationTicks)
+  # Retain the wait handle while the child is alive. Reopening by PID after
+  # asynchronous termination can fail before the process object is signaled.
+  $waiter=[System.Diagnostics.Process]::GetProcessById(${child.pid})
+  [void]$waiter.Handle
   $terminated=$pin.Terminate()
-  Wait-Process -Id ${child.pid} -Timeout 2 -ErrorAction SilentlyContinue
+  if(-not $waiter.WaitForExit(2000)){throw 'owned fixture child did not exit within two seconds'}
   $alreadyExited=-not $pin.Terminate()
   $reopened=[AmabieSweep.NativeProcess]::Root(${child.pid})
   @{changedRejected=($null -eq $changed);olderRejected=($null -eq $older);same=$same;terminated=$terminated;alreadyExited=$alreadyExited;retainedBirth=($reopened.CreationTicks -eq $root.CreationTicks)} | ConvertTo-Json -Compress
-}finally{if($reopened){$reopened.Dispose()};if($pin){$pin.Dispose()};$root.Dispose()}
+}finally{if($waiter){$waiter.Dispose()};if($reopened){$reopened.Dispose()};if($pin){$pin.Dispose()};$root.Dispose()}
 `);
     const host = windowsPowerShellCandidates().find(candidate => path.basename(candidate).toLowerCase() === 'pwsh.exe') ?? 'powershell.exe';
     const result = spawnSync(host, ['-NoProfile', '-NonInteractive', '-File', file], {
