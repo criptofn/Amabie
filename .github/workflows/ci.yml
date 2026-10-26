@@ -3,7 +3,8 @@ name: amabie-ci
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    # Version tags run these same jobs through release.yml's workflow_call;
+    # triggering CI here too would run the complete matrix twice per release.
   pull_request:
   schedule:
     - cron: '17 6 * * 1'   # weekly: the golden proof must keep holding

@@ -1,4 +1,4 @@
-# Amabie 2.0.1 candidate quickstart
+# Amabie 2.0.1 quickstart
 
 **Your agent says done. Amabie checks the change.** It runs your declared checks
 independently and refuses to treat an agent's success claim as proof.
@@ -13,10 +13,11 @@ Start with the [reviewed failing-test workflow](https://github.com/criptofn/Amab
 
 ## Install
 
-Published stable is currently 2.0.0. The session guards and CLI registration fallback in this checkout are pending 2.0.1 publication. For stable installation:
+The session guards and CLI registration fallback require 2.0.1 or later; they are absent from 2.0.0. Check registry availability before installing the pinned version:
 
 ```sh
-npm install --global amabie-cli@2.0.0
+npm view amabie-cli@2.0.1 version
+npm install --global amabie-cli@2.0.1
 amabie --version
 amabie --help
 ```

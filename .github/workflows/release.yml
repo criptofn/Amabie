@@ -90,7 +90,6 @@ jobs:
       id-token: write
       attestations: write
     env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -98,6 +97,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      # npm's trusted publisher is scoped to this repository, release.yml and
+      # amabie-release. npm >=11.5.1 exchanges the job's OIDC identity itself.
+      - name: Install the OIDC-capable npm CLI
+        run: npm install --global npm@11.16.0
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-package
@@ -110,17 +113,14 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           cd pack/npm
           sha256sum --check ./*.sha256
-      - name: Require npm access before any public release
-        env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "${NODE_AUTH_TOKEN:-}" || { echo "::error::Configure NPM_TOKEN in the amabie-release environment before publishing."; exit 1; }
-          npm whoami >/dev/null
       - name: Attest the approved artifact
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: pack/npm/*.tgz
+      # A real publish verifies OIDC access; `npm whoami` does not. If npm
+      # refuses publication, the GitHub release must remain a draft.
+      - name: Publish the same bytes to npm with the protected OIDC identity
+        run: npm publish ./pack/npm/*.tgz --provenance --access public
       - name: Stage release assets, then publish the complete release
         run: |
           set -euo pipefail
@@ -137,7 +137,3 @@ jobs:
           grep -Fx "$ARTIFACT.sha256" <<< "$ASSETS"
           gh release edit "$GITHUB_REF_NAME" --draft=false
           test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = "false"
-      - name: Publish the same bytes to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
-        run: npm publish ./pack/npm/*.tgz --provenance --access public
