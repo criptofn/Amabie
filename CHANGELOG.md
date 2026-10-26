@@ -10,6 +10,20 @@ changed*; the evidence ledgers record *what was observed*.
 
 ## [Unreleased]
 
+### 2.0.1 candidate
+
+- Claude task registration has an explicit CLI fallback while project MCP approval is pending.
+- Claude tools protect verifier state and hook files after task registration; operator commands
+  refuse known agent execution and require terminal confirmation during an open session.
+- Onboarding commands, configuration, execution, proof checks, evidence and task state have
+  separate module owners. Product modules no longer import the onboarding compatibility facade.
+- Productization runs its complete unit suite once, removing 32 redundant test invocations.
+- The README and npm landing page share a short introduction and a reviewed-red-test workflow;
+  historical benchmark detail remains in a dated reference, with withdrawn claims still marked.
+- npm metadata has explicit keywords and a bounded native-runtime asset list.
+- The Windows lock-denial test uses an explicit monotonic clock instead of counting real
+  scheduler wakeups; its deadline and retry assertions remain intact.
+
 ### Changed
 
 - Renamed the product, CLI, workspace packages, project files and local state paths to Amabie 2.0. Existing

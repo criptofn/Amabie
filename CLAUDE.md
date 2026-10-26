@@ -71,6 +71,8 @@ For every new project request in Claude Code, register the current intent and ex
 with the Amabie MCP `amabie_task` tool before project changes. The `UserPromptSubmit` hook resets
 the per-request scope, `PostToolUse` confirms a successful registration, and `PreToolUse` blocks
 project actions until that request is registered. Empty criteria use `requirements: []`.
+When MCP approval is pending, use the exact `amabie task ... --session <id>`
+alternative supplied by the request hook; this records the task and grants no proof authority.
 
 ## Standing decisions
 

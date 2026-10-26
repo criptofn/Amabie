@@ -111,7 +111,7 @@ the Claude task scope when each request arrives and verifies completion when tha
 ```sh
 amabie result --json      # optional, free, writes nothing: what Amabie already knows here
 amabie setup --yes        # ONCE per repository: seal the plan and wire the hooks
-# at the start of each new project request, call MCP amabie_task with its intent and stated criteria
+# register each request with MCP amabie_task, or the --session CLI fallback supplied by the request hook
 # ...then do the work. When you finish the turn, Amabie runs the sealed checks itself.
 ```
 
