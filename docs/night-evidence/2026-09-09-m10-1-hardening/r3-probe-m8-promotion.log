@@ -10,7 +10,7 @@ PASS candidate changed after a PASS verify: promote decides on LIVE bytes — a 
 PASS dirty candidate after a PASS (uncommitted scratch): REFUSED — promotion applies committed bytes only
 PASS stale evidence replay: forged PASS candidate bundle cannot carry a broken tree; live bytes rule
 PASS evidence from A used for B: B gets its OWN live verdict (broken B refuses despite fresh A PASS)
-PASS candidate-tampered authority (its own canary config + fake git shim) is INERT for promotion
+PASS candidate-tampered authority (its own amabie config + fake git shim) is INERT for promotion
 PASS malformed record (baseHead tampered to garbage): honest refusal via the delegated live verify
 PASS M9-CLOSED: a step writing into the base evidence dir mid-window forces the §9 mandate, not a verdict
 PASS cross-case hygiene: refused repos hold zero accepted promotion bundles; attempted repos land exactly once

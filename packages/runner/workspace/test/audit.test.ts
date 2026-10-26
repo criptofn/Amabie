@@ -36,7 +36,7 @@ describe('auditPackageManifestText — lifecycle hooks refuse execution', () => 
 
 describe('auditFixtureDir — rc-file injection gate', () => {
   it('refuses a fixture shipping .npmrc', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-audit-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-audit-'));
     try {
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1', scripts: {} }));
       assert.ok(auditFixtureDir(dir, 'axios').ok);
@@ -50,7 +50,7 @@ describe('auditFixtureDir — rc-file injection gate', () => {
   });
 
   it('F10: finds rc files nested anywhere in the pinned source', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-audit-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-audit-'));
     try {
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1', scripts: {} }));
       fs.mkdirSync(path.join(dir, 'tooling', 'scripts'), { recursive: true });
@@ -63,7 +63,7 @@ describe('auditFixtureDir — rc-file injection gate', () => {
     }
   });
   it('F7: refuses an UPPERCASE .NPMRC (Windows/macOS load it as project config)', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-audit-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-audit-'));
     try {
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1', scripts: {} }));
       assert.ok(auditFixtureDir(dir, 'axios').ok);
@@ -81,7 +81,7 @@ describe('auditFixtureDir — rc-file injection gate', () => {
   });
 
   it('F7: also catches mixed-case nested .YarnRc.yml', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-audit-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-audit-'));
     try {
       fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1', scripts: {} }));
       fs.mkdirSync(path.join(dir, 'pkg', 'sub'), { recursive: true });

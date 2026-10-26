@@ -1,29 +1,29 @@
 /**
- * The Canary PYTEST OBSERVER — the exact bytes Canary writes (byte-stable) into
+ * The Amabie PYTEST OBSERVER — the exact bytes Amabie writes (byte-stable) into
  * its workspace and has pytest import as a plugin before any test runs.
  *
  * WHY (v1.1 Phase 2): pytest is the other half of the Python world, and it is not
  * observable the way `unittest` is. `unittest` is hooked through
- * `sitecustomize`/`TestResult`; pytest has a plugin API, so Canary injects a
+ * `sitecustomize`/`TestResult`; pytest has a plugin API, so Amabie injects a
  * plugin. Everything else — the frames, the protocol, the trust argument — is the
  * SAME channel as mocha, `unittest` and `node --test`, deliberately: one
  * observation vocabulary, four loaders.
  *
- * THE INJECTION POINT: `PYTEST_PLUGINS` (an environment value Canary computes)
- * plus the plugin's directory on `PYTHONPATH`. Both come from Canary's own
+ * THE INJECTION POINT: `PYTEST_PLUGINS` (an environment value Amabie computes)
+ * plus the plugin's directory on `PYTHONPATH`. Both come from Amabie's own
  * workspace — `sanitizedEnv` has no env-merge path (audit F9), and the variable
  * NAME is fixed by the injection kind, so no subject string can reach the child's
  * environment through this door. `-p` on argv was REJECTED as the primary
  * mechanism because plugin suppression (`-p no:<name>`) can also be written into a
  * project's `addopts`, so argv would be the weaker door of the two; the round
- * refuses an explicit `-p no:canary_pytest_observer` and a config-suppressed
+ * refuses an explicit `-p no:amabie_pytest_observer` and a config-suppressed
  * observer simply produces no frames, which fails the round closed.
  *
  * WHAT MAKES THE OBSERVATION TRUSTWORTHY, and what does not
  * (`tooling/probes/pytest-observer-events.mjs` prints the raw hooks this rests on):
  *  1. Ground truth is `pytest_runtest_logstart` + the item's PHASE REPORTS
  *     TOGETHER. An item's outcome is decided once, at `teardown` — pytest's own
- *     per-item counting — so a report for an item whose start Canary never watched
+ *     per-item counting — so a report for an item whose start Amabie never watched
  *     is REJECTED (`reject`), and printed or reported text cannot mint a count.
  *  2. The phase mapping is MEASURED, not assumed (pytest 9.1.1):
  *       pass    : setup passed, call passed, teardown passed
@@ -48,36 +48,36 @@
  * NOT SUPPORTED, stated rather than hoped: `pytest-xdist` runs items in worker
  * processes whose frames do not belong to this pipe, so an xdist run fails closed
  * (duplicate/absent frames) rather than being credited. Collection errors are
- * pytest's own `error` category at FILE level; Canary watched no item start, so the
+ * pytest's own `error` category at FILE level; Amabie watched no item start, so the
  * frames cannot agree with the text and the round is INVALID — fail closed, never a
  * silent pass.
  *
  * The source is a template with no interpolated host data, so the bytes are
  * identical on every machine: a byte-compare in `ensurePytestObserver` is what
- * makes "the loaded bytes are Canary's" checkable at all.
+ * makes "the loaded bytes are Amabie's" checkable at all.
  */
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { treeSha256 } from '@canary-rn/support';
+import { treeSha256 } from '@amabie/support';
 
 /** Where the observer directory lives inside the workspace (outside artifacts). */
-export const PYTEST_OBSERVER_DIRNAME = 'canary-pytest-observer';
-export const PYTEST_OBSERVER_BASENAME = 'canary_pytest_observer.py';
+export const PYTEST_OBSERVER_DIRNAME = 'amabie-pytest-observer';
+export const PYTEST_OBSERVER_BASENAME = 'amabie_pytest_observer.py';
 /** The module name pytest is told to load — also what a suppression token names. */
-export const PYTEST_PLUGIN_MODULE = 'canary_pytest_observer';
+export const PYTEST_PLUGIN_MODULE = 'amabie_pytest_observer';
 
 /** `hello.runner` for this channel. */
 export const PYTEST_RUNNER_ID = 'pytest';
 
-/** The directory Canary puts on the child's PYTHONPATH. */
+/** The directory Amabie puts on the child's PYTHONPATH. */
 export function pytestObserverDir(wsRoot: string): string {
   return path.join(wsRoot, PYTEST_OBSERVER_DIRNAME);
 }
 
-/** Write Canary's plugin bytes and prove the loaded bytes are Canary's. */
+/** Write Amabie's plugin bytes and prove the loaded bytes are Amabie's. */
 export function ensurePytestObserver(wsRoot: string): string {
   const dir = pytestObserverDir(wsRoot);
   const p = path.join(dir, PYTEST_OBSERVER_BASENAME);
@@ -87,7 +87,7 @@ export function ensurePytestObserver(wsRoot: string): string {
   } catch { /* absent: write below */ }
   fs.writeFileSync(p, PYTEST_OBSERVER_SOURCE, 'utf8');
   if (fs.readFileSync(p, 'utf8') !== PYTEST_OBSERVER_SOURCE) {
-    throw new Error(`pytest observer at ${p} does not match Canary's bytes even after rewrite (workspace is not writable-stable)`);
+    throw new Error(`pytest observer at ${p} does not match Amabie's bytes even after rewrite (workspace is not writable-stable)`);
   }
   return dir;
 }
@@ -153,7 +153,7 @@ export function pytestTreeSha256(root: string): string {
   return h.digest('hex');
 }
 
-/** True for the argv token that would SUPPRESS Canary's plugin. */
+/** True for the argv token that would SUPPRESS Amabie's plugin. */
 export function isPytestObserverSuppressionToken(tok: string): boolean {
   const i = tok.indexOf('no:');
   if (i === -1) return false;
@@ -161,12 +161,12 @@ export function isPytestObserverSuppressionToken(tok: string): boolean {
   return named === PYTEST_PLUGIN_MODULE;
 }
 
-export const PYTEST_OBSERVER_SOURCE = `# Canary pytest observer plugin. See packages/runner/executor/src/observers/pytest-observer.ts
+export const PYTEST_OBSERVER_SOURCE = `# Amabie pytest observer plugin. See packages/runner/executor/src/observers/pytest-observer.ts
 import atexit
 import json
 import os
 
-OBSERVER_VERSION = "canary-observer-v1"
+OBSERVER_VERSION = "amabie-observer-v1"
 RUNNER_ID = "pytest"
 _FD = 3
 _open = True
@@ -212,7 +212,7 @@ def pytest_runtest_logreport(report):
         nodeid = report.nodeid
         when = report.when
         if nodeid not in _started:
-            # A report for an item whose start Canary never watched: reported, not
+            # A report for an item whose start Amabie never watched: reported, not
             # executed as far as the observation is concerned. Fail the round closed.
             counts["rejected"] += 1
             _frame({"k": "reject", "ev": "report", "id": nodeid, "reason": "no-run"})
@@ -298,7 +298,7 @@ try:
         "pythonVersion": _py,
         "pid": os.getpid(),
         "ppid": os.getppid(),
-        "nonce": os.environ.get("CANARY_OBSERVER_NONCE", ""),
+        "nonce": os.environ.get("AMABIE_OBSERVER_NONCE", ""),
         "observerVersion": OBSERVER_VERSION,
         "node": "python-" + _py,
     })

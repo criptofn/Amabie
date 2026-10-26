@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r9-multi-requirement-pricing-guarded-2",
   "task": "multi-requirement-pricing",
   "arm": "guarded",
@@ -28,7 +28,7 @@
     ]
   },
   "startedAt": "2026-09-12T20:30:49.093Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-multi-requirement-pricing-guarded-yrBKZk",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-multi-requirement-pricing-guarded-yrBKZk",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -53,10 +53,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -106,7 +106,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n✓ bench: npm run bench (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n✓ bench: npm run bench (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -137,7 +137,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now — the checkpoint gate exits 0 (silent allow), which is its strongest verdict: sealed checks pass, every objective obligation is met.\n\n**What the gate blocked on and how I closed it:**\n\n1. **`target-bench-a02d8a8a…` — no sealed bench proof binding.** That digest is the objective numeric target (the requirement containing \"10%\" — the half-up rounding rule). I added `bench/rounding-proof.js` — an independent exact-rationals reference that sweeps every subtotal 0–60000 (20000 of them producing .5 products), plus the spec cases, tier contents, fail-closed, and README↔config agreement — bound the digest to a plan step of kind `bench` via `\"canary\": {\"proofs\": {…}}` in `package.json`, and re-ran `canary setup --yes` (the Desktop installation that owns the Stop hook). Setup sealed the plan and smoke-passed both steps.\n2. **`regression-evidence` — checks passed on the base commit too.** I extended `tests/pricing.test.js` from 3 to 9 tests covering all five rules (tier selection, half-up rounding, fail-closed on 14 malformed configs, README table parsed and compared against `config/pricing.json`, `formatCents` and unchanged-subtotal preservation), and bound the four remaining requirement digests to `test` — the sealed `per-requirement` map shows all five digests now bound.\n3. **Discrimination, proven by direct experiment:** with the candidate's checks against the *base* `src/pricing.js`, 3 tests fail and the bench sweep fails (exit 1); against the new code, 9 pass and the proof exits 0. (After the re-seal the baseline carries setup-dirt, so Canary's own probe applies its documented \"re-seal is not the worker's change\" doctrine rather than claiming discrimination itself — the experiment above is the honest record.)\n\n**Files changed since the first pass:** `tests/pricing.test.js` (extended), `bench/rounding-proof.js` (new), `package.json` (bench script + `canary.proofs` bindings). Product code, config, and README are as described previously. Nothing committed — the working tree is the candidate the gate evaluates, and setup refreshed (did not duplicate) the existing Canary hook."
+    "finalText": "Everything works now — the checkpoint gate exits 0 (silent allow), which is its strongest verdict: sealed checks pass, every objective obligation is met.\n\n**What the gate blocked on and how I closed it:**\n\n1. **`target-bench-a02d8a8a…` — no sealed bench proof binding.** That digest is the objective numeric target (the requirement containing \"10%\" — the half-up rounding rule). I added `bench/rounding-proof.js` — an independent exact-rationals reference that sweeps every subtotal 0–60000 (20000 of them producing .5 products), plus the spec cases, tier contents, fail-closed, and README↔config agreement — bound the digest to a plan step of kind `bench` via `\"amabie\": {\"proofs\": {…}}` in `package.json`, and re-ran `amabie setup --yes` (the Desktop installation that owns the Stop hook). Setup sealed the plan and smoke-passed both steps.\n2. **`regression-evidence` — checks passed on the base commit too.** I extended `tests/pricing.test.js` from 3 to 9 tests covering all five rules (tier selection, half-up rounding, fail-closed on 14 malformed configs, README table parsed and compared against `config/pricing.json`, `formatCents` and unchanged-subtotal preservation), and bound the four remaining requirement digests to `test` — the sealed `per-requirement` map shows all five digests now bound.\n3. **Discrimination, proven by direct experiment:** with the candidate's checks against the *base* `src/pricing.js`, 3 tests fail and the bench sweep fails (exit 1); against the new code, 9 pass and the proof exits 0. (After the re-seal the baseline carries setup-dirt, so Amabie's own probe applies its documented \"re-seal is not the worker's change\" doctrine rather than claiming discrimination itself — the experiment above is the honest record.)\n\n**Files changed since the first pass:** `tests/pricing.test.js` (extended), `bench/rounding-proof.js` (new), `package.json` (bench script + `amabie.proofs` bindings). Product code, config, and README are as described previously. Nothing committed — the working tree is the candidate the gate evaluates, and setup refreshed (did not duplicate) the existing Amabie hook."
   },
   "visible": {
     "exitCode": 0,
@@ -189,7 +189,7 @@
   "taskRegistration": {
     "requirements": 5,
     "exit": 0,
-    "stdoutTail": "requirement [needs proof or acceptance]: d876c4f8a853378b9ffdc2aa1f09a740812595171e5035a529e5ac57966beb38 — \"a missing, malformed or non-monotonic config fails closed by throwing an Error whose messa\"\n  bind it: package.json \"canary\": { \"proofs\": { \"d876c4f8a853378b9ffdc2aa1f09a740812595171e5035a529e5ac57966beb38\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: fc0ac9da584949b837dc3c51f8549b034fd5a14270e3a39b6345f68fe439277c — \"the Discount rates table in README.md matches config/pricing.json exactly: the same bounda\"\n  bind it: package.json \"canary\": { \"proofs\": { \"fc0ac9da584949b837dc3c51f8549b034fd5a14270e3a39b6345f68fe439277c\": \"<script name from your plan>\" } }, then: canary setup\nrequirement [needs proof or acceptance]: 2c66d90ac6d05d01fdc2d680ad98eece3088dc0f8416bc9cfcd4a879335bb3d2 — \"formatCents keeps its current behaviour (1234 -> $12.34) and subtotals below the first pai\"\n  bind it: package.json \"canary\": { \"proofs\": { \"2c66d90ac6d05d01fdc2d680ad98eece3088dc0f8416bc9cfcd4a879335bb3d2\": \"<script name from your plan>\" } }, then: canary setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
+    "stdoutTail": "requirement [needs proof or acceptance]: d876c4f8a853378b9ffdc2aa1f09a740812595171e5035a529e5ac57966beb38 — \"a missing, malformed or non-monotonic config fails closed by throwing an Error whose messa\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"d876c4f8a853378b9ffdc2aa1f09a740812595171e5035a529e5ac57966beb38\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: fc0ac9da584949b837dc3c51f8549b034fd5a14270e3a39b6345f68fe439277c — \"the Discount rates table in README.md matches config/pricing.json exactly: the same bounda\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"fc0ac9da584949b837dc3c51f8549b034fd5a14270e3a39b6345f68fe439277c\": \"<script name from your plan>\" } }, then: amabie setup\nrequirement [needs proof or acceptance]: 2c66d90ac6d05d01fdc2d680ad98eece3088dc0f8416bc9cfcd4a879335bb3d2 — \"formatCents keeps its current behaviour (1234 -> $12.34) and subtotals below the first pai\"\n  bind it: package.json \"amabie\": { \"proofs\": { \"2c66d90ac6d05d01fdc2d680ad98eece3088dc0f8416bc9cfcd4a879335bb3d2\": \"<script name from your plan>\" } }, then: amabie setup\nthis is an AGENT_REPORTED hint with zero authority — the next checkpoint proves the sealed plan PLUS this task's obligations; nothing here weakens either.\n"
   },
   "stream": {
     "lines": 7690,
@@ -222,22 +222,22 @@
     "bytes": {
       "toolResultTotal": 73811,
       "largestToolResult": 12667,
-      "canaryVisible": 977,
+      "amabieVisible": 977,
       "hookOutput": 0
     },
     "commands": {
       "total": 12,
-      "canary": 3,
+      "amabie": 3,
       "checks": 3,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && canary status 2>&1 | head -60",
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" setup --yes 2>&1 | tail -30",
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && node -e \"const c=require('./.canary/canary.local.json'); console.log('plan:',JSON.stringify(c.plan)); console.log('proofBindings:',JSON.stringify(c.planAuthority.proofBindings,null,1)); console.log('baseline dirty:',c.baseline.dirty,'head:',c.baseline.head.slice(0,7))\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" checkpoint; echo \"checkpoint exit: $?\""
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && amabie status 2>&1 | head -60",
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" setup --yes 2>&1 | tail -30",
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-multi-requirement-pricing-guarded-yrBKZk/project\" && node -e \"const c=require('./.amabie/amabie.local.json'); console.log('plan:',JSON.stringify(c.plan)); console.log('proofBindings:',JSON.stringify(c.planAuthority.proofBindings,null,1)); console.log('baseline dirty:',c.baseline.dirty,'head:',c.baseline.head.slice(0,7))\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" checkpoint; echo \"checkpoint exit: $?\""
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

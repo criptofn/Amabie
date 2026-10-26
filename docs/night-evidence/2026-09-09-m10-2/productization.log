@@ -1,18 +1,18 @@
 
-> canary-reliability-network@0.0.0 verify:productization
+> amabie-reliability-network@0.0.0 verify:productization
 > node tooling/verify-productization.mjs
 
 
 === build (tsc -b) ===
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 === onboarding contract tests ===
   ✔ S4: a FORGED or stale checkpoint file can never produce READY — only this run can (451.909449ms)
   ✔ never set up -> NEEDS ATTENTION with the one command; outside git -> UNSUPPORTED (91.810655ms)
-  ✔ uninstall removes exactly Canary, preserves everything else; repeat is safe (573.725042ms)
+  ✔ uninstall removes exactly Amabie, preserves everything else; repeat is safe (573.725042ms)
   ✔ S1: an out-of-repo touched path in the config is refused, untouched, loudly (299.124006ms)
-  ✔ S6: partial cleanup keeps .canary so the promised retry can actually finish (297.524476ms)
+  ✔ S6: partial cleanup keeps .amabie so the promised retry can actually finish (297.524476ms)
   ✔ S2-adjacent: uninstall of a foreign-cliPath config is refused (cannot prove ownership) (251.424323ms)
 ✔ doctor + uninstall (3040.573857ms)
 ▶ degenerate empty plan (hand-edited config must not fake green)
@@ -23,7 +23,7 @@
   ✔ setup refuses outright when a managed file is a link (dangling included) (43.949256ms)
 ✔ link containment (S3) (494.615653ms)
 ▶ hook entry shape + ownership
-  ✔ hasCanaryEntry matches exact command only (0.184228ms)
+  ✔ hasAmabieEntry matches exact command only (0.184228ms)
 ✔ hook entry shape + ownership (0.253841ms)
 ℹ tests 35
 ℹ suites 8
@@ -47,7 +47,7 @@
 ▶ claim intake guards
   ✔ empty claim is misuse (exit 3) and writes nothing (51.509167ms)
   ✔ claims without a usable repo are refused with exit 2, nothing written (49.349874ms)
-  ✔ inside a repo Canary does not trust: NEEDS ATTENTION, no claim written (53.699393ms)
+  ✔ inside a repo Amabie does not trust: NEEDS ATTENTION, no claim written (53.699393ms)
   ✔ a set-up repo stores the claim labeled UNTRUSTED HINT, capped, and says so (264.650604ms)
   ✔ a claims/ dir linked outside the repo refuses the write (S3, exact path) (246.707914ms)
   ✔ a config from another installation refuses claims too (S2) (261.346617ms)
@@ -63,17 +63,17 @@
 
 === M3 trust-classes contract tests ===
 ▶ writers stamp their own class, honestly
-  ✔ every verification bundle Canary writes is CANARY_OBSERVED (setup/doctor/checkpoint) (740.08951ms)
+  ✔ every verification bundle Amabie writes is AMABIE_OBSERVED (setup/doctor/checkpoint) (740.08951ms)
   ✔ the claim envelope is stamped AGENT_REPORTED next to its UNTRUSTED HINT authority (249.516173ms)
 ✔ writers stamp their own class, honestly (990.483421ms)
 ▶ labels are inert as input — no promotion by declaring or copying
-  ✔ a hand-written claim self-declaring CANARY_OBSERVED/"VERIFIED" changes nothing but annotation prose (416.482735ms)
-  ✔ a forged CANARY_OBSERVED pass bundle cannot stop a block and is kept as inert data (403.950045ms)
+  ✔ a hand-written claim self-declaring AMABIE_OBSERVED/"VERIFIED" changes nothing but annotation prose (416.482735ms)
+  ✔ a forged AMABIE_OBSERVED pass bundle cannot stop a block and is kept as inert data (403.950045ms)
   ✔ no side door: extras handed to the bundle writer can never shadow its reserved fields (16.440969ms)
   ✔ doctor re-derives despite a forged pass bundle: NEEDS ATTENTION, never READY (433.071985ms)
 ✔ labels are inert as input — no promotion by declaring or copying (1270.450964ms)
 ▶ class coverage and UX
-  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .canary ever carries it (723.597955ms)
+  ✔ EXTERNALLY_VERIFIED has no producer: nothing under .amabie ever carries it (723.597955ms)
   ✔ trust classes are verbose-only — default output stays simple (721.987268ms)
 ✔ class coverage and UX (1445.976139ms)
 ℹ tests 8
@@ -141,11 +141,11 @@
   ✔ a fully-covered refactor with a green sealed plan yields ONLY met obligations (silent path exists) (0.109689ms)
   ✔ kinds never declared still get the diff-implied floor: no kinds + clean signals = no obligations beyond tests-green (0.116685ms)
 ✔ obligationsFor — the one-way obligation engine (2.650019ms)
-▶ canary task — an AGENT_REPORTED hint with zero authority
+▶ amabie task — an AGENT_REPORTED hint with zero authority
   ✔ setup + register: digest-only storage, inferred kinds, explicit zero-authority line (276.733757ms)
   ✔ --kind overrides inference; --requirement forces multi; hostile input is usage, not a crash (421.117283ms)
   ✔ registering a task against no setup / no git says so; nothing is written (49.341449ms)
-✔ canary task — an AGENT_REPORTED hint with zero authority (747.412607ms)
+✔ amabie task — an AGENT_REPORTED hint with zero authority (747.412607ms)
 ▶ checkpoint/doctor integration — the sealed plan passes, obligations decide the tone
   ✔ no task record, no prose, fake git: byte-identical pre-M6 silence (additive) (493.276055ms)
   ✔ registered bugfix with no test change: the pass rides an honest UNPROVEN systemMessage, never silence (432.556953ms)
@@ -167,7 +167,7 @@
 === M7 candidate-isolation contract tests ===
 ✔ built CLI exists (run npm run build first) (0.915603ms)
 ✔ isolate misuse exits 3 with usage, and never touches the repo (733.706656ms)
-✔ isolate refuses a repo Canary does not verify (no config, exit 2) (47.046198ms)
+✔ isolate refuses a repo Amabie does not verify (no config, exit 2) (47.046198ms)
 ✔ isolate refuses a base whose own config is distrusted (262.078466ms)
 ✔ create refuses under fake git — an unresolvable base cannot be isolated from (and nothing registers) (255.405532ms)
 ✔ verify refuses a malformed or name-mismatched record without executing anything (302.462422ms)
@@ -176,7 +176,7 @@
 ✔ under fake git, verify can NEVER report PASS — the fail-closed ceiling of the whole contract layer (258.153329ms)
 ✔ list is honest with no registry, survives invalid records, and exits 0 (it never executes anything) (319.053197ms)
 ✔ remove refuses unregistered names; a vanished candidate is pruned honestly (record deleted, exit 0) (306.924126ms)
-✔ uninstall refuses to delete .canary while candidates are registered (worker trees stay protectable) (307.238775ms)
+✔ uninstall refuses to delete .amabie while candidates are registered (worker trees stay protectable) (307.238775ms)
 ℹ tests 12
 ℹ suites 0
 ℹ pass 12
@@ -189,7 +189,7 @@
 === M8 promotion contract tests ===
 ✔ built CLI exists (run npm run build first) (4.921775ms)
 ✔ isolate --promote misuse exits 3 (name required, flags scoped, one mode) (505.026152ms)
-✔ promote refuses a repo Canary does not trust (exit 2, before any record read) (47.001868ms)
+✔ promote refuses a repo Amabie does not trust (exit 2, before any record read) (47.001868ms)
 ✔ promote of a missing or malformed record delegates to verify (exit 2, identical refusal) (330.577627ms)
 ✔ promote refuses an impersonated record (different baseRoot) with the canonical guard (239.98246ms)
 ✔ under fake git, promote BLOCKS via live verify and can never apply or accept (326.94589ms)
@@ -261,14 +261,14 @@ PROBE-PASS
 PASS setup on a real repo: READY and bundle candidate binds to the actual HEAD
 PASS dirty+fail: checkpoint bundle records dirty=true; claim only annotates the block
 PASS after repairing the script, checkpoint is silent and records a pass from its own run
-PASS doctor with .canary/evidence pointing outside the repo: no writes escape, verdict intact
+PASS doctor with .amabie/evidence pointing outside the repo: no writes escape, verdict intact
 PASS forged pass bundle + matching printed lie: block stands on exit code alone
 M2 claims-not-evidence: ALL PASS
 
 === probe: M3 trust-classes (real git) ===
-PASS real-repo setup: bundle is CANARY_OBSERVED and bound to the actual HEAD
+PASS real-repo setup: bundle is AMABIE_OBSERVED and bound to the actual HEAD
 PASS claim on a real repo: envelope is AGENT_REPORTED with UNTRUSTED HINT authority
-PASS forged CANARY_OBSERVED pass bundle: checkpoint still blocks on exit code alone
+PASS forged AMABIE_OBSERVED pass bundle: checkpoint still blocks on exit code alone
 PASS same forged bundle against doctor: re-derivation wins, NEEDS ATTENTION not READY
 PASS plain doctor shows no trust-class prose; --verbose explains the classes
 M3 trust-classes: ALL PASS
@@ -287,11 +287,11 @@ PASS setup seals plan + verbatim script text; clean repo verifies silently and d
 PASS the echo-all-good swap is BLOCKED before execution, though the exit code would say pass
 PASS git-restoring the sealed file returns silent pass (detection, not a grudge)
 PASS setup re-run executes the swapped command in smoke and only then seals it; checkpoint passes
-PASS hand-editing .canary/canary.local.json plan without re-sealing blocks on authority
+PASS hand-editing .amabie/amabie.local.json plan without re-sealing blocks on authority
 M5 proof-plan: ALL PASS
 
 === probe: M6 proof orchestration (real git) ===
-PASS setup on a clean real repo: baseline resolved + CLEAN — Canary's own wiring write does not blind blame
+PASS setup on a clean real repo: baseline resolved + CLEAN — Amabie's own wiring write does not blind blame
 PASS registered refactor + green sealed plan: checkpoint silent, doctor READY without obligation noise
 PASS WORKTREE deletion of a test on a clean baseline: the green plan BLOCKS — evidence still says pass
 PASS loop guard holds for obligation blocks: one repair attempt, then honest stop (no re-block)
@@ -302,7 +302,7 @@ PASS renames on a clean baseline: out of test paths = coverage loss; staying a t
 PASS a committed lockfile ADDS the dependency obligation with NO declaration (diff-implied)
 PASS a registered task NEVER lifts the sealed authority — the floor is the floor
 PASS a NON-ASCII committed test deletion blocks: git C-quoting cannot defeat the gate (review #1/#8)
-PASS a TRACKED settings.json cannot blind the baseline stamp via Canary's own backup (review #2)
+PASS a TRACKED settings.json cannot blind the baseline stamp via Amabie's own backup (review #2)
 PASS dirty-at-setup baseline: staged AND worktree deletions are UNPROVEN with an honest premise (review #3/#6)
 M6 proof-orchestration: ALL PASS
 
@@ -320,7 +320,7 @@ PASS spaces and Unicode in --path work for create and verify (argv plumbing, no 
 PASS remove refuses a dirty candidate without --discard; --discard removes exactly worktree + record
 PASS vanished candidate (crash/deleted dir): list LOST, verify blocks honestly, remove prunes the stale registration
 PASS a forged record pointing at an UNRELATED real repo is caught by git-common-dir binding; that repo is untouched
-PASS unregistered worktrees are reported and NEVER touched (user work, not Canary's)
+PASS unregistered worktrees are reported and NEVER touched (user work, not Amabie's)
 PASS a COMMITTED gitlink blocks as submodule even with NO .gitmodules — the old existence gate was blind to this
 PASS .npmrc IDENTICAL to base passes; CHANGED in the candidate blocks; checkout restores
 PASS EMPTY on-disk plan blocks honestly — no plan, no fake green (pre-M5-shaped hand edit)
@@ -341,7 +341,7 @@ PASS candidate changed after a PASS verify: promote decides on LIVE bytes — a 
 PASS dirty candidate after a PASS (uncommitted scratch): REFUSED — promotion applies committed bytes only
 PASS stale evidence replay: forged PASS candidate bundle cannot carry a broken tree; live bytes rule
 PASS evidence from A used for B: B gets its OWN live verdict (broken B refuses despite fresh A PASS)
-PASS candidate-tampered authority (its own canary config + fake git shim) is INERT for promotion
+PASS candidate-tampered authority (its own amabie config + fake git shim) is INERT for promotion
 PASS malformed record (baseHead tampered to garbage): honest refusal via the delegated live verify
 PASS M9-CLOSED: a step writing into the base evidence dir mid-window forces the §9 mandate, not a verdict
 PASS cross-case hygiene: refused repos hold zero accepted promotion bundles; attempted repos land exactly once
@@ -402,7 +402,7 @@ PASS E delete rec.intent after isolation (out of window, agent-writable bytes) �
 PASS F intent {} / null / malformed / task null / task missing / kinds [] / kinds non-array — none reaches PASS; invalid shapes refuse as malformed, readable ones fail safe to UNPROVEN
 PASS G a record hand-WRITTEN in the pre-M10 shape (never had an intent, backdated createdAt) → NOT PROVEN; there is no legacy-PASS interpretation
 PASS H remove/re-add of the task record after isolation cannot change the frozen verdict either way
-PASS I env vars (CANARY_NO_TASK_OK / CANARY_LEGACY / CANARY_FORCE_PASS / ...) and invented flags cannot open the gate
+PASS I env vars (AMABIE_NO_TASK_OK / AMABIE_LEGACY / AMABIE_FORCE_PASS / ...) and invented flags cannot open the gate
 PASS J a hand-planted PASS bundle (byte-copied from a genuinely-PASSED repo) changes no verdict and no promotion
 PASS K fail > unmet > unproven > pass holds on every combination the agent can build
 PASS L POSITIVE CONTROL: bugfix registered BEFORE isolation + committed regression test + green plan → PASS → promote ACCEPTED, base moved, exactly one accepted bundle
@@ -429,22 +429,22 @@ STEP-3 PASS: ends with READY for a healthy repo
 STEP-4 PASS: detected package manager from lockfile
 STEP-4 PASS: disclosed inferred plan in compact form
 STEP-4 PASS: detected the harness
-STEP-5 PASS: Stop hook registered pointing at the Canary CLI
-STEP-5 PASS: local config + self-ignoring .canary/ created
+STEP-5 PASS: Stop hook registered pointing at the Amabie CLI
+STEP-5 PASS: local config + self-ignoring .amabie/ created
 STEP-5 PASS: smoke evidence recorded
 STEP-6 PASS: doctor says READY (exit 0)
 STEP-6 PASS: doctor re-ran the checks in this invocation (READY is earned now)
-STEP-7 PASS: green repo: agent finishes -> Canary allows silently (human NOT interrupted)
-STEP-7 PASS: broken repo: Canary BLOCKS the finish with a repair instruction (REPAIR)
+STEP-7 PASS: green repo: agent finishes -> Amabie allows silently (human NOT interrupted)
+STEP-7 PASS: broken repo: Amabie BLOCKS the finish with a repair instruction (REPAIR)
 STEP-7 PASS: loop guard: second finish still-failing -> honest systemMessage, human told, no infinite loop
 STEP-8 PASS: doctor on failing checks: NEEDS ATTENTION, never READY
 STEP-8 PASS: hook removed by hand: loudly un-protected + one repair command
-STEP-9 PASS: re-run repairs registration (exactly one Canary entry, user entry intact)
+STEP-9 PASS: re-run repairs registration (exactly one Amabie entry, user entry intact)
 STEP-9 PASS: re-run stays honest while code is broken: NEEDS ATTENTION, not fake green
 STEP-9 PASS: backups taken before consequential config edits
 STEP-9 PASS: after the code is fixed: doctor re-proves READY (checks run every time)
-STEP-10 PASS: uninstall exit 0; Canary state gone
-STEP-10 PASS: unrelated config preserved exactly ($schema + user hook; no Canary entry)
+STEP-10 PASS: uninstall exit 0; Amabie state gone
+STEP-10 PASS: unrelated config preserved exactly ($schema + user hook; no Amabie entry)
 STEP-10 PASS: uninstall idempotent
 STEP-10 PASS: reinstall after uninstall
 ALL-ACCEPTANCE-PASS (10/10 acceptance steps)
@@ -453,7 +453,7 @@ ALL-ACCEPTANCE-PASS (10/10 acceptance steps)
 L1-ENGINE: source=npm-global(prefix-lib) version=0.1.3 sha256=33582714b28e01f807ba413d1d673fe352523606ba49d44bd3ff0ab25e423547
 L1-ENGINE: NOTE host-installed bytes are labeled as such — they are evidence of THIS host, not delivered repo bytes
 SKIP  L1-classifier  resolved engine (holdthegoblin@0.1.3) predates the inline-interpreter classifier this corpus pins (no scanInlineInterpreter export) — classifier-owned layers skipped on these bytes, not failed; the FULL acceptance runs where the delivered engine is installed
-SKIP  L2-all  wrapper (source: /home/jan/qwen-builder-cage/canary/tooling/hooks/holdthegoblin-pretooluse-local.mjs) delegates to a host-bound HoldTheGoblin CLI that is absent here (C:/Users/Johannes/AppData/Roaming/npm/node_modules/holdthegoblin/dist/src/cli.js) — LAYER 2 skipped, not passed; full acceptance runs on the host where the live hook is deployed
+SKIP  L2-all  wrapper (source: /home/jan/qwen-builder-cage/amabie/tooling/hooks/holdthegoblin-pretooluse-local.mjs) delegates to a host-bound HoldTheGoblin CLI that is absent here (C:/Users/Johannes/AppData/Roaming/npm/node_modules/holdthegoblin/dist/src/cli.js) — LAYER 2 skipped, not passed; full acceptance runs on the host where the live hook is deployed
 --- LAYER 1: risk engine (evaluateCommandRisk) ---
 PASS  L1-keep-ask  ask: kubectl apply -f deployment.yaml
 PASS  L1-keep-ask  ask: terraform destroy -auto-approve
@@ -495,8 +495,8 @@ STEP-5 PASS: doctor: READY, earned this invocation
 STEP-6 PASS: green repo via literal hook string: silent allow (exit 0, empty stdout)
 STEP-6 PASS: broken repo via literal hook string: BLOCK with repair instruction
 STEP-6 PASS: loop guard: active retry -> honest systemMessage, no repeated block
-STEP-7 PASS: uninstall exits 0; Canary project state gone; user files untouched
-STEP-7 PASS: unrelated config preserved exactly (schema + permission + user Stop hook; no Canary entry)
+STEP-7 PASS: uninstall exits 0; Amabie project state gone; user files untouched
+STEP-7 PASS: unrelated config preserved exactly (schema + permission + user Stop hook; no Amabie entry)
 STEP-7 PASS: stale hook entry after uninstall: silent absence, never a fake pass or crash
 PACKED-CLEANROOM-PASS (7/7 acceptance steps)
 

@@ -7,7 +7,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const repo = path.resolve(import.meta.dirname, '../..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-closure-mutants-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-closure-mutants-'));
 const mutants = [
  ['M1','A1',[['candidate',' || cid.dirty !== false','']]],
  ['M2','A6-head',[['candidate',"typeof after === 'string' || headToken(root) !== baseToken || subjectDigest(after.subject) !== subjectDigest(subject)",'false']]],
@@ -15,12 +15,12 @@ const mutants = [
  ['M4','B1',[['authorization','taskDigest: t.taskDigest,',"taskDigest: digest(''),"]]],
  ['M5','C1',[['authorization','for (const d of frozen.requirementDigests)','for (const d of [])']]],
  ['M6','B1',[['authorization','if (frozen.taskDigest !== live.taskDigest)','if (false)'],['candidate',"typeof context !== 'string' && acc.subjectDigest === subjectDigest(context.subject)",'true']]],
- ['M7','D1',[['onboarding','if (task?.subjectiveVisual)','if (false)']]],
- ['M8','E1-E3-E5',[['onboarding','const bound = script !== undefined && authority.plan.some','const bound = target.kind === "bench" || script !== undefined && authority.plan.some']]],
+ ['M7','D1',[['proof-obligations','if (task?.subjectiveVisual)','if (false)']]],
+ ['M8','E1-E3-E5',[['proof-obligations','const bound = script !== undefined && authority.plan.some','const bound = target.kind === "bench" || script !== undefined && authority.plan.some']]],
  ['M9','C7',[['authorization','if (requirements.length > MAX_REQUIREMENTS)','if (false)'],['authorization','const parts = [text, ...requirements];','requirements = requirements.slice(0, MAX_REQUIREMENTS); const parts = [text, ...requirements];']]],
  ['M10','C8',[['authorization','digest(canonicalText(s))','digest(canonicalText(s).slice(0, 4000))']]],
  ['M11','E1-E3-E5',[['candidate',"obligations.filter((x) => x.mode === 'non-objective' && x.status === 'unproven')","obligations.filter((x) => x.status === 'unproven')"]]],
- ['M12','B4',[['onboarding','[kindFlag, ...inferred]','[kindFlag]']]],
+ ['M12','B4',[['task-command','[kindFlag, ...inferred]','[kindFlag]']]],
  ['M13','F1',[['candidate','if (!frozenKinds.length || !canonicalTask(frozenTask))','if (false)']]],
 ];
 /**
@@ -55,7 +55,7 @@ try {
     fs.writeFileSync(file,source.replace(from,to));
     const syntax=run(['--check',file]);assert.equal(syntax.status,0,syntax.stderr);
    }
-   const r=run(['tooling/probes/architecture-closure.mjs',test],{...process.env,CANARY_TEST_CLI:path.join(scratch,'main.js')});
+   const r=run(['tooling/probes/architecture-closure.mjs',test],{...process.env,AMABIE_TEST_CLI:path.join(scratch,'main.js')});
    assert.equal(r.status,1,`SURVIVED ${id}: ${r.stdout}${r.stderr}`);
    assert.match(r.stdout,/AssertionError/,`non-behavioral failure: ${r.stdout}${r.stderr}`);
    assert.doesNotMatch(r.stdout+r.stderr,/SyntaxError|ReferenceError|TypeError|ERR_MODULE_NOT_FOUND/);

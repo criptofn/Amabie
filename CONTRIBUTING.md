@@ -1,14 +1,14 @@
-# Contributing to Canary
+# Contributing to Amabie
 
-Thanks for looking. Canary is an evidence-first project: a change is judged by
+Thanks for looking. Amabie is an evidence-first project: a change is judged by
 what a command actually did, not by how convincing the description is. The
 process below is deliberately small, and the rules are strict.
 
 ## The loop
 
 ```sh
-git clone https://github.com/criptofn/Canary.git
-cd Canary
+git clone https://github.com/criptofn/Amabie.git
+cd Amabie
 npm ci                                 # lockfile-exact; no lifecycle scripts needed
 npm run build                          # tsc -b over the workspace graph
 npm test                               # the full unit suite — read the reporter summary
@@ -21,6 +21,13 @@ surface (`tooling/verify-productization.mjs`). It prints a per-step
 `PASS` / `SKIP` / `FAIL` table; exit `0` means every step passed or ended in an
 explicit, listed host-bound `SKIP`.
 
+The full unit suite runs once in this chain. Individual unit and tooling test
+files are already included by `npm test`; do not add a second invocation for
+them. Integration probes and mutation checks remain separate because they
+exercise different conditions. For a focused check, use `node --test` with
+the relevant compiled test file, or select a probe with
+`node tooling/verify-productization.mjs --gate "<label>"`.
+
 Requirements: Node.js 22 or newer (CI tests 22; the committed *proof host* is
 Windows + Node 26.3.0 + npm 11.16.0). There are no runtime dependencies — the CLI
 ships as one esbuild bundle.
@@ -30,7 +37,7 @@ none of them was a weakened assertion:
 
 | Probe | What it actually was |
 |---|---|
-| `m8-promotion` | FIXTURE defect. The mid-plan step called bare `git` through `execSync`; a sealed step runs in Canary's SANITIZED environment, whose PATH is the Node dir plus the OS dirs and deliberately NOT the caller's, so `git` did not resolve, the step went red, and `CANDIDATE FAIL` was reported before the identity sandwich could speak. Fixed by naming git absolutely (the discipline `pinPlanPrograms` already applies). |
+| `m8-promotion` | FIXTURE defect. The mid-plan step called bare `git` through `execSync`; a sealed step runs in Amabie's SANITIZED environment, whose PATH is the Node dir plus the OS dirs and deliberately NOT the caller's, so `git` did not resolve, the step went red, and `CANDIDATE FAIL` was reported before the identity sandwich could speak. Fixed by naming git absolutely (the discipline `pinPlanPrograms` already applies). |
 | `m9-authority` | Same defect class: `m9-touch-authority.mjs` mode `basemove` called `execFileSync('git', …)` and spawned ENOENT. |
 | `pre10-env-authority` | Fixed earlier (`1abe0b2`): the probe mirrored `trustedDirs()`; the set is now exported and includes the directories `gitExe()` executes from. |
 | `pre10-acceptance` | Host-bound. There is no drivable real pty on this host (measured: no `script(1)`, and `winpty` without a console aborts on its own cols/rows assertion). The probe now uses one terminal provider, runs EVERY product assertion through the repo's in-process terminal driver, and reports the missing pty as an explicit host-bound `SKIP` (exit 3). |
@@ -74,7 +81,7 @@ after a clean checkout; the directory is gitignored.
    actually declares it. A tool named in a comment, a description or a README is
    *prose*; if discovery picks it up, that is a bug (it happened — see
    `git log --grep="mention is not a declaration"`).
-6. **A claim change needs a contract change.** If you alter what Canary promises,
+6. **A claim change needs a contract change.** If you alter what Amabie promises,
    update the owning document in the same PR:
    [`docs/EXECUTION-AUTHORITY.md`](docs/EXECUTION-AUTHORITY.md) (what is
    attested), [`docs/SECURITY.md`](docs/SECURITY.md) (enforced vs convention),
@@ -100,11 +107,30 @@ after a clean checkout; the directory is gitignored.
 
 ## Where to extend what
 
+The ordinary CLI commands live in `*-command.ts` and `status-commands.ts`.
+They coordinate modules with separate responsibilities:
+
+| Responsibility | Module under `apps/cli/src/` |
+|---|---|
+| Local configuration and ownership | `local-config.ts` |
+| Contained file access and atomic writes | `local-files.ts` |
+| Executable resolution and sanitized process environment | `execution-environment.ts` |
+| Sealed check execution | `check-runner.ts` |
+| Git identity and change signals | `git-state.ts`, `change-signals.ts` |
+| Required evidence and baseline comparison | `proof-obligations.ts`, `regression-proof.ts` |
+| Task, session, prompt and acceptance records | `task-state.ts` |
+| Evidence bundles and checkpoints | `verification-evidence.ts` |
+| Hook and MCP installation | `harness-hooks.ts`, `mcp-registration.ts` |
+
+Infrastructure must not import command modules. Product code imports the owning
+module directly; `onboarding.ts` only preserves existing imports for tests and
+external probes. The boundary test checks these dependencies transitively.
+
 | Seam | Files | Notes |
 |---|---|---|
 | A new project ecosystem | `apps/cli/src/ecosystems.ts`, `apps/cli/src/project.ts` | Add an `Ecosystem` declaration (manifests, dependency paths, programs, a pure `discover()`), then a `commandAdapter` entry. Discovery must be root-scoped by default and must not invent checks. |
 | Polyglot composition | `apps/cli/src/project.ts` (`discoverScopes`, `composePlan`) | Deterministic order is a requirement, not a nicety: the plan is sealed. |
-| An agent harness | `apps/cli/src/agents.ts`, `apps/cli/src/onboarding.ts` | Add an `AGENT_INTEGRATIONS` entry with its REAL capability (`gating` true only if a hook can actually block). Advisory integrations write a marked AGENTS.md block via `installAdvisory`. |
+| An agent harness | `apps/cli/src/agents.ts`, `harness-hooks.ts`, `mcp-registration.ts` | Add an `AGENT_INTEGRATIONS` entry with its REAL capability (`gating` true only if a hook can actually block). Advisory integrations write a marked AGENTS.md block via `installAdvisory`. |
 | Machine-readable output | `apps/cli/src/protocol.ts` | One envelope, versioned schema, facts and a next action — never a log dump. `--json` must never change a verdict. |
 | Trust store / authority | `apps/cli/src/trust-store.ts`, `authority-envelope.ts` | Security-critical: read [`docs/TRUST-ARCHITECTURE.md`](docs/TRUST-ARCHITECTURE.md) first, and add an assertion to `trust-store-attacks.test.ts` for any new forging route. |
 | Authorization kernel / providers | `apps/cli/src/broker.ts`, `apps/cli/src/platform-boundary.ts` | The kernel executes nothing; keep that property transitive. Update the capability report when a provider lands. |

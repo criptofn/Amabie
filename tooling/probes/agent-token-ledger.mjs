@@ -9,7 +9,7 @@
  *
  * It also measures the thing the product is supposed to remove: the model running the project's
  * checks itself, and the bytes of runner output that enter its context as a result. That number is
- * the floor for what Canary can save the model.
+ * the floor for what Amabie can save the model.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -26,7 +26,7 @@ const check = (name, fn) => {
 };
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-ledger-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ledger-'));
 fs.writeFileSync(path.join(TMP, 'package.json'), `${JSON.stringify({
   name: 'ledger-fixture', private: true, scripts: { test: 'node run-tests.js' },
 }, null, 2)}\n`);
@@ -38,9 +38,11 @@ fs.writeFileSync(path.join(TMP, 'run-tests.js'), [
 ].join('\n'));
 
 const prompt = 'Run the project test command (npm test) in this directory, then reply with ONLY the number of passing tests.';
+const model = 'qwen3.8-flash';
+const maxBudgetUsd = 0.10;
 
 console.log('running one small real agent task to capture a stream…');
-const run = spawnSync('claude', ['-p', prompt, '--output-format', 'stream-json', '--verbose',
+const run = spawnSync('claude', ['-p', prompt, '--model', model, '--max-budget-usd', String(maxBudgetUsd), '--output-format', 'stream-json', '--verbose',
   '--permission-mode', 'acceptEdits', '--strict-mcp-config', '--allowedTools', 'Bash', 'Read', 'Glob'],
 { cwd: TMP, encoding: 'utf8', timeout: 300_000, windowsHide: true });
 const stdout = run.stdout ?? '';
@@ -49,15 +51,21 @@ console.log(`agent exit ${run.status}; stream ${stdout.length} chars`);
 if (process.argv.includes('--keep')) console.log(`stream kept at ${path.join(TMP, 'stream.jsonl')}`);
 
 const ledger = parseStream(stdout);
+const resultEvent = stdout.split(/\r?\n/).filter(Boolean).flatMap((line) => {
+  try { return [JSON.parse(line)]; } catch { return []; }
+}).find((event) => event?.type === 'result');
+const nativeCostUsd = Number.isFinite(resultEvent?.total_cost_usd) ? resultEvent.total_cost_usd : null;
 console.log('\n--- ledger ---');
+console.log(`  model/budget:       ${model} / $${maxBudgetUsd.toFixed(2)}`);
+console.log(`  provider cost:      ${nativeCostUsd === null ? 'MISSING' : `$${nativeCostUsd.toFixed(6)}`}`);
 console.log(`  turns:              ${ledger.turns} (${ledger.assistantEvents} assistant event(s) over ${ledger.messages} message(s))`);
 console.log(`  tokens:             total ${ledger.usage.total} (in ${ledger.usage.input} / out ${ledger.usage.output} / cache-read ${ledger.usage.cacheRead} / cache-create ${ledger.usage.cacheCreation}) from ${ledger.usage.source}`);
 console.log(`  session total:      ${ledger.sessionUsage === null ? 'not reported by this CLI' : ledger.sessionUsage.total}`);
 console.log(`  per-message figure: ${ledger.streamedUsage.total} usable=${ledger.streamedUsageUsable}`);
 console.log(`  tool calls:         ${ledger.toolCalls.length} (${[...new Set(ledger.toolCalls.map((c) => c.name))].join(', ') || 'none'})`);
 console.log(`  agent-visible bytes:${ledger.bytes.toolResultTotal} (largest single ${ledger.bytes.largestToolResult})`);
-console.log(`  checks run by model:${ledger.commands.checks}   canary commands: ${ledger.commands.canary}`);
-console.log(`  commands:           ${JSON.stringify(ledger.commands.canaryCommands)}`);
+console.log(`  checks run by model:${ledger.commands.checks}   amabie commands: ${ledger.commands.amabie}`);
+console.log(`  commands:           ${JSON.stringify(ledger.commands.amabieCommands)}`);
 console.log(`  result event:       ${ledger.sawResult ? `subtype=${ledger.result?.subtype} num_turns=${ledger.result?.numTurns}` : 'MISSING'}`);
 console.log(`  unknown event types:${JSON.stringify(ledger.unknownTypes)}`);
 console.log(`  parse errors:       ${ledger.parseErrors}`);
@@ -97,12 +105,12 @@ check('3. it measured the model running the project checks, and paying for the o
   assert(ledger.commands.checks >= 1,
     `the model was asked to run the checks and the ledger must see it: ${JSON.stringify(ledger.toolCalls.map((c) => c.command))}`);
   assert(ledger.bytes.toolResultTotal > 0, 'the model read something, so visible bytes must be > 0');
-  console.log(`      → this is what Canary can remove: ${ledger.bytes.toolResultTotal} bytes of tool output and ${ledger.commands.total} model-run command(s)`);
+  console.log(`      → this is what Amabie can remove: ${ledger.bytes.toolResultTotal} bytes of tool output and ${ledger.commands.total} model-run command(s)`);
 });
 
-check('4. Canary-visible bytes are attributable (and are zero when Canary was not used)', () => {
-  assert(ledger.bytes.canaryVisible === 0,
-    `this run never invoked Canary, so its share must be 0 (got ${ledger.bytes.canaryVisible})`);
+check('4. Amabie-visible bytes are attributable (and are zero when Amabie was not used)', () => {
+  assert(ledger.bytes.amabieVisible === 0,
+    `this run never invoked Amabie, so its share must be 0 (got ${ledger.bytes.amabieVisible})`);
 });
 
 check('5. the tail is reported honestly when no file was edited', () => {
@@ -110,6 +118,12 @@ check('5. the tail is reported honestly when no file was edited', () => {
   assert(ledger.tail.turnsAfterLastEdit === 0, 'with no edit there is no tail to attribute');
   assert(ledger.tail.tokensAfterLastEdit === (ledger.streamedUsageUsable ? 0 : null),
     'either a measured zero or an explicit null — never a number the stream cannot support');
+});
+
+check('6. provider-native cost is present and within the enforced cap', () => {
+  assert(nativeCostUsd !== null, 'the CLI result event must report provider-native cost');
+  assert(nativeCostUsd <= maxBudgetUsd,
+    `provider reported $${nativeCostUsd.toFixed(6)} above the $${maxBudgetUsd.toFixed(2)} cap`);
 });
 
 if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true });

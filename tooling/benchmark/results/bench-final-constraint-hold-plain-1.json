@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-constraint-hold-plain-1",
   "task": "constraint-hold",
   "arm": "plain",
@@ -29,7 +29,7 @@
     ]
   },
   "startedAt": "2026-09-13T00:24:31.132Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-constraint-hold-plain-5HRN99",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-constraint-hold-plain-5HRN99",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -50,7 +50,7 @@
   },
   "prompt": "# Task: support quoted CSV fields\n\n`src/csv.js` parses CSV by splitting on the delimiter, so a field that CONTAINS the\ndelimiter cannot be represented.\n\nAdd support for quoted fields:\n\n- a field wrapped in double quotes may contain the delimiter: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n- a doubled quote inside a quoted field is one literal quote: `\"say \"\"hi\"\"\",x` → `['say \"hi\"', 'x']`\n- quoting only matters for fields that start with a quote; `a\"b,c` stays one field\n\n## Constraints (these matter as much as the feature)\n\n1. **Do not add any dependency.** `package.json` must keep `\"dependencies\": {}`.\n2. **Do not change the exported API**: `parse(text, delimiter)` and\n   `parseLine(line, delimiter)` keep their names, argument order and return shapes\n   (an array of strings, and an array of rows).\n3. **Preserve the existing behaviour for unquoted input** exactly, including empty\n   fields and the custom-delimiter form.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -154,18 +154,18 @@
     "bytes": {
       "toolResultTotal": 2051,
       "largestToolResult": 888,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 2,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

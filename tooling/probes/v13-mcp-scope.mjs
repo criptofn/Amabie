@@ -1,8 +1,8 @@
 // v1.3 §21 — WHICH MCP SCOPE AVOIDS THE HARNESS'S APPROVAL GATE?
 //
-// The integration gap, measured in §E2: `canary setup` registers its MCP server at PROJECT scope (a
+// The integration gap, measured in §E2: `amabie setup` registers its MCP server at PROJECT scope (a
 // `.mcp.json` in the repository), and Claude Code holds a project-scoped server at "Pending approval"
-// until a human approves it once. §E2 then showed no settings file Canary can write closes that gate — so
+// until a human approves it once. §E2 then showed no settings file Amabie can write closes that gate — so
 // the remaining question is not how to satisfy the gate but how to AVOID it: `claude mcp add` takes
 // `-s, --scope <local|user|project>`, and the default is `local`, not `project`.
 //
@@ -27,10 +27,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const claude = path.join(os.homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude');
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-mcp-scope-'));
+const git = hostGit();
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mcp-scope-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -80,15 +81,15 @@ process.stdin.on('data', (d) => {
 });
 `;
 
-const PROJ = 'canary-scope-probe-project';
-const LOCAL = 'canary-scope-probe-local';
+const PROJ = 'amabie-scope-probe-project';
+const LOCAL = 'amabie-scope-probe-local';
 const created = [];
 
 try {
   const serverPath = path.join(temp, 'mcp-server.cjs');
   fs.writeFileSync(serverPath, SERVER);
   fs.writeFileSync(path.join(temp, 'package.json'), JSON.stringify({ name: 'scope-probe', private: true }, null, 2) + '\n');
-  for (const args of [['init', '-b', 'main'], ['config', 'user.email', 'scope@canary.local'],
+  for (const args of [['init', '-b', 'main'], ['config', 'user.email', 'scope@amabie.local'],
     ['config', 'user.name', 'Scope Probe'], ['add', '-A'], ['commit', '-m', 'base']]) {
     const r = run(git, args, temp);
     assert(r.status === 0, `fixture git ${args[0]} failed: ${r.stdout}${r.stderr}`);
@@ -131,14 +132,14 @@ try {
     assert(localState !== 'not-listed', 'the local-scope server was not listed at all, so its state is unknown');
   });
 
-  // ── C: CANARY'S OWN server, at local scope ──
+  // ── C: AMABIE'S OWN server, at local scope ──
   // A and B used a dummy server, which measures the SCOPE but not the claim the README makes. This
-  // section registers the real `canary mcp` server at local scope, so the instruction a user is given
-  // ("claude mcp add -s local canary -- canary mcp") rests on a measurement of Canary rather than of a
+  // section registers the real `amabie mcp` server at local scope, so the instruction a user is given
+  // ("claude mcp add -s local amabie -- amabie mcp") rests on a measurement of Amabie rather than of a
   // stand-in. `pending-approval` here would mean the README is wrong; `failed-to-connect` would mean the
   // server cannot start under a locally-scoped entry.
   const realCli = path.resolve(import.meta.dirname, '../../apps/cli/dist/src/main.js');
-  const REAL = 'canary-scope-probe-real';
+  const REAL = 'amabie-scope-probe-real';
   let realState = 'not-measured';
   if (fs.existsSync(realCli)) {
     run(claude, ['mcp', 'remove', REAL, '-s', 'local'], temp);
@@ -146,14 +147,14 @@ try {
     if (addReal.status === 0) created.push({ scope: 'local', name: REAL });
     const listedReal = run(claude, ['mcp', 'list'], temp);
     realState = stateOf(`${listedReal.stdout}${listedReal.stderr}`, REAL);
-    console.log(`INFO Canary's own server at local scope: ${realState} (add exit ${addReal.status})`);
+    console.log(`INFO Amabie's own server at local scope: ${realState} (add exit ${addReal.status})`);
 
-    check('C1-CANARY-ITSELF-connects-at-local-scope-with-no-approval', () => {
+    check('C1-AMABIE-ITSELF-connects-at-local-scope-with-no-approval', () => {
       assert(realState !== 'pending-approval',
-        'registering Canary\'s own server at local scope produced "pending-approval", so the README '
+        'registering Amabie\'s own server at local scope produced "pending-approval", so the README '
         + 'instruction is wrong and the seamlessness claim does not hold');
       assert(realState === 'connected',
-        `expected "connected" for Canary's own server at local scope, got "${realState}" — a scope that `
+        `expected "connected" for Amabie's own server at local scope, got "${realState}" — a scope that `
         + 'skips the gate but cannot actually start the server would trade one failure for another');
     });
   } else {
@@ -165,7 +166,7 @@ try {
   console.log('INFO a branch can change it without the user acting. Local scope is the user\'s own configuration,');
   console.log('INFO which is why it plausibly needs no gate. Choosing between them is a product decision: project');
   console.log('INFO scope gives a teammate the tools from a clone (each must approve); local scope means each');
-  console.log('INFO developer runs `canary setup --yes` once, which is the documented model anyway.');
+  console.log('INFO developer runs `amabie setup --yes` once, which is the documented model anyway.');
 
   console.log(`\n${failures === 0 ? 'PASS' : 'FAIL'} v1.3 mcp scope — measured on ${path.basename(claude)}`);
   process.exitCode = failures === 0 ? 0 : 1;

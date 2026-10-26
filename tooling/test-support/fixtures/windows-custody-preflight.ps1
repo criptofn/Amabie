@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
-public static class CanaryCustodyPreflight {
+public static class AmabieCustodyPreflight {
   [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
   static extern IntPtr OpenSCManager(string machine,string database,uint access);
   [DllImport("advapi32.dll")] static extern bool CloseServiceHandle(IntPtr handle);
@@ -29,18 +29,18 @@ public static class CanaryCustodyPreflight {
 '@
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
-$wfp = [CanaryCustodyPreflight]::FilteringAccess()
-$store = if ($env:CANARY_TRUST_STORE) { $env:CANARY_TRUST_STORE } else { Join-Path $env:LOCALAPPDATA 'canary/trust' }
+$wfp = [AmabieCustodyPreflight]::FilteringAccess()
+$store = if ($env:AMABIE_TRUST_STORE) { $env:AMABIE_TRUST_STORE } else { Join-Path $env:LOCALAPPDATA 'amabie/trust' }
 $storeOwner = if ([IO.Directory]::Exists($store)) { [IO.Directory]::GetAccessControl($store).GetOwner([Security.Principal.NTAccount]).Value } else { $null }
 [ordered]@{
-  schema = 'canary-custody-preflight/1'
+  schema = 'amabie-custody-preflight/1'
   identity = $identity.Name
   elevatedAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
   repositoryOwner = [IO.Directory]::GetAccessControl($Repository).GetOwner([Security.Principal.NTAccount]).Value
   gitOwner = [IO.Directory]::GetAccessControl((Join-Path $Repository '.git')).GetOwner([Security.Principal.NTAccount]).Value
   storeOwner = $storeOwner
-  scmConnect = [ordered]@{ executed=$true; win32=[CanaryCustodyPreflight]::ServiceAccess(1) }
-  scmCreateServiceAccess = [ordered]@{ executed=$true; win32=[CanaryCustodyPreflight]::ServiceAccess(2) }
+  scmConnect = [ordered]@{ executed=$true; win32=[AmabieCustodyPreflight]::ServiceAccess(1) }
+  scmCreateServiceAccess = [ordered]@{ executed=$true; win32=[AmabieCustodyPreflight]::ServiceAccess(2) }
   wfpOpen = [ordered]@{ executed=$true; win32=$wfp[0] }
   wfpReadOptions = [ordered]@{ executed=($wfp[0] -eq 0); win32=$wfp[1] }
 } | ConvertTo-Json -Depth 4 -Compress

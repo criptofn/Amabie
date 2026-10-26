@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { attachSummary, noOpProvider } from '../src/index.js';
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
 const base = {
-  schemaVersion: 1, runId: 'r', createdAt: 'c', canaryVersion: 'v', experimentId: 'e',
+  schemaVersion: 1, runId: 'r', createdAt: 'c', amabieVersion: 'v', experimentId: 'e',
   dependency: { package: 'axios', baselineVersion: 'a', candidateVersion: 'b' },
   downstream: { repositoryUrl: 'u', commitSha: 's', fetchMethod: 'tarball-by-sha', tarballSha256: 't' },
   environment: { nodeVersion: 'n', npmVersion: 'm', packageManagerUsed: 'npm', platform: 'p', arch: 'x', toolchainOverrides: {} },

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v15-everyday-stateful-replay-guarded-1",
   "task": "stateful-replay",
   "arm": "guarded",
@@ -34,7 +34,7 @@
     "what": "State transitions spanning cache, batch mutation and replay; no implementation paths given in task."
   },
   "startedAt": "2026-09-24T04:28:28.806Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-stateful-replay-guarded-GjQIST",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-stateful-replay-guarded-GjQIST",
   "configMismatch": {
     "declared": [
       {
@@ -57,7 +57,7 @@
     "exitCode": 0,
     "secs": 165.7,
     "timedOut": false,
-    "mcpConfig": "fixture .mcp.json (standing Canary payload included)",
+    "mcpConfig": "fixture .mcp.json (standing Amabie payload included)",
     "settingsSources": "project,local",
     "forwardedEnvKeys": [
       "ENABLE_TOOL_SEARCH",
@@ -70,16 +70,16 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in canary.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
+  "prompt": "# Repair the tenant ledger\r\n\r\nRepair the ledger's public API to satisfy docs/CONTRACT.md. Find the relevant implementation locations yourself. Preserve the API; do not weaken checks or change the contract.\r\n\r\nAll mutation entry points preserve tenant isolation and fresh reads, including after journal replay.\r\n\r\nThe quick suite (node run-tests.js) is deliberately only a smoke test. The repository also contains public contract checks declared in amabie.project.json; both benchmark arms may read and run all of them. Add tests as appropriate. There are no unstated requirements in the hidden oracle.",
   "setup": {
     "exitCode": 2,
     "secs": 2,
     "readme": "NEEDS ATTENTION",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "        generatedMessage: true,\n        code: 'ERR_ASSERTION',\n        actual: 'two',\n        expected: 'one',\n        operator: 'strictEqual',\n        diff: 'simple'\n      }\n      Node.js v26.7.0\n\nNEEDS ATTENTION — Canary is wired here, but your project's own checks did not pass (tests). That is your project talking, not Canary.\nnext: fix the failing checks (ask the agent), then: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "        generatedMessage: true,\n        code: 'ERR_ASSERTION',\n        actual: 'two',\n        expected: 'one',\n        operator: 'strictEqual',\n        diff: 'simple'\n      }\n      Node.js v26.7.0\n\nNEEDS ATTENTION — Amabie is wired here, but your project's own checks did not pass (tests). That is your project talking, not Amabie.\nnext: fix the failing checks (ask the agent), then: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -131,7 +131,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/contract.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/contract.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -162,7 +162,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "The `canary_doctor` call wasn't permitted, so I'll rely on the automatic verification (which re-runs the sealed checks for me) plus the direct runs above — both the sealed `checks/contract.cjs` and the extended quick suite pass.\n\n**Everything works now.** All four contract violations are fixed; `node checks/contract.cjs` prints \"contract checks passed\" and `node run-tests.js` reports 9 passing.\n\n## What was broken and what I changed\n\n- **`src/storage.js` — tenant isolation and key collisions.** `key(tenant, id)` returned just `id`, so the same id in different tenants overwrote each other. Now it's `JSON.stringify([tenant, id])`, which is injective over string pairs — no collisions even when tenant/id contain `:`, `.`, or quote characters.\n- **`src/replay.js` — replay dropped deletes.** It filtered to `op === 'put'`, so `open(exportJournal())` resurrected deleted pairs. Now it applies every event in order; repeated replays stay equivalent.\n- **`src/api.js` — `batch` ignored delete events.** It called `rows.set(...)` directly, turning `{op:'delete'}` into a put of `undefined`. Batch now routes each event through the same `mutate` path as `put`/`remove`, preserving call order.\n- **`src/api.js` — stale cache hits and misses.** The `get` memo map was never invalidated, so a cached miss (or hit) stayed wrong after any mutation. `apply` now evicts the affected key, covering all mutation paths (put, remove, batch, replay).\n\n## What I preserved\n\n- Public API shape: `open(history = [])` → `{put, remove, batch, get, exportJournal}`; module signatures `storage.key/create` and `replay(events, apply)`.\n- `exportJournal` detachment (fresh array of fresh event copies) and journal-copy semantics were already correct and untouched.\n- The sealed check `checks/contract.cjs` and `docs/CONTRACT.md` were not modified.\n\n## Tests added\n\n`run-tests.js` (the smoke suite) now has 9 targeted tests: tenant independence, delimiter/punctuation key collisions, cached-miss and cached-hit freshness across every mutation path, batch put+delete ordering, replay-with-deletions plus repeated-replay equivalence and history preservation, export detachment (tamper/truncate/push), and `open(history)` initial deletes."
+    "finalText": "The `amabie_doctor` call wasn't permitted, so I'll rely on the automatic verification (which re-runs the sealed checks for me) plus the direct runs above — both the sealed `checks/contract.cjs` and the extended quick suite pass.\n\n**Everything works now.** All four contract violations are fixed; `node checks/contract.cjs` prints \"contract checks passed\" and `node run-tests.js` reports 9 passing.\n\n## What was broken and what I changed\n\n- **`src/storage.js` — tenant isolation and key collisions.** `key(tenant, id)` returned just `id`, so the same id in different tenants overwrote each other. Now it's `JSON.stringify([tenant, id])`, which is injective over string pairs — no collisions even when tenant/id contain `:`, `.`, or quote characters.\n- **`src/replay.js` — replay dropped deletes.** It filtered to `op === 'put'`, so `open(exportJournal())` resurrected deleted pairs. Now it applies every event in order; repeated replays stay equivalent.\n- **`src/api.js` — `batch` ignored delete events.** It called `rows.set(...)` directly, turning `{op:'delete'}` into a put of `undefined`. Batch now routes each event through the same `mutate` path as `put`/`remove`, preserving call order.\n- **`src/api.js` — stale cache hits and misses.** The `get` memo map was never invalidated, so a cached miss (or hit) stayed wrong after any mutation. `apply` now evicts the affected key, covering all mutation paths (put, remove, batch, replay).\n\n## What I preserved\n\n- Public API shape: `open(history = [])` → `{put, remove, batch, get, exportJournal}`; module signatures `storage.key/create` and `replay(events, apply)`.\n- `exportJournal` detachment (fresh array of fresh event copies) and journal-copy semantics were already correct and untouched.\n- The sealed check `checks/contract.cjs` and `docs/CONTRACT.md` were not modified.\n\n## Tests added\n\n`run-tests.js` (the smoke suite) now has 9 targeted tests: tenant independence, delimiter/punctuation key collisions, cached-miss and cached-hit freshness across every mutation path, batch put+delete ordering, replay-with-deletions plus repeated-replay equivalence and history preservation, export detachment (tamper/truncate/push), and `open(history)` initial deletes."
   },
   "visible": {
     "exitCode": 0,
@@ -239,18 +239,18 @@
     "bytes": {
       "toolResultTotal": 6040,
       "largestToolResult": 1089,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 0,
+      "amabie": 0,
       "checks": 1,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },
@@ -389,7 +389,7 @@
           "total": 13214
         },
         "tools": [
-          "mcp__canary__canary_doctor"
+          "mcp__amabie__amabie_doctor"
         ]
       },
       {

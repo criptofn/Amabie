@@ -23,10 +23,10 @@
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (5521.056ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (5521.2756ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (5701.3162ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (5767.8897ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (11469.4681ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (11469.4681ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✔ check on honest evidence exits 0 and prints PASS (7587.592ms)
   ✔ check on a tampered artifact exits 3 and names the tampered file (7200.6458ms)
@@ -40,10 +40,10 @@
   ✔ test command node -e printing mocha-shaped prose is never PASS (7102.1378ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (6977.0352ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (20990.5921ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.2124ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.4818ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (3.9685ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (3.9685ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✔ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (7410.3881ms)
   ✔ unconfined tree drift is downgraded to INCONCLUSIVE rule 9 (F9 e2e) (6647.8183ms)

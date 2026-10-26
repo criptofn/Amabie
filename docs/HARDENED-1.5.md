@@ -30,7 +30,7 @@ Read from the implementation, not from the names.
 | Which controls? | Six: `authorityCustody`, `workerFilesystem`, `verificationSandbox`, `authenticatedReview`, `protectedPromotion`, `networkEgress`. | `apps/cli/src/platform-boundary.ts:8-9`, `apps/cli/src/provider/confined-measurement.ts:19-22` |
 | Which provider delivers it? | The **production confined-caller** provider (`apps/cli/src/provider/production.ts` + `production-measurement.ts` + `production-attacks.ts` + the native launcher/broker). A separate *identity path* (service + worker account) exists but is **not** what activates HARDENED here. | `docs/TRUST-ARCHITECTURE.md:65-84`, `apps/cli/src/provider/boundary.ts:301-321` |
 | What OS primitives? | Windows **AppContainer** + **restricted token** + **low integrity** (`S-1-16-4096`) + **zero capabilities**, plus a native broker on an authenticated named pipe whose DACL excludes the confined package. | `apps/cli/src/provider/production-measurement.ts:154-156, 198-205` |
-| Where is it implemented natively? | `tools/windows-boundary/CanaryConfinedLauncher.cs`, `CanaryBroker.cs` (+ `AppContainerRunner.cs`, `restricted-runner.ps1` in the tree). | `tools/windows-boundary/` |
+| Where is it implemented natively? | `tools/windows-boundary/AmabieConfinedLauncher.cs`, `AmabieBroker.cs` (+ `AppContainerRunner.cs`, `restricted-runner.ps1` in the tree). | `tools/windows-boundary/` |
 | What does the level require before it activates? | A **valid production measurement**: fresh (15-minute ceiling), bound to host + store + toolchain digest + nonce, signed with an anchored producer key, **and** a live signed broker challenge. Presence, declarations, saved transcripts and standalone probes cannot substitute. | `apps/cli/src/provider/production-measurement.ts:220-253`, `docs/TRUST-ARCHITECTURE.md:72-84` |
 
 ### The six controls, and the observation each one rests on
@@ -86,7 +86,7 @@ The rule this leaves behind: **a host limitation is only ever concluded from a r
 OS refusal (`EPERM`/`EACCES`/`WSA-*`) that is quoted in the reason, and a timeout is
 never a host verdict.**
 
-## 1B. `canary provider status` now tells the truth compactly
+## 1B. `amabie provider status` now tells the truth compactly
 
 Before v1.5 the command printed, on a host with nothing measured, six control lines
 of roughly 430 characters each that said one thing twice, and never plainly
@@ -117,16 +117,16 @@ overclaims.
 | **Supported OS / environment** | Windows 10/11 x64 that can execute a child inside AppContainer + restricted token + low integrity. Measured working on Windows 10.0.26200 (`DESKTOP-1OHL66A`). |
 | **Required host capabilities** | AppContainer support; the ability to create a restricted/low-integrity token; PowerShell + a C# compiler for the native launcher (the launcher is compiled as part of the run). |
 | **Required permissions** | **None. Not elevated** — the measurement ran as a standard user (`elevated: false`). |
-| **Installation / activation steps** | `node tooling/probes/v15-hardened-boundary.mjs` (or the underlying `node tooling/probes/v12-confined-caller.mjs`), then `canary provider enroll <base> <store>` + `canary provider serve-production <store>` for a long-lived deployment. |
-| **How to verify activation** | `canary provider status` must print `HARDENED`, and `canary provider status --json` must show `status: READY` with `security.level: HARDENED` and `provider.controlsAvailable == 6`. Anything less is not HARDENED. |
+| **Installation / activation steps** | `node tooling/probes/v15-hardened-boundary.mjs` (or the underlying `node tooling/probes/v12-confined-caller.mjs`), then `amabie provider enroll <base> <store>` + `amabie provider serve-production <store>` for a long-lived deployment. |
+| **How to verify activation** | `amabie provider status` must print `HARDENED`, and `amabie provider status --json` must show `status: READY` with `security.level: HARDENED` and `provider.controlsAvailable == 6`. Anything less is not HARDENED. |
 | **How to disable it safely** | The probe removes its own measurement authority and profiles on exit (`removeMeasurementAuthority`, `production-measurement.ts:264-277`); a deployment store can simply be deleted. Nothing machine-wide is installed, so nothing machine-wide needs removing. |
 | **What fallback means** | `LOCAL`: records are still sealed outside the repository with an Ed25519 key, but a process running as **you** could replace the store, the key and the ledger together. `LOCAL` is a real, useful level and it is *not* an OS boundary. |
 
 ### (b) Persistent machine-wide activation — implemented, NOT installed, needs Administrator
 
-`canary provider install-plan` prints the exact privileged steps (service account,
+`amabie provider install-plan` prints the exact privileged steps (service account,
 worker identity, per-identity egress policy) and **executes nothing**. On this host
-`canary provider status --verbose` reports the identity path as
+`amabie provider status --verbose` reports the identity path as
 `service installed=false running=false worker=not enrolled`. This remains an
 explicit **non-claim**: no separate installed service account, no administrator
 resistance.
@@ -178,7 +178,7 @@ Two notes an auditor should hold onto:
 One command, no elevation, no private state:
 
 ```sh
-git clone <repo> && cd canary
+git clone <repo> && cd amabie
 npm ci && npm run build
 node tooling/probes/v15-hardened-boundary.mjs     # ~2 minutes
 ```
@@ -191,7 +191,7 @@ one into another:
 | `PASS` | the control was observed holding on this host | 0 (all six) |
 | `FAIL` | the control was measured and did **not** hold | 1 |
 | `HOST UNSUPPORTED` | this host cannot execute inside the native confinement, so nothing about the control was measured here | 3 — explicitly **not** success |
-| `CONTROL NOT PROVIDED` | Canary does not implement it (auditor-facing non-claims, listed by the probe) | — |
+| `CONTROL NOT PROVIDED` | Amabie does not implement it (auditor-facing non-claims, listed by the probe) | — |
 
 The non-claims the probe prints so that the *edge* of the claim is visible:
 administrator resistance; exhaustive network coverage (IPv6, UDP, DNS rebinding,

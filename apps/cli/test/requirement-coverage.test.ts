@@ -8,7 +8,7 @@
  * decision lives: no CLI run, no git, no filesystem. The end-to-end behaviour (doctor's verdict, the
  * Stop hook's block) is proven by `tooling/probes/requirement-coverage-gate.mjs`.
  *
- * MEASURED gap these pin: the binding map (`package.json` `canary.proofs`) accepted any
+ * MEASURED gap these pin: the binding map (`package.json` `amabie.proofs`) accepted any
  * requirement digest, but the obligation engine only credited digests that happened to be numeric
  * objective targets — so a plain stated requirement could never be covered by measurement, and the
  * only reachable end state was human acceptance.
@@ -16,7 +16,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { declaredTask, materialDigest, type TaskKind } from '../src/authorization.js';
+import { canonicalTask, declaredTask, materialDigest, taskWeakening, type TaskKind } from '../src/authorization.js';
 import { obligationsFor, type DiffSignals, type Obligation } from '../src/onboarding.js';
 
 /** No change at all — the obligation engine is what is under test, not attribution. */
@@ -51,19 +51,81 @@ test('a registered requirement with NO sealed proof is UNPROVEN and names the wa
   // measured 1.5-1.85M-token loops. A declared requirement is a requirement.
   assert.equal(per.mode, 'objective', 'an unmeasured requirement is a MEASUREMENT duty, not a signature');
   assert.match(per.note, /NO sealed proof/);
-  assert.match(per.note, /canary\.proofs/, 'the note must name the binding mechanism');
+  assert.match(per.note, /amabie bind <sealed script>/, 'the note must name the operator binding command');
 });
 
 test('a SUBJECTIVE registration keeps the human-acceptance path (it is not a measurement duty)', () => {
   // The other half of the rule above, and the reason it is not a blanket reclassification: when
   // the registration itself carries a subjective marker, acceptance IS the honest closure, so the
-  // duty stays non-objective and can be closed by `canary accept`.
+  // duty stays non-objective and can be closed by `amabie accept`.
   const task = declaredTask('make the dialog prettier', ['ui'] as TaskKind[], ['the dialog looks nicer']);
   const obs = obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 1, 'setup', task, authorityWith());
   const per = find(obs, 'per-requirement');
   assert.ok(per);
   assert.equal(per.mode, 'non-objective', 'a subjective registration is closed by human judgment');
-  assert.match(per.note, /canary accept/);
+  assert.match(per.note, /amabie accept/);
+  assert.deepEqual(task.subjectiveRequirementDigests, [materialDigest('the dialog looks nicer')]);
+});
+
+test('calmer UI wording can be accepted subjectively without making a numeric target subjective', () => {
+  const subjective = ['the menu animation feels calmer', 'the spacing on the dialog is calmer',
+    'make the interface calm', 'the visual style is calm', 'use a calm palette'];
+  const objective = 'the animation completes within 200 ms';
+  const task = declaredTask('refine the menu animation', ['ui'] as TaskKind[], [...subjective, objective]);
+
+  assert.deepEqual(task.subjectiveRequirementDigests, subjective.map(materialDigest).sort());
+  assert.deepEqual(task.objectiveTargets, [{ digest: materialDigest(objective), kind: 'bench' }]);
+});
+
+test('calm-mode persistence remains an objective duty that human acceptance cannot replace', () => {
+  const requirement = 'the calm mode persists after restart';
+  const task = declaredTask('add a calm mode', ['ui'] as TaskKind[], [requirement]);
+  const per = find(obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 1, 'setup', task, authorityWith()), 'per-requirement');
+
+  assert.deepEqual(task.subjectiveRequirementDigests, []);
+  assert.equal(per?.mode, 'objective');
+  assert.match(String(per?.note), /NO sealed proof/);
+});
+
+test('one subjective requirement cannot make a separate objective requirement acceptance-eligible', () => {
+  const objective = 'saving a record persists it after reload';
+  const subjective = 'the dialog looks nicer';
+  const task = declaredTask('make the dialog prettier', ['ui'] as TaskKind[], [objective, subjective]);
+  assert.deepEqual(task.subjectiveRequirementDigests, [materialDigest(subjective)]);
+
+  const obs = obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 2, 'setup', task, authorityWith());
+  const per = find(obs, 'per-requirement');
+  assert.equal(per?.status, 'unproven');
+  assert.equal(per?.mode, 'objective', 'the open functional criterion cannot be closed by accepting the visual result');
+  assert.match(String(per?.note), /1 objective part\(s\) with NO sealed proof/);
+  assert.match(String(per?.note), /1 subjective part\(s\) waiting for human judgment/);
+
+  const objectiveBound = obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 2, 'setup', task,
+    authorityWith({ [materialDigest(objective)]: 'test' }));
+  const subjectiveOnly = find(objectiveBound, 'per-requirement');
+  assert.equal(subjectiveOnly?.mode, 'non-objective', 'once objective criteria are measured, human judgment may close the remaining subjective criterion');
+  assert.match(String(subjectiveOnly?.note), /amabie accept/);
+
+  const maliciousReclassification = { ...task, subjectiveRequirementDigests: [...task.subjectiveRequirementDigests, materialDigest(objective)] };
+  assert.match(taskWeakening(task, maliciousReclassification).join(' '), /subjective requirement classification changed/);
+  const scopeGrowth = declaredTask('make the dialog prettier', ['ui'] as TaskKind[], [objective, subjective, 'the menu animation feels calmer']);
+  assert.deepEqual(taskWeakening(task, scopeGrowth), [], 'a new classified criterion grows the live scope; only reclassifying a frozen criterion weakens authority');
+  const duplicate = declaredTask('polish the dialog', ['ui'] as TaskKind[], [subjective, subjective]);
+  assert.equal(canonicalTask({ ...duplicate, subjectiveRequirementDigests: [materialDigest(subjective)] }), null,
+    'duplicate criteria cannot have ambiguous per-copy subjectivity');
+  assert.equal(canonicalTask({ ...task, subjectiveRequirementDigests: [materialDigest('not a registered requirement')] }), null,
+    'classification digests must belong to registered requirements');
+});
+
+test('legacy task records without subjective digests do not grant human acceptance to every requirement', () => {
+  const req = 'saving a record persists it after reload';
+  const current = declaredTask('make the dialog prettier', ['ui'] as TaskKind[], [req]);
+  const legacy = { ...current } as Record<string, unknown>;
+  delete legacy.subjectiveRequirementDigests;
+  const obs = obligationsFor(['ui'], NO_CHANGE, new Set(['tests']), 1, 'setup', legacy as never, authorityWith());
+  const per = find(obs, 'per-requirement');
+  assert.equal(per?.mode, 'objective', 'legacy aggregate subjectivity is not enough to authorize acceptance of this criterion');
+  assert.equal(per?.status, 'unproven');
 });
 
 test('binding that digest to a sealed script makes the requirement COVERED by measurement', () => {
@@ -94,7 +156,7 @@ test('one covered and one uncovered requirement stays UNPROVEN, and says how man
   const obs = obligationsFor([], NO_CHANGE, new Set(['tests']), 2, 'setup', task, authorityWith({ [materialDigest(covered)]: 'test' }));
   const per = find(obs, 'per-requirement');
   assert.equal(per?.status, 'unproven', 'partial coverage is not coverage');
-  assert.match(String(per?.note), /2 registered requirement\(s\), 1 with NO sealed proof/);
+  assert.match(String(per?.note), /2 registered requirement\(s\), 1 objective part\(s\) with NO sealed proof/);
 });
 
 test('no registered requirements, no multi-part kind: no duty is invented', () => {

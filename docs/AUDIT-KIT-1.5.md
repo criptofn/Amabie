@@ -1,6 +1,6 @@
-# Canary v1.5 — public audit kit
+# Amabie v1.5 — public audit kit
 
-For a reviewer who did **not** build Canary. Everything here is reachable from a clone of the
+For a reviewer who did **not** build Amabie. Everything here is reachable from a clone of the
 repository; nothing requires private builder knowledge, credentials, or a conversation with the
 author.
 
@@ -9,9 +9,9 @@ where this project believes it is most likely to be wrong.
 
 ---
 
-## 1. What Canary is, in one paragraph
+## 1. What Amabie is, in one paragraph
 
-Canary is an independent verification layer for software changes made by coding agents. It seals a
+Amabie is an independent verification layer for software changes made by coding agents. It seals a
 project's own checks, runs them when an agent claims to be finished, and **blocks the completion**
 when they fail — so "done" is a command's output rather than a model's assertion. It is not a
 linter, not a test framework, and not a correctness oracle.
@@ -24,11 +24,11 @@ this kit only tells you how to attack it.
 
 **Non-claims, stated up front because they bound everything else:**
 
-- no claim that Canary makes code **correct**;
-- no claim that Canary **never** allows a false done;
+- no claim that Amabie makes code **correct**;
+- no claim that Amabie **never** allows a false done;
 - no claim that HARDENED is available on every host (a host that cannot confine is
   `HOST UNSUPPORTED`);
-- no claim that Canary is **always** cheaper — on one of three fixtures it was more expensive in
+- no claim that Amabie is **always** cheaper — on one of three fixtures it was more expensive in
   both runs;
 - **no everyday token-saving percentage at all.** The v1.5 candidate's `83.21 % of Plain / −16.79 %`
   is **withdrawn** (mixed accounting), and the corrected data has **two COMPLETE runs that disagree
@@ -40,7 +40,7 @@ this kit only tells you how to attack it.
 
 ## 3. Threat model, in the product's own words
 
-- **In scope:** the confined builder or candidate — code that Canary itself executes.
+- **In scope:** the confined builder or candidate — code that Amabie itself executes.
 - **Out of scope:** a holder of the operator's unrestricted token, and a local administrator. The
   trusted operator/broker is the normal user.
 - `LOCAL` is **not** an OS boundary: records are sealed outside the repository with an Ed25519 key,
@@ -123,10 +123,10 @@ warning when a pooled delta is smaller than the run-to-run spread.
 
 ## 6. Release / artifact provenance
 
-- v1.4.0: tag `v1.4.0` → `4271e6e` (tip of `main`). Asset `canary-rn-cli-1.4.0.tgz`,
+- v1.4.0: tag `v1.4.0` → `4271e6e` (tip of `main`). Asset `amabie-rn-cli-1.4.0.tgz`,
   **208,993 bytes**, SHA-256
   `42ed2056e8b77b212d07ec92814cb2e67f908bf76733114e072605e7e5e5505c`, matching its published
-  `.sha256` sidecar and an independent computation. Published via the `canary-release` workflow,
+  `.sha256` sidecar and an independent computation. Published via the `amabie-release` workflow,
   which attests build provenance for the bytes **it** built.
 - **Known limitation, measured:** packaging is deterministic per host but **not byte-identical
   across hosts**. `core.autocrlf=true` gives a Windows checkout CRLF for the packed text files
@@ -183,10 +183,10 @@ the highest-value thing to attack:
    `node tooling/probes/v15-everyday-aggregate.mjs`, and check the refusal itself: feed
    `tooling/benchmark/results/v15-everyday*.json` through `tooling/benchmark/eligibility.mjs` and try
    to get an INCOMPLETE run to print a ratio.
-2. **`bug-sum` was more expensive with Canary in both historical runs** (+43.8 %, +22.5 %). These are
+2. **`bug-sum` was more expensive with Amabie in both historical runs** (+43.8 %, +22.5 %). These are
    **withdrawn-generation** cells, kept as observations: check whether the (withdrawn) aggregate was
    carried entirely by `stateful-replay`, and whether any surviving claim leans on that dataset.
-3. **The benchmark fixtures are Canary-authored.** They are reused for comparability, not because
+3. **The benchmark fixtures are Amabie-authored.** They are reused for comparability, not because
    they are neutral. Challenge whether they are representative.
 4. **`configMismatch` on the stored cells** — the historical everyday cells ran with fixture
    declarations that do not match (`bound-registerRequirements`, `stateful-replay` authored arms).
@@ -206,7 +206,7 @@ the highest-value thing to attack:
 9. **Cursor is resolved by documentation, not by a run** — Cursor is absent from the author's
    machine. Verify the missing-primitive argument, and check the author did not merely assert it.
 10. **The real-world evidence** depends on agent runs the author drove. Check for cherry-picking and
-    whether "where Canary added no value" is reported honestly.
+    whether "where Amabie added no value" is reported honestly.
 
 **Added after the real-world workstream — the three findings most worth attacking:**
 
@@ -214,9 +214,9 @@ the highest-value thing to attack:
     remaining gap, not the fixed defect.** The original measurement stands: PATH was
     `node_modules/.bin` + Node dir + System32/Windows only (12 entries against the shell's 29), so
     `python`, `python3`, `java`, `sh`, `bash` and **`git`** were invisible even when on PATH, and
-    `JAVA_HOME` was stripped — refactron's suite was **27 failed inside Canary, 0 failed outside**,
-    reported as *"That is your project talking, not Canary"*. **What v1.5 changed:** an OPERATOR may
-    authorize a toolchain directory (`canary setup --toolchain-dir`), which is appended *after* the
+    `JAVA_HOME` was stripped — refactron's suite was **27 failed inside Amabie, 0 failed outside**,
+    reported as *"That is your project talking, not Amabie"*. **What v1.5 changed:** an OPERATOR may
+    authorize a toolchain directory (`amabie setup --toolchain-dir`), which is appended *after* the
     trusted dirs (a planted `git.cmd` earlier on PATH is still never executed), and an unresolvable
     required program is now attributed to the environment. **Still open to attack:** the
     authorization is an operator act, not automatic; there is **no `JAVA_HOME` handling**; `HOME` is
@@ -232,7 +232,7 @@ the highest-value thing to attack:
     **Still open to attack:** does that anchoring credit anything it should not — can a worker obtain
     **uncaveated** authority for evidence it authored itself? Reproduce with
     `node tooling/probes/v15-check-provenance.mjs` (CASE A/CONTROL and CASE B).
-13. **The worker can re-seal its own authority.** In the wild, an agent ran `canary setup --yes`
+13. **The worker can re-seal its own authority.** In the wild, an agent ran `amabie setup --yes`
     itself and sealed its own commit as the baseline, reaching a `PASS`. It is documented
     (`docs/EXECUTION-AUTHORITY.md:78-92`), but decide for yourself whether documenting it is enough.
 

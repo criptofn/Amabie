@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 import { ADVISORY_BEGIN, ADVISORY_END, AGENT_INTEGRATIONS, advisoryBlock } from '../src/agents.js';
 
@@ -20,10 +20,10 @@ const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-agents-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-agents-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const canary = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 });
+const amabie = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 });
 const project = (name: string): string => {
   const root = path.join(TMP, name);
   fs.mkdirSync(path.join(root, '.git'), { recursive: true });
@@ -32,9 +32,9 @@ const project = (name: string): string => {
 };
 
 describe('1.1 agents: the capability table is honest by construction', () => {
-  it('an integration claims GATED only for a mechanism Canary has measured, and every other labels itself honestly', () => {
+  it('an integration claims GATED only for a mechanism Amabie has measured, and every other labels itself honestly', () => {
     // v1.4 §C — the gating set is still asserted EXACTLY, and it grew by one because the reason it
-    // had one member turned out to be false: Codex's `Stop` contract is the same one Canary already
+    // had one member turned out to be false: Codex's `Stop` contract is the same one Amabie already
     // implements, and `tooling/probes/v14-codex-stop-hook.mjs` drives it as the vendor documents.
     // What must never relax is the price of the word GATED: a measurement, and — where the harness
     // still holds the hook at its own trust gate — that step said on the row.
@@ -60,12 +60,12 @@ describe('1.1 agents: the capability table is honest by construction', () => {
 
   it('the advisory text tells an agent what to run and claims no gate', () => {
     const block = advisoryBlock();
-    assert.match(block, /canary result --json/);
-    assert.match(block, /canary doctor --json/);
+    assert.match(block, /amabie result --json/);
+    assert.match(block, /amabie doctor --json/);
     assert.ok(block.startsWith(ADVISORY_BEGIN), 'the block must be marked from its first byte');
     assert.ok(block.trimEnd().endsWith(ADVISORY_END), 'the block must be closed by its marker');
     // v1.3 §A — the instruction that was MEASURED to matter: the `guarded` shape is the only recorded
-    // Canary configuration cheaper than plain (83.21 % in the v1.5 fully-accounted two-run measurement,
+    // Amabie configuration cheaper than plain (83.21 % in the v1.5 fully-accounted two-run measurement,
     // which INCLUDES the standing MCP payload; the historical 92.7 % excluded it), while the ceremony
     // shape cost 177.8 %, at equal correctness. Both halves are asserted, because the aggressive half
     // alone is the variant that produced a false done and a false green.
@@ -76,9 +76,9 @@ describe('1.1 agents: the capability table is honest by construction', () => {
 
   it('agents --json lists the integrations with their real capability', () => {
     const root = project('listing');
-    const r = canary(['agents', '--json', root]);
+    const r = amabie(['agents', '--json', root]);
     const env = JSON.parse(r.stdout) as { schema: string; command: string; integrations: Array<{ id: string; gating: boolean; gatingMeasured?: boolean; detected: boolean }> };
-    assert.equal(env.schema, 'canary-status/1');
+    assert.equal(env.schema, 'amabie-status/1');
     assert.equal(env.command, 'agents');
     const label = (i: { gating: boolean; gatingMeasured?: boolean }) =>
       i.gating ? 'GATED' : i.gatingMeasured === false ? 'UNMEASURED' : 'ADVISORY';
@@ -94,7 +94,7 @@ describe('1.1 agents: the capability table is honest by construction', () => {
     // "unmeasured" — and the row must never read as protection.
     const root = project('cursor-here');
     fs.mkdirSync(path.join(root, '.cursor'), { recursive: true });
-    const r = canary(['agents', root]);
+    const r = amabie(['agents', root]);
     assert.match(r.stdout, /UNMEASURED Cursor — detected/);
     assert.match(r.stdout, /whether this harness honours it is UNMEASURED/);
     assert.doesNotMatch(r.stdout, /GATED\s+Cursor/, 'Cursor must never be reported as gated');
@@ -104,7 +104,7 @@ describe('1.1 agents: the capability table is honest by construction', () => {
 describe('1.1 agents: the advisory integration is marked, idempotent and exactly removable', () => {
   // v1.4 §C — the advisory block is per-PROJECT (it lives in this repo's AGENTS.md and its text is
   // agent-independent), so these tests drive it through a still-advisory integration. They used
-  // `codex` while Codex was advisory; Codex now has a real completion hook, `canary agents install
+  // `codex` while Codex was advisory; Codex now has a real completion hook, `amabie agents install
   // codex` is refused on purpose (one owner per hook), and `codex-wiring.test.ts` pins that refusal.
   // Nothing about the block's properties is weakened by naming `generic` instead.
   it('install preserves foreign content; re-install is byte-identical; uninstall removes only the block', () => {
@@ -113,17 +113,17 @@ describe('1.1 agents: the advisory integration is marked, idempotent and exactly
     const original = '# Project rules\n\nKeep this line.\n';
     fs.writeFileSync(file, original);
 
-    const r1 = canary(['agents', 'install', 'generic', root]);
+    const r1 = amabie(['agents', 'install', 'generic', root]);
     assert.equal(r1.status, 0, r1.stderr);
     const after1 = fs.readFileSync(file, 'utf8');
     assert.ok(after1.startsWith(original), 'existing content must be preserved verbatim');
     assert.ok(after1.includes(ADVISORY_BEGIN) && after1.includes(ADVISORY_END));
 
-    const r2 = canary(['agents', 'install', 'generic', root]);
+    const r2 = amabie(['agents', 'install', 'generic', root]);
     assert.equal(r2.status, 0, r2.stderr);
     assert.equal(fs.readFileSync(file, 'utf8'), after1, 'a second install must change nothing');
 
-    const r3 = canary(['agents', 'uninstall', 'generic', root]);
+    const r3 = amabie(['agents', 'uninstall', 'generic', root]);
     assert.equal(r3.status, 0, r3.stderr);
     const after3 = fs.readFileSync(file, 'utf8');
     assert.ok(!after3.includes(ADVISORY_BEGIN), 'the block must be gone');
@@ -132,17 +132,17 @@ describe('1.1 agents: the advisory integration is marked, idempotent and exactly
 
   it('install creates the file when absent, and uninstall tolerates an absent file', () => {
     const root = project('advisory-fresh');
-    assert.equal(canary(['agents', 'install', 'generic', root]).status, 0);
+    assert.equal(amabie(['agents', 'install', 'generic', root]).status, 0);
     const file = path.join(root, 'AGENTS.md');
     assert.ok(fs.readFileSync(file, 'utf8').includes(ADVISORY_BEGIN));
-    assert.equal(canary(['agents', 'uninstall', 'generic', root]).status, 0);
-    assert.equal(canary(['agents', 'uninstall', 'generic', root]).status, 0, 'a second uninstall is safe');
+    assert.equal(amabie(['agents', 'uninstall', 'generic', root]).status, 0);
+    assert.equal(amabie(['agents', 'uninstall', 'generic', root]).status, 0, 'a second uninstall is safe');
   });
 
   it('the GATING integrations are owned by setup, not by an advisory command', () => {
     for (const id of ['claude-code', 'codex']) {
       const root = project(`gating-${id}`);
-      const r = canary(['agents', 'install', id, root]);
+      const r = amabie(['agents', 'install', id, root]);
       assert.equal(r.status, 2, `${id} must not be installable as an advisory block`);
       assert.match(r.stdout + r.stderr, /GATING integration/);
       assert.equal(fs.existsSync(path.join(root, 'AGENTS.md')), false, 'a refusal must write nothing');
@@ -151,7 +151,7 @@ describe('1.1 agents: the advisory integration is marked, idempotent and exactly
 
   it('an unknown id is refused and nothing is written', () => {
     const root = project('unknown');
-    const r = canary(['agents', 'install', 'copilot', root]);
+    const r = amabie(['agents', 'install', 'copilot', root]);
     assert.equal(r.status, 2);
     assert.match(r.stdout + r.stderr, /not an agent integration/);
     assert.equal(fs.existsSync(path.join(root, 'AGENTS.md')), false);
@@ -162,7 +162,7 @@ describe('1.1 agents: the advisory integration is marked, idempotent and exactly
     const real = path.join(TMP, 'real-agents-dir');
     fs.mkdirSync(real, { recursive: true });
     fs.symlinkSync(real, path.join(root, 'AGENTS.md'), 'junction'); // a directory junction needs no elevation
-    const r = canary(['agents', 'install', 'generic', root]);
+    const r = amabie(['agents', 'install', 'generic', root]);
     assert.equal(r.status, 2);
     assert.match(r.stdout + r.stderr, /will not write through links/);
   });
@@ -185,15 +185,15 @@ describe('v1.3 agents: a detected agent is not a gated repository', () => {
     fs.mkdirSync(path.join(root, '.claude', 'skills', 'demo'), { recursive: true });
     fs.writeFileSync(path.join(root, '.claude', 'skills', 'demo', 'SKILL.md'), '# a skill, not a hook\n');
 
-    const r = canary(['agents', root]);
+    const r = amabie(['agents', root]);
     assert.equal(r.status, 2, `detection alone must not be reported as protection:\n${r.stdout}`);
     assert.match(r.stdout, /Claude Code — detected/);
     assert.match(r.stdout, /hook NOT installed here/);
     assert.doesNotMatch(r.stdout, /CONNECTED/, 'the word CONNECTED is a claim about wiring');
-    assert.match(r.stdout, /canary setup/);
+    assert.match(r.stdout, /amabie setup/);
 
     // and it must agree with the command whose whole job is the wiring question
-    const s = canary(['status', root]);
+    const s = amabie(['status', root]);
     assert.equal(s.status, 2);
     assert.match(s.stdout, /NOT CONNECTED/);
   });
@@ -201,7 +201,7 @@ describe('v1.3 agents: a detected agent is not a gated repository', () => {
   it('the machine channel reports the same fact: hooked means the hook is installed', () => {
     const root = project('claude-no-hook-json');
     fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-    const r = canary(['agents', '--json', root]);
+    const r = amabie(['agents', '--json', root]);
     const env = JSON.parse(r.stdout) as { agent: { hooked: boolean; harnesses: Array<{ id: string; gated: boolean }> } };
     assert.equal(r.status, 2);
     // The integration is still GATED (a capability), but this repository is not hooked (a fact).
@@ -221,19 +221,19 @@ describe('v1.3 agents: a detected agent is not a gated repository', () => {
       scripts: { test: `node "${path.join(REPO, 'tooling', 'test-support', 'fixtures', 'f-pass.js')}"` },
     }, null, 2));
     spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
-    spawnSync('git', ['config', 'user.email', 'agents@canary.local'], { cwd: root });
+    spawnSync('git', ['config', 'user.email', 'agents@amabie.local'], { cwd: root });
     spawnSync('git', ['config', 'user.name', 'Agents'], { cwd: root });
 
-    const s = canary(['setup', '--yes', root]);
+    const s = amabie(['setup', '--yes', root]);
     assert.equal(s.status, 0, s.stdout + s.stderr);
-    const r = canary(['agents', root]);
+    const r = amabie(['agents', root]);
     assert.equal(r.status, 0, r.stdout);
     assert.match(r.stdout, /hook installed here/);
     assert.match(r.stdout, /CONNECTED/);
-    const env = JSON.parse(canary(['agents', '--json', root]).stdout) as { agent: { hooked: boolean } };
+    const env = JSON.parse(amabie(['agents', '--json', root]).stdout) as { agent: { hooked: boolean } };
     assert.equal(env.agent.hooked, true);
     // v1.3 §C/§E — the tool registration is announced WITH the one interactive step the harness owns.
-    // MEASURED with the real agent CLI: `claude mcp list` reports Canary's entry as "Pending approval"
+    // MEASURED with the real agent CLI: `claude mcp list` reports Amabie's entry as "Pending approval"
     // until a human approves the project's MCP server, so both surfaces must say so. Without this a
     // user sees a registered server whose tools never appear and concludes the integration is broken.
     assert.match(s.stdout, /agent tools: registered in \.mcp\.json/);
@@ -247,15 +247,15 @@ describe('v1.3 agents: a detected agent is not a gated repository', () => {
     // and detection alone must still not be readable as protection.
     const root = project('codex-no-hook');
     fs.mkdirSync(path.join(root, '.codex'), { recursive: true });
-    const r = canary(['agents', root]);
+    const r = amabie(['agents', root]);
     assert.equal(r.status, 2, `detection alone must not be reported as protection:\n${r.stdout}`);
     assert.match(r.stdout, /GATED\s+OpenAI Codex CLI/);
     assert.match(r.stdout, /hook NOT installed here/);
     assert.doesNotMatch(r.stdout, /CONNECTED/, 'the word CONNECTED is a claim about wiring');
-    assert.match(r.stdout, /canary setup/);
+    assert.match(r.stdout, /amabie setup/);
   });
 
-  it('v1.4: an installed Codex hook is reported WITH the trust step Canary does not own', () => {
+  it('v1.4: an installed Codex hook is reported WITH the trust step Amabie does not own', () => {
     const root = path.join(TMP, 'codex-hooked');
     fs.mkdirSync(path.join(root, '.codex'), { recursive: true }); // declare the harness in the fixture
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
@@ -263,22 +263,22 @@ describe('v1.3 agents: a detected agent is not a gated repository', () => {
       scripts: { test: `node "${path.join(REPO, 'tooling', 'test-support', 'fixtures', 'f-pass.js')}"` },
     }, null, 2));
     spawnSync('git', ['init'], { cwd: root, encoding: 'utf8' });
-    spawnSync('git', ['config', 'user.email', 'agents@canary.local'], { cwd: root });
+    spawnSync('git', ['config', 'user.email', 'agents@amabie.local'], { cwd: root });
     spawnSync('git', ['config', 'user.name', 'Agents'], { cwd: root });
 
-    const s = canary(['setup', '--yes', root]);
+    const s = amabie(['setup', '--yes', root]);
     assert.equal(s.status, 0, s.stdout + s.stderr);
     // The hook file exists and gates nothing until the user trusts it — setup says both halves.
     assert.ok(fs.existsSync(path.join(root, '.codex', 'hooks.json')));
     assert.match(s.stdout, /will NOT run it until you review and trust it once/);
     assert.match(s.stdout, /\/hooks/);
 
-    const r = canary(['agents', root]);
+    const r = amabie(['agents', root]);
     assert.equal(r.status, 0, r.stdout);
     assert.match(r.stdout, /GATED\s+OpenAI Codex CLI/);
     assert.match(r.stdout, /hook installed here/);
     assert.match(r.stdout, /one-time review and trust/, 'the remaining human step rides the GATED row');
-    const env = JSON.parse(canary(['agents', '--json', root]).stdout) as {
+    const env = JSON.parse(amabie(['agents', '--json', root]).stdout) as {
       integrations: Array<{ id: string; gating: boolean; gatingNeedsTrust?: string }>;
     };
     const codex = env.integrations.find((i) => i.id === 'codex');

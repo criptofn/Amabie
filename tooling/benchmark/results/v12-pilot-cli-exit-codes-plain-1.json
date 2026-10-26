@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "v12-pilot-cli-exit-codes-plain-1",
   "task": "cli-exit-codes",
   "arm": "plain",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-13T17:40:53.019Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-cli-exit-codes-plain-YMC43s",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-cli-exit-codes-plain-YMC43s",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -53,7 +53,7 @@
   },
   "prompt": "# Task: make `configcheck` obey its documented exit-code contract\n\n`configcheck` validates a JSON service config. `README.md` states the contract the tool is\nsupposed to honour, and `src/config.js` has a `validate` stub whose rules are in that README.\n\nToday the tool gets its process behaviour wrong: every outcome exits `0`, and a config that is\nrejected is reported on **stdout** with an `error:` prefix.\n\nMake the tool behave the way `README.md` documents:\n\n1. A valid config exits `0` and prints `config <name>.json: ok` on stdout, with an empty stderr.\n2. A valid config that has warnings exits `0`, prints the `ok` line, then one\n   `warning: <field>: <reason>` line per warning on stdout, with an empty stderr.\n3. An invalid config — or a warned config run with `--strict` — exits `2`, writes **nothing to\n   stdout**, and prints one `error: <field>: <reason>` line per error on **stderr**.\n4. A missing, unreadable, or non-JSON config file exits `3` with `error: <reason>` on stderr and\n   nothing on stdout.\n5. A missing required argument or an unknown argument exits `3`, printing `error: <reason>` and\n   then the usage block on stderr.\n6. `validate(config, { strict })` returns `{ errors, warnings }` where every entry is a string of\n   the form `<field>: <reason>`, and `--strict` moves warnings into errors rather than dropping\n   them.\n\nKeep `loadConfig`'s behaviour (`{ config }` or `{ fatal }`, never throwing) and keep `run(argv,\nio)` returning the exit code instead of calling `process.exit`.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -83,7 +83,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now. The visible suite passes (`5 passing`), and I verified every row of the README contract against the **real process** — correct exit code, correct stream for each line, and empty stdout on every rejection — plus the `validate()` unit-level invariants (string entries, `--strict` moves warnings without dropping them). All checks pass.\n\n**What I changed**\n\n- `src/config.js` — implemented `validate(config, { strict })` per the README rules (it was a stub returning empty arrays):\n  - `name`: must be a non-empty string → `name: must be a non-empty string`\n  - `port`: must be an integer in 1024–65535 inclusive (a float fails via `Number.isInteger`) → `port: must be an integer between 1024 and 65535`\n  - `mode`: must be `dev`, `prod`, or `test` → `mode: must be one of dev, prod, test`\n  - `port: 8080` (otherwise valid) → warning `port: 8080 collides with the dev server of several other tools`\n  - With `strict`, warnings are *moved* into `errors` (total count unchanged), never dropped\n  - `loadConfig` untouched; still `{ config }` or `{ fatal }`, never throws\n\n- `src/cli.js` — fixed the report/exit block in `run()` (still returns the code, never calls `process.exit`):\n  - **Errors present** → one `error: <field>: <reason>` line per error on **stderr**, nothing on stdout, return **2** (this also covers warned configs under `--strict`, since those warnings become errors)\n  - **No errors** → `config <basename>.json: ok` on stdout, then one `warning: <field>: <reason>` line per warning, empty stderr, return **0**\n  - Removed the old line that printed the `N error(s), N warning(s)` summary on stdout with exit 0\n  - The exit-3 paths (`--help` behavior, missing/unknown/missing-value args, unreadable/non-JSON file) were already correct and are unchanged; I only updated the stale header comment describing the old buggy behavior\n\n`bin/configcheck.js` needed no change — it already propagates `run()`'s return value through `process.exit`.\n\nOne note: `canary status` reports this temp repo as NOT CONNECTED; I left it that way since connecting wasn't part of the task. Changes are in the working tree, uncommitted (no commit was requested)."
+    "finalText": "Everything works now. The visible suite passes (`5 passing`), and I verified every row of the README contract against the **real process** — correct exit code, correct stream for each line, and empty stdout on every rejection — plus the `validate()` unit-level invariants (string entries, `--strict` moves warnings without dropping them). All checks pass.\n\n**What I changed**\n\n- `src/config.js` — implemented `validate(config, { strict })` per the README rules (it was a stub returning empty arrays):\n  - `name`: must be a non-empty string → `name: must be a non-empty string`\n  - `port`: must be an integer in 1024–65535 inclusive (a float fails via `Number.isInteger`) → `port: must be an integer between 1024 and 65535`\n  - `mode`: must be `dev`, `prod`, or `test` → `mode: must be one of dev, prod, test`\n  - `port: 8080` (otherwise valid) → warning `port: 8080 collides with the dev server of several other tools`\n  - With `strict`, warnings are *moved* into `errors` (total count unchanged), never dropped\n  - `loadConfig` untouched; still `{ config }` or `{ fatal }`, never throws\n\n- `src/cli.js` — fixed the report/exit block in `run()` (still returns the code, never calls `process.exit`):\n  - **Errors present** → one `error: <field>: <reason>` line per error on **stderr**, nothing on stdout, return **2** (this also covers warned configs under `--strict`, since those warnings become errors)\n  - **No errors** → `config <basename>.json: ok` on stdout, then one `warning: <field>: <reason>` line per warning, empty stderr, return **0**\n  - Removed the old line that printed the `N error(s), N warning(s)` summary on stdout with exit 0\n  - The exit-3 paths (`--help` behavior, missing/unknown/missing-value args, unreadable/non-JSON file) were already correct and are unchanged; I only updated the stale header comment describing the old buggy behavior\n\n`bin/configcheck.js` needed no change — it already propagates `run()`'s return value through `process.exit`.\n\nOne note: `amabie status` reports this temp repo as NOT CONNECTED; I left it that way since connecting wasn't part of the task. Changes are in the working tree, uncommitted (no commit was requested)."
   },
   "visible": {
     "exitCode": 0,
@@ -166,20 +166,20 @@
     "bytes": {
       "toolResultTotal": 16760,
       "largestToolResult": 2302,
-      "canaryVisible": 1679,
+      "amabieVisible": 1679,
       "hookOutput": 0
     },
     "commands": {
       "total": 5,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "canary status 2>&1 | head -20"
+      "amabieCommands": [
+        "amabie status 2>&1 | head -20"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

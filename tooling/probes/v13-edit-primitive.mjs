@@ -16,11 +16,12 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { productionTool } from '../../apps/cli/dist/src/provider/production.js';
+import { hostGit } from '../test-support/host-git.mjs';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const git = 'C:\\Program Files\\Git\\cmd\\git.exe';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-edit-'));
+const git = hostGit();
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-edit-'));
 const base = path.join(root, 'base'), work = path.join(root, 'work'), store = path.join(root, 'store');
 const outside = path.join(root, 'outside');
 let passed = 0, failed = 0;
@@ -74,7 +75,7 @@ try {
   fs.writeFileSync(path.join(outside, 'secret.txt'), 'trusted bytes outside the boundary\n');
   fs.writeFileSync(path.join(base, 'package.json'), JSON.stringify({ name: 'edit-probe', private: true, scripts: { test: 'node -e "process.exit(0)"' } }, null, 2) + '\n');
   run(git, ['init', '-b', 'main', base]);
-  run(git, ['-C', base, 'config', 'user.email', 'edit@canary.local']);
+  run(git, ['-C', base, 'config', 'user.email', 'edit@amabie.local']);
   run(git, ['-C', base, 'config', 'user.name', 'Edit Probe']);
   run(git, ['-C', base, 'add', '-A']);
   run(git, ['-C', base, 'commit', '-m', 'base']);
@@ -154,7 +155,7 @@ try {
     assert.equal(readTrusted(victim), before);
   });
   check('6c. edit cannot rewrite the sealed verification authority in the trusted base', () => {
-    const victim = path.join(base, '.canary', 'canary.local.json');
+    const victim = path.join(base, '.amabie', 'amabie.local.json');
     const before = readTrusted(victim);
     const r = tool({ op: 'edit', path: victim, find: '"planAuthority"', replace: '"planAuthority":{}, "x"' });
     assert.match(JSON.stringify(r), DENIED, JSON.stringify(r));

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-refactor-preserve-plain-2",
   "task": "refactor-preserve",
   "arm": "plain",
@@ -30,7 +30,7 @@
     ]
   },
   "startedAt": "2026-09-13T01:47:11.902Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-refactor-preserve-plain-U4W6g0",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-refactor-preserve-plain-U4W6g0",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -51,7 +51,7 @@
   },
   "prompt": "# Task: accept decimal strings as amounts\n\n`formatMoney(cents, options)` in `src/money.js` takes an amount in **cents** as an\ninteger.\n\nMake it ALSO accept a decimal string such as `\"12.34\"` (meaning 12 dollars and 34\ncents) and format it identically to `formatMoney(1234)`. Accept an optional leading\n`-` for negatives. A string that is not a valid decimal amount must keep throwing the\nsame `TypeError` the function already throws for a non-number.\n\n**Every documented behaviour in the file's header comment must keep working**, in\nparticular: the negative sign before the symbol, `decimals: 0`, `grouping: false`,\na custom `symbol`, and the `round` modes.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -156,18 +156,18 @@
     "bytes": {
       "toolResultTotal": 6037,
       "largestToolResult": 1536,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 0,
+      "amabie": 0,
       "checks": 2,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

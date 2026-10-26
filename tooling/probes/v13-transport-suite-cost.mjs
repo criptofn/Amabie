@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 
 const repo = path.resolve(import.meta.dirname, '../..');
 const fixture = path.join(repo, 'tooling/benchmark/fixtures/stateful-replay/project');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-suite-cost-'));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-suite-cost-'));
 let failures = 0;
 const check = (name, fn) => {
   try { fn(); console.log(`PASS ${name}`); }
@@ -45,7 +45,7 @@ const timeIt = (argv, cwd) => {
 try {
   // Materialise the fixture into its OWN directory, as the harness does.
   fs.cpSync(fixture, temp, { recursive: true });
-  const manifest = JSON.parse(fs.readFileSync(path.join(temp, 'canary.project.json'), 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(temp, 'amabie.project.json'), 'utf8'));
   const declared = manifest.scopes?.[0]?.checks?.[0];
   assert(declared?.argv, 'the fixture manifest declares no check argv');
 
@@ -70,7 +70,7 @@ try {
   const ceiling = ceilingMs();
   // The recorded long confined run, from the pilot's own record.
   const rec = JSON.parse(fs.readFileSync(path.join(repo,
-    'tooling/benchmark/results/session-evidence/v13edit-stateful-replay-canary-1.json'), 'utf8'));
+    'tooling/benchmark/results/session-evidence/v13edit-stateful-replay-amabie-1.json'), 'utf8'));
   const observed = rec.durationMs;
   const headroom = ceiling - observed;
   const toolRequests = rec.agentResult?.toolRequests ?? null;

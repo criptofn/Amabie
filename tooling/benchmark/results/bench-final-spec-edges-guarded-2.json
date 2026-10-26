@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-spec-edges-guarded-2",
   "task": "spec-edges",
   "arm": "guarded",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-13T02:23:15.885Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-spec-edges-guarded-GhRXPi",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-spec-edges-guarded-GhRXPi",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -57,10 +57,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 2,
     "verdict": "NOT PROVEN",
     "hookFired": true,
@@ -112,7 +112,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json canary.proofs and re-run canary setup — or take the work through a candidate (canary work <name> … → canary finish <name>) and have a human accept it there\n  - UNPROVEN [regression-evidence] (objective): the sealed checks pass on the base commit too, so they carry no evidence about this change (src/duration.js): existing behaviour that must be preserved needs a check that FAILS without the change and passes with it. Add or bind one (a sealed proof obligation), or a human accepts the risk from an interactive terminal — a green plan alone does not close this\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nNOT PROVEN — the checks passed, but the task is not proven: 1 objective obligation(s) have no adequate proof — a green plan is not a proven deliverable (NO PROOF, NO DONE).\nnext: close it with a sealed check: bind the requirement to a matching script in package.json amabie.proofs and re-run amabie setup — or take the work through a candidate (amabie work <name> … → amabie finish <name>) and have a human accept it there\n  - UNPROVEN [regression-evidence] (objective): the sealed checks pass on the base commit too, so they carry no evidence about this change (src/duration.js): existing behaviour that must be preserved needs a check that FAILS without the change and passes with it. Add or bind one (a sealed proof obligation), or a human accepts the risk from an interactive terminal — a green plan alone does not close this\n"
   },
   "agentResult": {
     "isError": false,
@@ -220,18 +220,18 @@
     "bytes": {
       "toolResultTotal": 1890,
       "largestToolResult": 1274,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 0,
-      "canary": 0,
+      "amabie": 0,
       "checks": 0,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },
@@ -239,7 +239,7 @@
       "messages": 1,
       "bytes": 293,
       "samples": [
-        "Stop hook feedback:\nCanary verification failed: tests (npm run test, exit 1). Fix this before finishing.\nparses a compound duration\n  full output: C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-spe"
+        "Stop hook feedback:\nAmabie verification failed: tests (npm run test, exit 1). Fix this before finishing.\nparses a compound duration\n  full output: C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-spe"
       ]
     },
     "tail": {

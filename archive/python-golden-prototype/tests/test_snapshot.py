@@ -5,8 +5,8 @@ import unittest
 
 from helpers import REPO_ROOT, write  # noqa: F401
 
-from canary.runner import RunResult
-from canary.snapshot import (
+from amabie.runner import RunResult
+from amabie.snapshot import (
     BaselineError,
     baseline_path,
     build_baseline,
@@ -20,7 +20,7 @@ class SnapshotTests(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
-        self.bdir = os.path.join(self.dir.name, ".canary")
+        self.bdir = os.path.join(self.dir.name, ".amabie")
 
     def _rr(self, name, out, err, code):
         return RunResult(name=name, status="ok", exit_code=code, stdout=out, stderr=err)

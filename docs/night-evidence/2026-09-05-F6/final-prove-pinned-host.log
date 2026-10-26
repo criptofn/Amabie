@@ -1,8 +1,8 @@
 
-> canary-reliability-network@0.0.0 prove
+> amabie-reliability-network@0.0.0 prove
 > node apps/cli/dist/src/main.js prove fixtures/axios-0.27-to-1.0/specs/axios-mock-adapter.json
 
-workspace: C:\Users\Johannes\Desktop\canary-observation-hardening\.canary-runs\exp-axios-mock-adapter-1.21.1-2026-09-04T23-02-55-074Z
+workspace: C:\Users\Johannes\Desktop\amabie-observation-hardening\.amabie-runs\exp-axios-mock-adapter-1.21.1-2026-09-04T23-02-55-074Z
 [1] fetch ctimmerm/axios-mock-adapter @ b880444283 (tarball by SHA)
   112 KiB sha256=1343cae70b70d682...
 [2] pre-execution audit
@@ -56,5 +56,5 @@ EXPERIMENT axios-mock-adapter-1.21.1: CONFIRMED_REGRESSION (rule 5) — all 3 ca
   ok   round candidate#2 envKeys re-derived from sanitizer policy
   ok   round candidate#3 envKeys re-derived from sanitizer policy
 ============================================================
-CANARY REGRESSION PROOF: PASS — 37 assertion(s) held (all of them, host-exact included, ON the proof host)
+AMABIE REGRESSION PROOF: PASS — 37 assertion(s) held (all of them, host-exact included, ON the proof host)
 ============================================================

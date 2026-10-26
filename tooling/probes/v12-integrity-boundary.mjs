@@ -21,7 +21,9 @@
  *
  * Usage: node tooling/probes/v12-integrity-boundary.mjs
  * Exit: 0 only when a boundary is observed holding and every assertion passes;
- * unavailable execution and inconclusive denial fail closed.
+ * 3 when no confined child can be started and the controls themselves pass
+ *   (host-bound SKIP; this is not evidence that a boundary exists);
+ * 1 when a control fails or an executed child does not demonstrate the boundary.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -30,7 +32,7 @@ import { spawnSync } from 'node:child_process';
 
 import { applyAuthorityLabel } from '../../apps/cli/dist/src/provider/integrity.js';
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-il-verify-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-il-verify-'));
 const authorityDir = path.join(root, 'authority');
 const scratchDir = path.join(root, 'scratch');
 const results = [];
@@ -85,9 +87,18 @@ try {
   applyAuthorityLabel(scratchDir, 'low');
   fs.writeFileSync(path.join(authorityDir, 'sealed-record.json'), '{"authority":true}');
 
+  let hostSkips = 0;
   const label = applyAuthorityLabel(authorityDir, 'medium');
-  record('an integrity label can be applied to a directory this user owns', label.applied,
-    label.applied ? label.command : `${label.command} -> exit ${String(label.exitCode)} ${label.stderr}`);
+  // icacls exists only on Windows. Where it is absent, the label cannot be applied and that is a property of the host,
+  // not of the product, so it is a host-bound SKIP (counted in hostSkips), never a PASS. On Windows it stays a hard record.
+  const labelHostBound = process.platform !== 'win32' && !label.applied;
+  if (labelHostBound) {
+    hostSkips += 1;
+    console.log(`SKIP  integrity-label: this host has no integrity-label tool (${label.command} -> exit ${String(label.exitCode)}); no label was applied and nothing about the boundary is claimed`);
+  } else {
+    record('an integrity label can be applied to a directory this user owns', label.applied,
+      label.applied ? label.command : `${label.command} -> exit ${String(label.exitCode)} ${label.stderr}`);
+  }
 
   // CONTROL — with NO confinement. If this does not write, nothing below is meaningful.
   const control = attempt([], 'control');
@@ -100,7 +111,10 @@ try {
   const levels = primitive.launchers.map((l) => [l.level, l.argvPrefix]);
   let boundaryHolds = false;
   let confinementAvailable = false;
-  let hostSkips = 0;
+  if (levels.length === 0) {
+    hostSkips += 1;
+    console.log('SKIP  integrity-launcher: this host exposes no launcher that can start a confined child; no boundary was measured or claimed');
+  }
   for (const [name, launch] of levels) {
     const confined = attempt(launch, `confined-${name}`);
     /**
@@ -138,10 +152,13 @@ try {
     console.log(`PROBE-PASS-WITH-SKIP — ${hostSkips} host-bound SKIP(s) above; the mechanism this probe would measure could not be driven here, so the absence of a boundary is REPORTED rather than proven. A skip is never a pass.`);
   }
   console.log('platform:', process.platform, 'node:', process.version, 'elevated:', spawnSync('net', ['session'], { windowsHide: true }).status === 0);
-  fs.writeFileSync(path.join(os.tmpdir(), 'canary-integrity-boundary.json'),
+  fs.writeFileSync(path.join(os.tmpdir(), 'amabie-integrity-boundary.json'),
     JSON.stringify({ at: new Date().toISOString(), platform: process.platform, node: process.version, results, boundaryPresent, hostSkips }, null, 2));
 
-  process.exitCode = boundaryPresent && results.every(r => r.ok) ? 0 : 1;
+  const assertionsHold = results.every(r => r.ok);
+  process.exitCode = !assertionsHold ? 1
+    : hostSkips > 0 ? 3
+      : boundaryPresent ? 0 : 1;
 } finally {
   try { applyAuthorityLabel(authorityDir, 'medium'); } catch { /* best effort */ }
   fs.rmSync(root, { recursive: true, force: true });

@@ -33,7 +33,7 @@ import { spawnSync } from 'node:child_process';
  */
 export function runCaptured(command, args, opts = {}) {
   const started = Date.now();
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-cap-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-cap-'));
   const outPath = path.join(dir, 'stdout.txt');
   const errPath = path.join(dir, 'stderr.txt');
   const outFd = fs.openSync(outPath, 'w');

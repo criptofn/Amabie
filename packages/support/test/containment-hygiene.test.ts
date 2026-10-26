@@ -23,7 +23,7 @@ import {
   containmentEnv, resolvePsBinary, resolveSystemTool, psTableRows, sanitizedEnvKeys,
 } from '../src/index.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-f6-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-f6-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const fresh = (name: string): string => {
   const d = path.join(TMP, name);
@@ -71,24 +71,24 @@ describe('S1 — a caller-PATH "ps" liar cannot control the sweep', () => {
     assert.ok(rows.some((r) => r.p === process.pid), 'the real table must contain the test process itself');
   });
 
-  it('the SPAWN SITE itself never inherits caller env — leak canary (wiring, not just the helper)', { skip: POSIX ? false : 'win32: no sh harness; win32 sites pinned by native env shape + trusted resolution' }, () => {
+  it('the SPAWN SITE itself never inherits caller env — leak amabie (wiring, not just the helper)', { skip: POSIX ? false : 'win32: no sh harness; win32 sites pinned by native env shape + trusted resolution' }, () => {
     // The helper being sanitized proves nothing if the spawn call site drops
     // it. This stub prints a table row ONLY when the caller's marker is
     // visible in ITS environment — removing `env: containmentEnv()` at the
     // psTableRows spawn (audit F-6 mutation M6) flips this to red.
-    const dir = fresh('leak-canary');
+    const dir = fresh('leak-amabie');
     const bin = path.join(dir, 'ps');
-    fs.writeFileSync(bin, '#!/bin/sh\nif [ -n "$CANARY_ENV_LEAK_CHECK" ]; then echo "999999 1 999999 999999"; fi\n');
+    fs.writeFileSync(bin, '#!/bin/sh\nif [ -n "$AMABIE_ENV_LEAK_CHECK" ]; then echo "999999 1 999999 999999"; fi\n');
     fs.chmodSync(bin, 0o755);
-    const saved = process.env.CANARY_ENV_LEAK_CHECK;
-    process.env.CANARY_ENV_LEAK_CHECK = `leaked-${process.pid}`;
+    const saved = process.env.AMABIE_ENV_LEAK_CHECK;
+    process.env.AMABIE_ENV_LEAK_CHECK = `leaked-${process.pid}`;
     try {
       const rows = psTableRows(bin);
       assert.ok(rows === null || rows.every((r) => r.sid !== 999999),
-        'caller env reached the containment spawn — the sweep child saw CANARY_ENV_LEAK_CHECK');
+        'caller env reached the containment spawn — the sweep child saw AMABIE_ENV_LEAK_CHECK');
     } finally {
-      if (saved === undefined) delete process.env.CANARY_ENV_LEAK_CHECK;
-      else process.env.CANARY_ENV_LEAK_CHECK = saved;
+      if (saved === undefined) delete process.env.AMABIE_ENV_LEAK_CHECK;
+      else process.env.AMABIE_ENV_LEAK_CHECK = saved;
     }
   });
 
@@ -136,8 +136,8 @@ describe('S2 — trusted resolution for Windows tools (injected SystemRoot, any 
     const systemRoot = process.env['SystemRoot'] ?? 'C:\\WINDOWS';
     const env = containmentEnv();
     assert.equal(env.PATH, `${path.join(systemRoot, 'System32')};${systemRoot}`);
-    assert.equal(env.USERNAME, 'canary');
-    assert.equal(env.USERDOMAIN, 'CANARY');
+    assert.equal(env.USERNAME, 'amabie');
+    assert.equal(env.USERDOMAIN, 'AMABIE');
     assert.equal(env.ComSpec, path.join(systemRoot, 'System32', 'cmd.exe'));
     // a lying taskkill earlier on the CALLER path is invisible to the sweep:
     const callerPath = process.env.PATH ?? '';

@@ -2,7 +2,7 @@
  * Terminal provider for the human-acceptance act — one source of truth for
  * `pre10-acceptance.mjs` and `f3-acceptance-growth.mjs`.
  *
- * `canary accept` refuses unless BOTH `process.stdin.isTTY` and
+ * `amabie accept` refuses unless BOTH `process.stdin.isTTY` and
  * `process.stdout.isTTY` are true (apps/cli/src/candidate.ts). The strongest
  * way to exercise that is a REAL pty, which on POSIX means util-linux
  * `script -qec`. Windows has no `script(1)`, so the probes used to fail there

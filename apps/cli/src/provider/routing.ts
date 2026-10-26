@@ -64,7 +64,7 @@ export function authorityGenerationPath(storeRoot: string): string {
  *
  * Read from the store's own record rather than assumed, and deliberately allowed to
  * be absent: an installation that never recorded one makes no staleness claim, and
- * the broker's other refusals still apply. Claiming a generation Canary did not
+ * the broker's other refusals still apply. Claiming a generation Amabie did not
  * record would be inventing the very fact the check exists to compare.
  */
 export function expectedAuthorityGeneration(store: TrustStore = storeFromEnv()): string | undefined {
@@ -118,7 +118,7 @@ export function submitAcceptanceThroughBroker(
 
 /**
  * Reserve the promotion window AFTER a passing verification. The returned
- * `candidateCommit`/`expectedHead` are compared with Canary's own live identity by
+ * `candidateCommit`/`expectedHead` are compared with Amabie's own live identity by
  * the caller — a broker that authorizes a DIFFERENT candidate must not authorize
  * this act, and vice versa.
  */

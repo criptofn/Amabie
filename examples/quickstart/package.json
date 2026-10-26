@@ -1,0 +1,6 @@
+{
+  "name": "amabie-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" }
+}

@@ -25,8 +25,8 @@ import path from 'node:path';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const IPC = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'provider', 'ipc.js');
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-broker-xproc-'));
-const pipe = `canary-xproc-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-broker-xproc-'));
+const pipe = `amabie-xproc-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 const token = crypto.randomBytes(32).toString('hex');
 
 const CLIENT = path.join(TMP, 'client.mjs');
@@ -104,5 +104,5 @@ const pass = asyncOk === 3 && overlapOk === 2 && wrongRefused;
 console.log(`\n=== cross-process broker: ${pass ? 'SERVES ASYNC CLIENTS AND REFUSES A WRONG TOKEN' : 'BROKEN'} ===`);
 console.log(`  sequential async: ${asyncOk}/3 answered; overlapping async: ${overlapOk}/2 answered; wrong token refused: ${wrongRefused}`);
 console.log(`scratch: ${TMP}`);
-if (process.env.CANARY_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
+if (process.env.AMABIE_KEEP_SCRATCH !== '1') fs.rmSync(TMP, { recursive: true, force: true });
 process.exit(pass ? 0 : 1);

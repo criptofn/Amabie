@@ -7,6 +7,6 @@ module.exports = {
     const value = readRequiredConfig();
     assert.notStrictEqual(value, null,
       `the required configuration file (${requiredConfigPath()}) is missing`);
-    assert.strictEqual(value, 'canary-bench-ok');
+    assert.strictEqual(value, 'amabie-bench-ok');
   },
 };

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import * as CM from '../../apps/cli/dist/src/provider/confined-measurement.js';
 import { measureBoundary } from '../../apps/cli/dist/src/provider/boundary.js';
 import { measuredCapabilities } from '../../apps/cli/dist/src/platform-boundary.js';
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-independent-audit-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-independent-audit-'));
 let findings = 0;
 function finding(name, condition) {
   console.log(`${condition ? 'REPRODUCED' : 'NOT REPRODUCED'} ${name}`);

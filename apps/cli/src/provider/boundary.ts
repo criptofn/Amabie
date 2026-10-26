@@ -15,9 +15,9 @@ import {
 } from './confined-measurement.js';
 
 /** The provider service's name and pipe. Fixed, so install/uninstall/verify agree. */
-export const PROVIDER_SERVICE_NAME = 'CanaryBroker';
-export const PROVIDER_PIPE_NAME = 'canary-broker';
-export const WORKER_USER_ENV = 'CANARY_WORKER_USER';
+export const PROVIDER_SERVICE_NAME = 'AmabieBroker';
+export const PROVIDER_PIPE_NAME = 'amabie-broker';
+export const WORKER_USER_ENV = 'AMABIE_WORKER_USER';
 
 export interface CommandObservation {
   argv: string[];
@@ -29,7 +29,7 @@ export interface CommandObservation {
 export type ControlReason = { available: boolean; why: string };
 
 export interface BoundaryMeasurement {
-  schema: 'canary-boundary-measurement/1';
+  schema: 'amabie-boundary-measurement/1';
   platform: string;
   /** This process's account, as the OS reports it. */
   currentUser: string | null;
@@ -39,7 +39,7 @@ export interface BoundaryMeasurement {
   /** Principals with write access to the store dir, as icacls reports them. */
   storeWriters: string[];
   storeDaclObservable: boolean;
-  /** The declared worker identity, if any — Canary never invents one. */
+  /** The declared worker identity, if any — Amabie never invents one. */
   workerUser: string | null;
   brokerServiceInstalled: boolean;
   brokerServiceRunning: boolean;
@@ -141,7 +141,7 @@ export function storeDaclGrantsWrite(icaclsOutput: string, principal: string): b
 
 /**
  * Informational only: the text preceding each ACE's permission group, for a
- * human reading `canary provider status`. NOT used for any decision — see
+ * human reading `amabie provider status`. NOT used for any decision — see
  * `storeDaclGrantsWrite`, which does not need to locate a principal's start.
  */
 export function parseStoreWriters(icaclsOutput: string): string[] {
@@ -253,8 +253,8 @@ export function observeConfinedDeployment(
 ): ConfinedDeploymentState {
   const digest = toolsDigest();
   const state: RecordState = readConfinedMeasurement(store.root, {
-    ...(env.CANARY_CONFINED_MAX_AGE_MS !== undefined && /^\d+$/.test(env.CANARY_CONFINED_MAX_AGE_MS)
-      ? { maxAgeMs: Number(env.CANARY_CONFINED_MAX_AGE_MS) }
+    ...(env.AMABIE_CONFINED_MAX_AGE_MS !== undefined && /^\d+$/.test(env.AMABIE_CONFINED_MAX_AGE_MS ?? '')
+      ? { maxAgeMs: Number(env.AMABIE_CONFINED_MAX_AGE_MS) }
       : {}),
     ...(now !== undefined ? { now } : {}),
     digest,
@@ -320,7 +320,7 @@ export function measureBoundary(
 
   const hardenedAvailable = ALL_CONTROLS.every((name) => controls[name].available);
   return {
-    schema: 'canary-boundary-measurement/1',
+    schema: 'amabie-boundary-measurement/1',
     platform: process.platform,
     currentUser: user,
     elevated,
@@ -429,7 +429,7 @@ export function observeSandboxPrimitive(platform: NodeJS.Platform = process.plat
  * would use it, and because the alternative must not become a secret.
  */
 export interface InstallPlan {
-  schema: 'canary-provider-install-plan/1';
+  schema: 'amabie-provider-install-plan/1';
   platform: string;
   /** True when this platform's enforcement path has actually been EXECUTED on a
    *  host. Windows is the one this repository has run; the Linux path is
@@ -444,15 +444,15 @@ export interface InstallPlan {
 }
 
 function windowsInstallPlan(storeDir: string, workerUser: string, installDir: string): InstallPlan {
-  const brokerAccount = 'CanaryBroker';
+  const brokerAccount = 'AmabieBroker';
   return {
-    schema: 'canary-provider-install-plan/1',
+    schema: 'amabie-provider-install-plan/1',
     platform: 'win32',
     hostVerified: true,
     steps: [
       {
         id: 'worker-identity',
-        why: 'candidate code must run as an identity that cannot write Canary\'s authority; until this exists no identity-path control can be proven',
+        why: 'candidate code must run as an identity that cannot write Amabie\'s authority; until this exists no identity-path control can be proven',
         argv: ['net', 'user', workerUser, '<STRONG-PASSWORD>', '/add', '/passwordreq:yes'],
         needsElevation: true,
       },
@@ -473,7 +473,7 @@ function windowsInstallPlan(storeDir: string, workerUser: string, installDir: st
       {
         id: 'install-service',
         why: 'the service is what makes the broker reachable without repeated elevation',
-        argv: ['sc.exe', 'create', PROVIDER_SERVICE_NAME, `binPath= "${path.join(installDir, 'canary.exe')} provider serve"`,
+        argv: ['sc.exe', 'create', PROVIDER_SERVICE_NAME, `binPath= "${path.join(installDir, 'amabie.exe')} provider serve"`,
           `obj= ${brokerAccount}`, 'password= <STRONG-PASSWORD>', 'start= auto'],
         needsElevation: true,
       },
@@ -485,7 +485,7 @@ function windowsInstallPlan(storeDir: string, workerUser: string, installDir: st
       },
       {
         id: 'enroll-worker',
-        why: 'declares the restricted runner identity to Canary; without it the identity path is unmeasurable',
+        why: 'declares the restricted runner identity to Amabie; without it the identity path is unmeasurable',
         argv: ['setx', WORKER_USER_ENV, workerUser],
         needsElevation: false,
       },
@@ -499,7 +499,7 @@ function windowsInstallPlan(storeDir: string, workerUser: string, installDir: st
       { id: 'unset-env', argv: ['reg', 'delete', 'HKCU\\Environment', '/v', WORKER_USER_ENV, '/f'] },
     ],
     verify: [
-      'canary provider status --json   # every control must read available, and hardenedAvailable true',
+      'amabie provider status --json   # every control must read available, and hardenedAvailable true',
       'node tooling/probes/v12-confined-caller.mjs   # the deployment measurement the controls come from',
       'node tooling/probes/provider-boundary.mjs',
       'npm test                        # the broker/trust-store/platform-boundary attack suites',
@@ -509,7 +509,7 @@ function windowsInstallPlan(storeDir: string, workerUser: string, installDir: st
       `${workerUser} present but denied write access to ${storeDir}`,
       `${storeDir} writable only by ${brokerAccount}, SYSTEM and Administrators`,
       `${WORKER_USER_ENV}=${workerUser} declared for the verifying user`,
-      'canary provider status: hardenedAvailable = true (only then does HARDENED become reachable)',
+      'amabie provider status: hardenedAvailable = true (only then does HARDENED become reachable)',
     ],
   };
 }
@@ -522,11 +522,11 @@ function windowsInstallPlan(storeDir: string, workerUser: string, installDir: st
  * repository forbids, so `hostVerified: false` travels with the plan.
  */
 function linuxInstallPlan(storeDir: string, workerUser: string, installDir: string): InstallPlan {
-  const brokerAccount = 'canary-broker';
+  const brokerAccount = 'amabie-broker';
   const unit = [
-    '[Unit]', 'Description=Canary trusted broker (verification control plane)', 'After=network.target', '',
+    '[Unit]', 'Description=Amabie trusted broker (verification control plane)', 'After=network.target', '',
     '[Service]', 'Type=simple', `User=${brokerAccount}`,
-    `ExecStart=${path.join(installDir, 'canary')} provider serve`,
+    `ExecStart=${path.join(installDir, 'amabie')} provider serve`,
     // The broker holds the authority; it must never gain a writable home or the
     // ability to execute candidate code as itself.
     'NoNewPrivileges=true', 'ProtectSystem=strict', 'ProtectHome=true', 'PrivateTmp=true',
@@ -534,13 +534,13 @@ function linuxInstallPlan(storeDir: string, workerUser: string, installDir: stri
     '[Install]', 'WantedBy=multi-user.target', '',
   ].join('\n');
   return {
-    schema: 'canary-provider-install-plan/1',
+    schema: 'amabie-provider-install-plan/1',
     platform: 'linux',
     hostVerified: false,
     steps: [
       {
         id: 'worker-identity',
-        why: 'candidate code runs as this identity; it must not be able to write Canary\'s authority',
+        why: 'candidate code runs as this identity; it must not be able to write Amabie\'s authority',
         argv: ['useradd', '--system', '--no-create-home', '--shell', '/usr/sbin/nologin', workerUser],
         needsElevation: true,
       },
@@ -579,12 +579,12 @@ function linuxInstallPlan(storeDir: string, workerUser: string, installDir: stri
     rollback: [
       { id: 'stop-service', argv: ['systemctl', 'disable', '--now', PROVIDER_SERVICE_NAME] },
       { id: 'remove-unit', argv: ['rm', '-f', `/etc/systemd/system/${PROVIDER_SERVICE_NAME}.service`] },
-      { id: 'drop-egress', argv: ['nft', '-f', '/etc/canary-egress.nft'] },
+      { id: 'drop-egress', argv: ['nft', '-f', '/etc/amabie-egress.nft'] },
       { id: 'delete-worker', argv: ['userdel', workerUser] },
       { id: 'delete-broker', argv: ['userdel', brokerAccount] },
     ],
     verify: [
-      'canary provider status --json   # every control must read available, and hardenedAvailable true',
+      'amabie provider status --json   # every control must read available, and hardenedAvailable true',
       'node tooling/probes/provider-boundary.mjs',
       'npm test',
     ],
@@ -593,7 +593,7 @@ function linuxInstallPlan(storeDir: string, workerUser: string, installDir: stri
       `${workerUser} exists and has no access to ${storeDir}`,
       `${storeDir} owned by ${brokerAccount} with mode 0700`,
       `${WORKER_USER_ENV}=${workerUser} declared`,
-      'canary provider status: hardenedAvailable = true — and ',
+      'amabie provider status: hardenedAvailable = true — and ',
       'WARNING: this list is IMPLEMENTED_BUT_HOST_UNVERIFIED; it has never been executed on a Linux host',
     ],
   };
@@ -608,9 +608,9 @@ function linuxInstallPlan(storeDir: string, workerUser: string, installDir: stri
 export function installPlanFor(platform: string, storeDir: string, workerUser: string, installDir: string): InstallPlan {
   return platform === 'win32'
     ? windowsInstallPlan(storeDir, workerUser, installDir)
-    : linuxInstallPlan(storeDir, workerUser, process.platform === 'darwin' || platform === 'darwin' ? '/usr/local/lib/canary' : installDir);
+    : linuxInstallPlan(storeDir, workerUser, process.platform === 'darwin' || platform === 'darwin' ? '/usr/local/lib/amabie' : installDir);
 }
 
-export function installPlan(store: TrustStore = storeFromEnv(), workerUser = 'canary-worker', installDir = 'C:\\ProgramData\\Canary'): InstallPlan {
+export function installPlan(store: TrustStore = storeFromEnv(), workerUser = 'amabie-worker', installDir = 'C:\\ProgramData\\Amabie'): InstallPlan {
   return installPlanFor(process.platform, store.root, workerUser, installDir);
 }

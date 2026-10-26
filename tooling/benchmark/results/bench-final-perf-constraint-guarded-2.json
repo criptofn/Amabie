@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-perf-constraint-guarded-2",
   "task": "perf-constraint",
   "arm": "guarded",
@@ -30,7 +30,7 @@
     ]
   },
   "startedAt": "2026-09-13T01:37:48.043Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-perf-constraint-guarded-pxlLhB",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-perf-constraint-guarded-pxlLhB",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -55,10 +55,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -108,7 +108,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -139,7 +139,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "The scratch copy is cleaned up. `canary status` shows the repo's local config is written by a different Canary installation, so it isn't connected — I'm deliberately not running `canary setup --yes`, since rewriting trusted local config isn't part of the task and the blocking gate here is the harness's own checkpoint, which runs the project's checks (`npm test`) that now include the new file.\n\nSummary of this round's changes:\n\n- **Added `tests/aggregate.perf.test.js`** — a discriminating check, since the sealed suite passed on the base commit and carried no evidence:\n  1. Groups 50,000 rows with 50,000 distinct keys under a 1 s wall-clock budget, then fully validates the output (length, first-appearance order, per-entry `key`/`count`/`sum`) so it can't be gamed by a fast-but-wrong stub.\n  2. A scaling-ratio test: time for 50k vs 25k rows must stay under ~6x per doubling (linear ≈ 2x, quadratic ≈ 4x would trip it only in combination with a real blowup; it's a secondary signal).\n- **Measured discrimination on this machine**: base quadratic implementation = 3675 ms → test **fails** (exit 1); Map implementation = ~9 ms → all **6 tests pass** (exit 0). Verified by running the suite against `git show HEAD:src/aggregate.js` in a scratch copy, leaving the working tree untouched.\n\nEverything works now: the quadratic scan in `src/aggregate.js` is replaced by a `Map` (first-appearance order and all documented semantics preserved, no mutation of inputs, no dependencies), and there is now a check that fails without the change and passes with it."
+    "finalText": "The scratch copy is cleaned up. `amabie status` shows the repo's local config is written by a different Amabie installation, so it isn't connected — I'm deliberately not running `amabie setup --yes`, since rewriting trusted local config isn't part of the task and the blocking gate here is the harness's own checkpoint, which runs the project's checks (`npm test`) that now include the new file.\n\nSummary of this round's changes:\n\n- **Added `tests/aggregate.perf.test.js`** — a discriminating check, since the sealed suite passed on the base commit and carried no evidence:\n  1. Groups 50,000 rows with 50,000 distinct keys under a 1 s wall-clock budget, then fully validates the output (length, first-appearance order, per-entry `key`/`count`/`sum`) so it can't be gamed by a fast-but-wrong stub.\n  2. A scaling-ratio test: time for 50k vs 25k rows must stay under ~6x per doubling (linear ≈ 2x, quadratic ≈ 4x would trip it only in combination with a real blowup; it's a secondary signal).\n- **Measured discrimination on this machine**: base quadratic implementation = 3675 ms → test **fails** (exit 1); Map implementation = ~9 ms → all **6 tests pass** (exit 0). Verified by running the suite against `git show HEAD:src/aggregate.js` in a scratch copy, leaving the working tree untouched.\n\nEverything works now: the quadratic scan in `src/aggregate.js` is replaced by a `Map` (first-appearance order and all documented semantics preserved, no mutation of inputs, no dependencies), and there is now a check that fails without the change and passes with it."
   },
   "visible": {
     "exitCode": 0,
@@ -223,20 +223,20 @@
     "bytes": {
       "toolResultTotal": 5938,
       "largestToolResult": 1572,
-      "canaryVisible": 24,
+      "amabieVisible": 24,
       "hookOutput": 0
     },
     "commands": {
       "total": 6,
-      "canary": 1,
+      "amabie": 1,
       "checks": 2,
-      "canaryCommands": [
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-perf-constraint-guarded-pxlLhB/project\" && canary status 2>&1 | head -40"
+      "amabieCommands": [
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-perf-constraint-guarded-pxlLhB/project\" && amabie status 2>&1 | head -40"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

@@ -12,8 +12,8 @@
  * Blocker-1 hardened execution environment — itself proof of the fix — so the
  * pre-hardening 221->125 git/process-spawn comparison stands on the old
  * method, and this harness measures the current design honestly.
- * Also: setup idempotence (manifest of .canary/.git/hooks/.claude
- * byte-compared across setup #1 / #2 / #3, canary-hook marker counts) and
+ * Also: setup idempotence (manifest of .amabie/.git/hooks/.claude
+ * byte-compared across setup #1 / #2 / #3, amabie-hook marker counts) and
  * re-entry sanity (verify after promotion).
  *
  * Exits 0 when the run completes; FAIL lines mark measurement anomalies
@@ -34,7 +34,7 @@ const arg = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1
 const CLI = arg('--cli') ?? path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 if (!fs.existsSync(CLI)) { console.error(`FAIL cli-missing ${CLI} (build first)`); process.exit(2); }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-baseline-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-baseline-'));
 const LOG = path.join(TMP, 'calls.log');
 
 // In-process spawn counter: a Node preload that wraps child_process
@@ -51,7 +51,7 @@ fs.writeFileSync(COUNTER, [
   'function line(f, a) {',
   '  try {',
   "    const b = path.basename(String(f)).replace(/\\.exe$/, '');",
-  "    fs.appendFileSync(process.env.CANARY_BASELINE_LOG, b + ' ' + (a || []).join(' ') + '\\n');",
+  "    fs.appendFileSync(process.env.AMABIE_BASELINE_LOG, b + ' ' + (a || []).join(' ') + '\\n');",
   '  } catch { /* measurement must never break the product */ }',
   '}',
   "const cp = require('node:child_process');",
@@ -63,7 +63,7 @@ fs.writeFileSync(COUNTER, [
   '  };',
   '}',
 ].join('\n'));
-const ENV = { ...process.env, CANARY_BASELINE_LOG: LOG, NODE_OPTIONS: `--require=${COUNTER}` };
+const ENV = { ...process.env, AMABIE_BASELINE_LOG: LOG, NODE_OPTIONS: `--require=${COUNTER}` };
 
 function countCalls() {
   const out = { git: 0, npm: 0, node: 0, other: 0, total: 0 };
@@ -111,13 +111,13 @@ fs.writeFileSync(path.join(root, 'checks', 'verify.js'), "const fs = require('no
 fs.writeFileSync(path.join(root, 'marker.txt'), 'ok\n');
 fs.writeFileSync(LOG, '');
 git(root, 'init', '-b', 'main');
-git(root, 'config', 'user.email', 'baseline@canary.local');
-git(root, 'config', 'user.name', 'Canary Baseline');
+git(root, 'config', 'user.email', 'baseline@amabie.local');
+git(root, 'config', 'user.name', 'Amabie Baseline');
 git(root, 'add', '-A'); git(root, 'commit', '-m', 'initial');
 
 function manifest() {
   const m = new Map();
-  for (const walk of [['.canary'], ['.git', 'hooks'], ['.claude']]) {
+  for (const walk of [['.amabie'], ['.git', 'hooks'], ['.claude']]) {
     const base = path.join(root, ...walk);
     if (!fs.existsSync(base)) continue;
     const stack = [base];
@@ -132,7 +132,7 @@ function manifest() {
   }
   return m;
 }
-function canaryHookMarkers() {
+function amabieHookMarkers() {
   let n = 0; const hits = [];
   for (const dir of [path.join(root, '.git', 'hooks'), path.join(root, '.claude')]) {
     if (!fs.existsSync(dir)) continue;
@@ -140,7 +140,7 @@ function canaryHookMarkers() {
       const p = path.join(dir, f);
       if (!fs.statSync(p).isFile()) continue;
       const t = fs.readFileSync(p, 'utf8').toLowerCase();
-      const k = (t.match(/canary/g) ?? []).length;
+      const k = (t.match(/amabie/g) ?? []).length;
       if (k) { n += k; hits.push(`${path.relative(root, p)}:${k}`); }
     }
   }
@@ -148,7 +148,7 @@ function canaryHookMarkers() {
 }
 // CORE state must be byte-stable across re-setup; LEDGER paths (evidence,
 // backups, checkpoint) are append-only by design — counted, never judged.
-const LEDGER = (k) => k.startsWith('.canary/evidence/') || k.startsWith('.canary/backups/') || k.endsWith('last-checkpoint.json');
+const LEDGER = (k) => k.startsWith('.amabie/evidence/') || k.startsWith('.amabie/backups/') || k.endsWith('last-checkpoint.json');
 function diffManifest(a, b, tag) {
   const stat = (pred) => {
     const added = [...b.keys()].filter((k) => pred(k) && !a.has(k));
@@ -167,13 +167,13 @@ function diffManifest(a, b, tag) {
 console.log(`=== lazy-connect-baseline cli=${CLI} tmp=${TMP} method=in-process-preload-counter ===`);
 const s1 = measure('setup#1-fresh', ['setup', '--yes', root], root);
 fs.writeFileSync(path.join(TMP, 'setup1.out'), s1.out);
-const snapA = manifest(); const markA = canaryHookMarkers();
+const snapA = manifest(); const markA = amabieHookMarkers();
 
 measure('task-register', ['task', 'validate the marker file', '--kind', 'refactor'], root);
 measure('isolate', ['isolate', 'b1', root], root);
 
 // agent work inside the candidate worktree — direct git, outside any phase window
-const c = path.join(root, '.canary', 'candidates', 'b1');
+const c = path.join(root, '.amabie', 'candidates', 'b1');
 fs.writeFileSync(path.join(c, 'src-extra.js'), '// agent work\n');
 fs.writeFileSync(LOG, '');
 git(c, 'add', '-A'); git(c, 'commit', '-m', 'work');
@@ -186,13 +186,13 @@ console.log(`EVIDENCE promote line: ${(p.out.match(/(ACCEPTED|REFUSED|BLOCKED|PR
 
 const s2 = measure('setup#2-reconnect', ['setup', '--yes', root], root);
 fs.writeFileSync(path.join(TMP, 'setup2.out'), s2.out);
-const snapB = manifest(); const markB = canaryHookMarkers();
+const snapB = manifest(); const markB = amabieHookMarkers();
 const churn = diffManifest(snapA, snapB, 'setup#2');
-console.log(`MARKERS canary-hook-mentions setup#1=${markA.n} [${markA.hits.join(' ')}] setup#2=${markB.n} [${markB.hits.join(' ')}]`);
+console.log(`MARKERS amabie-hook-mentions setup#1=${markA.n} [${markA.hits.join(' ')}] setup#2=${markB.n} [${markB.hits.join(' ')}]`);
 
 measure('verify-after-promote-reentry', ['isolate', '--verify', 'b1', root], root);
 const s3 = measure('setup#3-third-time', ['setup', '--yes', root], root);
-const snapC = manifest(); const markC = canaryHookMarkers();
+const snapC = manifest(); const markC = amabieHookMarkers();
 const churn2 = diffManifest(snapB, snapC, 'setup#3');
 console.log(`MARKERS setup#3=${markC.n}`);
 

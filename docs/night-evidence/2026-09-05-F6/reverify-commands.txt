@@ -6,9 +6,9 @@ from the procedures recorded in docs/NIGHT-F6-HARDENING-2026-09-05.md.
 
 1) Baseline at 34cf515 (fixes the false "438" and "64 -> 71 suites" claims)
 
-   git worktree add --detach ../canary-baseline-34cf 34cf515
-   cmd /c mklink /J ..\canary-baseline-34cf\node_modules C:\Users\Johannes\Desktop\canary-observation-hardening\node_modules
-   cd /c/Users/Johannes/Desktop/canary-baseline-34cf
+   git worktree add --detach ../amabie-baseline-34cf 34cf515
+   cmd /c mklink /J ..\amabie-baseline-34cf\node_modules C:\Users\Johannes\Desktop\amabie-observation-hardening\node_modules
+   cd /c/Users/Johannes/Desktop/amabie-baseline-34cf
    pwd && git rev-parse HEAD
    { echo "TREE: $(git rev-parse HEAD) @ $(pwd)"; npm test; } > .../baseline-suite-2.log 2>&1; echo "EXIT:$?" >> ...
    -> reverify-baseline-34cf515-suite.log  (465 tests / 71 suites / 465 pass / 0 fail / 0 skipped, EXIT:0)
@@ -29,7 +29,7 @@ from the procedures recorded in docs/NIGHT-F6-HARDENING-2026-09-05.md.
    final-full-suite.log by the same operator — reconfirms the numbers;
    NOT model-independent verification)
 
-   cd /c/Users/Johannes/Desktop/canary-observation-hardening
+   cd /c/Users/Johannes/Desktop/amabie-observation-hardening
    npm test   -> reverify-head-suite.log  (472/71/472/0/0/0, EXIT:0)
    (No TREE: line — the run site was asserted in prose only. Superseded as
     the mechanical proof by 2b; retained as historical record.)
@@ -37,18 +37,18 @@ from the procedures recorded in docs/NIGHT-F6-HARDENING-2026-09-05.md.
 2b) TREE-pinned HEAD re-run at d327e71, clean detached worktree
     (closes 2's unproven tree; added by the 2026-09-05 verification pass)
 
-   git worktree add --detach ../canary-head-d327e71 d327e71
-   cmd /c mklink /J ..\canary-head-d327e71\node_modules C:\Users\Johannes\Desktop\canary-observation-hardening\node_modules
-   cd /c/Users/Johannes/Desktop/canary-head-d327e71
+   git worktree add --detach ../amabie-head-d327e71 d327e71
+   cmd /c mklink /J ..\amabie-head-d327e71\node_modules C:\Users\Johannes\Desktop\amabie-observation-hardening\node_modules
+   cd /c/Users/Johannes/Desktop/amabie-head-d327e71
    { echo "TREE: $(git rev-parse HEAD) @ $(pwd)"; npm test; } > .../reverify-head-d327e71-treepinned-suite.log 2>&1; echo "EXIT:$?" >> ...
      -> reverify-head-d327e71-treepinned-suite.log
         line 1: TREE: d327e71c1e68fb4e292f2c2c26268693580bef3e @
-                 /c/Users/Johannes/Desktop/canary-head-d327e71
+                 /c/Users/Johannes/Desktop/amabie-head-d327e71
         472 tests / 71 suites / 472 pass / 0 fail / 0 cancelled / 0 skipped
         EXIT:0 — identical to (2) and to the night's final-full-suite.log
    Cleanup after capture:
-   cmd /c rmdir ..\canary-head-d327e71\node_modules   (junction only, not data)
-   git worktree remove ../canary-head-d327e71
+   cmd /c rmdir ..\amabie-head-d327e71\node_modules   (junction only, not data)
+   git worktree remove ../amabie-head-d327e71
 
 3) Post-change re-run (after adding the F6a coverage sentinel; uncommitted
    working tree at HEAD d327e71 + executor.test.ts sentinel)

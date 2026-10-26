@@ -4,16 +4,16 @@
  *
  * WHY THIS EXISTS (v1.2, found by measurement, not by review). While completing the corpus
  * declarations, `tooling/probes/v12-fixture-configurations.mjs` reported that fixture
- * `cli-exit-codes` states EIGHT requirements and `canary task` recorded SEVEN digests. The missing
+ * `cli-exit-codes` states EIGHT requirements and `amabie task` recorded SEVEN digests. The missing
  * one begins with a dash-like token:
  *
  *   "--strict moves warnings into errors rather than dropping them"
  *
- * The old `canary task` parser required a `--requirement` value to NOT start with `--`, then skipped
+ * The old `amabie task` parser required a `--requirement` value to NOT start with `--`, then skipped
  * any remaining `--` token outright. So that requirement was neither consumed nor reported: the
  * operator believed eight duties were registered, seven were, and the eighth became prose nobody
- * checks. This is the same defect class the repository already recorded for `canary work`
- * (orchestrate.ts: "Canary silently registered FEWER, i.e. weaker verification than the human
+ * checks. This is the same defect class the repository already recorded for `amabie work`
+ * (orchestrate.ts: "Amabie silently registered FEWER, i.e. weaker verification than the human
  * authorized"), which was fixed there in v1.1 while this one survived in `task`.
  *
  * The rule this probe pins:
@@ -23,7 +23,7 @@
  *      zero-duty registration.
  *   3. An option that is not `--kind`/`--requirement` is REFUSED, not ignored: ignoring
  *      `--requirment "x"` (a typo) registers ZERO duties while the operator believes otherwise.
- *   4. Both intake paths agree: the digest `canary bind` prints for the same text is the digest the
+ *   4. Both intake paths agree: the digest `amabie bind` prints for the same text is the digest the
  *      task record carries. If they disagreed, a requirement could be bindable but unregistered.
  *
  * Usage: node tooling/probes/v12-requirement-intake.mjs
@@ -48,11 +48,11 @@ const check = (name, fn) => {
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 const git = (root, args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 120_000, windowsHide: true });
-const canary = (root, args) => spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', timeout: 240_000, windowsHide: true });
+const amabie = (root, args) => spawnSync(process.execPath, [CLI, ...args], { cwd: root, encoding: 'utf8', timeout: 240_000, windowsHide: true });
 
-/** A minimal sealed Node project: one real check, so `canary bind` has a plan script to point at. */
+/** A minimal sealed Node project: one real check, so `amabie bind` has a plan script to point at. */
 function makeProject() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-intake-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-intake-'));
   // v1.4 — declare the harness IN THE FIXTURE: `setup` requires a detected harness and reads
   // `<root>/.claude` or the operator's `~/.claude`, so without this the fixture passed only on a
   // machine that has Claude Code installed and failed on every CI runner.
@@ -62,25 +62,25 @@ function makeProject() {
     name: 'intake-probe', version: '1.0.0', private: true, scripts: { test: 'node ok.js' },
   }, null, 2)}\n`);
   git(root, ['init', '-b', 'main']);
-  git(root, ['config', 'user.email', 'intake@canary.local']);
+  git(root, ['config', 'user.email', 'intake@amabie.local']);
   git(root, ['config', 'user.name', 'Requirement Intake Probe']);
   git(root, ['add', '-A']);
   const commit = git(root, ['commit', '-m', 'sealed project']);
   assert(commit.status === 0, `git commit failed: ${commit.stderr}`);
-  const setup = canary(root, ['setup', '--yes']);
-  assert(fs.existsSync(path.join(root, '.canary', 'canary.local.json')), `setup wrote no config (exit ${setup.status}): ${setup.stdout}${setup.stderr}`);
+  const setup = amabie(root, ['setup', '--yes']);
+  assert(fs.existsSync(path.join(root, '.amabie', 'amabie.local.json')), `setup wrote no config (exit ${setup.status}): ${setup.stdout}${setup.stderr}`);
   return root;
 }
 const taskRecordOf = (root) => {
-  const p = path.join(root, '.canary', 'task', 'current.json');
+  const p = path.join(root, '.amabie', 'task', 'current.json');
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
 };
 
 console.log('── 1. a requirement whose TEXT begins with "--" is registered, counted and printed');
 {
   const root = makeProject();
-  const r = canary(root, ['task', 'make the validator behave', '--requirement', DASH_REQ]);
-  console.log(`   canary task: exit ${r.status}`);
+  const r = amabie(root, ['task', 'make the validator behave', '--requirement', DASH_REQ]);
+  console.log(`   amabie task: exit ${r.status}`);
   check('1. the dash-leading requirement is a REGISTERED duty, not prose', () => {
     assert(r.status === 0, `expected exit 0, got ${r.status}: ${r.stdout}${r.stderr}`);
     const rec = taskRecordOf(root);
@@ -96,8 +96,8 @@ console.log('── 1. a requirement whose TEXT begins with "--" is registered, 
 console.log('\n── 2. it coexists with ordinary requirements, in either order');
 {
   const root = makeProject();
-  const r = canary(root, ['task', 'make the validator behave', '--requirement', PLAIN_REQ, '--requirement', DASH_REQ]);
-  console.log(`   canary task: exit ${r.status}`);
+  const r = amabie(root, ['task', 'make the validator behave', '--requirement', PLAIN_REQ, '--requirement', DASH_REQ]);
+  console.log(`   amabie task: exit ${r.status}`);
   check('2. two stated requirements produce two digests', () => {
     assert(r.status === 0, `expected exit 0, got ${r.status}: ${r.stdout}${r.stderr}`);
     const rec = taskRecordOf(root);
@@ -110,8 +110,8 @@ console.log('\n── 2. it coexists with ordinary requirements, in either order
 
 console.log('\n── 3. a misuse is REFUSED, and refusal writes nothing');
 {
-  const missingValue = (() => { const root = makeProject(); const r = canary(root, ['task', 'intent', '--requirement']); const rec = taskRecordOf(root); fs.rmSync(root, { recursive: true, force: true }); return { r, rec }; })();
-  const unknownOption = (() => { const root = makeProject(); const r = canary(root, ['task', 'intent', '--requirment', PLAIN_REQ]); const rec = taskRecordOf(root); fs.rmSync(root, { recursive: true, force: true }); return { r, rec }; })();
+  const missingValue = (() => { const root = makeProject(); const r = amabie(root, ['task', 'intent', '--requirement']); const rec = taskRecordOf(root); fs.rmSync(root, { recursive: true, force: true }); return { r, rec }; })();
+  const unknownOption = (() => { const root = makeProject(); const r = amabie(root, ['task', 'intent', '--requirment', PLAIN_REQ]); const rec = taskRecordOf(root); fs.rmSync(root, { recursive: true, force: true }); return { r, rec }; })();
   console.log(`   --requirement with no value: exit ${missingValue.r.status}; unknown option: exit ${unknownOption.r.status}`);
   check('3a. `--requirement` with no value is refused and registers nothing', () => {
     assert(missingValue.r.status === 3, `expected exit 3, got ${missingValue.r.status}: ${missingValue.r.stdout}`);
@@ -128,8 +128,8 @@ console.log('\n── 3. a misuse is REFUSED, and refusal writes nothing');
 console.log('\n── 4. both intake paths agree on the identity of the same text');
 {
   const root = makeProject();
-  const r = canary(root, ['task', 'make the validator behave', '--requirement', DASH_REQ]);
-  const bind = canary(root, ['bind', 'test', '--requirement', DASH_REQ]);
+  const r = amabie(root, ['task', 'make the validator behave', '--requirement', DASH_REQ]);
+  const bind = amabie(root, ['bind', 'test', '--requirement', DASH_REQ]);
   console.log(`   task exit ${r.status}; bind exit ${bind.status}`);
   check('4. `bind` prints the same digest the task record carries', () => {
     const rec = taskRecordOf(root);

@@ -20,26 +20,28 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
+import { runCommand, type RunOptions } from '@amabie/support';
+import type { ExperimentSpec } from '@amabie/planner';
 
 import { runExperiment, InfraAbort } from '../src/pipeline.js';
-import { validateBundle, structuralIssues, type EvidenceBundle } from '@canary-rn/evidence-schema';
+import { validateBundle, structuralIssues, type EvidenceBundle } from '@amabie/evidence-schema';
 import { assertProof, actualHostFingerprint, verifyArtifacts, verifyRunIdentity, verifyClassificationDerivation, type ProofExpectation } from '../src/prove.js';
-import { sha256hex } from '@canary-rn/hashing';
+import { sha256hex } from '@amabie/hashing';
 import { writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript, WIDGET_PKGS, assertDoubleObservation } from './stub-harness.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-e2e-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-e2e-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const FAKE_SHA = 'a'.repeat(40);
 // Round-3 B4: the fetch seam must declare the ACTUAL digest of the bytes it
 // hands over — the pipeline retains fixture.tgz and the prove gate re-hashes
 // it (verifyRunIdentity), so a synthetic digest no byte matches dies.
-const FAKE_BYTES = Buffer.from('canary-offline-fake-tarball-bytes');
+const FAKE_BYTES = Buffer.from('amabie-offline-fake-tarball-bytes');
 const FAKE_BLOB = { bytes: FAKE_BYTES, sha256: sha256hex(FAKE_BYTES) };
 
 /**
  * A downstream repo whose test.js PASSES under widget@1 and FAILS (a REAL
- * executed failure under the pinned Canary mocha double) under widget@2.
+ * executed failure under the pinned Amabie mocha double) under widget@2.
  * `driftSwap` additionally bumps an unrelated dep (left-pad) so the candidate
  * tree drifts OUTSIDE the studied dependency subtree.
  *
@@ -89,7 +91,7 @@ async function offlineRun(driftSwap: boolean): Promise<
   makeStub(stub, { driftSwap });
   const proj = 'downstream';
   const result = await runExperiment(specFor(), repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ ...FAKE_BLOB }),
     extract: (_tgz, wsRoot) => {
       const target = path.join(wsRoot, `${proj}-${FAKE_SHA}`);
@@ -98,6 +100,52 @@ async function offlineRun(driftSwap: boolean): Promise<
   });
   return { repoRoot, artifactsDir: result.artifactsDir, bundle: result.bundle, issues: result.bundleIssues };
 }
+
+describe('pipeline containment outside measurement rounds', () => {
+  for (const stage of ['prepare', 'toolchain', 'build', 'swap', 'tree', 'attestation', 'npm-version']) {
+    it(`${stage}: unconfirmed cleanup aborts before a strong verdict despite zero process exit`, async () => {
+      const repoRoot = fs.mkdtempSync(path.join(TMP, 'containment-repo-'));
+      const stub = fs.mkdtempSync(path.join(TMP, 'containment-stub-'));
+      makeStub(stub, { driftSwap: false });
+      const spec = specFor() as ExperimentSpec;
+      const pass = path.resolve(import.meta.dirname, '../../../../tooling/test-support/fixtures/f-pass.js');
+      spec.commands.toolchainOverrides = [['node', pass, 'containment-toolchain']];
+      spec.commands.build = [['node', pass, 'containment-build']];
+      let injected = false;
+      let afterFailure = 0;
+      const deps = {
+        allowAmabieDoubleOrigin: true,
+        fetch: async () => ({ ...FAKE_BLOB }),
+        extract: (_tgz: string, wsRoot: string) => fs.cpSync(stub, path.join(wsRoot, `downstream-${FAKE_SHA}`), { recursive: true }),
+        // Fault injection preserves a REAL command's output/exit; only the independent cleanup measurement fails.
+        run: async (options: RunOptions) => {
+          if (injected) afterFailure++;
+          const result = await runCommand(options);
+          const argv = options.argv;
+          const match = stage === 'prepare' ? argv.includes(stageCommands({ mocha: true })[0]![1]!)
+            : stage === 'toolchain' || stage === 'build' ? argv.includes(`containment-${stage}`)
+            : stage === 'swap' ? argv.includes('swap.js')
+            : stage === 'tree' ? argv.includes('ls') && argv.includes('--depth')
+            : stage === 'attestation' ? argv.includes('-e') && argv.some(value => value.includes('r.resolve('))
+            : argv.includes('--version');
+          if (!injected && match) {
+            assert.equal(result.exitCode, 0, result.stderr);
+            injected = true;
+            return { ...result, sweepFailed: true };
+          }
+          return result;
+        },
+      };
+      await assert.rejects(runExperiment(spec, repoRoot, true, deps), (error: unknown) => {
+        assert.ok(error instanceof InfraAbort, 'the caller receives the existing infrastructure-failure contract');
+        assert.match(error.message, /containment sweep/);
+        return true;
+      });
+      assert.equal(injected, true, 'the named stage actually executed before injecting the cleanup fault');
+      assert.equal(afterFailure, 0, 'no later command executes after the unconfirmed cleanup');
+    });
+  }
+});
 
 describe('audit M8 — offline pipeline end-to-end', () => {
   it('confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean', async () => {
@@ -120,7 +168,7 @@ describe('audit M8 — offline pipeline end-to-end', () => {
       'candidate round must persist failing-test identities');
     assert.equal(cand.reportedFailing, 1);
     // Post-GLM Finding A: this rule-5 was EARNED, not printed — every round
-    // carries a VALID Canary observation of the pinned double executing the
+    // carries a VALID Amabie observation of the pinned double executing the
     // very counts and identities the text claims.
     assertDoubleObservation(bundle.rounds);
     // And a well-formed proof expectation passes assertProof against the logs.

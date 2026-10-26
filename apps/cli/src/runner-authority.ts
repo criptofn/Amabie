@@ -11,30 +11,29 @@
  *
  * The authority is the operator's own SEALED SETUP PLAN — the ONE moment (per
  * `pinPlanPrograms`) at which a human authorizes concrete programs, which seals
- * ABSOLUTE paths into `.canary/canary.local.json` with a plan digest and per-check
+ * ABSOLUTE paths into `.amabie/amabie.local.json` with a plan digest and per-check
  * argv digests. Deriving the grant from it adds no new trust surface:
  *
- *  - the config must not be one Canary refuses to treat as local state
+ *  - the config must not be one Amabie refuses to treat as local state
  *    (`untrustedConfigReason`: written by a different installation, or committed
  *    to the repo — a cloned config is not yours);
  *  - the plan must still match its own seal (`planAuthorityDrift`: plan digest,
  *    per-check argv digests, declared paths), so editing the plan after setup
  *    grants nothing — the recovery is a deliberate re-seal, not a silent edit;
  *  - only a step whose argv actually invokes a Python TEST RUNNER contributes, and
- *    the identity is Canary's own measurement of that interpreter's version and
+ *    the identity is Amabie's own measurement of that interpreter's version and
  *    bytes. A step that merely runs `python script.py` authorizes nothing.
  *
  * Returns {} on ANY doubt. An empty grant is not an error: it is exactly the
  * fail-closed state in which the round records ABSENT and strong labels stay
  * unreachable — the honest outcome for a machine where nobody has run
- * `canary setup` for this project.
+ * `amabie setup` for this project.
  *
- * This lives in its own module because `onboarding.ts` imports `pipeline.ts` for
- * `CANARY_VERSION`; the other direction would make the graph cyclic.
+ * Reads configuration and plan authority directly, without importing CLI commands.
  */
-import { PYTEST_RUNNER_ID, detectPythonRunner, pytestRunnerIdentity, pythonRunnerIdentity } from '@canary-rn/executor';
+import { PYTEST_RUNNER_ID, detectPythonRunner, pytestRunnerIdentity, pythonRunnerIdentity } from '@amabie/executor';
 
-import { readConfig, untrustedConfigReason } from './onboarding.js';
+import { readConfig, untrustedConfigReason } from './local-config.js';
 import { planAuthorityDrift } from './project.js';
 
 export type RunnerIdentityGrant = Record<string, { version: string; identitySha256: string }>;

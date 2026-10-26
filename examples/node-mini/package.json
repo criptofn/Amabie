@@ -1,9 +1,9 @@
 {
-  "name": "canary-example-node",
+  "name": "amabie-example-node",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "The smallest Node project Canary can verify: one declared check, nothing else.",
+  "description": "The smallest Node project Amabie can verify: one declared check, nothing else.",
   "scripts": {
     "test": "node test.js"
   }

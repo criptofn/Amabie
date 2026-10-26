@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r11-bound-requirements-plain-4",
   "task": "bound-requirements",
   "arm": "plain",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -27,7 +27,7 @@
     ]
   },
   "startedAt": "2026-09-12T22:22:59.434Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-Ts9MRl",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-Ts9MRl",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -46,9 +46,9 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`canary.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -78,7 +78,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Canary isn't connected in this repo, and connecting it (`canary setup`) isn't part of this task — the checks themselves are the proof, and I've run each one's exact command (`node checks/check-*.cjs`, as declared in `canary.project.json`) directly. All three pass, so the sealed plan will find them green.\n\nEverything works now. All three requirements are implemented and proven:\n\n- **check-trim** — `ok: every case satisfies requirement 1`\n- **check-empty** — `ok: every case satisfies requirement 2`\n- **check-case** — `ok: every case satisfies requirement 3`\n- Visible suite (`run-tests.js`) — 1 passing\n\n**What I changed** (only `src/text.js`):\n\n1. Implemented `normalize(text)`: `String(text).trim()` → returns `'empty'` when the trimmed result is `''` → otherwise returns the trimmed value lower-cased.\n2. Updated the file's doc comment, which previously described the unimplemented stub, to describe the implemented behavior.\n\nNo checks were weakened, deleted, or re-pointed, and `canary.project.json` is untouched. Changes are left uncommitted in the working directory since you didn't ask for a commit."
+    "finalText": "Amabie isn't connected in this repo, and connecting it (`amabie setup`) isn't part of this task — the checks themselves are the proof, and I've run each one's exact command (`node checks/check-*.cjs`, as declared in `amabie.project.json`) directly. All three pass, so the sealed plan will find them green.\n\nEverything works now. All three requirements are implemented and proven:\n\n- **check-trim** — `ok: every case satisfies requirement 1`\n- **check-empty** — `ok: every case satisfies requirement 2`\n- **check-case** — `ok: every case satisfies requirement 3`\n- Visible suite (`run-tests.js`) — 1 passing\n\n**What I changed** (only `src/text.js`):\n\n1. Implemented `normalize(text)`: `String(text).trim()` → returns `'empty'` when the trimmed result is `''` → otherwise returns the trimmed value lower-cased.\n2. Updated the file's doc comment, which previously described the unimplemented stub, to describe the implemented behavior.\n\nNo checks were weakened, deleted, or re-pointed, and `amabie.project.json` is untouched. Changes are left uncommitted in the working directory since you didn't ask for a commit."
   },
   "visible": {
     "exitCode": 0,
@@ -152,20 +152,20 @@
     "bytes": {
       "toolResultTotal": 5059,
       "largestToolResult": 1224,
-      "canaryVisible": 432,
+      "amabieVisible": 432,
       "hookOutput": 0
     },
     "commands": {
       "total": 3,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-plain-Ts9MRl\\project\" && canary status"
+      "amabieCommands": [
+        "cd \"C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-plain-Ts9MRl\\project\" && amabie status"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

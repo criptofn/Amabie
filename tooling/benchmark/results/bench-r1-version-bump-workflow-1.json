@@ -1,10 +1,10 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r1-version-bump-workflow-1",
   "task": "version-bump",
   "arm": "workflow",
   "startedAt": "2026-09-12T03:24:48.093Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-version-bump-workflow-IpeF7m",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-version-bump-workflow-IpeF7m",
   "agent": {
     "command": "claude",
     "model": null,
@@ -18,10 +18,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -51,7 +51,7 @@
     "promotionBundles": [],
     "acceptedPromotionBundles": [],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Canary checks\nproof obligations open: 1 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Amabie checks\nproof obligations open: 1 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
   },
   "agentResult": {
     "isError": false,
@@ -66,7 +66,7 @@
       "cacheCreationTokens": 20274,
       "totalTokens": 174241
     },
-    "finalText": "The only remaining `1.2.3` is the historical CHANGELOG entry for the previous release — correct to keep; nothing claims 1.2.3 as the current version.\n\n**Does everything work now?** The code side: yes. The promotion: not yet, and not by me.\n\n- `canary finish version-bump` reports **TECHNICAL EVIDENCE: PROVEN** — the sealed plan (`npm run test`) passes, the diff is committed in the candidate.\n- Promotion stays locked on one **non-objective obligation** (`dependency-change` — declared by the task registration, not by this work): it says there is nothing observable to compare, and can only be closed by a human running `canary accept version-bump` from an interactive terminal. Canary's rules and this repo's instructions forbid me from automating or forging that acceptance, so I stopped there rather than manufacturing a dependency-file change to spoof the check.\n\n**What I changed** (all in the candidate `.canary/candidates/version-bump`, commit `81bc47a`):\n- `package.json` — version → `2.0.0`\n- `src/version.js` — `VERSION` → `'2.0.0'`\n- `README.md` — \"Current version: **2.0.0**\"\n- `CHANGELOG.md` — added `[2.0.0] - 2026-09-12` entry; kept the `[1.2.3]` history entry\n\nThe base tree is untouched. Next step is yours: `canary accept version-bump` to promote."
+    "finalText": "The only remaining `1.2.3` is the historical CHANGELOG entry for the previous release — correct to keep; nothing claims 1.2.3 as the current version.\n\n**Does everything work now?** The code side: yes. The promotion: not yet, and not by me.\n\n- `amabie finish version-bump` reports **TECHNICAL EVIDENCE: PROVEN** — the sealed plan (`npm run test`) passes, the diff is committed in the candidate.\n- Promotion stays locked on one **non-objective obligation** (`dependency-change` — declared by the task registration, not by this work): it says there is nothing observable to compare, and can only be closed by a human running `amabie accept version-bump` from an interactive terminal. Amabie's rules and this repo's instructions forbid me from automating or forging that acceptance, so I stopped there rather than manufacturing a dependency-file change to spoof the check.\n\n**What I changed** (all in the candidate `.amabie/candidates/version-bump`, commit `81bc47a`):\n- `package.json` — version → `2.0.0`\n- `src/version.js` — `VERSION` → `'2.0.0'`\n- `README.md` — \"Current version: **2.0.0**\"\n- `CHANGELOG.md` — added `[2.0.0] - 2026-09-12` entry; kept the `[1.2.3]` history entry\n\nThe base tree is untouched. Next step is yours: `amabie accept version-bump` to promote."
   },
   "visible": {
     "exitCode": 0,

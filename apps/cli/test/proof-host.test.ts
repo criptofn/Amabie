@@ -20,7 +20,7 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { runExperiment } from '../src/pipeline.js';
-import { validateBundle, integrityFor, type EvidenceBundle } from '@canary-rn/evidence-schema';
+import { validateBundle, integrityFor, type EvidenceBundle } from '@amabie/evidence-schema';
 import {
   assertProof, actualHostFingerprint, environmentAttestationIssues, proofVerdict,
   verifyArtifacts, verifyArtifactSemantics, verifyRunIdentity,
@@ -28,10 +28,10 @@ import {
   type ProofExpectation, type HostFingerprint, type TrustedRunSpec,
 } from '../src/prove.js';
 import { verifyTreeSnapshots } from '../src/verify-tree.js';
-import { sha256hex, sha256File } from '@canary-rn/hashing';
+import { sha256hex, sha256File } from '@amabie/hashing';
 import { writeStagedPayload, stageCommands, MOCHA_TEST_ARGV, widgetSpec, swapScript, WIDGET_PKGS } from './stub-harness.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-b3-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-b3-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 const FAKE_SHA = 'a'.repeat(40);
 const RUNTIME: HostFingerprint = actualHostFingerprint();
@@ -41,7 +41,7 @@ const RUNTIME: HostFingerprint = actualHostFingerprint();
  * node_modules (the audit refuses that); the fake tree is staged and
  * materialized by the prepare step, and the CONFIRMED_REGRESSION these
  * tests gate is earned through the REAL observation channel ($bin:mocha on
- * the hash-pinned Canary double). The HOST-EXACTNESS semantics this file
+ * the hash-pinned Amabie double). The HOST-EXACTNESS semantics this file
  * pins are untouched: proofHost is declared as the recording machine, the
  * gate order is unchanged, and the per-round tuple's fifth file
  * (<arm>-<round>.attest.ndjson) is bound by verifyArtifacts on every host —
@@ -75,9 +75,9 @@ async function realRun(): Promise<{ bundle: EvidenceBundle; artifactsDir: string
   } satisfies TrustedRunSpec & Record<string, unknown>;
   // B4: the fetch seam declares the REAL digest of its bytes — the prove gate
   // re-hashes the retained fixture.tgz against it.
-  const bytes = Buffer.from('canary-proof-host-stub-tarball');
+  const bytes = Buffer.from('amabie-proof-host-stub-tarball');
   const result = await runExperiment(spec, repoRoot, true, {
-    allowCanaryDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
+    allowAmabieDoubleOrigin: true, // post-GLM F5: offline harness holds the double authority
     fetch: async () => ({ bytes, sha256: sha256hex(bytes) }),
     extract: (_t, ws) => fs.cpSync(stub, path.join(ws, `downstream-${FAKE_SHA}`), { recursive: true }),
   });

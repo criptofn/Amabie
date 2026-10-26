@@ -8,7 +8,7 @@
  * `ExecutionObservation` on the same path that feeds verdicts.
  *
  * The trust difference from `node --test`, stated because it drives the tests below:
- * a pytest installation is NOT the runtime Canary is executing on, so the identity
+ * a pytest installation is NOT the runtime Amabie is executing on, so the identity
  * pin must come from an authority — and in the product it comes from the operator's
  * sealed setup plan (apps/cli/src/runner-authority.ts). Here the grant is the
  * in-process test seam, so these tests exercise the CHANNEL and the fail-closed
@@ -22,7 +22,7 @@
  *   6. a fabricated phase report is rejected live -> INCONCLUSIVE
  *   7. a frame injected by test code fails the round closed (pytest runs tests
  *      in its OWN process, so this door is real)
- *   8. the observer door adds ONLY Canary-owned variables
+ *   8. the observer door adds ONLY Amabie-owned variables
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -31,12 +31,12 @@ import path from 'node:path';
 import { after, describe, it } from 'node:test';
 
 import { Recorder, isPytestObserverSuppressionToken, observerNonce, pytestRunnerIdentity } from '../src/index.js';
-import { sanitizedEnv, sanitizedEnvKeys } from '@canary-rn/support';
-import { classify, type RoundFact } from '@canary-rn/classification';
+import { sanitizedEnv, sanitizedEnvKeys } from '@amabie/support';
+import { classify, type RoundFact } from '@amabie/classification';
 
 /** The workspace-local pytest interpreter (gitignored `_toolchains/py`), or null. */
 function findPytestPython(): string | null {
-  const env = process.env['CANARY_PYTEST_PYTHON'];
+  const env = process.env['AMABIE_PYTEST_PYTHON'];
   if (env !== undefined && fs.existsSync(env)) return env;
   let dir = import.meta.dirname;
   for (let i = 0; i < 8; i++) {
@@ -51,10 +51,10 @@ function findPytestPython(): string | null {
 }
 const PY = findPytestPython();
 const SKIP = PY === null
-  ? 'no workspace-local pytest interpreter (create _toolchains/py and pip install pytest, or set CANARY_PYTEST_PYTHON)'
+  ? 'no workspace-local pytest interpreter (create _toolchains/py and pip install pytest, or set AMABIE_PYTEST_PYTHON)'
   : false;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-pytest-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pytest-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 function workspace(name: string, files: Record<string, string>): { root: string; fixture: string } {
@@ -86,7 +86,7 @@ const subs = { dep: 'unused', baseline: 'b', candidate: 'c' };
 const resolveBin = (): string => { throw new Error('no $bin resolution in these tests'); };
 /**
  * The interpreter is named ABSOLUTELY, and that is the real-world shape too: pytest
- * lives in a project's (or Canary's) virtual environment, so a spec names that
+ * lives in a project's (or Amabie's) virtual environment, so a spec names that
  * venv's interpreter. `SPEC_LITERAL_EXECUTABLES` allows an absolute path whose
  * basename is a python, and the pin is then measured on exactly those bytes.
  * A bare `python` would resolve through PATH to whatever interpreter the host
@@ -200,7 +200,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
       .expandArgvWithPlan(PYTEST_ARGS, subs, resolveBin).plan;
     assert.equal(wrong.injected, false, 'a digest that does not match the installation must not authorize');
     assert.equal(wrong.observedRunnerIdentitySha256, identity.identitySha256,
-      '"what bytes were there" is a Canary-derived fact regardless of trust');
+      '"what bytes were there" is an Amabie-derived fact regardless of trust');
 
     // A rename of the release (same bytes, different version claim) is refused too.
     const wrongVersion = recorder(ws, { pytest: { version: '0.0.0', identitySha256: identity.identitySha256 } })
@@ -213,16 +213,16 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
     const identity = pytestRunnerIdentity(PY!);
     assert.ok(identity !== null);
     const rec = recorder(ws, { pytest: identity });
-    for (const token of ['-p', 'no:canary_pytest_observer', '-pno:canary_pytest_observer']) {
-      if (token === '-p' || token === '-pno:canary_pytest_observer') {
-        assert.equal(isPytestObserverSuppressionToken(token), token === '-pno:canary_pytest_observer',
+    for (const token of ['-p', 'no:amabie_pytest_observer', '-pno:amabie_pytest_observer']) {
+      if (token === '-p' || token === '-pno:amabie_pytest_observer') {
+        assert.equal(isPytestObserverSuppressionToken(token), token === '-pno:amabie_pytest_observer',
           `${token}: only the token that NAMES the observer is a suppression`);
         continue;
       }
       assert.equal(isPytestObserverSuppressionToken(token), true, `${token} must be recognized`);
       assert.throws(
         () => rec.expandArgvWithPlan([PY!, '-m', 'pytest', token], subs, resolveBin),
-        /observer-suppression|disables Canary's observer plugin/,
+        /observer-suppression|disables Amabie's observer plugin/,
         `a suppression token (${token}) must be refused`,
       );
     }
@@ -267,7 +267,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
         '        skipped = False',
         '        wasxfail = None',
         '        longrepr = None',
-        '    import canary_pytest_observer as obs',
+        '    import amabie_pytest_observer as obs',
         '    obs.pytest_runtest_logreport(FakeReport())',
         '',
       ].join('\n'),
@@ -307,9 +307,9 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
     assert.equal(classifyWith(round.fact).classification, 'INCONCLUSIVE');
   });
 
-  it('8. the observer door adds ONLY Canary-owned variables (no env-merge)', () => {
+  it('8. the observer door adds ONLY Amabie-owned variables (no env-merge)', () => {
     const ws = workspace('env', { 'test_sample.py': 'def test_ok():\n    assert True\n' });
-    const obsDir = path.join(ws.root, 'canary-pytest-observer');
+    const obsDir = path.join(ws.root, 'amabie-pytest-observer');
     fs.mkdirSync(obsDir, { recursive: true });
     const baseKeys = sanitizedEnvKeys(sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath) }));
     const withObserver = sanitizedEnvKeys(sanitizedEnv({
@@ -317,7 +317,7 @@ describe('pytest observation through the executor round path', { skip: SKIP }, (
       observer: { kind: 'pytest', dir: obsDir, nonce: 'n' },
     }));
     assert.deepEqual(withObserver.filter((k) => !baseKeys.includes(k)).sort(),
-      ['CANARY_OBSERVER_NONCE', 'PYTEST_PLUGINS', 'PYTHONNOUSERSITE', 'PYTHONPATH'],
+      ['AMABIE_OBSERVER_NONCE', 'PYTEST_PLUGINS', 'PYTHONNOUSERSITE', 'PYTHONPATH'],
       'the pytest door may add exactly its own variables and nothing else');
   });
 });

@@ -2,7 +2,7 @@
 /**
  * v1.1 item C — the STANDALONE distribution: a single executable with Node
  * embedded, so an ordinary Python / Rust / Go user does not have to install
- * Node.js to run Canary.
+ * Node.js to run Amabie.
  *
  * WHY SEA AND NOT A THIRD-PARTY COMPILER: `node --build-sea` is the runtime's
  * own supported mechanism and, on the Node builds this repo targets, it is a
@@ -38,13 +38,14 @@ import { build } from 'esbuild';
 // run this script — it was the real GitHub Actions `standalone` job, on all three OSes, that
 // caught it. A rule that is tested in isolation is not the same as a rule that is WIRED.
 import { seaCapable, seaRequirement } from './sea-capability.mjs';
+import { bundledPackages, thirdPartyNotices } from './third-party-notices.mjs';
 
-const CANARY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ENTRY = path.join(CANARY, 'apps', 'cli', 'dist', 'src', 'main.js');
-const OUTDIR = path.join(CANARY, 'pack', 'standalone');
+const AMABIE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const ENTRY = path.join(AMABIE, 'apps', 'cli', 'dist', 'src', 'main.js');
+const OUTDIR = path.join(AMABIE, 'pack', 'standalone');
 const TARGET = `${process.platform}-${process.arch}`;
 const EXT = process.platform === 'win32' ? '.exe' : '';
-const OUT = path.join(OUTDIR, `canary-${TARGET}${EXT}`);
+const OUT = path.join(OUTDIR, `amabie-${TARGET}${EXT}`);
 const NODE_DIR = path.dirname(process.execPath);
 
 /**
@@ -67,7 +68,7 @@ const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 
 if (listTargets) {
   console.log(JSON.stringify({
-    schema: 'canary-distribution-targets/1',
+    schema: 'amabie-distribution-targets/1',
     host: TARGET,
     hostBuildable: TARGET,
     targets: DISTRIBUTION_TARGETS.map((t) => ({
@@ -110,19 +111,19 @@ function pathWithoutNode() {
 
 if (!fs.existsSync(ENTRY)) fail(`no compiled CLI at ${ENTRY} — run \`npm run build\` first`);
 
-const STAGE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-standalone-'));
+const STAGE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-standalone-'));
 const evidence = {
-  schema: 'canary-standalone-evidence/1',
+  schema: 'amabie-standalone-evidence/1',
   builtOn: { platform: process.platform, arch: process.arch, node: process.version, os: os.release() },
   target: TARGET,
-  artifact: path.relative(CANARY, OUT).replace(/\\/g, '/'),
+  artifact: path.relative(AMABIE, OUT).replace(/\\/g, '/'),
   runs: [],
 };
 
 try {
   // 1. ONE self-contained ES module, exactly like the npm tarball's bundle.
   const bundlePath = path.join(STAGE, 'main.mjs');
-  await build({
+  const { metafile } = await build({
     entryPoints: [ENTRY],
     bundle: true,
     format: 'esm',
@@ -131,17 +132,28 @@ try {
     outfile: bundlePath,
     legalComments: 'none',
     logLevel: 'warning',
+    metafile: true,
   });
+  // The executable inlines the same third-party code as the npm bundle, so its notices ship beside it.
+  const notices = thirdPartyNotices(bundledPackages(metafile, AMABIE));
+  if (notices.missing.length > 0) fail(`bundled packages ship no license file: ${notices.missing.join(', ')}`);
   // A shebang is meaningless inside an executable and SEA does not need it;
   // strip it so the embedded module is plain ESM with no leading special line.
   const bundled = fs.readFileSync(bundlePath, 'utf8');
-  if (bundled.startsWith('#!')) fs.writeFileSync(bundlePath, bundled.slice(bundled.indexOf('\n') + 1));
+  const body = bundled.startsWith('#!') ? bundled.slice(bundled.indexOf('\n') + 1) : bundled;
+  // The bundle inlines CommonJS dependencies (cross-spawn) whose require('child_process') esbuild
+  // routes through a dynamic-require helper that throws inside an ES module. Give the module a
+  // real require, exactly as the npm bundle does (tooling/pack.mjs). Measured: without it the
+  // executable died on `--version` with "Dynamic require of \"child_process\" is not supported".
+  const nodeRequireBridge = "import { createRequire as __amabieCreateRequire } from 'node:module';\nconst require = __amabieCreateRequire(import.meta.url);\n";
+  fs.writeFileSync(bundlePath, `${nodeRequireBridge}${body}`);
   evidence.bundleBytes = fs.statSync(bundlePath).size;
 
   // 2. The SEA config. `mainFormat: 'module'` keeps `import.meta.url` and ESM
   //    semantics working (measured: the CLI is ESM and relies on them).
   const cfgPath = path.join(STAGE, 'sea-config.json');
   fs.mkdirSync(OUTDIR, { recursive: true });
+  fs.writeFileSync(path.join(OUTDIR, 'THIRD-PARTY-NOTICES.txt'), notices.text);
   fs.writeFileSync(cfgPath, JSON.stringify({
     main: bundlePath,
     output: OUT,
@@ -169,13 +181,13 @@ try {
 
   const version = run(['--version']);
   evidence.runs.push(version);
-  if (version.status !== 0 || !/^canary \d+\.\d+\.\d+/.test(version.stdout)) {
+  if (version.status !== 0 || !/^amabie \d+\.\d+\.\d+/.test(version.stdout)) {
     fail(`the standalone binary did not report its version with Node removed from PATH: ${JSON.stringify(version)}`);
   }
   console.log(`PASS: ${evidence.artifact} --version -> ${version.stdout} (no Node on PATH)`);
 
   // A real command in a real repository, still with no Node on PATH.
-  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-standalone-repo-'));
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-standalone-repo-'));
   const g = spawnSync('git', ['-C', repo, 'init', '-b', 'main'], { encoding: 'utf8' });
   if (g.status !== 0) fail(`could not create the smoke repository: ${g.stderr}`);
   fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: 'standalone-smoke', private: true, scripts: { test: 'node -e "process.exit(0)"' } }, null, 2) + '\n');
@@ -183,16 +195,16 @@ try {
   evidence.runs.push(result);
   let envelope = null;
   try { envelope = JSON.parse(result.stdout); } catch { /* reported below */ }
-  if (envelope === null || envelope.schema !== 'canary-result/1') {
-    fail(`the standalone binary did not produce a canary-result/1 envelope: ${JSON.stringify(result)}`);
+  if (envelope === null || envelope.schema !== 'amabie-result/1') {
+    fail(`the standalone binary did not produce an Amabie result/1 envelope: ${JSON.stringify(result)}`);
   }
   console.log(`PASS: ${evidence.artifact} result --json -> schema=${envelope.schema} status=${envelope.status} exit=${result.status} (no Node on PATH)`);
   fs.rmSync(repo, { recursive: true, force: true });
 
   // 4. Record the evidence beside the artifact. No claim without it.
-  const sums = path.join(OUTDIR, `canary-${TARGET}.sha256`);
-  fs.writeFileSync(sums, `${evidence.artifactSha256}  canary-${TARGET}${EXT}\n`);
-  const evidencePath = path.join(OUTDIR, `canary-${TARGET}.evidence.json`);
+  const sums = path.join(OUTDIR, `amabie-${TARGET}.sha256`);
+  fs.writeFileSync(sums, `${evidence.artifactSha256}  amabie-${TARGET}${EXT}\n`);
+  const evidencePath = path.join(OUTDIR, `amabie-${TARGET}.evidence.json`);
   fs.writeFileSync(evidencePath, JSON.stringify(evidence, null, 2) + '\n');
   // A manifest of the whole distribution story, so the artifact cannot be read
   // without also seeing the path that was NOT built here.
@@ -200,15 +212,15 @@ try {
   const prior = (() => { try { return JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch { return {}; } })();
   const built = { ...(prior.built ?? {}), [TARGET]: { sha256: evidence.artifactSha256, bytes: evidence.artifactBytes, node: process.version, at: new Date().toISOString() } };
   fs.writeFileSync(manifestPath, JSON.stringify({
-    schema: 'canary-distribution/1',
+    schema: 'amabie-distribution/1',
     host: TARGET,
     built,
     notBuiltHere: DISTRIBUTION_TARGETS.filter((t) => built[t] === undefined)
       .map((t) => ({ target: t, status: 'IMPLEMENTED_BUT_REQUIRES_OTHER_OS', build: 'npm run standalone on that host' })),
     alternate: { id: 'npm-tgz', build: 'node tooling/pack.mjs', needsNode: '>=22' },
   }, null, 2) + '\n');
-  console.log(`PASS: standalone ${TARGET} built and executed — ${path.relative(CANARY, sums)} , ${path.relative(CANARY, evidencePath)}`);
-  console.log(`      distribution manifest: ${path.relative(CANARY, manifestPath)}`);
+  console.log(`PASS: standalone ${TARGET} built and executed — ${path.relative(AMABIE, sums)} , ${path.relative(AMABIE, evidencePath)}`);
+  console.log(`      distribution manifest: ${path.relative(AMABIE, manifestPath)}`);
   console.log('NOTE: this is the ONLY target built here. --build-sea embeds the running node binary, so');
   console.log(`      ${DISTRIBUTION_TARGETS.filter((t) => t !== TARGET).join(', ')} must be built and executed on those hosts;`);
   console.log('      none is claimed from this machine. The npm tarball (node tooling/pack.mjs) is the alternate,');

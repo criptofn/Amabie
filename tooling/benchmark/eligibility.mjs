@@ -36,7 +36,7 @@ export const PROVIDER_NATIVE_SOURCE = /^result\.usage/;
 /**
  * May this trial cell contribute its token total to a headline aggregate?
  *
- * @param {unknown} record a `canary-benchmark-trial/2` record
+ * @param {unknown} record a `amabie-benchmark-trial/2` record
  * @returns {{eligible: boolean, reasons: string[], total: number|null, source: string|null}}
  */
 export function cellEligibility(record) {

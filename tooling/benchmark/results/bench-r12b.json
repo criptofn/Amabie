@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark/2",
+  "schema": "amabie-benchmark/2",
   "label": "bench-r12b",
   "generatedAt": "2026-09-13T05:43:47.039Z",
   "instrument": {
@@ -51,7 +51,7 @@
         "B_candidate_correct_verify_refused": 2
       },
       "regressions": 0,
-      "canaryTrials": 2,
+      "amabieTrials": 2,
       "falseGreen": 0,
       "falseRed": 0,
       "suiteRedAfterClaim": 0,
@@ -73,12 +73,12 @@
       "turnsMean": 53,
       "wallSecsMean": 1368,
       "agentVisibleBytesMean": 156142,
-      "canaryVisibleBytesMean": 3585,
+      "amabieVisibleBytesMean": 3585,
       "checkRunsByModelMean": 1.5,
-      "canaryCommandsByModelMean": 5,
+      "amabieCommandsByModelMean": 5,
       "tokensAfterCodeCorrect": null,
       "tokensAfterCodeCorrectTrials": 0,
-      "canaryHookSeenInStream": 0,
+      "amabieHookSeenInStream": 0,
       "assistantEventsMean": 121.5,
       "hookOutputBytesMean": 0,
       "tokenSource": [
@@ -109,7 +109,7 @@
           "B_candidate_correct_verify_refused": 2
         },
         "regressions": 0,
-        "canaryTrials": 2,
+        "amabieTrials": 2,
         "falseGreen": 0,
         "falseRed": 0,
         "suiteRedAfterClaim": 0,
@@ -131,12 +131,12 @@
         "turnsMean": 53,
         "wallSecsMean": 1368,
         "agentVisibleBytesMean": 156142,
-        "canaryVisibleBytesMean": 3585,
+        "amabieVisibleBytesMean": 3585,
         "checkRunsByModelMean": 1.5,
-        "canaryCommandsByModelMean": 5,
+        "amabieCommandsByModelMean": 5,
         "tokensAfterCodeCorrect": null,
         "tokensAfterCodeCorrectTrials": 0,
-        "canaryHookSeenInStream": 0,
+        "amabieHookSeenInStream": 0,
         "assistantEventsMean": 121.5,
         "hookOutputBytesMean": 0,
         "tokenSource": [
@@ -149,7 +149,7 @@
   },
   "tokenDelta": {},
   "kpi": {},
-  "canaryAgreement": {
+  "amabieAgreement": {
     "trials": 2,
     "correctnessTrials": 2,
     "falseGreen": 0,
@@ -167,8 +167,8 @@
         "task": "multi-requirement-pricing",
         "arm": "workflow",
         "oracleKind": "correctness",
-        "canaryVerdict": "NOT PROVEN",
-        "canaryGreen": false,
+        "amabieVerdict": "NOT PROVEN",
+        "amabieGreen": false,
         "hiddenGreen": false,
         "falseGreen": false,
         "falseRed": false,
@@ -185,8 +185,8 @@
         "task": "multi-requirement-pricing",
         "arm": "workflow",
         "oracleKind": "correctness",
-        "canaryVerdict": "NOT PROVEN",
-        "canaryGreen": false,
+        "amabieVerdict": "NOT PROVEN",
+        "amabieGreen": false,
         "hiddenGreen": false,
         "falseGreen": false,
         "falseRed": false,
@@ -229,9 +229,9 @@
       "turns": 37,
       "secs": 1500,
       "checkRunsByModel": 2,
-      "canaryCommandsByModel": 4,
+      "amabieCommandsByModel": 4,
       "agentVisibleBytes": 153591,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -260,9 +260,9 @@
       "turns": 69,
       "secs": 1236.4,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 6,
+      "amabieCommandsByModel": 6,
       "agentVisibleBytes": 158693,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     }
   ]

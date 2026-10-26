@@ -1,5 +1,5 @@
 <!--
-  Keep this short. The one thing reviewers need is evidence, and Canary has a
+  Keep this short. The one thing reviewers need is evidence, and Amabie has a
   very specific idea of what that means: the reporter output of a command you
   actually ran.
 -->

@@ -1,210 +1,15 @@
 #!/usr/bin/env node
-/**
- * THE productization verification entrypoint (approval-free workflow rule):
- * the agent calls ONE known command — `npm run verify:productization` — instead
- * of dynamically constructing shell programs. Every step is a build, a
- * node --test run over compiled tests, or a first-class probe script under
- * tooling/probes/ — no inline interpreters anywhere in this chain.
- *
- * Coverage (productization surface):
- *   1. clean build               (tsc -b — including the onboarding tests)
- *   2. onboarding contract tests (setup/doctor/uninstall/checkpoint + S1-S7 pins)
- *   3. M2 claims-not-evidence contract tests (verification bundles are written
- *      from Canary's own execution and never read back; agent claims are
- *      UNTRUSTED hints that can neither create PASS nor BLOCK — at most they
- *      annotate an already-decided block with a claim-vs-observed contrast)
- *   4. M3 trust-class contract tests (bundles are CANARY_OBSERVED, claims are
- *      AGENT_REPORTED, EXTERNALLY_VERIFIED has no producer; self-declared or
- *      copied class labels are inert — no promotion by writing bytes into a
- *      Canary-owned file; class prose is verbose-only)
- *   5. M4 provenance contract tests (bundle answers plan/code/task/where/when
- *      via planDigest, baseline, candidate tree, per-step stamps; task is a
- *      digest with zero verdict authority, prose never stored; companion hash
- *      is tamper-evidence only — labeled as such, never a signature; pre-M4
- *      configs get baseline:null, not an invented past)
- *   6. M5 trusted-plan contract tests (setup seals plan + verbatim script
- *      texts; the "vitest -> echo all good" swap is blocked BEFORE execution
- *      though it exits 0; config-side plan edits and malformed seals fail
- *      closed; re-seal only via a setup smoke; pre-M5 configs verify as before)
- *   7. M6 proof-orchestration contract tests (task kinds can only ADD proof
- *      obligations on top of the sealed plan — never lift it; attributable
- *      test deletions are UNMET, unattributable UNPROVEN; the engine is pure
- *      over injected diff signals; canary task is AGENT_REPORTED digest-only
- *      with zero authority; malformed records collapse to pre-M6 silence; a
- *      fake-git (unresolvable) diff never upgrades an obligation to met)
- *   8. M7 candidate-isolation contract tests (fake-git ceiling: the CLI surface,
- *      trusted-base gate, registry shape-validation, impersonation guard before
- *      any identity read, LOST -> honest BLOCKED bundle with every M2-M4 field
- *      intact, uninstall refusing to delete .canary while candidates are
- *      registered, Windows reserved device names at parse, and PASS is
- *      UNREACHABLE under fake git — the positive path is proven only by probe 14)
- *  8b. M8 promotion contract tests (the apply act under the fake-git ceiling:
- *      --promote needs one mode + a valid name and --discard stays --remove-only
- *      (misuse 3); record-level refusals DELEGATE to the live re-verification —
- *      promote carries no separate, impersonatable record gate; the canonical
- *      impersonation guard answers for a forged baseRoot; fake git can never
- *      reach the apply: BLOCKED only, no PROMOTED/ACCEPTED line, no promotion
- *      bundle, and a forged stored PASS changes nothing; promotion bundles obey
- *      the same bounded retention as every other evidence source)
- *   9. empty-plan checkpoint probe (degenerate config never fakes green)
- *  10. M2 real-git probe (candidate binds to actual HEAD/dirty; digest binds to
- *      retained bytes; outward-linked evidence dir is never written through)
- *  11. M3 real-git probe (copy-to-promote attack end to end: a forged
- *      CANARY_OBSERVED pass bundle blocks neither checkpoint nor doctor)
- *  12. M4 real-git probe (real head+tree bytes; baseline holds while the
- *      candidate moves; task digest over the real wire; companion hash binds
- *      and catches a byte flip that stays behaviorally inert)
- *  13. M5 real-git probe (the swap really exits 0 yet blocks; git-restore
- *      returns silent verification; re-setup re-seals under its smoke; the
- *      candidate's edit is visible in git status — M7's future surface)
- *  14. M7 real-git probe (§7 guarantees end to end on real git: worktree bound
- *      to the exact base commit; sealed plan executes INSIDE the candidate with
- *      evidence in the BASE; FAIL/BLOCK leave the base byte-identical; every
- *      pre-execution block writes a zero-step blocked bundle — script swap
- *      (marker-absence + positive control), worker-added pre/post lifecycle
- *      hook, candidate-side .npmrc (absent-from-base and changed-vs-base),
- *      committed gitlink with no .gitmodules, empty plan; dirty/LOST/IMPOSTOR/
- *      ADVANCED/UNREGISTERED recover honestly (registered names never listed
- *      UNREGISTERED); spaces+Unicode --path AND an outside-base --path that
- *      registers, verifies, and clean-removes without --discard; remove refuses
- *      dirty without --discard)
- *  14b. M8 real-git promotion probe (§8 end to end on real git: live re-verify
- *      is the SOLE authority — a stored PASS bundle is never read back, a forged
- *      one stays inert bytes; ff-only apply binds the base to exactly the
- *      verified commit and the post-proof re-derives base head+tree against the
- *      pinned candidate identity; idempotent re-promote lands ALREADY APPLIED
- *      with no second act; divergence, TRACKED-dirty base, untracked collision
- *      (git's own refusal, stray bytes preserved), detached base, candidate
- *      HEAD moved mid-plan (the identity-sandwich catch, plus honest recovery:
- *      a stable second promote applies the new head), dirty candidate after a
- *      PASS — every refusal leaves the base byte-identical and writes a blocked
- *      bundle; candidate-planted local config + a git shim on PATH cannot edit
- *      the sealed authority the plan actually ran; malformed record delegates;
- *      the former M8-scope residual — a plan step writing the base evidence
- *      dir — is now CLOSED by M9's whole-tree evidence fingerprint, step 14c)
- *  14c. M9 real-git authority probe (§9 end to end: a sealed plan step that
- *      touches ANY authority byte — config, harness settings (rewrite +
- *      drop), registry record, task intent, the evidence store (forged PASS
- *      bundle planted, observed bundle edited, whole dir wiped), the
- *      VERIFIER'S OWN dist/src code tree, or the base HEAD ref — is caught by
- *      the fingerprint sandwich at both window edges: the §9 mandate, exit 2,
- *      a zero-step blocked bundle carrying authorityEvent; the PASS path is
- *      structurally never reached. Review hardening, all proven here: the
- *      sealed-plan checks re-run AFTER the window (a step rewriting a later
- *      step's script text executes unsealed words yet cannot PASS — the
- *      after-execution mandate catches it with on-disk proof the swap ran);
- *      a during/after catch QUARANTINES the base — re-verify and promote
- *      refuse before judging, writing no bundle, until a human setup re-seal
- *      clears it (a byte-idempotent tampering can no longer re-baseline into
- *      innocence, and gate 6 can never read an attacker-moved base ref as
- *      ALREADY APPLIED); the containment pre-gate stays grudgeless (restore
- *      recovers PASS with no marker). Untouched authority still passes (the
- *      guard must not shout at innocence); prevention is honestly
- *      detection-at-edges — no kernel lock exists to claim (m9-lock-facts),
- *      the ref really moved under S13, and a same-UID hand can delete the
- *      marker by hand (what quarantine closes is the automated laundering))
- *  14d. M10 real-git obligations+intent probe (§10/§11 end to end: the sealed
- *      plan passing is the FLOOR, not the finish — a green plan with a missing
- *      proof obligation (or with NO obligations at all: M10.1/GLM F4 — zero
- *      registered task kinds means NO task-obligation authority, so Canary
- *      refuses to claim completion it cannot judge; see step 14e) is
- *      CANDIDATE NOT PROVEN (exit 2, honest 'unproven'
- *      bundle that still carries the executed steps) and promotion stays
- *      locked; an objectively violated obligation (committed test deletion)
- *      is CANDIDATE BLOCKED with the obligation named and restore advice
- *      printed; a red plan stays CANDIDATE FAIL and its bundle carries the
- *      obligation read (M11 repair fuel); closing an obligation is REAL WORK —
- *      adding the test / restoring the file recovers PASS. §11: the record
- *      freezes plan+sealed texts+task at isolation; weakening that authority
- *      afterwards (drop a step or re-seal a script's text via re-setup,
- *      shrink the registered task) blocks BEFORE anything runs — zero-step
- *      bundle carrying intentEvent, refuse on promote, NO quarantine stamp
- *      (grudgeless: the snapshot itself rides M9's fingerprint set), record
- *      NOT re-baselined by refusal; restoring the bytes IS the recovery,
- *      growth is always allowed. M10.2 (GLM re-audit, F4-GATE-2) corrected
- *      what a no-snapshot record does: it FAILS SAFE to NOT PROVEN — the
- *      record is agent-writable bytes between windows, so absence is never
- *      read as "pre-M10, PASS-compatible"; the recovery is register +
- *      re-isolate (see step 14f). Review-round gates: a
- *      lying index (--assume-unchanged/--skip-worktree) reads dirty so gate 2
- *      refuses; a test renamed out of the test DIRECTORY is coverage loss
- *      even keeping the .test.js suffix; obligation signals are frozen
- *      BEFORE the execution window (a step writing its own test mid-window
- *      mints no evidence); and isolate ROLLS BACK when the fresh worktree is
- *      not provably clean at birth (post-checkout hook) — no registration,
- *      no half-created candidate; its lying-index premise — --assume-unchanged
- *      prints lowercase and --skip-worktree prints 'S' in git ls-files -v,
- *      both invisible to git status — is pinned by the lsfiles-letters probe)
- *  14e. M10.1 F4 taskless-bypass repro (the GLM audit's strongest agent move
- *      — register NOTHING — run end to end and pinned CLOSED: a taskless
- *      candidate with a green sealed plan is CANDIDATE NOT PROVEN (exit 2,
- *      obligation [task-authority] UNPROVEN naming the missing authority),
- *      promotion is locked with zero promotion bundles and the base HEAD
- *      byte-unchanged; a pre-fix run of this same probe logged the bypass
- *      OPEN in docs/night-evidence. Positive control in the same probe: the
- *      honest path (registered bugfix + committed regression test) still
- *      lands PASS → PROMOTED → ACCEPTED — the gate blocks laundering, not
- *      work.)
- *  14f. M10.2 adversarial authority battery (real git, real CLI — the GLM
- *      re-audit's two CONFIRMED bypasses plus every neighbouring agent move,
- *      cases A–L: A taskless-at-isolation and B post-isolation refactor
- *      self-mint (F4-GATE-1) stay NOT PROVEN — registering later ADDS duties,
- *      it never mints the frozen authority; C no other kind mints it either;
- *      D/H register + RE-ISOLATE is the only recovery and task churn cannot
- *      move a frozen verdict; E/F/G deleting or spoofing rec.intent —
- *      backdated legacy dressing included — fail safe, there is no pre-M10
- *      interpretation and unreadable shapes refuse as malformed; I env vars
- *      and invented flags are inert; J planted and stale PASS bundles are
- *      inert because promotion live-re-verifies; K precedence holds exactly
- *      (fail > unmet > unproven > pass); L positive control — an honest
- *      pre-isolation bugfix with a committed regression test lands PASS →
- *      ACCEPTED. Every blocked case: exit 2, zero promotion bundles, base
- *      HEAD byte-unchanged.)
- *  15. M6 real-git probe (a CLEAN setup baseline really can attribute blame;
- *      a green plan + deleted test = BLOCK — worktree, STAGED, or committed —
- *      and the printed restore advice unmutes; renames out of (and staying
- *      inside) test paths; a NON-ASCII test name cannot defeat the -z gate
- *      (review #1/#8); Canary's own backup of a tracked settings.json stays
- *      invisible to the stamp (review #2); a committed lockfile ADDS the
- *      dependency obligation with no declaration; a registered task never
- *      lifts the sealed authority; the dirty-at-setup mirror keeps staged +
- *      worktree deletions UNPROVEN with an honest premise)
- *  16. clean-room lazy-vibecoder acceptance (one-command full journey)
- *  17. HTG inline-interpreter corpus (real hook autonomy: 0 routine prompts,
- *      every dangerous case still gated) — classification only, nothing runs.
- *      R2 host-neutrality: the wrapper under test defaults to the TRACKED
- *      canonical bytes (not a personal live-hook path); the engine resolves
- *      via env or the real npm-global layouts and is labeled by source,
- *      package version and sha256; a layer that cannot reproduce on this
- *      host exits 3 with explicit SKIP lines — counted as SKIP here, never
- *      as a PASS, never as a module-not-found crash.
- *  18. packed-artifact clean room (tooling/pack.mjs -> npm pack -> install the
- *      exact .tgz into a spaces-path temp repo; full vibecoder journey through
- *      the installed bundle; tarball audited: no monorepo, no secrets)
- *  19. 1.1 P0 trust-boundary (the Astra merge): the sealed authority store's
- *      custody refusals (linked/hard-linked key material, mismatched keypair
- *      halves, reserved device names, lost/corrupt ledgers, CAS conflicts, a
- *      held lock that is never stolen), the LOCAL authorization kernel
- *      (verifier+reviewer receipts bound to run/project/domain/duties, a
- *      promotion window that cannot be cached) and the platform capability
- *      contracts — plus a behavioral mutation battery over those compiled
- *      modules: unsound control fails, every mutant dies on a node:test
- *      assertion, and no mutant survives on a crash or module error.
- * Brief items 5-7 (setup twice, partial repair, uninstall/reinstall, harness
- * preservation, quoting) are asserted inside steps 2 and 16.
- *
- * Exit code: 0 only when every step passed OR ended in an explicit,
- * listed host-bound SKIP (headline then says PASS WITH HOST-BOUND SKIP —
- * a skip is never counted into a 25/25-style pass claim); 1 on any FAIL or
- * an aborted chain. NO PROOF, NO DONE.
+/** Full unit suite once, followed by integration probes and mutation checks.
+ * --list-json lists gates; --gate selects one; --from resumes from a gate.
+ * Exit 0 requires no failures or incomplete steps; explicit host skips remain visible.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 // v1.4 release-gate budgets + cascade isolation (pure rules, pinned by
 // tooling/probes/v14-battery-budget.mjs).
-import { budgetFor, verdictFor, shouldStopAfter, restoreDist, KNOWN_RUNTIME_MS } from './step-budgets.mjs';
+import { budgetFor, verdictFor, shouldStopAfter, KNOWN_RUNTIME_MS } from './step-budgets.mjs';
+import { runProbe } from './test-support/run-probe.mjs';
 import { fileURLToPath } from 'node:url';
 // In-place dist mutation must be self-healing. The mutation batteries edit the
 // built dist and restore it in `finally`; a battery KILLED mid-mutation (timeout,
@@ -214,15 +19,20 @@ import { fileURLToPath } from 'node:url';
 // and this is where the recovery happens: BEFORE any step is judged.
 import { recoverInterruptedMutation } from './test-support/dist-mutation-guard.mjs';
 
-const CANARY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const AMABIE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SH = process.platform === 'win32';
+const rawLogIndex = process.argv.indexOf('--raw-log-dir');
+const rawLogDir = rawLogIndex < 0 ? null : process.argv[rawLogIndex + 1];
+if (rawLogIndex >= 0 && (!rawLogDir || !path.isAbsolute(rawLogDir) || fs.existsSync(rawLogDir))) {
+  throw new Error('--raw-log-dir requires a new absolute directory');
+}
+if (rawLogDir) fs.mkdirSync(rawLogDir, { recursive: true });
 // 1.1 P0 isolation: every step spawns the CLI (directly or through a probe),
 // and every such spawn inherits/spreads this process's env — pointing it at
 // ONE fresh temp trust store keeps all verification sealing out of the real
 // per-user store, which is exactly what it is NOT for.
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-oracle-'));
 // Repair a dist left mutated by an interrupted battery BEFORE judging anything.
-{
+if (!process.argv.includes('--list-json')) {
   const repaired = recoverInterruptedMutation();
   if (repaired !== null) console.log(`WARNING: ${repaired}`);
 }
@@ -264,11 +74,9 @@ const STEPS = [
   // and that repeated runs agree.
   ['trust-store isolation (can stale temp state decide a test?)', process.execPath, ['tooling/probes/v14-trust-store-isolation.mjs'], {}],
   // v1.4 — MEASURED (GitHub Windows run 35636516908): the post-exit containment sweep asked WMI one
-  // question PER PROCESS, exceeded its budget on the hosted runner, and reported the LOOK as
-  // unconfirmable — which invalidated every round of every pipeline (27 of 29 real failures, ~334s
-  // each). This pins the fix's shape (one snapshot, a non-empty table required) and, against a real
-  // live tree, the property the fix must not break: survivors are still found and killed.
-  ['containment sweep cost + honesty (one snapshot, real survivors still killed)', process.execPath, ['tooling/probes/v14-sweep-scale.mjs'], {}],
+  // identity checks and, against a real live tree, the property the fix must not break: survivors are
+  // still found and killed.
+  ['containment sweep cost + honesty (one tree snapshot, bounded identity checks, survivors killed)', process.execPath, ['tooling/probes/v14-sweep-scale.mjs'], {}],
   // v1.4 — the same Windows leg was red for a second, independent reason: a DELETED artifact was
   // reported as "resolves outside the artifacts directory" whenever the host's temp path has an 8.3
   // SHORT name (`C:\Users\RUNNER~1\...`), which no developer machine reproduces because `Johannes`
@@ -299,6 +107,7 @@ const STEPS = [
   // reports a source-side improvement the built artifact predates as `PENDING-REBUILD … NOT a pass`
   // rather than asserting it, so the chain stays honest between a source edit and the next build.
   ['v1.5 first run (install -> setup -> gate -> fail -> repair -> uninstall, asserted)', process.execPath, ['tooling/probes/v15-first-run.mjs'], {}],
+  ['Windows process cleanup stress (6 idle + 6 under load)', process.execPath, ['tooling/probes/win-sweep-stress.mjs'], {}],
   // v1.5 POST-AUDIT (independent GPT-5.6 audit of a004f55). Each of these is the focused proof for a
   // confirmed finding, registered here so the release battery re-checks the finding rather than
   // trusting the commit message that fixed it. All three are deterministic and cost no model tokens.
@@ -310,7 +119,7 @@ const STEPS = [
   //   ledger, and on cells that all share ONE instrument. Prints NO ratio for an incomplete run.
   ['v1.5 token aggregate contract (ineligible cells and unstable instruments cannot enter a headline)', process.execPath, ['tooling/probes/v15-everyday-aggregate.mjs'], {}],
   //   BLOCKER 6: the sealed step must resolve the toolchain the project's own checks need, and must
-  //   attribute an environment failure to CANARY rather than to the project.
+  //   attribute an environment failure to AMABIE rather than to the project.
   ['v1.5 sealed toolchain (the environment names the missing tool instead of blaming the project)', process.execPath, ['tooling/probes/v15-sealed-toolchain.mjs'], {}],
   //   BLOCKER 4: every attempt gets immutable identity. MEASURED cause: the run-task probe wrote fixed
   //   filenames into one directory per task, so a SECOND attempt truncated the FIRST's stream, ledger,
@@ -337,16 +146,16 @@ const STEPS = [
   //   words. It cannot check whether prose is true; it checks that the documents do not contradict
   //   each other about what this project claims.
   ['v1.5 evidence consistency (the public audit set tells one truth)', process.execPath, ['tooling/probes/v15-evidence-consistency.mjs'], {}],
-  // v1.3: the AGENT side of the integration — `claude mcp list` proves the agent reads Canary's entry
+  // v1.3: the AGENT side of the integration — `claude mcp list` proves the agent reads Amabie's entry
   // and reports honestly whether it honours it. Host-bound: an explicit SKIP where no CLI exists, and a
   // SKIP is never a pass.
   ['v1.3 agent integration (the agent reads what setup wrote)', process.execPath, ['tooling/probes/v13-agent-integration.mjs'], {}],
   // v1.3: how much internal vocabulary the ORDINARY path speaks, as a ratchet — with the other
   // direction checked too, so the default cannot be made quieter by deleting what --verbose explains.
   ['v1.3 everyday vocabulary (a ratchet on the words a user must decode)', process.execPath, ['tooling/probes/v13-everyday-vocabulary.mjs'], {}],
-  // v1.3: what Canary costs on EVERY turn, whether or not it is used — the MCP instructions and tool
+  // v1.3: what Amabie costs on EVERY turn, whether or not it is used — the MCP instructions and tool
   // definitions a client re-sends each request — and which shape the benchmark's arms actually measure.
-  ['v1.3 standing context (what Canary advertises per turn)', process.execPath, ['tooling/probes/v13-standing-context.mjs'], {}],
+  ['v1.3 standing context (what Amabie advertises per turn)', process.execPath, ['tooling/probes/v13-standing-context.mjs'], {}],
   // v1.3: can the harness's own consent gate be satisfied without a human? Measured with four settings
   // forms and two independent views of the answer. Host-bound: an explicit SKIP where no CLI exists.
   ['v1.3 mcp consent (is the harness gate closable without a human?)', process.execPath, ['tooling/probes/v13-mcp-consent.mjs'], {}],
@@ -382,22 +191,6 @@ const STEPS = [
   // explicit host-bound SKIP; a deterministic failure still exits 1 and still fails the battery.
   ['v1.3 posttool feedback (DIAGNOSTIC live-integration; deterministic properties gate)', process.execPath, ['tooling/probes/v13-posttool-feedback.mjs'], {}],
   ['full unit suite', 'npm', ['test'], {}],
-  ['onboarding contract tests', process.execPath, ['--test', 'apps/cli/dist/test/onboarding.test.js'], {}],
-  ['M2 claims-not-evidence contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m2-claims-not-evidence.test.js'], {}],
-  ['M3 trust-classes contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m3-trust-classes.test.js'], {}],
-  ['M4 provenance contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m4-provenance.test.js'], {}],
-  ['M5 trusted-plan contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m5-proof-plan.test.js'], {}],
-  ['M6 proof-orchestration contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m6-proof-orchestration.test.js'], {}],
-  ['M7 candidate-isolation contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m7-candidate-isolation.test.js'], {}],
-  ['M8 promotion contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m8-promotion.test.js'], {}],
-  ['M9 authority contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m9-authority.test.js'], {}],
-  ['M10 obligations contract tests', process.execPath, ['--test', 'apps/cli/dist/test/m10-obligations.test.js'], {}],
-  ['1.1 §1 project-adapter contract tests', process.execPath, ['--test', 'apps/cli/dist/test/project-adapter.test.js'], {}],
-  ['1.1 P0 trust-store sealing contract tests', process.execPath, ['--test', 'apps/cli/dist/test/trust-store.test.js'], {}],
-  ['1.1 P0 trust-store wiring tests', process.execPath, ['--test', 'apps/cli/dist/test/trust-wiring.test.js'], {}],
-  ['1.1 §21 machine-readable protocol tests', process.execPath, ['--test', 'apps/cli/dist/test/protocol.test.js'], {}],
-  ['1.1 §18-21 agent capability + advisory integration tests', process.execPath, ['--test', 'apps/cli/dist/test/agents.test.js'], {}],
-  ['1.1 §14 real-Python end-to-end (no package.json)', process.execPath, ['--test', 'apps/cli/dist/test/python-e2e.test.js'], {}],
   // A REAL Go project verified end to end (setup -> doctor), which proves the Go
   // adapter's toolchain declaration works through the PRODUCT rather than in a
   // hand-run shell. SKIPs (exit 3) where no Go toolchain exists.
@@ -406,13 +199,6 @@ const STEPS = [
   // rustup PATH PROXY, which cannot run under the sanitized env. SKIPs (exit 3)
   // where no rustup toolchain exists.
   ['probe: real Rust project end-to-end (setup -> doctor)', process.execPath, ['tooling/probes/rust-project-e2e.mjs'], {}],
-  ['1.1 §35 metrics record (off by default, never changes a verdict)', process.execPath, ['--test', 'apps/cli/dist/test/metrics.test.js'], {}],
-  ['1.1 §22 workflow (work -> finish) tests', process.execPath, ['--test', 'apps/cli/dist/test/orchestrate.test.js'], {}],
-  ['1.1 §23 fast-path decision tests (fail-closed rules)', process.execPath, ['--test', 'apps/cli/dist/test/fastpath.test.js'], {}],
-  ['1.1 §23 fast-path WIRED (sealed declaration, opt-in skipping)', process.execPath, ['--test', 'apps/cli/dist/test/fastpath-cli.test.js'], {}],
-  ['1.1 P0 trust-store attack contract tests', process.execPath, ['--test', 'apps/cli/dist/test/trust-store-attacks.test.js'], {}],
-  ['1.1 P0 broker authorization contract tests', process.execPath, ['--test', 'apps/cli/dist/test/broker.test.js'], {}],
-  ['1.1 P0 platform-boundary contract tests', process.execPath, ['--test', 'apps/cli/dist/test/platform-boundary.test.js'], {}],
   ['probe: empty-plan checkpoint', process.execPath, ['tooling/probes/checkpoint-empty-plan.mjs'], {}],
   ['probe: M2 claims-not-evidence (real git)', process.execPath, ['tooling/probes/m2-claims-not-evidence.mjs'], {}],
   ['probe: M3 trust-classes (real git)', process.execPath, ['tooling/probes/m3-trust-classes.mjs'], {}],
@@ -430,7 +216,11 @@ const STEPS = [
   ['probe: master-pass split-verdict subjectivity battery (real git)', process.execPath, ['tooling/probes/master-pass-subjectivity.mjs'], {}],
   ['probe: pre-1.0 execution-environment authority battery (real git, poisoned env)', process.execPath, ['tooling/probes/pre10-env-authority.mjs'], {}],
   ['probe: pre-1.0 human-acceptance battery (real git + pty)', process.execPath, ['tooling/probes/pre10-acceptance.mjs'], {}],
-  ['probe: master-pass mutation battery (built dist)', process.execPath, ['tooling/probes/master-pass-mutations.mjs'], {}],
+  // Stable-scope consistency: the 2.0 release note must label the Prompt-to-Evidence commands the same way the CLI does.
+  ['probe: stable-scope consistency (release note vs CLI experimental labels)', process.execPath, ['tooling/probes/stable-scope-consistency.mjs'], {}],
+  // Each fault has its own unchanged finite budget; accumulated valid owner work cannot hide M12/M13.
+  ...Array.from({ length: 13 }, (_, i) => [`probe: master-pass mutation battery (built dist) / M${i + 1}`, process.execPath,
+    ['tooling/probes/master-pass-mutations.mjs', '--only', `M${i + 1}`], {}]),
   ['probe: 1.1 P0 trust-boundary mutations (scratch builds)', process.execPath, ['tooling/probes/p0-trust-boundary-mutations.mjs'], {}],
   // E: HARDENED is unreachable until a provider with a real second OS identity
   // exists. This step makes that a MEASUREMENT with a tripwire — it fails if the
@@ -451,35 +241,43 @@ const STEPS = [
   ...(process.platform === 'win32' ? [['probe: installed HARDENED production authority and custody', process.execPath, ['tooling/probes/v12-packed-provider-audit.mjs'], {}]] : []),
   ['probe: documented examples (Node + Python, real CLI)', process.execPath, ['tooling/probes/examples-smoke.mjs'], {}],
   ['probe: packed architecture matrix', process.execPath, ['tooling/probes/packed-architecture.mjs'], {}],
-  // ── v1.1 Phase 2/3: the observation channels, the runner-identity authority, the
-  // provider-only routing, and the universal project contract. Each of these is a
-  // REAL execution, not a restatement: the channel probes load the SHIPPED observer
-  // bytes into a real runner, and the wiring tests drive the product's own
-  // Recorder round path.
-  ['1.1 Phase 2 Python channel WIRING (real recorder round path)', process.execPath, ['--test', 'packages/runner/executor/dist/test/python-wiring.test.js'], {}],
   ['probe: node:test observation channel (shipped reporter bytes, real run)', process.execPath, ['tooling/probes/runner-observation-node-test.mjs'], {}],
-  ['1.1 Phase 2 node:test channel WIRING (real recorder round path)', process.execPath, ['--test', 'packages/runner/executor/dist/test/node-test-wiring.test.js'], {}],
   ['probe: pytest observation channel (shipped plugin bytes, real run)', process.execPath, ['tooling/probes/runner-observation-pytest.mjs'], {}],
-  ['1.1 Phase 2 pytest channel WIRING (real recorder round path)', process.execPath, ['--test', 'packages/runner/executor/dist/test/pytest-wiring.test.js'], {}],
-  ['1.1 Phase 2 sealed-plan runner-identity authority (real canary setup)', process.execPath, ['--test', 'apps/cli/dist/test/runner-authority.test.js'], {}],
   ['probe: broker cross-process serving (the provider transport premise)', process.execPath, ['tooling/probes/broker-cross-process.mjs'], {}],
-  ['1.1 Phase 3 provider-only accept/promote routing (real broker + real git)', process.execPath, ['--test', 'apps/cli/dist/test/provider-routing.test.js'], {}],
-  ['1.1 universal project contract (real unknown tool, discovered + declared)', process.execPath, ['--test', 'apps/cli/dist/test/universal-project.test.js'], {}],
   // The completion gate's failure payload is a TOKEN-COST control: the model must get the
   // smallest actionable message, with the full runner output on disk instead of in its context.
   ['1.1 failure payload is compact and points at the full log (real hook run)', process.execPath, ['tooling/probes/checkpoint-payload.mjs'], {}],
-  // The product invariant behind this step: Canary must never issue READY merely because the
+  // The product invariant behind this step: Amabie must never issue READY merely because the
   // configured tests are green while authorized requirements lack adequate proof, and existing
   // behaviour that must be preserved requires regression evidence. The probe drives six real
   // repositories: a silent change behind a green suite must be NOT PROVEN and must BLOCK, a
   // discriminating check must earn READY, and an unestablished comparison must not be read as
   // either answer.
   ['1.1 regression-evidence gate (a green plan that cannot discriminate a change is NOT PROVEN)', process.execPath, ['tooling/probes/regression-evidence-gate.mjs'], {}],
-  ['1.1 discrimination completion regressions (candidate, promotion, doctor, Stop hook)', process.execPath, ['--test', 'apps/cli/dist/test/discrimination-completion.test.js'], {}],
   // The other half of the same invariant: an AUTHORIZED requirement that no check covers must stay
   // NOT PROVEN (never READY), the worker must be told, the printed exit must be one that can be
   // taken, and binding each requirement to a sealed script must make coverage attainable.
   ['1.1 requirement coverage gate (authorized requirements are proven or NOT PROVEN)', process.execPath, ['tooling/probes/requirement-coverage-gate.mjs'], {}],
+  // P0:22 — the user's original prompt reaches the verdict through the harness intake, not through the
+  // worker's own goal text: omission, negation and replay of an older prompt are NOT PROVEN, never PASS.
+  ['P0:22 original prompt bound through intake to the prompt-evidence verdict', process.execPath, ['tooling/probes/original-prompt-binding.mjs'], {}],
+  // P0:23 — the task record is append-only and hash-chained: only a NEW user request may weaken the
+  // duties; a drop inside one request, an edited chain and a rolled-back task are NOT PROVEN.
+  ['P0:23 task revisions are chained and only a new request may weaken the duties', process.execPath, ['tooling/probes/task-revision-integrity.mjs'], {}],
+  // P0:24 — a fixture/golden the sealed check reads is oracle bytes: a worker rewriting it is not `met`.
+  ['P0:24 a rewritten fixture the sealed check reads cannot self-approve', process.execPath, ['tooling/probes/oracle-fixture-authority.mjs'], {}],
+  // P0:25 — an approved routine profile is a proposal until every prerequisite is met (T13).
+  ['P0:25 an approved routine profile binds a matching task; anything short of every prerequisite stays a proposal', process.execPath, ['tooling/probes/routine-profile.mjs'], {}],
+  // P0:26 — a mission survives a restart, a torn write and a concurrent writer without a silent default or budget reset (T15).
+  ['P0:26 the mission journal keeps order, attempts and limit across restart; a torn tail heals, corruption blocks', process.execPath, ['tooling/probes/mission-journal.mjs'], {}],
+  // P0:27 — finishing the last sub-goal never completes the root goal, and no duty or attempt is lost on a revision or an agent switch (T16).
+  ['P0:27 sub-goals keep dependency order; the root goal is checked separately; duties and attempts survive revision and agent handover', process.execPath, ['tooling/probes/mission-subgoals.mjs'], {}],
+  // P0:28 — parallel workers get separate change areas; collisions, moved baselines and lost leases are caught before release (T17).
+  ['P0:28 parallel workers hold separate areas; overlap, overshoot, moved baseline and expired lease are refused before release', process.execPath, ['tooling/probes/mission-assignments.mjs'], {}],
+  // P0:29 — evidence is bound to the exact snapshot (incl. dirty bytes), goes stale per dimension, and an open mission keeps it through retention (T18).
+  ['P0:29 evidence binds exact dirty bytes, goes stale when task/oracle/policy/env/subject change, and survives retention while a mission needs it', process.execPath, ['tooling/probes/evidence-binding.mjs'], {}],
+  // P0:30 — Checkpoint C: one small real workflow; statuses stay separate, evidence goes stale, budget/scope survive restart and agent switch, sessions cannot overwrite each other.
+  ['P0:30 checkpoint C: separate statuses, bound evidence, no budget reset on restart/agent switch, no silent overwrite between sessions', process.execPath, ['tooling/probes/checkpoint-c-workflow.mjs'], {}],
   // v1.2 Mission 2: the SAME invariant asked BEFORE the worker is handed anything. v1.1 could only
   // discover an unbound requirement at the end of a session (Stop hook / finish), after the model
   // had spent its budget on a duty no check could measure — measured at 1.5-1.85M tokens over 41-53
@@ -505,17 +303,9 @@ const STEPS = [
   // it a boundary). It is in the chain so the retraction stays visible and re-runs.
   ['1.2 integrity boundary measurement (reports honestly whether confinement exists here)', process.execPath, ['tooling/probes/v12-integrity-boundary.mjs'], {}],
   // And the same invariant in a NON-Node project, where the bindings live in the universal manifest:
-  // declared checks + bound digests are sealed, an unbound requirement stays NOT PROVEN, `canary bind`
+  // declared checks + bound digests are sealed, an unbound requirement stays NOT PROVEN, `amabie bind`
   // writes to the right declaration surface, and an unknown proof check is refused.
   ['1.1 universal requirement binding (manifest-declared proofs, non-Node project)', process.execPath, ['tooling/probes/universal-requirement-binding.mjs'], {}],
-  // The benchmark harness validates ITSELF before any of its numbers are believed: known-good and
-  // known-bad solutions per fixture, the verdict rules, secret redaction, and the instrument
-  // fingerprint.
-  ['benchmark: harness self-tests (verdict rules, redaction, fingerprint, stream ledger)', process.execPath, ['--test',
-    'tooling/benchmark/verdict.test.mjs', 'tooling/benchmark/classify-claim.test.mjs',
-    'tooling/benchmark/redact.test.mjs', 'tooling/benchmark/secret-scan.test.mjs',
-    'tooling/benchmark/fingerprint.test.mjs', 'tooling/benchmark/stream.test.mjs'], {}],
-  ['benchmark: every fixture separates a correct from an incorrect solution', process.execPath, ['--test', 'tooling/benchmark/fixtures.test.mjs'], {}],
   // ...and every fixture's DECLARED configuration is checked against the fixture, not trusted: each
   // project is sealed, its own stated requirements are registered, and `registerRequirements: true`
   // must hold exactly where the product's own digests and sealed bindings show every requirement is
@@ -546,6 +336,15 @@ const SKIP_AWARE = new Set([
   // platform could not prove, and exit 3. SKIP is never counted as PASS.
   'probe: pre-1.0 human-acceptance battery (real git + pty)',
   'probe: acceptance growth (real git + pty)',
+  // The fixture requires NTFS 8.3 short-name creation. If the volume does not
+  // produce a distinct alias, the probe exits 3 and explicitly says the runner
+  // condition could not be exercised; that is unverified, never a pass.
+  '8.3 short-name suite (does the suite still hold when TEMP is spelled the way a runner spells it?)',
+  // This is an environment measurement, not a requirement that LOCAL installs
+  // provide OS confinement. A host that cannot start any confined child is a
+  // named, non-passing SKIP; a child that runs without an observed boundary is
+  // still a genuine FAIL.
+  '1.2 integrity boundary measurement (reports honestly whether confinement exists here)',
   // The two ecosystem end-to-end probes SKIP (exit 3) on a host with no
   // toolchain — which is an honest host bound, not a failure. Without this they
   // would be reported as FAIL on a machine that simply has no Go or no rustup,
@@ -558,31 +357,100 @@ const SKIP_AWARE = new Set([
   // touched; on a host without it the probe says so and exits 3, and the channel's
   // text-grammar half is still covered by the comparator unit tests.
   'probe: pytest observation channel (shipped plugin bytes, real run)',
-  '1.1 Phase 2 pytest channel WIRING (real recorder round path)',
   // v1.4: the Codex end-to-end arm needs a runnable, AUTHENTICATED codex CLI (and
   // the wired/protocol arms run regardless). Where either is absent the probe prints
   // explicit SKIP lines and exits 3 — the host bound is named, never counted as PASS.
   'v1.4 codex stop hook (a second measured completion gate)',
+  'Windows process cleanup stress (6 idle + 6 under load)',
+]);
+// These diagnostics start real Claude Code sessions. Their CLI-level
+// --max-budget-usd value was observed to overshoot, so this runner cannot
+// currently enforce the user's total provider spend. Keep them listed and
+// visible, but never start a paid session from the default productization gate.
+const COST_GATED = new Map([
+  ['v1.3 posttool feedback (DIAGNOSTIC live-integration; deterministic properties gate)',
+    'cost-gated: live Claude sessions were not run; provider-level spend cannot be reliably capped'],
+  ['benchmark: agent-driven token ledger (stream-json parsed for phase cost + visible bytes)',
+    'cost-gated: live Claude session was not run; provider-level spend cannot be reliably capped'],
 ]);
 const results = []; // [label, 'PASS'|'SKIP'|'FAIL'|'INCOMPLETE'|'NOT RUN', note]
-const runStep = (cmd, args, timeout) => spawnSync(cmd, args, { cwd: CANARY, encoding: 'utf8', shell: SH && cmd === 'npm', timeout, maxBuffer: 64 * 1024 * 1024 });
-for (const [label, cmd, args] of STEPS) {
+const valueOf = flag => { const i = process.argv.indexOf(flag); if (i < 0) return null; if (!process.argv[i + 1]) throw new Error(`${flag} requires a gate label`); return process.argv[i + 1]; };
+const from = valueOf('--from');
+const gate = valueOf('--gate');
+if (from && gate) throw new Error('Choose --from or --gate, not both');
+const requested = from ?? gate;
+const offset = requested ? STEPS.findIndex(([label]) => label === requested) : 0;
+if (offset < 0) throw new Error(`Unknown gate: ${requested}`);
+const selectedSteps = gate ? [STEPS[offset]] : STEPS.slice(offset);
+if (process.argv.includes('--list-json')) {
+  console.log(JSON.stringify(selectedSteps.map(([label, command, args], index) => ({ index: offset + index + 1, label, command, args,
+    budgetMs: budgetFor(label), skipAware: SKIP_AWARE.has(label), costGate: COST_GATED.get(label) ?? null,
+    mutatesDist: shouldStopAfter(label, 'FAIL'), preconditions: ['fresh compiled source', 'no concurrent dist mutations'],
+    previousSelectedGate: index > 0 ? selectedSteps[index - 1][0] : null,
+  })), null, 2));
+  process.exit(0);
+}
+if (requested) console.log(`SELECTED GATES: ${selectedSteps.length}/${STEPS.length}; other gates are not being claimed as executed`);
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-oracle-'));
+const runStep = (cmd, args, timeout, prefix) => runProbe(cmd, args, { cwd: AMABIE, shell: SH && cmd === 'npm', timeout, prefix });
+for (const [label, cmd, args] of selectedSteps) {
   console.log(`\n=== ${label} ===`);
+  const costGate = COST_GATED.get(label);
+  if (costGate) {
+    console.log(`SKIP  ${costGate}`);
+    results.push([label, 'SKIP', costGate]);
+    continue;
+  }
   // v1.4 — a per-step budget, because one flat timeout killed a step whose MEASURED legitimate
   // runtime class exceeds it (master-pass: ~993 s against a 900 s cap). Finite everywhere still:
   // a real deadlock must be caught, it just must not be confused with a slow valid workload.
   const budget = budgetFor(label);
-  const r = runStep(cmd, args, budget);
+  const startedAt = new Date().toISOString();
+  const stepPrefix = rawLogDir ? path.join(rawLogDir, String(results.length + 1).padStart(3, '0')) : undefined;
+  console.log(`START ${label}; limit=${budget / 1000}s${stepPrefix ? `; live logs=${stepPrefix}` : ''}`);
+  const r = await runStep(cmd, args, budget, stepPrefix);
+  if (rawLogDir) {
+    const prefix = path.join(rawLogDir, String(results.length + 1).padStart(3, '0'));
+    fs.writeFileSync(`${prefix}.json`, JSON.stringify({ label, command: [cmd, ...args], cwd: AMABIE,
+      budgetMs: budget, startedAt, finishedAt: new Date().toISOString(), status: r.status, signal: r.signal,
+      error: r.error ? { code: r.error.code, message: r.error.message } : null, durationMs: r.durationMs }, null, 2), { flag: 'wx' });
+  }
   const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
   const tail = out.split(/\r?\n/).filter(Boolean).slice(-25).join('\n');
   console.log(tail);
   const skipLines = SKIP_AWARE.has(label)
     ? out.split(/\r?\n/).filter((l) => l.startsWith('SKIP')).map((l) => l.slice(0, 140))
     : [];
+  // Node's test runner exits 0 when a whole describe block is skipped. That
+  // used to make pytest wiring look PASS on a host with no pytest interpreter,
+  // even though the report said "tests 0". An explicit missing-interpreter
+  // reason is a host-bound SKIP; any other zero-execution test result is a FAIL.
+  const nodeTestStat = (name) => {
+    const match = out.match(new RegExp(`^(?:\\s*ℹ\\s+|\\s*#\\s*)${name}\\s+(\\d+)`, 'm'));
+    return match ? Number(match[1]) : null;
+  };
+  const nodeTests = args.includes('--test') ? {
+    total: nodeTestStat('tests'),
+    passed: nodeTestStat('pass') ?? 0,
+    failed: nodeTestStat('fail') ?? 0,
+    skipped: nodeTestStat('skipped') ?? 0,
+  } : null;
+  const noNodeTestsExecuted = nodeTests !== null
+    && nodeTests.total !== null
+    && nodeTests.passed + nodeTests.failed === 0
+    && (nodeTests.total === 0 || nodeTests.skipped === nodeTests.total);
+  const missingPytestInterpreter = label === '1.1 Phase 2 pytest channel WIRING (real recorder round path)'
+    && /no workspace-local pytest interpreter/.test(out);
+  if (noNodeTestsExecuted && missingPytestInterpreter && SKIP_AWARE.has(label)) {
+    skipLines.push('SKIP 0 pytest wiring tests executed: workspace-local pytest interpreter is unavailable');
+  }
   // "the assertion did not hold" and "we ran out of time" are different facts; only the first is
   // evidence about the product. spawnSync reports the second as error.code ETIMEDOUT.
   const timedOut = r.error?.code === 'ETIMEDOUT';
-  const verdict = verdictFor({ status: r.status, skipAware: SKIP_AWARE.has(label), timedOut });
+  const verdict = r.error && !timedOut ? 'FAIL'
+    : noNodeTestsExecuted && r.status === 0
+      ? (missingPytestInterpreter && SKIP_AWARE.has(label) ? 'SKIP' : 'FAIL')
+      : verdictFor({ status: r.status, skipAware: SKIP_AWARE.has(label), timedOut });
   // M10.2 Fix 6: a SKIP that EXECUTED checks is a different fact from one that
   // ran zero because the environment is absent — the note must distinguish
   // them. Neither kind is ever counted as a PASS. The count is any `PASS <case>`
@@ -601,18 +469,18 @@ for (const [label, cmd, args] of STEPS) {
   // cannot vouch for; MEASURED, one master-pass timeout manufactured FIVE later "failures". Restore
   // trusted bytes and stop, so the summary carries the ORIGINAL finding and nothing artificial.
   if (shouldStopAfter(label, verdict)) {
-    const restored = restoreDist((c, a) => runStep(c, a, 900_000));
+    const restored = (await runStep('npm', ['exec', '--', 'tsc', '-b', '--force'], 900_000)).status === 0;
     console.log(`\nBATTERY STOPPED after "${label}" (${verdict}).`);
     console.log('  This step REWRITES dist, so every later step would judge bytes this run cannot vouch for.');
     console.log('  The finding above is the ONLY one to act on; the steps below were NOT RUN.');
     console.log(`  trusted bytes restored: ${restored ? 'yes (tsc -b --force)' : 'NO — dist may be dirty, rebuild before trusting anything'}`);
-    results.push([`(all ${STEPS.length - results.length} remaining step(s) NOT RUN — a dist-rewriting step did not finish)`, 'NOT RUN', 'cascade suppressed']);
+    results.push([`(all ${selectedSteps.length - results.length} remaining selected step(s) NOT RUN — a dist-rewriting step did not finish)`, 'NOT RUN', 'cascade suppressed']);
     break;
   }
   if (verdict === 'FAIL' && label.startsWith('build')) break; // later steps judge stale bytes — stop honestly
 }
 
-console.log('\n=== VERIFY-PRODUCTIZATION SUMMARY ===');
+console.log(`\n=== VERIFY-PRODUCTIZATION ${requested ? 'SELECTED GATES ' : ''}SUMMARY ===`);
 for (const [label, verdict, note] of results) console.log(`${verdict}  ${label}${note ? `  — ${note}` : ''}`);
 const failed = results.filter(([, v]) => v === 'FAIL').length;
 const skipped = results.filter(([, v]) => v === 'SKIP').length;
@@ -630,8 +498,10 @@ if (failed || incomplete || notRun) {
   console.log(`VERIFY-PRODUCTIZATION: NOT GREEN (${bits.join('; ')}${passed ? `; ${passed} PASS, ${skipped} SKIP` : ''})`);
 } else if (skipped) {
   const zeroExec = results.filter(([, v, n]) => v === 'SKIP' && /^host-bound: 0 check\(s\) EXECUTED/.test(n)).length;
-  console.log(`VERIFY-PRODUCTIZATION: PASS WITH HOST-BOUND SKIP (${passed} PASS, ${skipped} SKIP — NOT full ${STEPS.length}/${STEPS.length} acceptance on this host; the SKIP lines above name what was not reproducible here${zeroExec ? `; ${zeroExec} SKIP step(s) EXECUTED ZERO checks — environment absent, accepted as nothing` : ''})`);
+  const costGated = results.filter(([, v, n]) => v === 'SKIP' && n.startsWith('cost-gated:')).length;
+  const hostSkipped = skipped - costGated;
+  console.log(`VERIFY-PRODUCTIZATION: PASS WITH EXPLICIT SKIPS (${passed} PASS, ${skipped} SKIP — no skipped probe counts as a pass${hostSkipped ? `; ${hostSkipped} host-bound` : ''}${costGated ? `; ${costGated} live cost-gated and NOT RUN` : ''}${zeroExec ? `; ${zeroExec} host-bound SKIP step(s) executed zero checks` : ''})`);
 } else {
-  console.log(`VERIFY-PRODUCTIZATION: PASS (${passed}/${STEPS.length} steps green)`);
+  console.log(`VERIFY-PRODUCTIZATION: PASS (${passed}/${selectedSteps.length} selected steps green)`);
 }
 process.exit(failed || incomplete || notRun ? 1 : 0);

@@ -6,10 +6,10 @@
  * classification field, and EvidenceBundle.ai is a sibling namespace the
  * classifier never reads. Future external tools (RepoWise, Semgrep,
  * CodSpeed, ...) follow the same optional-adapter pattern: evidence in,
- * Canary's pipeline decides.
+ * Amabie's pipeline decides.
  */
 
-import type { EvidenceBundle } from '@canary-rn/evidence-schema';
+import type { EvidenceBundle } from '@amabie/evidence-schema';
 
 export interface AiSummary {
   provider: string;

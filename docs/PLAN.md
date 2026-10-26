@@ -1,11 +1,11 @@
-# Canary Migration Plan — from Golden-Snapshot Prototype to Dependency Regression Detection
+# Amabie Migration Plan — from Golden-Snapshot Prototype to Dependency Regression Detection
 
 Status: HISTORICAL — the original migration plan, kept because §6 is the decision
 table the classifier implements. Its "v0.1 alpha" framing is out of date: 1.0.0
 shipped 2026-09-10 (`docs/RELEASE-1.0-REVIEW.md`) and a v1.1 implementation
 candidate exists on the development branch (`CHANGELOG.md`). Read
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for what is supported now and
-[`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md) for what Canary can honestly
+[`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md) for what Amabie can honestly
 protect. Where this document and the code disagree, THE CODE IS THE TRUTH, and §6
 below is kept current with it.
 Date: 2026-08-30 (plan) · §6 updated 2026-09-01 to match the round-4 decision table
@@ -14,7 +14,7 @@ Date: 2026-08-30 (plan) · §6 updated 2026-09-01 to match the round-4 decision 
 
 ## 1. Product restatement (updated 2026-08-30 — see docs/ADR-001-product-direction.md)
 
-Canary is **an independent verification layer for AI-written code**: given a
+Amabie is **an independent verification layer for AI-written code**: given a
 baseline state and a candidate change, it runs deterministic checks against
 both, reproduces suspected regressions, and emits a machine-readable
 evidence bundle with a deterministic classification. Only *after* that does
@@ -25,7 +25,7 @@ an LLM get to speak, and it may never render the verdict.
 
 ## 2. Disposition of the Python prototype
 
-The prototype (`canary/`, `tests/`, `proof/`, `examples/` — 59 unit tests + a
+The prototype (`amabie/`, `tests/`, `proof/`, `examples/` — 59 unit tests + a
 passing 8-step e2e proof) is the wrong product (generic golden-output
 checker). It is **archived, not extended**: `git mv` into
 `archive/python-golden-prototype/` (kept out of the TS build graph).
@@ -40,7 +40,7 @@ checker). It is **archived, not extended**: `git mv` into
 | Strong automated tests: real-subprocess integration tests, zero mocks | node:test suite + CI |
 | Adversarial validation | a red-team pass over the pipeline before declaring M4, plus the prototype's lesson encoded as a rule: **a green result over degenerate evidence is a failure** — see §6 "degenerate-run guard" |
 | Evidence hash chaining (sha256 of raw and normalized streams; atomic single-file bundle writes) | `packages/evidence/hashing` |
-| E2E proof script as the primary milestone artifact | `canary prove` command + CI job (§7 M4) |
+| E2E proof script as the primary milestone artifact | `amabie prove` command + CI job (§7 M4) |
 
 ### Concepts DISCARDED
 - golden baseline as the product concept (goldens of *test runs* are not the point)
@@ -51,7 +51,7 @@ checker). It is **archived, not extended**: `git mv` into
 
 ```
 apps/
-  cli/                       canary CLI (command name: `canary`)
+  cli/                       amabie CLI (command name: `amabie`)
 packages/
   core/
     planner/                 experiment spec -> ordered ArmPlan[] (pure)
@@ -75,7 +75,7 @@ schemas/
 docs/
 archive/
   python-golden-prototype/   the old Python code (reference only)
-.github/workflows/ci.yml     build + unit/integration tests + `canary prove`
+.github/workflows/ci.yml     build + unit/integration tests + `amabie prove`
 LICENSE                      Apache-2.0
 ```
 
@@ -151,10 +151,10 @@ EVIDENCE    JSON bundle (schemas/evidence.schema.json, schemaVersion=1,
             matched rules listed, timestamps, toolchain versions)
             + HTML report (generated from bundle; same data, human layout)
 EXIT CODES  0 CONFIRMED_REGRESSION (proof holds) · 1 PASS / proof failed ·
-            2 other classification or infrastructure · 3 canary misuse
+            2 other classification or infrastructure · 3 amabie misuse
 ```
 
-Every stage writes artifacts under `.canary-runs/<experiment-id>/<runid>/` —
+Every stage writes artifacts under `.amabie-runs/<experiment-id>/<runid>/` —
 append-only, hash-chained (bundle embeds artifact hashes), so a bundle is
 self-auditing against its raw logs.
 
@@ -162,7 +162,7 @@ self-auditing against its raw logs.
 
 Inputs: per-arm exit codes, normalized logs, infra markers — and, since the
 post-audit observation hardening, the **execution-observation channel**: a
-per-round record of what a Canary-injected observer WATCHED inside a
+per-round record of what an Amabie-injected observer WATCHED inside a
 byte-pinned runner (claim contract: docs/EXECUTION-AUTHORITY.md). Printed
 text enters as a CLAIM to be cross-checked, never as proof of execution; exit
 codes are authoritative about process death, not about tests.
@@ -206,7 +206,7 @@ Post-audit: when the observation gate holds, the identity/coverage math reads
 the ATTESTED counts/identities — the channels are equal by the gate's own
 condition, so the observed record (not the text) is the canonical source for
 the table (rule 13's F1 containment constraint is thereby evaluated on
-Canary-observed failing identities, the only execution facts with authority);
+Amabie-observed failing identities, the only execution facts with authority);
 malformed disk-carried observations are a gate REFUSAL (rule 14), never a
 crash. On the un-attested path containment can at most pre-empt a producer
 rule — any surviving strong or FLAKY label is downgraded to rule 14 anyway.
@@ -274,11 +274,11 @@ one-off dry-run ceremony):
    packages/support/test/env.test.ts). Values of
    allowlisted vars are recorded by *name only* in evidence.
 4. Execution only inside a disposable workspace under the repo
-   (`.canary-runs/…`, gitignored) or OS temp; caches (npm, yarn) redirected
+   (`.amabie-runs/…`, gitignored) or OS temp; caches (npm, yarn) redirected
    inside it; isolated `HOME`/`USERPROFILE`; empty explicit `--userconfig`.
 5. No writes outside the workspace — **intended discipline, NOT an OS-enforced
    jail** (see docs/SECURITY.md Tier B: v0.1 has no filesystem sandbox).
-6. Network limited (by Canary's own behavior, NOT an egress allowlist —
+6. Network limited (by Amabie's own behavior, NOT an egress allowlist —
    SECURITY.md Tier C): approved repo content (codeload) + declared dependency
    installs (npm registry). `--ignore-scripts` on every install command so no
    transitive lifecycle code runs. A fixture's own test code is not firewalled.

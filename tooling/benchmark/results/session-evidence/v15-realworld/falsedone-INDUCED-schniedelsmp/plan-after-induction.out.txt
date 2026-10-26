@@ -12,7 +12,7 @@
 IdLookupTest > twoKeysSharingOneValueAreStillAmbiguous() FAILED
     org.opentest4j.AssertionFailedError at IdLookupTest.java:38
 
-[Incubating] Problems report is available at: file:///C:/Users/Johannes/Desktop/canary-ws5-scratch/schniedelsmp/build/reports/problems/problems-report.html
+[Incubating] Problems report is available at: file:///C:/Users/Johannes/Desktop/amabie-ws5-scratch/schniedelsmp/build/reports/problems/problems-report.html
 4 actionable tasks: 2 executed, 2 up-to-date
 
 --- stderr ---
@@ -25,7 +25,7 @@ FAILURE: Build failed with an exception.
 
 * What went wrong:
 Execution failed for task ':test'.
-> There were failing tests. See the report at: file:///C:/Users/Johannes/Desktop/canary-ws5-scratch/schniedelsmp/build/reports/tests/test/index.html
+> There were failing tests. See the report at: file:///C:/Users/Johannes/Desktop/amabie-ws5-scratch/schniedelsmp/build/reports/tests/test/index.html
 
 * Try:
 > Run with --scan to get full insights.

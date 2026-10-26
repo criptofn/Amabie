@@ -1,10 +1,10 @@
 'use strict';
-// ── The Canary mocha-API DOUBLE ─────────────────────────────────────────────
+// ── The Amabie mocha-API DOUBLE ─────────────────────────────────────────────
 // Why this exists (post-GLM panel K): the execution-observation channel's
 // happy path must be testable OFFLINE, without an npm install of real mocha.
-// This is the only runner the offline suite lets Canary inject into — it is
+// This is the only runner the offline suite lets Amabie inject into — it is
 // authored in THIS repo and pinned by CONTENT HASH (KNOWN_RUNNER_RELEASES,
-// origin 'canary-double'). It implements exactly the surfaces the observer
+// origin 'amabie-double'). It implements exactly the surfaces the observer
 // preload binds to, and nothing more:
 //   * exports Runner + Runnable (and Test/Mocha/describe/it/hooks) so the
 //     preload's isMochaShape() finds it under its require.cache path anchor;
@@ -14,7 +14,7 @@
 //     with objects exposing .type ('test'|'hook'), .file and .titlePath();
 //   * reporter output agrees with the lifecycle events BY CONSTRUCTION
 //     (summary counts and failure-block identities are rendered FROM the
-//     same events Canary watches), and stdout is byte-deterministic across
+//     same events Amabie watches), and stdout is byte-deterministic across
 //     rounds (no timings printed) so proofs can pin normalized hashes.
 // Deliberate NON-features (a gap fails loud instead of faking mocha): no
 // timeouts, retries, grep, reporters, globs. A hook FAILURE aborts the run
@@ -37,7 +37,7 @@ class Suite {
 class Runnable {
   constructor(title) { this.title = title; this.file = null; this._fn = null; this._parent = null; }
   // Contract with the preload: run(fn) invokes fn(err|null) EXACTLY when the
-  // body settles — the wrapper around fn is what records "Canary watched this
+  // body settles — the wrapper around fn is what records "Amabie watched this
   // Runnable execute" (ranSet). Emitting pass/fail without this never happens
   // in this double by construction, but the REJECT defense stays load-bearing.
   run(fn) {
@@ -137,7 +137,7 @@ class Mocha {
     await execSuite(this.suite, runner, ctx);
     if (ctx.hookFailed) {
       // Honest abort: no summary printed — the round cannot read as a
-      // completed run, which is exactly the direction Canary requires.
+      // completed run, which is exactly the direction Amabie requires.
       console.log('mocha-double: hook failure aborted the run');
       runner.emit('end');
       return 1;

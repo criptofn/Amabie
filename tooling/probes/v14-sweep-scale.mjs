@@ -13,15 +13,17 @@
  * valid test run" -> INFRASTRUCTURE_FAILURE. That is 27 of the 29 real failures
  * in that run, each costing ~334 s of sweeps.
  *
- * THE FIX (packages/support): ONE snapshot of the process table, the BFS inside
- * that same PowerShell, kills attempted after the traversal, and a row count
- * that must come back positive -- so a snapshot that silently failed can never
- * be read as "nothing survived".
+ * THE FIX (packages/support): one full-table snapshot for the BFS, then two
+ * bounded identity checks around termination. The first snapshot's row count
+ * must come back positive, so an empty/unreadable enumeration can never be read
+ * as "nothing survived". This is three bounded table enumerations total, not
+ * one WMI query for every process visited.
  *
  * WHAT THIS PROBE PINS DOWN
  *   A. SHAPE (deterministic, catches a revert): the built sweep contains no
- *      per-process `ParentProcessId=` query, and issues exactly one
- *      `Get-CimInstance -ClassName Win32_Process`.
+ *      per-process `ParentProcessId=` query, and issues exactly three bounded
+ *      `Get-CimInstance -ClassName Win32_Process` enumerations: tree, before,
+ *      and after.
  *   B. THE PROPERTY THE CHANGE MUST NOT BREAK (live evidence): against a real
  *      intermediate parent holding SEVERAL live descendants, the sweep still
  *      reports success and kills every one of them.
@@ -32,6 +34,8 @@
  * Exit: 0 all checks passed; 1 a check failed.
  */
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { cleanupOwnedFixture } from '../test-support/owned-fixture-cleanup.mjs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -51,10 +55,11 @@ if (!fs.existsSync(BUILT)) {
   console.error(`FAIL: no built support package at ${BUILT} - run \`npm run build\` first`);
   process.exit(1);
 }
-const { sweepDescendants } = await import(`file://${BUILT.replace(/\\/g, '/')}`);
+const { sweepDescendants, sweepLiveChild, cleanupWindowsChildOnExit } = await import(`file://${BUILT.replace(/\\/g, '/')}`);
+const OWNER_TOKEN = `amabie-test-owner:${randomUUID()}`;
 
 // ---------------------------------------------------------------- A. shape ---
-console.log('=== A. the sweep asks the OS ONCE, not once per process ===');
+console.log('=== A. the sweep uses bounded snapshots, not one query per process ===');
 const src = fs.readFileSync(BUILT, 'utf8');
 // Comments are excluded on purpose: the fix's own rationale quotes the OLD
 // shape (`Get-CimInstance -Filter "ParentProcessId=$p"`), and a shape guard that
@@ -69,24 +74,29 @@ info('per-process ParentProcessId queries', perProcessQueries);
 info('whole-table enumerations', snapshots);
 check('no per-process WMI query remains (the O(N) shape that timed out)', perProcessQueries === 0,
   `found ${perProcessQueries}`);
-check('exactly one process-table enumeration per sweep', snapshots === 1, `found ${snapshots}`);
+// Four, not three: the Windows host preflight (P1:2, WIN32_HOST_PROBE_SCRIPT) is one read-only snapshot
+// taken before any kill is requested. Still bounded; still not one query per process.
+check('one tree snapshot plus bounded preflight and pre/post identity checks (not one query per process)',
+  snapshots === 4, `expected preflight + tree + pre-kill + survivor snapshots, found ${snapshots}`);
 check('the enumeration result is required to be non-empty before "no survivors" is reported',
-  /surveyed <= 0/.test(src) && /came back empty or unreadable/.test(src));
+  /\$all=@\(Get-CimInstance -ClassName Win32_Process/.test(src)
+    && /if\(\$all\.Count -le 0\)\{ throw 'empty process snapshot' \};/.test(src));
 
 // ------------------------------------------------------------- B. live tree ---
 console.log('\n=== B. a real tree with several survivors is still swept ===');
 const isAlive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const killIfAlive = (pid) => { if (pid !== undefined && isAlive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } } };
+const killIfAlive = (pid) => cleanupOwnedFixture(pid, OWNER_TOKEN);
 
 const mid = spawn(process.execPath, ['-e',
   "const { spawn } = require('node:child_process');" +
   'const pids = [];' +
   `for (let i = 0; i < ${DESCENDANTS}; i++) {` +
-  "  const c = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 120000)'], { stdio: 'ignore', windowsHide: true, detached: true });" +
+  `  const c = spawn(process.execPath, ['-e', 'setTimeout(()=>{}, 120000)', ${JSON.stringify(OWNER_TOKEN)}], { stdio: 'ignore', windowsHide: true, detached: true });` +
   '  c.unref(); pids.push(c.pid); }' +
   "console.log(pids.join(' '));" +
   'setTimeout(()=>{}, 180000);',
+  OWNER_TOKEN,
 ], { stdio: ['ignore', 'pipe', 'ignore'], detached: true, windowsHide: true });
 
 let out = '';
@@ -108,7 +118,7 @@ try {
     kidPids.length === DESCENDANTS && kidPids.every(isAlive));
 
   const started = Date.now();
-  const res = sweepDescendants(mid.pid, Date.now() - 1_000);
+  const res = sweepLiveChild(mid, Date.now() - 1_000);
   const secs = Math.round((Date.now() - started) / 100) / 10;
   info('sweep result', JSON.stringify(res));
   info('sweep wall time', `${secs}s`);
@@ -132,15 +142,19 @@ info('sweepDescendants(undefined)', JSON.stringify(none));
 check('no pid -> no kill, and NOT failed', none.failed === false && none.killed.length === 0);
 
 const ghost = spawn(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'ignore', windowsHide: true });
+const ghostSweep = process.platform === 'win32' ? cleanupWindowsChildOnExit(ghost, Date.now()) : undefined;
 await new Promise((r) => ghost.on('close', r));
-const after = sweepDescendants(ghost.pid, Date.now() - 5_000);
+const after = ghostSweep ? ghostSweep() ?? { killed: [], failed: true } : sweepDescendants(ghost.pid, Date.now() - 5_000);
 info('sweepDescendants(dead child)', JSON.stringify(after));
 check('a child that left nothing behind -> not failed (no false alarm)', after.failed === false);
+if (process.platform === 'win32') {
+  check('an unretained numeric root cannot authorize Windows cleanup', sweepDescendants(ghost.pid, Date.now()).failed === true);
+}
 
 console.log('');
 if (failures > 0) {
   console.log(`SWEEP-SCALE: FAIL (${failures} check(s) failed)`);
   process.exit(1);
 }
-console.log('SWEEP-SCALE: PASS - one snapshot per sweep, real survivors still killed, no false failures.');
+console.log('SWEEP-SCALE: PASS - one tree snapshot plus bounded identity checks, real survivors still killed, no false failures.');
 process.exit(0);

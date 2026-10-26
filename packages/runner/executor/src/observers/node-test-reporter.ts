@@ -1,11 +1,11 @@
 /**
- * The Canary NODE:TEST REPORTER — the exact bytes Canary writes (byte-stable)
+ * The Amabie NODE:TEST REPORTER — the exact bytes Amabie writes (byte-stable)
  * into its workspace and adds to a `node --test` invocation as a second reporter.
  *
  * WHY: strong observation must stop being functionally Mocha-only. `node --test`
  * is the Node runtime's own runner, so it needs no install, no package, and no
  * pin table — but its default output is TEXT, and text is a claim. This reporter
- * is Canary's own bytes loaded INSIDE the test-runner process, receiving the
+ * is Amabie's own bytes loaded INSIDE the test-runner process, receiving the
  * runner's own lifecycle events, and writing NDJSON frames on fd 3 exactly like
  * the mocha and Python channels.
  *
@@ -13,7 +13,7 @@
  *   node --test --test-reporter=tap --test-reporter-destination=stdout \
  *              --test-reporter=<this file> --test-reporter-destination=stderr
  * The TAP reporter still writes the ordinary text summary to STDOUT, so the
- * cross-channel agreement check compares Canary's frames against output Canary did
+ * cross-channel agreement check compares Amabie's frames against output Amabie did
  * NOT produce. This reporter writes nothing to its own stream; its evidence goes
  * to fd 3, a pipe handed only to this child.
  *
@@ -40,7 +40,7 @@
  *
  * WHAT IT PROVES AND WHAT IT DOES NOT:
  *  1. Lifecycle ground truth is `test:start` + `test:pass`/`test:fail` TOGETHER: a
- *     pass for a test whose start Canary never watched is REJECTED (a `reject`
+ *     pass for a test whose start Amabie never watched is REJECTED (a `reject`
  *     frame fails the round closed). Printing is not executing.
  *  2. `hello` carries pid, ppid, node version, the observer version and the
  *     per-round nonce; the parent requires the nonce to round-trip and (pid or
@@ -58,17 +58,17 @@ import { pathToFileURL } from 'node:url';
 // v1.4 — canonical EXECUTABLE identity: this compares the observed program against the running
 // node. Two spellings of one binary (8.3 short vs long) must read as the same binary, or a
 // legitimate run is refused; a genuinely different program still differs.
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 
-export const NODE_TEST_REPORTER_BASENAME = 'canary-node-test-reporter.cjs';
+export const NODE_TEST_REPORTER_BASENAME = 'amabie-node-test-reporter.cjs';
 
 /** `hello.runner` for this channel. */
 export const NODE_TEST_RUNNER_ID = 'node-test';
 
-/** Directory inside the workspace (outside artifacts) holding Canary's bytes. */
-export const NODE_TEST_OBSERVER_DIRNAME = 'canary-node-observer';
+/** Directory inside the workspace (outside artifacts) holding Amabie's bytes. */
+export const NODE_TEST_OBSERVER_DIRNAME = 'amabie-node-observer';
 
-/** The absolute path of Canary's reporter bytes for this workspace. */
+/** The absolute path of Amabie's reporter bytes for this workspace. */
 export function nodeTestReporterPath(wsRoot: string): string {
   return path.join(wsRoot, NODE_TEST_OBSERVER_DIRNAME, NODE_TEST_REPORTER_BASENAME);
 }
@@ -84,7 +84,7 @@ export function nodeTestReporterUrl(wsRoot: string): string {
 }
 
 /**
- * Write Canary's reporter bytes and prove the loaded bytes are Canary's — the
+ * Write Amabie's reporter bytes and prove the loaded bytes are Amabie's — the
  * same write-if-different + read-back discipline as `ensureObserverPreload` and
  * `ensurePythonObserver`. Returns the directory (the observation door validates
  * that it lives inside the workspace).
@@ -98,16 +98,16 @@ export function ensureNodeTestObserver(wsRoot: string): string {
   } catch { /* absent: write below */ }
   fs.writeFileSync(p, NODE_TEST_REPORTER_SOURCE, 'utf8');
   if (fs.readFileSync(p, 'utf8') !== NODE_TEST_REPORTER_SOURCE) {
-    throw new Error(`node:test reporter at ${p} does not match Canary's bytes even after rewrite (workspace is not writable-stable)`);
+    throw new Error(`node:test reporter at ${p} does not match Amabie's bytes even after rewrite (workspace is not writable-stable)`);
   }
   return dir;
 }
 
 /**
- * The identity of the `node --test` runner Canary is about to spawn.
+ * The identity of the `node --test` runner Amabie is about to spawn.
  *
  * WHY THIS NEEDS NO OPERATOR GRANT, unlike a host Python interpreter (see
- * `pythonRunnerIdentity`): this runner is the Node runtime Canary is ITSELF
+ * `pythonRunnerIdentity`): this runner is the Node runtime Amabie is ITSELF
  * executing on. The spec names `node`; the sanitized PATH resolves it to
  * `dirname(process.execPath)` — the same binary — and expansion refuses anything
  * whose realpath is not `process.execPath`. There is therefore no "which
@@ -123,7 +123,7 @@ export function nodeRunnerIdentity(nodeExe: string): { version: string; identity
 }
 
 /** True iff `program` resolves to the same real file as the running Node. */
-export function isCanaryOwnRuntime(program: string): boolean {
+export function isAmabieOwnRuntime(program: string): boolean {
   try {
     return canonicalPath(program) === canonicalPath(process.execPath);
   } catch {
@@ -132,10 +132,10 @@ export function isCanaryOwnRuntime(program: string): boolean {
 }
 
 export const NODE_TEST_REPORTER_SOURCE = `'use strict';
-// Canary node:test reporter. See packages/runner/executor/src/observers/node-test-reporter.ts
+// Amabie node:test reporter. See packages/runner/executor/src/observers/node-test-reporter.ts
 const { Transform } = require('node:stream');
 const fs = require('node:fs');
-const OBSERVER_VERSION = 'canary-observer-v1';
+const OBSERVER_VERSION = 'amabie-observer-v1';
 const RUNNER_ID = 'node-test';
 
 const FD = 3;
@@ -165,18 +165,24 @@ function idOf(data) {
   return null;
 }
 
-// keyOf is the PAIRING key, and it is deliberately not the frame's id field: the
-// id must be the test's name because that is what the runner's TAP text names, but
-// two DIFFERENT tests in one file may legitimately share a leaf name (measured:
-// t.test('shared') under two parents). Keying start/pass tracking on the name
-// would report the second one as dup-pass and fail an honest round closed, so
-// tracking uses the runner's own unique testId where it exists, with the name as
-// the fallback for a version that omits it.
-function keyOf(data, id) {
+// identityOf is the DECLARATION identity: the pairing key, and the frame's tid. It is
+// deliberately not the frame's id field, which must be the test's name because that is
+// what the runner's TAP text names. Two DIFFERENT tests in one file may legitimately
+// share a leaf name (measured: t.test('shared') under two parents), so keying on the
+// name reports the second as dup-pass and fails an honest round closed. Node 26 supplies
+// a unique testId. Node 22 supplies no testId, so the file, line and column of the
+// declaration identify it instead (measured on 22.23.3: start, pass and fail all carry
+// line and column).
+// ponytail: file:line:column collides for two identical-name tests generated at one
+// location (a loop). Upgrade path: a runner id that carries the parent chain.
+function identityOf(data) {
   if (data && typeof data === 'object' && (typeof data.testId === 'number' || typeof data.testId === 'string')) {
-    return 'tid:' + String(data.testId);
+    return data.testId;
   }
-  return 'id:' + String(id);
+  if (data && typeof data === 'object' && typeof data.line === 'number' && typeof data.column === 'number') {
+    return 'loc:' + String(data.file) + ':' + data.line + ':' + data.column;
+  }
+  return null;
 }
 
 // A pending (skipped/todo) test is reported through BOTH test:pass+flag and
@@ -190,7 +196,7 @@ function markPending(id, key) {
   frame({ k: 'pending', id: id });
 }
 
-module.exports = class CanaryNodeTestReporter extends Transform {
+module.exports = class AmabieNodeTestReporter extends Transform {
   constructor(options) {
     super(Object.assign({}, options, { writableObjectMode: true }));
     try {
@@ -201,7 +207,7 @@ module.exports = class CanaryNodeTestReporter extends Transform {
         node: 'v' + process.versions.node,
         pid: process.pid,
         ppid: process.ppid,
-        nonce: process.env.CANARY_OBSERVER_NONCE || '',
+        nonce: process.env.AMABIE_OBSERVER_NONCE || '',
         observerVersion: OBSERVER_VERSION,
       });
       helloed = true;
@@ -213,7 +219,8 @@ module.exports = class CanaryNodeTestReporter extends Transform {
       const type = event && event.type;
       const data = (event && event.data) || {};
       const id = idOf(data);
-      const key = keyOf(data, id);
+      const tid = identityOf(data);
+      const key = tid === null ? 'id:' + String(id) : 'tid:' + String(tid);
       // Only real TESTS are counted. A file's own scheduling events
       // (enqueue/dequeue/complete) and the plan/summary/diagnostic events carry no
       // test identity, and no file-level start/pass/fail is emitted at all
@@ -235,7 +242,7 @@ module.exports = class CanaryNodeTestReporter extends Transform {
         } else {
           passed.add(key);
           counts.pass += 1;
-          frame({ k: 'pass', id: id, tid: data.testId, file: data.file });
+          frame({ k: 'pass', id: id, tid: tid, file: data.file });
         }
       } else if (type === 'test:fail') {
         if (id === null) {
@@ -245,7 +252,7 @@ module.exports = class CanaryNodeTestReporter extends Transform {
           frame({ k: 'reject', ev: 'fail', id: id, reason: 'no-run' });
         } else {
           counts.fail += 1;
-          frame({ k: 'fail', id: id, hook: false, tid: data.testId, file: data.file });
+          frame({ k: 'fail', id: id, hook: false, tid: tid, file: data.file });
         }
       } else if (type === 'test:skip' || type === 'test:todo') {
         markPending(id, key);
@@ -254,7 +261,7 @@ module.exports = class CanaryNodeTestReporter extends Transform {
       frame({ k: 'adapter-error', err: String((e && e.message) || e) });
     }
     // Emit NOTHING: this reporter's destination is a discard, and its evidence is
-    // fd 3. The ordinary TAP summary on stdout stays Canary-independent.
+    // fd 3. The ordinary TAP summary on stdout stays Amabie-independent.
     cb();
   }
 

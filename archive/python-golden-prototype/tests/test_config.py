@@ -5,10 +5,10 @@ import unittest
 
 from helpers import REPO_ROOT, write  # noqa: F401
 
-from canary.config import ConfigError, find_config, load_config
+from amabie.config import ConfigError, find_config, load_config
 
 VALID = """
-[canary]
+[amabie]
 normalizers = ["line-endings", "uuid", "trailing-ws"]
 
 [[check]]
@@ -26,7 +26,7 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
-        self.path = write(os.path.join(self.dir.name, "canary.toml"), VALID)
+        self.path = write(os.path.join(self.dir.name, "amabie.toml"), VALID)
 
     def test_valid_load(self):
         cfg = load_config(self.path)
@@ -40,45 +40,45 @@ class ConfigTests(unittest.TestCase):
         h1 = load_config(self.path).raw_hash
         h2 = load_config(self.path).raw_hash
         self.assertEqual(h1, h2)
-        other = write(os.path.join(self.dir.name, "b", "canary.toml"), VALID + "\n[[check]]\nname='extra'\nargv=['x']\n")
+        other = write(os.path.join(self.dir.name, "b", "amabie.toml"), VALID + "\n[[check]]\nname='extra'\nargv=['x']\n")
         self.assertNotEqual(load_config(other).raw_hash, h1)
 
     def test_missing_both_cmd_argv(self):
-        bad = write(os.path.join(self.dir.name, "bad", "canary.toml"),
+        bad = write(os.path.join(self.dir.name, "bad", "amabie.toml"),
                     "[[check]]\nname='x'\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_both_cmd_and_argv(self):
-        bad = write(os.path.join(self.dir.name, "bad2", "canary.toml"),
+        bad = write(os.path.join(self.dir.name, "bad2", "amabie.toml"),
                     "[[check]]\nname='x'\ncmd='a'\nargv=['a']\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_duplicate_names(self):
-        bad = write(os.path.join(self.dir.name, "bad3", "canary.toml"),
+        bad = write(os.path.join(self.dir.name, "bad3", "amabie.toml"),
                     "[[check]]\nname='x'\nargv=['a']\n[[check]]\nname='x'\nargv=['b']\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_unknown_normalizer(self):
-        bad = write(os.path.join(self.dir.name, "bad4", "canary.toml"),
-                    "[canary]\nnormalizers=['bogus-rule']\n[[check]]\nname='x'\nargv=['a']\n")
+        bad = write(os.path.join(self.dir.name, "bad4", "amabie.toml"),
+                    "[amabie]\nnormalizers=['bogus-rule']\n[[check]]\nname='x'\nargv=['a']\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_no_checks(self):
-        bad = write(os.path.join(self.dir.name, "bad5", "canary.toml"), "[canary]\n")
+        bad = write(os.path.join(self.dir.name, "bad5", "amabie.toml"), "[amabie]\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_invalid_toml(self):
-        bad = write(os.path.join(self.dir.name, "bad6", "canary.toml"), "not = = toml")
+        bad = write(os.path.join(self.dir.name, "bad6", "amabie.toml"), "not = = toml")
         with self.assertRaises(ConfigError):
             load_config(bad)
 
     def test_bad_timeout(self):
-        bad = write(os.path.join(self.dir.name, "bad7", "canary.toml"),
+        bad = write(os.path.join(self.dir.name, "bad7", "amabie.toml"),
                     "[[check]]\nname='x'\nargv=['a']\ntimeout=-1\n")
         with self.assertRaises(ConfigError):
             load_config(bad)
@@ -94,7 +94,7 @@ class ConfigTests(unittest.TestCase):
     def test_env_and_stdin_parse(self):
         raw = ("[[check]]\nname='x'\nargv=['a']\nstdin='hello'\n"
                "env={ FOO='bar' }\n")
-        p = write(os.path.join(self.dir.name, "env", "canary.toml"), raw)
+        p = write(os.path.join(self.dir.name, "env", "amabie.toml"), raw)
         cfg = load_config(p)
         self.assertEqual(cfg.checks[0].stdin, "hello")
         self.assertEqual(cfg.checks[0].env, {"FOO": "bar"})

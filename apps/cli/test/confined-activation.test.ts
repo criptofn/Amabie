@@ -18,7 +18,7 @@ import { anchorPath, PRODUCTION_MEASUREMENT, readProductionMeasurement } from '.
 import type { Enrollment } from '../src/provider/production.js';
 
 const repo = path.resolve(import.meta.dirname, '../../../..');
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-real-activation-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-real-activation-'));
 const cli = path.join(repo, 'apps/cli/dist/src/main.js');
 type Payload = NonNullable<ReturnType<typeof readProductionMeasurement>['payload']>;
 type RecordFile = { payload: Payload; signature: string };
@@ -61,8 +61,8 @@ const OFF_WINDOWS = process.platform === 'win32' ? false : 'this required native
  * full, and a machine that CAN confine gets no skip. A SKIP is never a PASS: the
  * count shows it and the reason carries the measured refusal verbatim.
  */
-const HOST_CANNOT_CONFINE = process.env['CANARY_CONFINED_HOST'] === 'unmeasurable'
-  ? (process.env['CANARY_CONFINED_HOST_REASON'] ?? 'this host measurably cannot execute inside the native confinement')
+const HOST_CANNOT_CONFINE = process.env['AMABIE_CONFINED_HOST'] === 'unmeasurable'
+  ? (process.env['AMABIE_CONFINED_HOST_REASON'] ?? 'this host measurably cannot execute inside the native confinement')
   : false;
 const SUITE_SKIP = OFF_WINDOWS || HOST_CANNOT_CONFINE;
 // A skip that only zeroes out five describes is invisible in node:test's totals
@@ -109,8 +109,9 @@ function changed(mutate: (p: Payload) => void, foreignKey = false): void {
   put(recordFile, next);
   put(anchorFile, {...anchor, current: crypto.createHash('sha256').update(JSON.stringify(next)).digest('hex')});
 }
-function closed(reason?: RegExp): void {
-  const boundary = measureBoundary({root: store}, {});
+function closed(reason?: RegExp, now = record.payload.finishedAt): void {
+  // Isolate each negative predicate from fixture aging; freshness has explicit controls below.
+  const boundary = measureBoundary({root: store}, {}, now);
   assert.equal(boundary.hardenedAvailable, false);
   assert.notEqual(measuredCapabilities(boundary).level, 'HARDENED');
   for (const control of ALL_CONTROLS) {
@@ -168,8 +169,8 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
     assert.equal(new RestrictedRunner(null,status.confinement).assertUsable(),null);
   });
   it('production capability reporter and CLI agree', () => {
-    const saved = process.env.CANARY_TRUST_STORE;
-    process.env.CANARY_TRUST_STORE = store;
+    const saved = process.env.AMABIE_TRUST_STORE;
+    process.env.AMABIE_TRUST_STORE = store;
     try {
       assert.equal(securityCapability().level,'HARDENED');
       const r = spawnSync(process.execPath,[cli,'provider','status','--json'],{cwd:repo,encoding:'utf8',windowsHide:true});
@@ -179,7 +180,7 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
       assert.equal(envelope.security.level,'HARDENED');
       assert.match(r.stderr,/MEASURED \+ LIVE BROKER VERIFIED/);
     } finally {
-      if (saved === undefined) delete process.env.CANARY_TRUST_STORE; else process.env.CANARY_TRUST_STORE = saved;
+      if (saved === undefined) delete process.env.AMABIE_TRUST_STORE; else process.env.AMABIE_TRUST_STORE = saved;
     }
   });
   it('configured provider is store specific', () => {
@@ -191,6 +192,13 @@ describe('real production activation chain', { skip: SUITE_SKIP }, () => {
 });
 
 describe('one broken custody or deployment requirement closes HARDENED', { skip: SUITE_SKIP }, () => {
+  it('an unrelated wall-clock delay does not mask the negative predicate under test', () => {
+    changed(p => { p.tools = '0'.repeat(64); });
+    const realNow = Date.now;
+    Date.now = () => record.payload.startedAt + 15 * 60 * 1000 + 1;
+    try { closed(/toolchain/); }
+    finally { Date.now = realNow; }
+  });
   const cases: Array<[string,(p:Payload)=>void,RegExp]> = [
     ['stale',p=>{p.startedAt-=3600000;p.finishedAt-=3600000;},/stale/],
     ['future',p=>{p.startedAt+=3600000;p.finishedAt+=3600000;},/future/],
@@ -258,7 +266,7 @@ describe('retired schema and malformed evidence', { skip: SUITE_SKIP },()=>{
   it('schema 1 can never activate even with caller-owned signing material',()=>{
     const legacy=path.join(root,'legacy');fs.mkdirSync(legacy);
     fs.writeFileSync(path.join(legacy,'custody-key-material.txt'),'caller-owned');
-    put(path.join(legacy,'confined-caller-measurement.json'),{schema:'canary-confined-measurement/1',deployment:{complete:true},battery:{pass:100,fail:0,inconclusive:0},controls:ALL_CONTROLS.map(control=>({control,available:true}))});
+    put(path.join(legacy,'confined-caller-measurement.json'),{schema:'amabie-confined-measurement/1',deployment:{complete:true},battery:{pass:100,fail:0,inconclusive:0},controls:ALL_CONTROLS.map(control=>({control,available:true}))});
     assert.equal(readConfinedMeasurement(legacy,{}).valid,false);
     assert.equal(measureBoundary({root:legacy},{}).hardenedAvailable,false);
   });
@@ -271,8 +279,15 @@ describe('retired schema and malformed evidence', { skip: SUITE_SKIP },()=>{
 });
 
 describe('saved evidence requires a current authenticated live broker', { skip: SUITE_SKIP },()=>{
+  it('an expired signed transcript is refused even while the real broker is live', () => {
+    const expiredAt = record.payload.startedAt + 15 * 60 * 1000 + 1;
+    const expired = readProductionMeasurement(store, expiredAt);
+    assert.equal(expired.valid, false);
+    assert.match(expired.reason, /stale or future measurement/);
+    closed(/stale or future measurement/, expiredAt);
+  });
   it('same saved evidence with dead broker -> NOT HARDENED',()=>{
-    assert.equal(readProductionMeasurement(store).valid,true);
+    assert.equal(readProductionMeasurement(store, record.payload.finishedAt).valid,true);
     const r=spawnSync('taskkill',['/PID',String(brokerPid),'/T','/F'],{windowsHide:true,encoding:'utf8'});
     assert.equal(r.status,0,r.stderr);
     closed(/live production broker unavailable/);

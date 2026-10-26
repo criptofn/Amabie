@@ -1,6 +1,6 @@
-# Canary 1.4.0 — "last known-gaps release"
+# Amabie 1.4.0 — "last known-gaps release"
 
-> **Status: RELEASED — tag `v1.4.0`.** Published 2026-09-23 by the `canary-release` workflow
+> **Status: RELEASED — tag `v1.4.0`.** Published 2026-09-23 by the `amabie-release` workflow
 > (run `35840990945`): <https://github.com/criptofn/Canary/releases/tag/v1.4.0>. Tag `v1.4.0`
 > points at `4271e6e`, the tip of `main`.
 >
@@ -31,8 +31,8 @@ claim it cannot support.
 
 **No root-of-trust weakening occurred.** The completion gate is the same `checkpoint`
 implementation it was in v1.3. The only new writer is the Codex hook file, and it follows the same
-containment discipline as every other Canary write (link refusal, backup, ownership recorded so
-`uninstall` removes exactly Canary's entries). The full trust battery — mutation batteries,
+containment discipline as every other Amabie write (link refusal, backup, ownership recorded so
+`uninstall` removes exactly Amabie's entries). The full trust battery — mutation batteries,
 authority guards, adversarial authority, poisoned-environment authority, trust-boundary mutations,
 dist-mutation guard, architecture closure, provider boundary and production custody — passes on
 these bytes.
@@ -41,7 +41,7 @@ these bytes.
 
 > **SUPERSEDED for current claims by v1.5.** The figures in this section are the HISTORICAL v1.3
 > measurement and are kept as a record. They **exclude** the standing MCP payload, so they must not be
-> quoted as Canary's current footprint. The current, fully-accounted measurement — standing payload
+> quoted as Amabie's current footprint. The current, fully-accounted measurement — standing payload
 > included, and evidenced as actually present in the session — is in
 > [`BENCHMARK-EVERYDAY-1.5.md`](BENCHMARK-EVERYDAY-1.5.md): **83.21 % of Plain (−16.79 %)** across two
 > runs, at equal correctness, with the payload's real cost measured at **~438 tokens** per session
@@ -52,8 +52,8 @@ everyday result is roughly parity with a modest saving, and that is the whole cl
 
 | | model tokens |
 |---|---|
-| Plain (not using Canary at all) | 409,824 |
-| **Canary, everyday path** | **379,792 — 92.7 %** |
+| Plain (not using Amabie at all) | 409,824 |
+| **Amabie, everyday path** | **379,792 — 92.7 %** |
 
 That is **7.3 % lower in aggregate**, with individual measured tasks ranging from **17.1 % lower to
 essentially parity (+0.02 %)**. Correctness was equal on the measured benchmark and there was no
@@ -82,12 +82,12 @@ weakening the gate is not a win.
 
 ## Codex is the second measured integration
 
-Canary is a safety engine with thin agent adapters. Until v1.4 that was asserted with one data
-point. Now `canary setup` also writes a `Stop` hook into the project's `.codex/hooks.json`, running
+Amabie is a safety engine with thin agent adapters. Until v1.4 that was asserted with one data
+point. Now `amabie setup` also writes a `Stop` hook into the project's `.codex/hooks.json`, running
 the **same** `checkpoint` — one implementation, no fork, no new authority — and it was **measured on
 a real `codex exec` session** (`codex-cli 0.154.0`): the hook was executed twice, once blocking
 (`{"decision":"block","reason":…}` on stdout, exit 0) and once with `stop_hook_active: true`
-allowing, with the harness **continuing the turn** on Canary's reason.
+allowing, with the harness **continuing the turn** on Amabie's reason.
 
 Two measured caveats ship on the capability row itself, not in a footnote:
 
@@ -98,9 +98,9 @@ Two measured caveats ship on the capability row itself, not in a footnote:
   second.
 
 Also measured: Codex **rejects an entire `hooks.json` that carries an unknown top-level field**, so
-Canary's writer emits only `hooks` and preserves everything else in the file.
+Amabie's writer emits only `hooks` and preserves everything else in the file.
 
-`canary agents` prints the real table for the repository in front of you and never reports an
+`amabie agents` prints the real table for the repository in front of you and never reports an
 advisory integration as if it could gate.
 
 ## Cursor remains external-test-required
@@ -155,7 +155,7 @@ suite then runs and fails on its own merits.
 
 **Beginner UX improved without weakening meaning.** The everyday path no longer opens with
 internal vocabulary: `setup`'s trust-store refusal and its seal refusal (previously
-`REFUSED — <raw internal throw>`), `canary result`'s "no sealed checks, no proof, no result", and
+`REFUSED — <raw internal throw>`), `amabie result`'s "no sealed checks, no proof, no result", and
 the last-resort handler (previously a bare `ERROR: <internal text>`) are translated. **Every message
 keeps its exact exit code**, its factual content and its actionable next step, and the internal
 detail moved behind the existing `--verbose` flag. Where an operator workflow *parses* the text
@@ -168,10 +168,10 @@ two equally-anchored checks it deliberately refuses to choose and returns one cl
 and `setup` used to discard that line and print a generic refusal. It is printed now, and both
 no-check refusals name the universal contract (Makefile / Taskfile / Justfile, a shipped `gradlew`
 or `mvnw`, configured CMake/Meson/Zig/Swift/Elixir/Crystal/Rake/Composer/PHPUnit, or a check the
-project's CI already runs) instead of understating what Canary reads.
+project's CI already runs) instead of understating what Amabie reads.
 
 **CHECK DISCOVERY may get better; SEMANTIC AUTHORITY did not move.** Binding is still an operator
-act in `package.json` `canary.proofs`; `canary work` still refuses with `REQUIREMENT UNBOUND` before
+act in `package.json` `amabie.proofs`; `amabie work` still refuses with `REQUIREMENT UNBOUND` before
 opening any candidate; the checkpoint still refuses to certify before executing when authority
 drifted.
 
@@ -187,9 +187,9 @@ drifted.
 ## Installing this release
 
 ```sh
-npm install -g ./canary-rn-cli-1.4.0.tgz     # Node.js 22 or newer
-canary --version                             # canary 1.4.0
-cd your-repo && canary setup --yes
+npm install -g ./amabie-rn-cli-1.4.0.tgz     # Node.js 22 or newer
+amabie --version                             # amabie 1.4.0
+cd your-repo && amabie setup --yes
 ```
 
 Check the tarball against the `.sha256` published with it. It is one self-contained bundle with
@@ -214,7 +214,7 @@ Unchanged from v1.3 except as noted:
 - One block per stop; one harness-owned MCP approval at project scope (avoidable at local scope).
 - Cursor: UNMEASURED. No protection claimed.
 - Confined coverage is **5 of 20** fixtures; the other 15 refuse before model execution.
-- `CANARY_CONFINED_CHECK` stays opt-in, with evidence pointing in both directions.
+- `AMABIE_CONFINED_CHECK` stays opt-in, with evidence pointing in both directions.
 - No demonstrated correctness advantage.
 - **New:** Codex gating requires a trusted project *and* a trusted hook, or it gates nothing.
 - **New:** the everyday token claim excludes a 5,726 B/turn standing payload.
@@ -231,7 +231,7 @@ Unchanged from v1.3 except as noted:
 
 | | |
 |---|---|
-| file | `canary-rn-cli-1.4.0.tgz` |
+| file | `amabie-rn-cli-1.4.0.tgz` |
 | size | **208,993 bytes** |
 | SHA-256 | `42ed2056e8b77b212d07ec92814cb2e67f908bf76733114e072605e7e5e5505c` |
 | entries | **16** — exactly the pack allowlist (`dist/main.js`, `tools/windows-boundary` ×7, `tooling/test-support/fixtures` ×6, `package.json`, `LICENSE`) |
@@ -252,8 +252,8 @@ above was computed from the downloaded asset and equals the published `.sha256` 
 >
 > | entry | CRLF / delta (bytes) |
 > |---|---|
-> | `tools/windows-boundary/CanaryBroker.cs` | 522 |
-> | `tools/windows-boundary/CanaryConfinedLauncher.cs` | 336 |
+> | `tools/windows-boundary/AmabieBroker.cs` | 522 |
+> | `tools/windows-boundary/AmabieConfinedLauncher.cs` | 336 |
 > | `tooling/test-support/fixtures/confined-caller.cjs` | 208 |
 > | `tools/windows-boundary/production-tool.cjs` | 131 |
 > | `tooling/test-support/fixtures/boundary-native-child.cs` | 118 |
@@ -281,11 +281,11 @@ above was computed from the downloaded asset and equals the published `.sha256` 
 > shipped bytes and belongs to a future release with its own regression.
 
 Verified on the artifact itself, not on the source tree: it installs into a prefix whose path
-**contains spaces**, `canary --version` prints `canary 1.4.0`, and the whole everyday journey runs
+**contains spaces**, `amabie --version` prints `amabie 1.4.0`, and the whole everyday journey runs
 from the installed bytes — `setup --yes` → `READY`, `doctor` → `READY`, a green completion allowed
 **silently**, a failing completion blocked with a JSON decision that names the failing check and
 points at the evidence file, `stop_hook_active` preventing a second block, the Codex `Stop` handler
-written and drivable, and `uninstall` removing Canary's entries while the user's own hook,
+written and drivable, and `uninstall` removing Amabie's entries while the user's own hook,
 permissions and MCP server survive. Upgrading an existing **v1.3.0** installation to this artifact
 in the same prefix duplicates neither the hook nor the MCP entry and leaves setup idempotent
 (`tooling/probes/v14-rc-artifact-journey.mjs`, 41 checks, 0 failures).
@@ -297,4 +297,4 @@ strings: **zero matches**.
 
 The frozen-bytes audit — branch, commit, battery result, unit counts, artifact digest, clean-install
 and upgrade evidence — is returned with this release as
-**CANARY v1.4 RELEASE CANDIDATE AUDIT**.
+**AMABIE v1.4 RELEASE CANDIDATE AUDIT**.

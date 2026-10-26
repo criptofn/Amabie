@@ -76,13 +76,13 @@ export function auditFixtureDir(fixtureDir: string, dependency: string): AuditRe
   // directory here therefore arrived WITH the subject's source: pre-planted
   // runner bytes the audit tier exists to quarantine. Refusing it keeps the
   // invariant "every node_modules byte in the workspace was created post-audit
-  // by Canary's own pipeline", which is what lets per-round expansion re-hash
+  // by Amabie's own pipeline", which is what lets per-round expansion re-hash
   // the runner tree and mean it. Honest scope note: belt-and-braces ONLY — a
   // prepare script can still CREATE a double at runtime, and AM-1 (pinned
   // bytes gate injection, packages/support/src/knownRunners.ts) is what
   // actually closes that. Callers treat this code as InfraAbort, not MISUSE.
   const shippedNm: AuditViolation[] = fs.existsSync(path.join(fixtureDir, 'node_modules'))
-    ? [{ code: 'node-modules-shipped', detail: 'fixture ships node_modules/ at audit time (runner bytes must arrive via Canary\'s install, never the repo tree)' }]
+    ? [{ code: 'node-modules-shipped', detail: 'fixture ships node_modules/ at audit time (runner bytes must arrive via Amabie\'s install, never the repo tree)' }]
     : [];
   let text: string;
   try {

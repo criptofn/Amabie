@@ -60,7 +60,7 @@
 ✔ round-3 secondary — crash & sweep signals reach the classification (318.3885ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.1674ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (11.0621ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (11.0621ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (8.9887ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (8.2524ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (8.9609ms)
@@ -73,7 +73,7 @@
   ✔ Sol's accepted forms are now rejected in install-family commands (2.0525ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (32.5303ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (2.0044ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (3.5225ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (3.5225ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.3574ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (2.498ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1008ms)

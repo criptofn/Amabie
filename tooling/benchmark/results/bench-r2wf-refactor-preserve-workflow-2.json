@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r2wf-refactor-preserve-workflow-2",
   "task": "refactor-preserve",
   "arm": "workflow",
@@ -11,7 +11,7 @@
     "expectedOutcome": "hidden PASS means the new input form works AND no documented behaviour was lost; preservation failures are the ordinary result of a refactor"
   },
   "startedAt": "2026-09-12T05:27:56.935Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-refactor-preserve-workflow-alzI35",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-refactor-preserve-workflow-alzI35",
   "agent": {
     "command": "claude",
     "model": null,
@@ -25,10 +25,10 @@
     "secs": 0.8,
     "readme": "READY",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "verification plan (from what this project already declares — Canary runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Canary automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Canary is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Canary will say so. doctor: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):\n  ✓ tests: npm run test\nharness: Claude Code — hook installed into this project\nharness: OpenAI Codex CLI — detected, NOT integrated — no reliable blocking hook exists yet\nClaude Code will run Amabie automatically when the agent finishes a turn here.\n\nsmoke test (running your own project scripts):\n✓ tests: npm run test (exit 0)\n\nREADY — Amabie is active here: it will run these checks whenever the AI agent says it is done, and will interrupt the human only when something needs them.\nnext: try it: break a test on purpose and let the agent finish — Amabie will say so. doctor: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -85,7 +85,7 @@
       }
     ],
     "baseMoved": false,
-    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Canary checks\nproof obligations open: 1 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: npm run test (exit 0)\n\nREADY — wiring verified; the checks just ran and passed.\nnext: nothing to do — the agent finishes, Amabie checks\nproof obligations open: 1 UNPROVEN — the plan passing does not make the task proven (NO PROOF, NO DONE).\n"
   },
   "agentResult": {
     "isError": false,
@@ -100,7 +100,7 @@
       "cacheCreationTokens": 33112,
       "totalTokens": 590219
     },
-    "finalText": "**Does it work?** Yes — the implementation is complete, tested, and Canary's independent outside-the-tree verification reports **TECHNICAL EVIDENCE: PROVEN** (`✓ tests: npm run test (exit 0)`, objective duties met). I cannot get `finish` to *promote* it myself, and re-running won't change that: the only remaining obligation is **SUBJECTIVE ACCEPTANCE**, which only a human may grant:\n\n```\ncanary accept decimal-strings-v2\n```\n\nrunning that myself would be automating acceptance, which the Canary rules explicitly forbid. Base repo is untouched, as intended.\n\n**What I changed** (candidate `decimal-strings-v2`, commit `d1f20fe`; the first candidate `decimal-strings` was refused only because its obligations weren't registered before isolation — fixed by `canary task` + re-isolate):\n\n- `src/money.js` — 7 lines added before the existing type check: a string matching `/^(-?)(\\d+)\\.(\\d{1,2})$/` is converted to exact integer cents (`Number` on the digit strings, `padEnd` on the fraction — no float `*100` noise); anything else stays a string and falls into the existing `TypeError`. Header comment documents the new form. All integer-cent paths are literally untouched, so sign-before-symbol, `decimals: 0`, `grouping: false`, custom symbol, and the `round` modes survive by construction (asserted).\n- `tests/money.test.js` — two added checks: `'12.34'` ≡ `1234`, `'-0.05'` → `'-$0.05'`, `'5.5'` → `'$5.50'` (this one caught a real `padStart`/`padEnd` bug before commit), and that `'12.345'`, `'abc'`, `'1.2.3'`, `'+12.34'`, `''` all still throw `TypeError`. The existing `'12'`-throws test passes unchanged.\n\n**Design decision to flag:** `'12'` (no decimal point) throws, because the visible suite documents it as a rejection case and `12` in this function's domain means 12 cents, not $12. If bare integer strings should mean dollars instead, say so and I'll adjust + re-isolate.\n\n→ skipped: >2-digit fractions (e.g. `12.345`) round-tripping — rejected as not-cents-representable; add proper rounding only if a caller needs it."
+    "finalText": "**Does it work?** Yes — the implementation is complete, tested, and Amabie's independent outside-the-tree verification reports **TECHNICAL EVIDENCE: PROVEN** (`✓ tests: npm run test (exit 0)`, objective duties met). I cannot get `finish` to *promote* it myself, and re-running won't change that: the only remaining obligation is **SUBJECTIVE ACCEPTANCE**, which only a human may grant:\n\n```\namabie accept decimal-strings-v2\n```\n\nrunning that myself would be automating acceptance, which the Amabie rules explicitly forbid. Base repo is untouched, as intended.\n\n**What I changed** (candidate `decimal-strings-v2`, commit `d1f20fe`; the first candidate `decimal-strings` was refused only because its obligations weren't registered before isolation — fixed by `amabie task` + re-isolate):\n\n- `src/money.js` — 7 lines added before the existing type check: a string matching `/^(-?)(\\d+)\\.(\\d{1,2})$/` is converted to exact integer cents (`Number` on the digit strings, `padEnd` on the fraction — no float `*100` noise); anything else stays a string and falls into the existing `TypeError`. Header comment documents the new form. All integer-cent paths are literally untouched, so sign-before-symbol, `decimals: 0`, `grouping: false`, custom symbol, and the `round` modes survive by construction (asserted).\n- `tests/money.test.js` — two added checks: `'12.34'` ≡ `1234`, `'-0.05'` → `'-$0.05'`, `'5.5'` → `'$5.50'` (this one caught a real `padStart`/`padEnd` bug before commit), and that `'12.345'`, `'abc'`, `'1.2.3'`, `'+12.34'`, `''` all still throw `TypeError`. The existing `'12'`-throws test passes unchanged.\n\n**Design decision to flag:** `'12'` (no decimal point) throws, because the visible suite documents it as a rejection case and `12` in this function's domain means 12 cents, not $12. If bare integer strings should mean dollars instead, say so and I'll adjust + re-isolate.\n\n→ skipped: >2-digit fractions (e.g. `12.345`) round-tripping — rejected as not-cents-representable; add proper rounding only if a caller needs it."
   },
   "visible": {
     "exitCode": 0,

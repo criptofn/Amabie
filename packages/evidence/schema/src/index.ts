@@ -1,6 +1,6 @@
 /**
- * Evidence Bundle v1 — the machine-readable artifact that makes a Canary
- * conclusion auditable by someone who does not trust Canary.
+ * Evidence Bundle v1 — the machine-readable artifact that makes an Amabie
+ * conclusion auditable by someone who does not trust Amabie.
  *
  * Invariants enforced by validateBundle():
  *  - classification lives ONLY under `classification` and is one of the six
@@ -17,7 +17,7 @@
 
 import {
   classify, type RoundFact, type ExecutionObservation,
-} from '@canary-rn/classification';
+} from '@amabie/classification';
 
 /**
  * The mirror's OWN copy of the strong-label list (post-GLM round-5 F2).
@@ -34,8 +34,8 @@ import {
 export const STRONG_MIRROR_LABELS: readonly string[] = [
   'PASS', 'CONFIRMED_REGRESSION', 'PRE_EXISTING_FAILURE', 'FLAKY',
 ];
-import { KNOWN_RUNNER_RELEASES } from '@canary-rn/support';
-import { canonicalJson, sha256hex } from '@canary-rn/hashing';
+import { KNOWN_RUNNER_RELEASES } from '@amabie/support';
+import { canonicalJson, sha256hex } from '@amabie/hashing';
 import { structuralIssues } from './contract.js';
 
 /** sha256 of zero bytes — the frames hash of a round that carried no frames. */
@@ -92,13 +92,13 @@ export interface RoundEvidence {
    *  secondary: isolation unknown => execution invalid). */
   sweepFailed?: boolean | undefined;
   /**
-   * Post-GLM observation hardening — Canary's OWN execution record for this
-   * round (contract panel E): what Canary injected, what the in-process
+   * Post-GLM observation hardening — Amabie's OWN execution record for this
+   * round (contract panel E): what Amabie injected, what the in-process
    * observer watched, and how the two channels agreed. REQUIRED on every
    * round; a subject-side bundle can carry it but cannot MAKE it VALID —
    * prove re-runs the shared validator over the retained .attest.ndjson
    * bytes and byte-compares. Missing means old bundle (refused); ABSENT
-   * means Canary observed nothing, which structurally caps the label.
+   * means Amabie observed nothing, which structurally caps the label.
    */
   executionObservation: ExecutionObservation;
   startedAt: string;
@@ -152,7 +152,7 @@ export interface EvidenceBundle {
   schemaVersion: number;
   runId: string;
   createdAt: string;
-  canaryVersion: string;
+  amabieVersion: string;
   experimentId: string;
   dependency: {
     package: string;
@@ -255,7 +255,7 @@ export function integrityFor(bundle: unknown): BundleIntegrity {
 const HEX64 = /^[0-9a-f]{64}$/;
 
 /**
- * The exact variable names @canary-rn/support grants to children (both
+ * The exact variable names @amabie/support grants to children (both
  * platforms). Every round's envKeys must be a subset — the sanitized
  * boundary is thus auditable from the bundle alone (red-team F9).
  *
@@ -461,7 +461,7 @@ function semanticChecks(
           issues.push(`${at}: executionObservation INVALID must not carry counts/absentKind/stray fields`);
         }
       } else if (st === 'ABSENT') {
-        if (!has('absentKind')) issues.push(`${at}: executionObservation ABSENT requires absentKind ("why Canary attempted nothing")`);
+        if (!has('absentKind')) issues.push(`${at}: executionObservation ABSENT requires absentKind ("why Amabie attempted nothing")`);
         if (has('observedCounts') || has('invalidReason') || has('observedMochaVersion')) {
           issues.push(`${at}: executionObservation ABSENT must not carry counts/invalidReason/observedMochaVersion`);
         }
@@ -599,7 +599,7 @@ function semanticChecks(
       const at = `round ${String(r.arm)}#${String(r.round)}`;
       const o = r.executionObservation as Record<string, unknown> | undefined;
       if (!o || typeof o !== 'object' || o.status !== 'VALID') {
-        issues.push(`${at}: ${String(label)} claims an execution outcome but executionObservation is ${o && typeof o === 'object' ? String(o.status) : 'missing'} — strong labels require a VALID Canary observation on EVERY round (panel H mirror)`);
+        issues.push(`${at}: ${String(label)} claims an execution outcome but executionObservation is ${o && typeof o === 'object' ? String(o.status) : 'missing'} — strong labels require a VALID Amabie observation on EVERY round (panel H mirror)`);
         continue;
       }
       const nz = (v: unknown): number => (typeof v === 'number' && v >= 0 ? v : 0);
@@ -618,7 +618,7 @@ function semanticChecks(
       const emv = o.expectedMochaVersion as string | undefined;
       const pin = (KNOWN_RUNNER_RELEASES['mocha'] ?? []).find((p) => p.version === emv);
       if (!pin || o.expectedRunnerTreeSha256 !== pin.treeSha256 || o.observedRunnerTreeSha256 !== pin.treeSha256) {
-        issues.push(`${at}: ${String(label)} but the runner identity is not a Canary-pinned release (expectedMochaVersion=${String(emv)}) — strong verdicts require pinned runner BYTES (panel H/AM-1)`);
+        issues.push(`${at}: ${String(label)} but the runner identity is not an Amabie-pinned release (expectedMochaVersion=${String(emv)}) — strong verdicts require pinned runner BYTES (panel H/AM-1)`);
       }
       if (typeof o.framesSha256 !== 'string' || !HEX64.test(o.framesSha256)) {
         issues.push(`${at}: ${String(label)} but framesSha256 is not 64-hex — no retained frame stream to verify against`);
@@ -630,7 +630,7 @@ function semanticChecks(
     // removes the classifier-side containment check cannot silently make
     // the claim again: candidate observed failing identities not present in
     // the baseline union contradict the label's own reason text with
-    // Canary-observed facts — a watched pass->fail transition may never be
+    // Amabie-observed facts — a watched pass->fail transition may never be
     // swallowed, disjoint failing sets describe no comparable transition.
     if (String(label) === 'PRE_EXISTING_FAILURE') {
       const ids = (r: Record<string, unknown>): string[] => {

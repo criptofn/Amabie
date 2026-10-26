@@ -51,7 +51,7 @@ describe('instrument fingerprint', () => {
   });
 
   it('covers the PRODUCT the trials actually execute (the built CLI)', () => {
-    // Trials run `canary` from `apps/cli/dist`, so a rebuild changes what was measured. The gap was
+    // Trials run `amabie` from `apps/cli/dist`, so a rebuild changes what was measured. The gap was
     // found by planning a rebuild during a running batch and being unable to tell from the record.
     const p = instrumentFingerprint().product;
     assert.notEqual(p, null, 'the real repository has a built CLI to fingerprint');
@@ -60,7 +60,7 @@ describe('instrument fingerprint', () => {
   });
 
   it('moves the version when the PRODUCT changes, and not when docs do', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-fingerprint-product-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fingerprint-product-'));
     try {
       const bench = path.join(root, 'tooling', 'benchmark');
       const dist = path.join(root, 'apps', 'cli', 'dist', 'src');
@@ -84,7 +84,7 @@ describe('instrument fingerprint', () => {
 
   it('CHANGES when a harness file changes (the property that makes attribution honest)', () => {
     // A miniature harness in a temp dir, so the real one is not touched.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-fingerprint-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fingerprint-'));
     try {
       fs.writeFileSync(path.join(dir, 'run-trial.mjs'), 'export const a = 1;\n');
       fs.writeFileSync(path.join(dir, 'classify-claim.mjs'), 'export const b = 2;\n');

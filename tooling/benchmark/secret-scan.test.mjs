@@ -40,12 +40,12 @@ const ROOTS = [
  *
  * MEASURED: a first version scanned everything under `_canary-data/evidence` and reported
  * eleven "credentials" — all of them vendored npm/Js docs inside a pinned Node distribution
- * that a test parks there (`.canary-pinned-host/.../node_modules/npm/...`). Those files talk
+ * that a test parks there (`.amabie-pinned-host/.../node_modules/npm/...`). Those files talk
  * about tokens and passwords because that is what they are ABOUT. The guard exists to check
  * THIS harness's artifacts, not to audit a vendored runtime, and a guard that cries wolf is
  * a guard that gets switched off.
  */
-const SKIP_DIRS = new Set(['node_modules', '.canary-pinned-host', '.git']);
+const SKIP_DIRS = new Set(['node_modules', '.amabie-pinned-host', '.git']);
 const SKIP = (p) => [...SKIP_DIRS].some((d) => p.includes(`${path.sep}${d}${path.sep}`) || p.endsWith(`${path.sep}${d}`));
 
 function walk(dir, out = []) {

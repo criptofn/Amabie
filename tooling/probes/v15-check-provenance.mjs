@@ -29,11 +29,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { hostGit } from '../test-support/host-git.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const cli = path.join(repo, 'apps/cli/dist/src/main.js');
-const GIT = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const cliArg = process.argv.indexOf('--cli');
+const cli = path.resolve(cliArg === -1 ? path.join(repo, 'apps/cli/dist/src/main.js') : process.argv[cliArg + 1]);
+const GIT = hostGit();
 
 let pass = 0, fail = 0;
 const check = (ok, name, detail) => {
@@ -41,9 +43,9 @@ const check = (ok, name, detail) => {
   if (ok) pass++; else fail++;
 };
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-provenance-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-provenance-'));
 const store = path.join(root, 'trust-store');
-const env = { ...process.env, CANARY_TRUST_STORE: store };
+const env = { ...process.env, AMABIE_TRUST_STORE: store };
 
 const run = (exe, args, cwd, input) => spawnSync(exe, args, {
   cwd, env, encoding: 'utf8', windowsHide: true, timeout: 600_000, input,
@@ -53,7 +55,7 @@ const git = (cwd, args) => {
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stdout}${r.stderr}`);
   return r.stdout;
 };
-const canary = (cwd, args, input) => run(process.execPath, [cli, ...args], cwd, input);
+const amabie = (cwd, args, input) => run(process.execPath, [cli, ...args], cwd, input);
 
 /** Build a sealed fixture. `testScript` is the OPERATOR's sealed check command. */
 function fixture(name, { testScript, checkFile, checkBody }) {
@@ -66,11 +68,11 @@ function fixture(name, { testScript, checkFile, checkBody }) {
   fs.writeFileSync(path.join(dir, 'src.cjs'), 'module.exports = (n) => `Hello, ${n}!`;\n');
   fs.writeFileSync(path.join(dir, checkFile), checkBody);
   git(dir, ['init', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'probe@canary.local']);
+  git(dir, ['config', 'user.email', 'probe@amabie.local']);
   git(dir, ['config', 'user.name', 'Provenance Probe']);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-m', 'sealed base']);
-  const setup = canary(dir, ['setup', '--yes', dir]);
+  const setup = amabie(dir, ['setup', '--yes', dir]);
   if (setup.status !== 0) throw new Error(`setup failed in ${name}: ${setup.stdout}${setup.stderr}`);
   git(dir, ['add', '-A']);
   git(dir, ['commit', '--allow-empty', '-m', 'operator setup artifacts']);
@@ -79,7 +81,7 @@ function fixture(name, { testScript, checkFile, checkBody }) {
 
 /** Drive the completion gate the way a harness does. */
 function checkpoint(dir) {
-  const r = canary(dir, ['checkpoint'], JSON.stringify({ cwd: dir, stop_hook_active: false }));
+  const r = amabie(dir, ['checkpoint'], JSON.stringify({ cwd: dir, stop_hook_active: false }));
   return { status: r.status, stdout: (r.stdout ?? '').trim(), stderr: (r.stderr ?? '').trim() };
 }
 const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m', msg]); };
@@ -114,7 +116,10 @@ const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m'
   const gate = checkpoint(dir);
   const blob = `${gate.stdout}\n${gate.stderr}`;
   const silent = gate.stdout.length === 0;
-  const titled = /CHECK TEXT WRITTEN BY THE WORKER ITSELF/.test(blob);
+  // P0:21: a rewritten EXISTING check is UNPROVEN, so the block reason carries the unproven note
+  // ("the discriminating check text was written by the worker ..."), not the uppercase caveat that
+  // a worker-CREATED check gets when it is met. Either label proves the worker authorship.
+  const titled = /CHECK TEXT WRITTEN BY THE WORKER ITSELF|check text was written by the worker/.test(blob);
   const named = /greeting\.test\.cjs/.test(blob) && /EXISTING check rewritten/.test(blob);
 
   check(!silent, 'BLOCKER 1: a rewritten EXISTING check does NOT produce a silent, uncaveated pass',
@@ -158,8 +163,10 @@ const commit = (dir, msg) => { git(dir, ['add', '-A']); git(dir, ['commit', '-m'
   const falseRed = /pass on the base commit too/.test(blob);
   check(!falseRed, 'BLOCKER 7: a sealed-script check outside a test path is NOT a false red',
     falseRed ? `the gate still refused with the base-comparison note: ${blob.slice(0, 240)}` : `gate said: ${blob.slice(0, 200)}`);
-  check(/CHECK TEXT WRITTEN BY THE WORKER ITSELF/.test(blob),
-    'BLOCKER 7: it is admitted as evidence, and still labelled worker-authored (no new false green)',
+  // P0:21: the rewritten sealed check is UNPROVEN rather than admitted as independent evidence; it
+  // must still be labelled worker-authored (no new false green).
+  check(/CHECK TEXT WRITTEN BY THE WORKER ITSELF|check text was written by the worker/.test(blob),
+    'BLOCKER 7: it is labelled worker-authored and not counted as independent authority (no new false green)',
     blob.slice(0, 240));
 }
 

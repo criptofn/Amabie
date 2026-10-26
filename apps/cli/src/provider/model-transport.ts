@@ -4,18 +4,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
-import { selfArgv, readConfig, readTaskRecord, unboundRequirements } from '../onboarding.js';
+import { selfArgv } from '../cli-runtime.js';
+import { readConfig } from '../local-config.js';
+import { readTaskRecord } from '../task-state.js';
+import { unboundRequirements } from '../proof-obligations.js';
 import { enrollment, productionTool } from './production.js';
 
-export const TRANSPORT_TOOL = 'mcp__canary_confined__implement';
+export const TRANSPORT_TOOL = 'mcp__amabie_confined__implement';
 export function modelTransportArgs(store: string, work: string, prompt: string, model: string): string[] {
-  const mcp = { mcpServers: { canary_confined: { command: process.execPath,
+  const mcp = { mcpServers: { amabie_confined: { command: process.execPath,
     args: selfArgv(['provider', 'worker-tools', store, work]),
-    env: { TEMP: os.tmpdir(), TMP: os.tmpdir(), ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '', ANTHROPIC_BASE_URL: '' },
+    env: { TEMP: os.tmpdir(), TMP: os.tmpdir(), ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '', ANTHROPIC_BASE_URL: '',
       // v1.3 §23: opt-in per-batch check feedback. The flag must travel through this allowlist — it is the
       // only environment the tool server receives. It selects whether the worker sees its OWN project's
       // check output; it grants no capability and changes no authority.
-      CANARY_CONFINED_CHECK: process.env.CANARY_CONFINED_CHECK ?? '' } } };
+      AMABIE_CONFINED_CHECK: process.env.AMABIE_CONFINED_CHECK ?? '',
+      // The operator-selected trusted sweep/launch host (validated by productionNativePowerShellExecutable).
+      // Dropping it here sent every model tool call to Windows PowerShell 5.1 while the preflight used Core.
+      AMABIE_POWERSHELL_CORE_PATH: process.env.AMABIE_POWERSHELL_CORE_PATH ?? '' } } } };
   return ['--bare', '--restricted', '--tools', '', '--strict-mcp-config', '--mcp-config', JSON.stringify(mcp),
     '--setting-sources', '', '--disable-slash-commands', '--no-chrome', '--no-session-persistence',
     '--permission-mode', 'dontAsk', '--permission-prompts', 'none', '--allowedTools', TRANSPORT_TOOL,
@@ -24,7 +30,15 @@ export function modelTransportArgs(store: string, work: string, prompt: string, 
 export async function modelTransport(store: string, work: string, prompt: string, model: string, executable: string): Promise<number> {
   const e = enrollment(store), cfg = readConfig(e.base);
   if (!cfg || cfg === 'corrupt' || !readTaskRecord(e.base)) throw new Error('trusted task preflight missing');
-  if (unboundRequirements(e.base, cfg).unbound.length) throw new Error('REQUIREMENT UNBOUND: no model execution');
+  const unbound = unboundRequirements(e.base, cfg).unbound;
+  if (unbound.length) {
+    const labels = [
+      ...(unbound.some((item) => item.source === 'requirement') ? ['REQUIREMENT UNBOUND'] : []),
+      ...(unbound.some((item) => item.source === 'objective-target') ? ['OBJECTIVE TARGET UNBOUND'] : []),
+    ];
+    console.error(`NEEDS ATTENTION: ${labels.join(' and ')} — no model execution. Operator action only: bind each criterion to a matching sealed script with amabie bind <script> --requirement "<exact text>" --reseal.`);
+    return 2;
+  }
   if (!path.isAbsolute(executable)) throw new Error('operator must select an absolute transport executable');
   // Exercise the exact executor before the model may issue any operation.
   const preflight = productionTool(store, work, { op: 'list', path: '.' }) as { output?: { error?: string } };

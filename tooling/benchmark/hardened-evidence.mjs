@@ -27,7 +27,7 @@ export const FRESHNESS_CEILING_MS = 15 * 60 * 1000;
  * `current` is ALWAYS false. This function cannot return true, by construction: that is
  * the whole point, and the test asserts it even when every other fact matches.
  *
- * @param {any} payload the recorded `canary-production-measurement/2` payload
+ * @param {any} payload the recorded `amabie-production-measurement/2` payload
  * @param {{now?: number, hostname?: string, storeExists?: (store: string) => boolean}} env
  * @returns {{current: false, verdict: 'HISTORICAL', recordedControlsHeld: number|null, facts: object, reasons: string[]}}
  */

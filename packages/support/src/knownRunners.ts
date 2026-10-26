@@ -1,5 +1,5 @@
 /**
- * KNOWN_RUNNER_RELEASES — Canary's pin table for runner packages whose bytes
+ * KNOWN_RUNNER_RELEASES — Amabie's pin table for runner packages whose bytes
  * we trust enough to inject our lifecycle observer into (post-GLM panel AM-1).
  *
  * WHY A PIN TABLE AND NOT "just read the version": the injection trigger and
@@ -7,9 +7,9 @@
  * FIXTURE/node_modules/<pkg>/package.json — a SUBJECT-CONTROLLED file. A
  * downstream repo can ship (or prepare-create) a mocha-API double whose
  * package.json says whatever npm would resolve, so every version-derived
- * check matched BY CONSTRUCTION and Canary's own observer certified zero real
+ * check matched BY CONSTRUCTION and Amabie's own observer certified zero real
  * tests. Binding trust to (name, version, canonical tree hash) that live in
- * THIS repo moves the decision to Canary-derived data: unpinned bytes ⇒ no
+ * THIS repo moves the decision to Amabie-derived data: unpinned bytes ⇒ no
  * injection ⇒ observation ABSENT ⇒ strong labels structurally unreachable.
  *
  * TRUST POSTURE (docs/EXECUTION-AUTHORITY.md keeps the long form): this is TOFU by
@@ -41,8 +41,8 @@ export interface KnownRunnerRelease {
   version: string;
   /** Canonical content hash of the installed package directory (treeSha256). */
   treeSha256: string;
-  /** Where the bytes came from; 'canary-double' exists ONLY for offline tests. */
-  origin: 'npm' | 'canary-double';
+  /** Where the bytes came from; 'amabie-double' exists ONLY for offline tests. */
+  origin: 'npm' | 'amabie-double';
   note: string;
 }
 
@@ -57,13 +57,13 @@ export const KNOWN_RUNNER_RELEASES: Readonly<Record<string, readonly KnownRunner
         'golden-era tree and a clean npm install hash identically',
     },
     {
-      version: '0.0.0-canary-double',
-      // Canary-authored mocha-API double in apps/cli/test/fixtures/mocha-double
-      // (offline e2e only — origin 'canary-double' exists ONLY so tests can
+      version: '0.0.0-amabie-double',
+      // Amabie-authored mocha-API double in apps/cli/test/fixtures/mocha-double
+      // (offline e2e only — origin 'amabie-double' exists ONLY so tests can
       // exercise the injection mechanism without a network install). A unit
       // test pins table==disk: editing the double without re-pinning fails.
-      treeSha256: '12e47c3604c2e808a2112ff806cdfdcf68b1c80cb7f88fd11f8ba974440e7e9f',
-      origin: 'canary-double',
+      treeSha256: 'ea55501ff8ecd454c5a54363d2b7baab20ca12425058ba17c90b2428ae824b6f',
+      origin: 'amabie-double',
       note: 'offline-test double; .gitattributes forces eol=lf so checkout bytes == hash bytes',
     },
   ],
@@ -106,7 +106,7 @@ function walkInto(dir: string, rel: string, out: Array<[string, string]>): void 
   }
 }
 
-/** A runner package Canary LOCATED and HASHED (pin status not yet checked). */
+/** A runner package Amabie LOCATED and HASHED (pin status not yet checked). */
 export interface LocatedRunnerPackage {
   dir: string;
   name: string;
@@ -122,7 +122,7 @@ export interface LocatedRunnerPackage {
  * hash the directory. Null (never throws) on ANY doubt. Deliberately does NOT
  * consult the pin table: callers need the observed hash even when the pin
  * MISSES (the bundle records `observedRunnerTreeSha256` on the ABSENT path —
- * "what bytes were there" is Canary-derived regardless of trust).
+ * "what bytes were there" is Amabie-derived regardless of trust).
  */
 export function locateRunnerPackage(binAbsPath: string, expectedName: string): LocatedRunnerPackage | null {
   try {
@@ -148,12 +148,12 @@ export function locateRunnerPackage(binAbsPath: string, expectedName: string): L
  *  match one entry (AM-1 — a version string alone never earns trust).
  *
  *  post-GLM F5 — ORIGIN IS AN EXECUTION-AUTHORITY BOUNDARY, not metadata.
- *  The 'canary-double' pin's bytes are PUBLIC in this repo and its
+ *  The 'amabie-double' pin's bytes are PUBLIC in this repo and its
  *  observation seams are exactly what an attacker knows best, so a
  *  (version, treeSha256) match alone let an untrusted spec stage those
  *  bytes at the canonical anchor in its own prepare step and earn observer
- *  injection through a runner it fully controls. Selecting a canary-double
- *  pin therefore requires the explicit ctx.allowCanaryDoubleOrigin grant —
+ *  injection through a runner it fully controls. Selecting an amabie-double
+ *  pin therefore requires the explicit ctx.allowAmabieDoubleOrigin grant —
  *  the in-process test-authority channel (ExecutorDeps/PipelineDeps, the
  *  same channel as fetch/extract), which the production CLI never passes.
  *  npm-origin pins are selectable in BOTH postures; the golden proof path
@@ -163,11 +163,11 @@ export function locateRunnerPackage(binAbsPath: string, expectedName: string): L
  *  recorded (bytes-observed is trust-independent). */
 export function findRunnerPin(
   located: LocatedRunnerPackage,
-  ctx: { allowCanaryDoubleOrigin?: boolean } = {},
+  ctx: { allowAmabieDoubleOrigin?: boolean } = {},
 ): KnownRunnerRelease | null {
   const pin = (KNOWN_RUNNER_RELEASES[located.name] ?? []).find(
     (p) => p.version === located.version && p.treeSha256 === located.treeSha256
-      && (p.origin !== 'canary-double' || ctx.allowCanaryDoubleOrigin === true),
+      && (p.origin !== 'amabie-double' || ctx.allowAmabieDoubleOrigin === true),
   );
   return pin ?? null;
 }
@@ -177,7 +177,7 @@ export interface PinnedRunner {
   name: string;
   version: string;
   treeSha256: string;
-  origin: 'npm' | 'canary-double';
+  origin: 'npm' | 'amabie-double';
 }
 
 /**
@@ -185,7 +185,7 @@ export interface PinnedRunner {
  * `$bin:` token: locate + hash the package and match it against the pin
  * table. Returns null (never throws) for ANY doubt — wrong/missing name,
  * unreadable tree, unpinned version, hash miss. The returned `version` is
- * the ONLY authoritative expected runner version Canary may trust: the
+ * the ONLY authoritative expected runner version Amabie may trust: the
  * subject's package.json string was used solely to LOCATE this entry.
  */
 export function hashPinnedRunner(binAbsPath: string, expectedName: string): PinnedRunner | null {

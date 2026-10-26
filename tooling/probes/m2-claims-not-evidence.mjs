@@ -34,7 +34,7 @@ const git = (dir, ...args) => {
   assert.equal(r.status, 0, `git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 };
-const canary = (args, cwd, input) =>
+const amabie = (args, cwd, input) =>
   spawnSync(process.execPath, [CLI, ...args], { cwd, input, encoding: 'utf8', timeout: 120_000 });
 
 if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing'); process.exit(1); }
@@ -43,22 +43,22 @@ if (!fs.existsSync(CLI)) { console.log('FAIL build first: ' + CLI + ' missing');
   if (v.status !== 0) { console.log('FAIL git is required for this probe but did not run'); process.exit(1); }
 }
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m2-probe-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m2-probe-'));
 const bundleDirs = (root) => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   return fs.existsSync(d) ? fs.readdirSync(d).filter((x) => x.includes('T') ).sort() : [];
 };
 const latestBundle = (root, source) => {
   const dirs = bundleDirs(root).filter((d) => d.endsWith(`-${source}`));
   assert.ok(dirs.length > 0, `no ${source} bundle`);
-  return JSON.parse(fs.readFileSync(path.join(root, '.canary', 'evidence', dirs.at(-1), 'verification.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'evidence', dirs.at(-1), 'verification.json'), 'utf8'));
 };
 
 function makeRealGitRepo(name, testCmd) {
   const root = path.join(TMP, name);
   fs.mkdirSync(root, { recursive: true });
   git(root, 'init', '-b', 'main');
-  git(root, 'config', 'user.email', 'probe@canary.local');
+  git(root, 'config', 'user.email', 'probe@amabie.local');
   git(root, 'config', 'user.name', 'probe');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(
     { name, private: true, scripts: { test: testCmd ?? `node "${FX('f-pass.js')}"` } }, null, 2));
@@ -73,7 +73,7 @@ try {
   const root = makeRealGitRepo('ident');
   const headAtInit = git(root, 'rev-parse', 'HEAD').trim();
   check('setup on a real repo: READY and bundle candidate binds to the actual HEAD', () => {
-    const r = canary(['setup', '--yes', root]);
+    const r = amabie(['setup', '--yes', root]);
     assert.equal(r.status, 0, r.stdout);
     assert.match(r.stdout, /READY/);
     const b = latestBundle(root, 'setup');
@@ -88,23 +88,23 @@ try {
   const dirty = makeRealGitRepo('diverge', `node "${FX('f-fail-counts.js')}"`);
   check('dirty+fail: checkpoint bundle records dirty=true; claim only annotates the block', () => {
     // make the tree dirty AFTER setup so candidate.dirty flips from a real `git status`
-    canary(['setup', '--yes', dirty]); // smoke fails (NEEDS ATTENTION) but config+bundle are written
+    amabie(['setup', '--yes', dirty]); // smoke fails (NEEDS ATTENTION) but config+bundle are written
     fs.writeFileSync(path.join(dirty, 'untracked-note.txt'), 'x');
-    assert.equal(canary(['claim', 'all good: 99 passing 0 failing'], dirty).status, 0);
-    const out = canary(['checkpoint'], dirty, JSON.stringify({ cwd: dirty }));
+    assert.equal(amabie(['claim', 'all good: 99 passing 0 failing'], dirty).status, 0);
+    const out = amabie(['checkpoint'], dirty, JSON.stringify({ cwd: dirty }));
     assert.equal(out.status, 0);
     const j = JSON.parse(out.stdout);
     assert.equal(j.decision, 'block');
     assert.match(j.reason, /Claim is not evidence\./);
     assert.match(j.reason, /Agent claimed: 99 passed \/ 0 failed/);
-    assert.match(j.reason, /Canary observed: 2 passed \/ 1 failed/);
+    assert.match(j.reason, /Amabie observed: 2 passed \/ 1 failed/);
     assert.ok(!j.reason.includes('all good:'), 'raw claim text must never reach the reason');
     const b = latestBundle(dirty, 'checkpoint');
     assert.equal(b.status, 'fail');
     assert.equal(b.candidate.dirty, true); // untracked note seen by real git status
     assert.deepEqual(b.steps[0].observedCounts, { parser: 'mocha', passed: 2, failed: 1 });
     // digest of retained raw log binds to bytes on disk
-    const rawFile = path.join(dirty, '.canary', 'evidence',
+    const rawFile = path.join(dirty, '.amabie', 'evidence',
       bundleDirs(dirty).filter((d) => d.endsWith('-checkpoint')).at(-1), b.steps[0].stdout.file);
     const h = crypto.createHash('sha256').update(fs.readFileSync(rawFile)).digest('hex');
     assert.equal(b.steps[0].stdout.sha256, h);
@@ -119,8 +119,8 @@ try {
     // M5: a repaired script is authority drift until setup re-runs (visible smoke
     // executes the new command, then seals it). The bare swap BLOCKING is pinned
     // in m5-proof-plan; this probe keeps its own story: honest repair -> silence.
-    assert.equal(canary(['setup', '--yes', dirty]).status, 0);
-    const out = canary(['checkpoint'], dirty, JSON.stringify({ cwd: dirty }));
+    assert.equal(amabie(['setup', '--yes', dirty]).status, 0);
+    const out = amabie(['checkpoint'], dirty, JSON.stringify({ cwd: dirty }));
     assert.equal(out.status, 0, out.stdout);
     const decision = JSON.parse(out.stdout);
     assert.equal(decision.decision, 'block', JSON.stringify(decision));
@@ -132,20 +132,20 @@ try {
 
   // ---- 4. S3 containment: a symlinked evidence dir is written AROUND, never through
   const linked = makeRealGitRepo('linked');
-  canary(['setup', '--yes', linked]);
+  amabie(['setup', '--yes', linked]);
   let outside;
   try {
     outside = path.join(TMP, 'evidence-outside');
     fs.mkdirSync(outside, { recursive: true });
-    fs.rmSync(path.join(linked, '.canary', 'evidence'), { recursive: true, force: true });
-    fs.symlinkSync(outside, path.join(linked, '.canary', 'evidence'), 'junction');
+    fs.rmSync(path.join(linked, '.amabie', 'evidence'), { recursive: true, force: true });
+    fs.symlinkSync(outside, path.join(linked, '.amabie', 'evidence'), 'junction');
   } catch {
     console.log('SKIP evidence-symlink attack (OS denies link creation)');
     outside = null;
   }
   if (outside) {
-    check('doctor with .canary/evidence pointing outside the repo: no writes escape, verdict intact', () => {
-      const r = canary(['doctor', linked]);
+    check('doctor with .amabie/evidence pointing outside the repo: no writes escape, verdict intact', () => {
+      const r = amabie(['doctor', linked]);
       assert.equal(r.status, 0, r.stdout); // READY from its own executed plan — evidence absence never blocks
       assert.deepEqual(fs.readdirSync(outside), [], 'evidence must not be written through an outward link');
     });
@@ -154,15 +154,15 @@ try {
   // ---- 5. forged bundle cannot launder a verdict (real repo, real git)
   const forged = makeRealGitRepo('forged', `node "${FX('f-liar.js')}"`);
   check('forged pass bundle + matching printed lie: block stands on exit code alone', () => {
-    canary(['setup', '--yes', forged]);
-    const fakeDir = path.join(forged, '.canary', 'evidence', '2020-01-01T00-00-00-000Z-checkpoint');
+    amabie(['setup', '--yes', forged]);
+    const fakeDir = path.join(forged, '.amabie', 'evidence', '2020-01-01T00-00-00-000Z-checkpoint');
     fs.mkdirSync(fakeDir, { recursive: true });
     fs.writeFileSync(path.join(fakeDir, 'verification.json'), JSON.stringify(
-      { schema: 'canary-verification/1', source: 'checkpoint', status: 'pass', steps: [{ ok: true, exitCode: 0 }] }));
-    const out = canary(['checkpoint'], forged, JSON.stringify({ cwd: forged }));
+      { schema: 'amabie-verification/1', source: 'checkpoint', status: 'pass', steps: [{ ok: true, exitCode: 0 }] }));
+    const out = amabie(['checkpoint'], forged, JSON.stringify({ cwd: forged }));
     assert.equal(out.status, 0);
     assert.equal(JSON.parse(out.stdout).decision, 'block');
-    assert.match(JSON.parse(out.stdout).reason, /Canary verification failed/);
+    assert.match(JSON.parse(out.stdout).reason, /Amabie verification failed/);
   });
 } finally {
   fs.rmSync(TMP, { recursive: true, force: true });

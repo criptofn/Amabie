@@ -1,7 +1,7 @@
 'use strict';
 /**
  * The project's own (VISIBLE) test runner: no dependencies, no install step. It matches the
- * runner-summary shape Canary's Node adapter already understands ("N passing" / "N failing").
+ * runner-summary shape Amabie's Node adapter already understands ("N passing" / "N failing").
  */
 const fs = require('node:fs');
 const path = require('node:path');

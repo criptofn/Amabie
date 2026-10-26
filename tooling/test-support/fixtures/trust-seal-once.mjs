@@ -26,7 +26,7 @@ if (!root || !projectId || !kind) {
 }
 
 try {
-  const env = sealRecord({ root }, { projectId, kind, payload: { by: process.pid }, canaryVersion: 'fixture' });
+  const env = sealRecord({ root }, { projectId, kind, payload: { by: process.pid }, amabieVersion: 'fixture' });
   console.log(JSON.stringify({ seq: env.seq, pid: process.pid }));
 } catch (e) {
   console.error(`REFUSED: ${e instanceof Error ? e.message : String(e)}`);

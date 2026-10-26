@@ -18,21 +18,21 @@
  * impossible to claim a capability nobody implemented.
  *
  * THE INVARIANT THAT MATTERS: `capability: 'STRONG'` may only be set for a
- * runner that really has (a) an injected observer whose bytes are Canary's and
- * (b) an AUTHORITY that binds those bytes to a runner the operator or Canary
+ * runner that really has (a) an injected observer whose bytes are Amabie's and
+ * (b) an AUTHORITY that binds those bytes to a runner the operator or Amabie
  * itself can vouch for. Since v1.1 Phase 2 the authority is one of THREE kinds,
  * because runners are not all the same kind of artifact:
  *
  *   package-pin        the runner's release bytes match a pin in THIS repo
  *                      (mocha). Checked against KNOWN_RUNNER_RELEASES, which must
  *                      carry an npm-origin release.
- *   runtime-identity   the runner IS the runtime Canary is executing on
+ *   runtime-identity   the runner IS the runtime Amabie is executing on
  *                      (`node --test`). There is no "which one did the operator
  *                      authorize?" question: expansion refuses any `node` whose
  *                      realpath is not `process.execPath`.
  *   operator-identity  the runner is neither: a Python interpreter or a pytest
  *                      installation on this host. Its identity (version + a
- *                      content digest of its own bytes) is MEASURED by Canary and
+ *                      content digest of its own bytes) is MEASURED by Amabie and
  *                      must be granted — in the product, by the operator's sealed
  *                      setup plan (apps/cli/src/runner-authority.ts).
  *
@@ -48,7 +48,7 @@
  * rather than a matter of remembering.
  */
 
-import { KNOWN_RUNNER_RELEASES } from '@canary-rn/support';
+import { KNOWN_RUNNER_RELEASES } from '@amabie/support';
 
 import { OBSERVER_VERSION } from './observation.js';
 
@@ -58,7 +58,7 @@ export type RunnerFamily = 'node' | 'python' | 'rust' | 'go';
 
 /**
  * What a strong label can rest on for this runner.
- *  - STRONG             Canary injects its own observer bytes, bound to an
+ *  - STRONG             Amabie injects its own observer bytes, bound to an
  *                       authority (see the header), and re-counts the lifecycle it
  *                       watched. A VALID observation is reachable, so strong
  *                       labels are reachable.
@@ -113,9 +113,9 @@ const STRONG_REQUIREMENTS =
   'one KNOWN_RUNNER_RELEASES entry PLUS its reviewed manifest under '
   + 'packages/support/test/fixtures/runner-manifests/ (offline-verified by '
   + 'known-runners-manifest.test.ts), an injected observer whose bytes are '
-  + "Canary's, a validation contract that re-counts what Canary watched, and "
+  + "Amabie's, a validation contract that re-counts what Amabie watched, and "
   + 'mutation-battery coverage proving the gate is pinned — or, for a runner that '
-  + 'is not an npm package, a Canary-owned channel PLUS an authority that binds it '
+  + 'is not an npm package, an Amabie-owned channel PLUS an authority that binds it '
   + '(the verifying runtime itself, or an operator-sealed identity)';
 
 /**
@@ -129,9 +129,9 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     programs: ['mocha'],
     scriptMarkers: [/\bmocha\b/],
     capability: 'STRONG',
-    // `--require <preload>` expands the test argv with Canary's own bytes; frames
-    // come back on a dedicated fd; the hello pid must equal the pid Canary spawned.
-    observation: { authority: 'package-pin', pinKey: 'mocha', protocol: 'canary-observer-v1' },
+    // `--require <preload>` expands the test argv with Amabie's own bytes; frames
+    // come back on a dedicated fd; the hello pid must equal the pid Amabie spawned.
+    observation: { authority: 'package-pin', pinKey: 'mocha', protocol: 'amabie-observer-v1' },
   },
   {
     id: 'node-test',
@@ -144,14 +144,14 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     // it cannot observe is exactly the overclaim this file exists to prevent.
     scriptMarkers: [/(?:^|\s)--test(?:-only)?(?=\s|$)/, /\bnode:test\b/],
     capability: 'STRONG',
-    // `--test-reporter=<file URL>` adds Canary's reporter as a SECOND reporter:
-    // the ordinary TAP summary stays on stdout (output Canary did not produce) and
-    // Canary's frames go to fd 3. Inserted immediately after the runtime, because
+    // `--test-reporter=<file URL>` adds Amabie's reporter as a SECOND reporter:
+    // the ordinary TAP summary stays on stdout (output Amabie did not produce) and
+    // Amabie's frames go to fd 3. Inserted immediately after the runtime, because
     // Node stops reading its own options at the first positional (measured).
     observation: {
       authority: 'runtime-identity',
       channelModule: 'packages/runner/executor/src/observers/node-test-reporter.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'node 26.7.0 win32-x64: a real `node --test` run observed end-to-end (hello → pass/pending → bye) with '
       + 'counts agreeing with the runner TAP summary; printed TAP text minted nothing; two same-named tests both counted. '
@@ -165,14 +165,14 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     scriptMarkers: [/\bpytest\b/, /-m\s+pytest\b/],
     capability: 'STRONG',
     // A plugin loaded through PYTHONPATH + PYTEST_PLUGINS (an environment door with
-    // a fixed Canary-owned module name), so no argv surface can be used to displace
-    // it; an explicit `-p no:canary_pytest_observer` is refused, and a project that
+    // a fixed Amabie-owned module name), so no argv surface can be used to displace
+    // it; an explicit `-p no:amabie_pytest_observer` is refused, and a project that
     // suppresses it through its own config simply produces no frames and the round
     // fails closed.
     observation: {
       authority: 'operator-identity',
       channelModule: 'packages/runner/executor/src/observers/pytest-observer.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'pytest 9.1.1 / python 3.11.9 win32-x64 in a workspace-local venv (no global Python state touched): '
       + 'phase reports measured per category; the frames agreed with pytest own headline for '
@@ -185,7 +185,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     programs: ['jest'],
     scriptMarkers: [/\bjest\b/],
     capability: 'INCONCLUSIVE_ONLY',
-    blockedBy: 'no injected observer and no pin: jest has no Canary-owned channel here, so its '
+    blockedBy: 'no injected observer and no pin: jest has no Amabie-owned channel here, so its '
       + 'summary line is SUBJECT TEXT and classification rule 14 sends the verdict to INCONCLUSIVE',
     requiredToUnblock: STRONG_REQUIREMENTS,
   },
@@ -195,7 +195,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     programs: ['vitest'],
     scriptMarkers: [/\bvitest\b/],
     capability: 'INCONCLUSIVE_ONLY',
-    blockedBy: 'no injected observer and no pin: vitest has no Canary-owned channel here, so its '
+    blockedBy: 'no injected observer and no pin: vitest has no Amabie-owned channel here, so its '
       + 'summary is SUBJECT TEXT and rule 14 sends the verdict to INCONCLUSIVE',
     requiredToUnblock: STRONG_REQUIREMENTS,
   },
@@ -205,7 +205,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     programs: ['ava'],
     scriptMarkers: [/\bava\b/],
     capability: 'INCONCLUSIVE_ONLY',
-    blockedBy: 'no injected observer and no pin: ava has no Canary-owned channel here, so its TAP '
+    blockedBy: 'no injected observer and no pin: ava has no Amabie-owned channel here, so its TAP '
       + 'output is SUBJECT TEXT and rule 14 sends the verdict to INCONCLUSIVE',
     requiredToUnblock: STRONG_REQUIREMENTS,
   },
@@ -224,7 +224,7 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     observation: {
       authority: 'operator-identity',
       channelModule: 'packages/runner/executor/src/observers/python-observer.ts',
-      protocol: 'canary-observer-v1',
+      protocol: 'amabie-observer-v1',
     },
     measuredOn: 'python 3.11.9 win32-x64: a real unittest run observed end-to-end and agreeing with the interpreter own '
       + '"Ran N tests"; printed-summary forgery produced zero counts; a fabricated addSuccess was rejected live; and the '
@@ -245,9 +245,9 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     //   - `cargo test -- --format json` is REFUSED by the compiler itself:
     //     'The "json" format is only accepted on the nightly compiler with
     //      -Z unstable-options'.
-    // So on stable Rust there is NO per-test event stream for Canary to
+    // So on stable Rust there is NO per-test event stream for Amabie to
     // re-count. The text summary is a claim, and a claim is not proof.
-    // Canary CAN own the launch (`CARGO_TARGET_<TRIPLE>_RUNNER` is honored: the
+    // Amabie CAN own the launch (`CARGO_TARGET_<TRIPLE>_RUNNER` is honored: the
     // shim was invoked with the test binary and its args), which proves the
     // runner executed and binds the binary's identity — but per-test OUTCOMES
     // would still come from libtest's text.
@@ -255,11 +255,11 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
       + '"--format json" outside nightly with -Z unstable-options), so per-test outcomes can only come '
       + 'from libtest text — a claim, not an observation. Measured, not assumed; see '
       + 'tooling/probes/runner-channels-rust-go.mjs',
-    requiredToUnblock: STRONG_REQUIREMENTS + '; the real seam is a Canary-owned test harness '
-      + '(a `[[test]] harness = false` target whose main is Canary\'s), which turns per-test outcomes into '
-      + 'Canary-emitted events. A nightly-only format is not a supportable pin',
+    requiredToUnblock: STRONG_REQUIREMENTS + '; the real seam is an Amabie-owned test harness '
+      + '(a `[[test]] harness = false` target whose main is Amabie\'s), which turns per-test outcomes into '
+      + 'Amabie-emitted events. A nightly-only format is not a supportable pin',
     measuredOn: 'cargo 1.98.1 (GNU target), win32-x64: cargo test ran; --format json refused by the compiler; '
-      + 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER honored. ALSO MEASURED: under Canary\'s own sanitized '
+      + 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER honored. ALSO MEASURED: under Amabie\'s own sanitized '
       + 'environment the rustup PROXY cargo cannot choose a toolchain (RUSTUP_HOME/HOME are redirected), while the '
       + 'real toolchain binary runs fine — so a Rust STEP needs the adapter to resolve the toolchain binary, not the PATH proxy',
   },
@@ -273,22 +273,22 @@ export const RUNNER_ADAPTERS: readonly RunnerAdapter[] = [
     // MEASURED ON THIS HOST (tooling/probes/runner-channels-rust-go.mjs, with a
     // workspace-local go1.27.1):
     //   - `go test -json` emits a real per-test event stream (17 events, named
-    //     pass/skip records) that Canary can independently re-count;
-    //   - `go test -exec=<shim>` IS honored, so Canary can own the launch of
+    //     pass/skip records) that Amabie can independently re-count;
+    //   - `go test -exec=<shim>` IS honored, so Amabie can own the launch of
     //     each test binary (the shim received `<pkg>.test.exe -test.paniconexit0 …`).
     // What is NOT yet closed is the FORGERY question: those events are produced
     // by the `go` tool from the test binary's own `test2json` output, so test
     // code that prints test-runner-shaped lines can mint events. That is an
-    // implementation gap (a reviewed binding between the Canary-owned shim and
+    // implementation gap (a reviewed binding between the Amabie-owned shim and
     // the event stream), not a platform limit.
-    blockedBy: 'the event stream exists and Canary can own the test-binary launch, but nothing yet binds '
-      + 'those events to the Canary-owned shim: `go test -json` derives them from the test binary\'s own '
+    blockedBy: 'the event stream exists and Amabie can own the test-binary launch, but nothing yet binds '
+      + 'those events to the Amabie-owned shim: `go test -json` derives them from the test binary\'s own '
       + 'test2json output, so subject test code can mint them. Measured; see '
       + 'tooling/probes/runner-channels-rust-go.mjs',
     requiredToUnblock: STRONG_REQUIREMENTS + '; the shim must frame the per-binary observation itself '
-      + '(identity + count + exit bound to the pid Canary spawned) rather than trusting the tool\'s relay',
+      + '(identity + count + exit bound to the pid Amabie spawned) rather than trusting the tool\'s relay',
     measuredOn: 'go1.27.1 win32-x64: go test ran; -json produced named per-test pass/skip events; '
-      + '-exec shim was invoked with the test binary. ALSO MEASURED: under Canary\'s own sanitized environment Go '
+      + '-exec shim was invoked with the test binary. ALSO MEASURED: under Amabie\'s own sanitized environment Go '
       + 'aborts with "build cache is required, but could not be located: GOCACHE is not defined and %LocalAppData% '
       + 'is not defined" (HOME/USERPROFILE are redirected) — so a Go STEP needs the adapter to declare a '
       + 'workspace-scoped GOCACHE/GOPATH',
@@ -302,7 +302,7 @@ export const UNVERIFIED_RUNNER: RunnerAdapter = {
   programs: [],
   scriptMarkers: [],
   capability: 'INCONCLUSIVE_ONLY',
-  blockedBy: 'runner is not registered in RUNNER_ADAPTERS and has no Canary-owned observation '
+  blockedBy: 'runner is not registered in RUNNER_ADAPTERS and has no Amabie-owned observation '
     + 'channel, so anything it printed is SUBJECT TEXT and rule 14 sends the verdict to '
     + 'INCONCLUSIVE — an unknown runner is never credited with strong proof',
   requiredToUnblock: `register the runner in packages/runner/executor/src/runners.ts, then satisfy: ${STRONG_REQUIREMENTS}`,
@@ -426,7 +426,7 @@ export function runnerRegistryProblems(): string[] {
           if (o.channelModule !== undefined) problems.push(`${a.id}: package-pin authority must not name a channelModule (the pinned package IS the runner)`);
         } else {
           // The runner is not an npm package, so the pin table cannot vouch for it.
-          // What substitutes is a Canary-owned channel a reviewer can open PLUS an
+          // What substitutes is an Amabie-owned channel a reviewer can open PLUS an
           // authority, and a measured statement of what was executed.
           if (o.pinKey !== undefined) problems.push(`${a.id}: ${o.authority} authority must not carry a pinKey — nothing in KNOWN_RUNNER_RELEASES binds it`);
           if (o.channelModule === undefined || o.channelModule.trim() === '') {
@@ -448,7 +448,7 @@ export function runnerRegistryProblems(): string[] {
   return problems;
 }
 
-/** Every runner the registry recognises, for reporting surfaces (`canary result`). */
+/** Every runner the registry recognises, for reporting surfaces (`amabie result`). */
 export function runnerCapabilityTable(): Array<{ id: string; family: RunnerFamily; capability: ObservationCapability; why: string; measuredOn?: string }> {
   return RUNNER_ADAPTERS.map((a) => ({
     id: a.id,
@@ -466,6 +466,6 @@ export function runnerCapabilityTable(): Array<{ id: string; family: RunnerFamil
 function describeAuthority(o: StrongObservation | undefined): string {
   if (o === undefined) return 'an unstated authority';
   if (o.authority === 'package-pin') return `pinned release "${o.pinKey ?? 'unstated'}"`;
-  if (o.authority === 'runtime-identity') return 'the verifying runtime itself (the runner IS the binary Canary executes on)';
+  if (o.authority === 'runtime-identity') return 'the verifying runtime itself (the runner IS the binary Amabie executes on)';
   return 'an operator-sealed runner identity (measured version + content digest)';
 }

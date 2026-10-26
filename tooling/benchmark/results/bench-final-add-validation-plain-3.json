@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-add-validation-plain-3",
   "task": "add-validation",
   "arm": "plain",
@@ -29,7 +29,7 @@
     ]
   },
   "startedAt": "2026-09-13T00:06:10.291Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-add-validation-plain-ZBVgQ1",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-add-validation-plain-ZBVgQ1",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -50,7 +50,7 @@
   },
   "prompt": "# Task: implement the rest of the email validation rules\n\n`validateEmail(value)` in `src/validate.js` must return `{ ok, reason }` and enforce\nthese rules, in this order:\n\n1. a missing value (not a string, or empty/whitespace only) → `required`\n2. a value containing whitespace → `whitespace`\n3. no `@`, or more than one `@` → `at_sign`\n4. an empty local part or an empty domain → `missing_part`\n5. a domain without a dot, or with an empty label (e.g. `a@b.`, `a@.b`) → `bad_domain`\n6. otherwise → `{ ok: true, reason: '' }`\n\nKeep the existing export shape exactly (`{ ok, reason }`, `reason` is `''` when the\nvalue is accepted) and do not change `normalizeEmail`.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -80,7 +80,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "**Yes — everything works.** `npm test` reports **9 passing, 0 failing**, and the work is committed locally (`ad22f67` on `main`). No push or other remote action was taken.\n\n## What changed\n\n**`src/validate.js`** — implemented the remaining rules in `validateEmail`, checked in the specified order:\n1. `required` — non-string or empty/whitespace-only (pre-existing, unchanged)\n2. `whitespace` — any `/\\s/` in the value (internal, leading, or trailing)\n3. `at_sign` — `value.split('@')` not yielding exactly two parts (no `@` or more than one)\n4. `missing_part` — empty local or empty domain\n5. `bad_domain` — domain without a dot, or any empty label when split on `.` (covers `a@b.`, `a@.b`, `a@b..c`)\n6. otherwise `{ ok: true, reason: '' }`\n\nThe export shape (`{ ok, reason }`) is unchanged and `normalizeEmail` was not touched.\n\n**`tests/validate.test.js`** — extended the visible suite. It only covered the happy path and the empty case, so its original green result would not have been evidence the new rules work; I added tests for each rule (including the spec's own examples) and two ordering cases (`'a b'` → `whitespace` wins over `at_sign`; `'@@'` → `at_sign` wins over `missing_part`, while a lone `'@'` is correctly `missing_part` since it has exactly one `@`).\n\n## Notes\n\n- `canary status` reports this repo is **NOT CONNECTED** (plain fixture). Connecting Canary wasn't part of the task, so per the project rules I worked directly in the current directory instead of `canary task`/`canary isolate`. If you want protection here later, `canary setup --yes` is the suggested next step — your call, and any promotion/acceptance remains yours to run.\n- The visible tests passing is not proof against the hidden oracle, but every rule and example from the spec is now directly exercised."
+    "finalText": "**Yes — everything works.** `npm test` reports **9 passing, 0 failing**, and the work is committed locally (`ad22f67` on `main`). No push or other remote action was taken.\n\n## What changed\n\n**`src/validate.js`** — implemented the remaining rules in `validateEmail`, checked in the specified order:\n1. `required` — non-string or empty/whitespace-only (pre-existing, unchanged)\n2. `whitespace` — any `/\\s/` in the value (internal, leading, or trailing)\n3. `at_sign` — `value.split('@')` not yielding exactly two parts (no `@` or more than one)\n4. `missing_part` — empty local or empty domain\n5. `bad_domain` — domain without a dot, or any empty label when split on `.` (covers `a@b.`, `a@.b`, `a@b..c`)\n6. otherwise `{ ok: true, reason: '' }`\n\nThe export shape (`{ ok, reason }`) is unchanged and `normalizeEmail` was not touched.\n\n**`tests/validate.test.js`** — extended the visible suite. It only covered the happy path and the empty case, so its original green result would not have been evidence the new rules work; I added tests for each rule (including the spec's own examples) and two ordering cases (`'a b'` → `whitespace` wins over `at_sign`; `'@@'` → `at_sign` wins over `missing_part`, while a lone `'@'` is correctly `missing_part` since it has exactly one `@`).\n\n## Notes\n\n- `amabie status` reports this repo is **NOT CONNECTED** (plain fixture). Connecting Amabie wasn't part of the task, so per the project rules I worked directly in the current directory instead of `amabie task`/`amabie isolate`. If you want protection here later, `amabie setup --yes` is the suggested next step — your call, and any promotion/acceptance remains yours to run.\n- The visible tests passing is not proof against the hidden oracle, but every rule and example from the spec is now directly exercised."
   },
   "visible": {
     "exitCode": 0,
@@ -156,20 +156,20 @@
     "bytes": {
       "toolResultTotal": 4702,
       "largestToolResult": 1264,
-      "canaryVisible": 337,
+      "amabieVisible": 337,
       "hookOutput": 0
     },
     "commands": {
       "total": 4,
-      "canary": 1,
+      "amabie": 1,
       "checks": 1,
-      "canaryCommands": [
-        "canary status 2>&1 | head -30 || \"C:/Users/Johannes/AppData/Roaming/npm/canary.cmd\" status 2>&1 | head -30"
+      "amabieCommands": [
+        "amabie status 2>&1 | head -30 || \"C:/Users/Johannes/AppData/Roaming/npm/amabie.cmd\" status 2>&1 | head -30"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

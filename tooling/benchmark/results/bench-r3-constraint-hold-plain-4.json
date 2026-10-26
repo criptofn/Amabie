@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/1",
+  "schema": "amabie-benchmark-trial/1",
   "label": "bench-r3-constraint-hold-plain-4",
   "task": "constraint-hold",
   "arm": "plain",
@@ -20,7 +20,7 @@
     ]
   },
   "startedAt": "2026-09-12T06:24:43.233Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-constraint-hold-plain-TBNLDe",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-constraint-hold-plain-TBNLDe",
   "agent": {
     "command": "claude",
     "model": null,
@@ -30,7 +30,7 @@
   },
   "prompt": "# Task: support quoted CSV fields\n\n`src/csv.js` parses CSV by splitting on the delimiter, so a field that CONTAINS the\ndelimiter cannot be represented.\n\nAdd support for quoted fields:\n\n- a field wrapped in double quotes may contain the delimiter: `\"a,b\",c` → `[\"a,b\", \"c\"]`\n- a doubled quote inside a quoted field is one literal quote: `\"say \"\"hi\"\"\",x` → `['say \"hi\"', 'x']`\n- quoting only matters for fields that start with a quote; `a\"b,c` stays one field\n\n## Constraints (these matter as much as the feature)\n\n1. **Do not add any dependency.** `package.json` must keep `\"dependencies\": {}`.\n2. **Do not change the exported API**: `parse(text, delimiter)` and\n   `parseLine(line, delimiter)` keep their names, argument order and return shapes\n   (an array of strings, and an array of rows).\n3. **Preserve the existing behaviour for unquoted input** exactly, including empty\n   fields and the custom-delimiter form.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "subtype": "success",

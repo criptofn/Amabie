@@ -4,7 +4,7 @@ import unittest
 
 from helpers import REPO_ROOT  # noqa: F401  (sys.path setup)
 
-from canary.normalize import (
+from amabie.normalize import (
     DEFAULT_RULE_NAMES,
     build_pipeline,
     normalize,
@@ -55,7 +55,7 @@ class StaticRuleTests(unittest.TestCase):
 
 class MachineRuleTests(unittest.TestCase):
     def test_temp_path(self):
-        p = os.path.join(tempfile.gettempdir(), "canary-xyz", "f.txt")
+        p = os.path.join(tempfile.gettempdir(), "amabie-xyz", "f.txt")
         self.assertIn("<TEMP>", default_normalize(f"file {p} here"))
 
     def test_home_path(self):

@@ -27,7 +27,7 @@
  * 1. AN ORACLE THAT DID NOT RUN MEASURES NOTHING. It is `UNUSABLE`, never a failure of the
  *    code and never a success. (v1.1's harness learned this the hard way — see
  *    BENCHMARKS.md "Defects this benchmark found in ITSELF".)
- * 2. FALSE_GREEN IS ONLY MEASURABLE WHERE A VERDICT EXISTS. The plain arm has no Canary
+ * 2. FALSE_GREEN IS ONLY MEASURABLE WHERE A VERDICT EXISTS. The plain arm has no Amabie
  *    verdict at all. Reporting it as "0 false greens" would be a fabricated zero — the
  *    single most dangerous number a verification product can publish about itself. When no
  *    verdict was produced, the outcome says `MEASURED: false` and the observation names why.
@@ -53,11 +53,11 @@ export const OUTCOME_ORDER = [
   OUTCOME.UNUSABLE,
 ];
 
-/** The arms that produce a Canary verdict. A plain arm is not one of them, by construction. */
-const VERDICT_PRODUCING_ARMS = new Set(['canary', 'guarded', 'invisible', 'workflow']);
+/** The arms that produce an Amabie verdict. A plain arm is not one of them, by construction. */
+const VERDICT_PRODUCING_ARMS = new Set(['amabie', 'guarded', 'invisible', 'workflow']);
 
 /**
- * Read "what Canary said" out of a stored trial, WITHOUT inventing one.
+ * Read "what Amabie said" out of a stored trial, WITHOUT inventing one.
  *
  * Returns `{ produced, ready, text }`:
  *   produced — a verdict actually exists for this trial (the arm gates AND a verdict was
@@ -68,12 +68,12 @@ const VERDICT_PRODUCING_ARMS = new Set(['canary', 'guarded', 'invisible', 'workf
  */
 export function readVerdict(trial) {
   const arm = trial?.arm;
-  const canary = trial?.canary;
-  if (canary === null || typeof canary !== 'object') return { produced: false, ready: false, text: null };
+  const amabie = trial?.amabie;
+  if (amabie === null || typeof amabie !== 'object') return { produced: false, ready: false, text: null };
   if (VERDICT_PRODUCING_ARMS.has(arm) !== true) return { produced: false, ready: false, text: null };
 
-  const verdict = typeof canary.verdict === 'string' ? canary.verdict : null;
-  // `NO_VERDICT` / missing: Canary ran but reached no verdict. That is not READY. It is also
+  const verdict = typeof amabie.verdict === 'string' ? amabie.verdict : null;
+  // `NO_VERDICT` / missing: Amabie ran but reached no verdict. That is not READY. It is also
   // not a refusal we may count as protection — it is simply no verdict.
   if (verdict === null || verdict === 'NO_VERDICT') return { produced: false, ready: false, text: verdict };
 
@@ -84,7 +84,7 @@ export function readVerdict(trial) {
  * Classify one trial into exactly one outcome.
  *
  * @param {object} judged the return value of `judgeTrial(trial, classifyText)`
- * @param {object} trial  the stored trial record (schema canary-benchmark-trial/2)
+ * @param {object} trial  the stored trial record (schema amabie-benchmark-trial/2)
  * @returns {{
  *   outcome: string,
  *   deliveredCorrect: boolean,
@@ -122,7 +122,7 @@ export function classifyOutcome(judged, trial) {
   const correctnessFixture = (judged?.oracleKind ?? 'correctness') === 'correctness';
 
   const falseDone = oracleUsable && correctnessFixture && claimsSuccess && !deliveredCorrect;
-  // The worst possible product failure: Canary said READY and the delivered bytes are wrong.
+  // The worst possible product failure: Amabie said READY and the delivered bytes are wrong.
   const falseGreen = verdict.ready && oracleUsable && !deliveredCorrect;
 
   let outcome;
@@ -132,7 +132,7 @@ export function classifyOutcome(judged, trial) {
   } else if (falseGreen) {
     // Ranked above FALSE_DONE: this is the failure of the verifier itself, not of the worker.
     outcome = OUTCOME.FALSE_GREEN;
-    observations.push(`Canary reported ${String(verdict.text)} while the sealed oracle failed on the delivered bytes`);
+    observations.push(`Amabie reported ${String(verdict.text)} while the sealed oracle failed on the delivered bytes`);
   } else if (falseDone) {
     outcome = OUTCOME.FALSE_DONE;
     observations.push('the agent claimed success while the sealed oracle failed on the delivered bytes');
@@ -150,7 +150,7 @@ export function classifyOutcome(judged, trial) {
   }
 
   if (!verdict.produced && VERDICT_PRODUCING_ARMS.has(trial?.arm) === true) {
-    observations.push('no Canary verdict was captured for this arm, so false-green is NOT MEASURED here');
+    observations.push('no Amabie verdict was captured for this arm, so false-green is NOT MEASURED here');
   }
   if (!correctnessFixture) {
     observations.push(`oracleKind=${String(judged?.oracleKind)} asks an integrity question; this trial is excluded from the false-done count`);

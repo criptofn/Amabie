@@ -1,11 +1,11 @@
-TREE: d327e71c1e68fb4e292f2c2c26268693580bef3e @ /c/Users/Johannes/Desktop/canary-observation-hardening
+TREE: d327e71c1e68fb4e292f2c2c26268693580bef3e @ /c/Users/Johannes/Desktop/amabie-observation-hardening
 CMD: npm test (build + node --test, single reporter invocation)
 
-> canary-reliability-network@0.0.0 test
+> amabie-reliability-network@0.0.0 test
 > npm run build && node --test "packages/**/dist/test/*.test.js" "apps/**/dist/test/*.test.js"
 
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b
 
 ▶ panel K layer 1 — the validator refuses hostile frame streams
@@ -34,10 +34,10 @@ CMD: npm test (build + node --test, single reporter invocation)
 ▶ post-GLM F4 — infra prose cannot mask an attested regression
   ✔ a VALID round whose stdout trips the infra signature still yields CONFIRMED_REGRESSION (5878.3102ms)
 ✔ post-GLM F4 — infra prose cannot mask an attested regression (5878.5733ms)
-▶ post-GLM F5 — an untrusted spec cannot select the canary double
+▶ post-GLM F5 — an untrusted spec cannot select the amabie double
   ✔ double bytes staged by the spec itself: NO injection, every round ABSENT, INCONCLUSIVE rule 14 (5885.3219ms)
   ✔ trusted control: with the in-process grant the SAME spec earns VALID + a strong verdict (5879.3361ms)
-✔ post-GLM F5 — an untrusted spec cannot select the canary double (11765.0002ms)
+✔ post-GLM F5 — an untrusted spec cannot select the amabie double (11765.0002ms)
 ▶ audit M8 — CLI subprocess exit-code contract
   ✔ check on honest evidence exits 0 and prints PASS (8144.1362ms)
   ✔ check on a tampered artifact exits 3 and names the tampered file (7300.0114ms)
@@ -51,10 +51,10 @@ CMD: npm test (build + node --test, single reporter invocation)
   ✔ test command node -e printing mocha-shaped prose is never PASS (7144.8882ms)
   ✔ a printed failing summary is never CONFIRMED_REGRESSION (6795.5831ms)
 ✔ FINDING A — subject text alone can never create a strong verdict (21337.7202ms)
-▶ KNOWN_RUNNER_RELEASES — table == disk (canary-double)
+▶ KNOWN_RUNNER_RELEASES — table == disk (amabie-double)
   ✔ the pinned double hash equals the treeSha256 of the repo fixture bytes (2.1792ms)
   ✔ no placeholder digests survive, every entry is well-formed, versions unique per package (0.4602ms)
-✔ KNOWN_RUNNER_RELEASES — table == disk (canary-double) (3.6819ms)
+✔ KNOWN_RUNNER_RELEASES — table == disk (amabie-double) (3.6819ms)
 ▶ audit M8 — offline pipeline end-to-end
   ✔ confined regression: CONFIRMED_REGRESSION, real artifacts re-hash clean (7948.553ms)
   ✔ unconfined tree drift is downgraded to INCONCLUSIVE rule 9 (F9 e2e) (6813.0472ms)
@@ -330,7 +330,7 @@ CMD: npm test (build + node --test, single reporter invocation)
   ✔ weak paths are NOT gated: rule 0/rule 1 keep their rule numbers without any observation (0.1279ms)
 ✔ post-GLM — execution-observation gate (rule 14) (3.4521ms)
 ▶ post-GLM round 5 F1 — PRE_EXISTING requires failing-set containment
-  ✔ a candidate failure Canary never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.223ms)
+  ✔ a candidate failure Amabie never saw fail in baseline is NOT pre-existing — INCONCLUSIVE 13 (never a swallowed regression) (0.223ms)
   ✔ disjoint failing sets ({A} baseline vs {B} candidate) at equal totals describe no comparable transition — INCONCLUSIVE 13 (0.1708ms)
   ✔ an honest PRE_EXISTING_FAILURE (identical failing sets) keeps rule 4 — containment must not over-block (0.1486ms)
   ✔ CONFIRMED_REGRESSION is untouched by containment (baseline has zero failing identities) (0.1372ms)
@@ -536,7 +536,7 @@ CMD: npm test (build + node --test, single reporter invocation)
 ✔ round-3 secondary — crash & sweep signals reach the classification (441.1524ms)
 ▶ observation hardening — expandArgvWithPlan injection decision
   ✔ the double fixture is actually pinned (fails if the pin table drifted) (0.1268ms)
-  ✔ post-GLM F5: the canary double is UNSELECTABLE by default — pinned bytes, no execution authority (14.9071ms)
+  ✔ post-GLM F5: the amabie double is UNSELECTABLE by default — pinned bytes, no execution authority (14.9071ms)
   ✔ pinned bytes at the canonical anchor: injected, --require appended LAST, plan from the PIN (15.4788ms)
   ✔ unpinned bytes at the canonical anchor: NO injection, runner-identity-unpinned + observed hash recorded (13.8647ms)
   ✔ pinned bytes OUTSIDE the canonical anchor (hoisted): not injectable (16.3987ms)
@@ -552,7 +552,7 @@ CMD: npm test (build + node --test, single reporter invocation)
   ✔ Sol's accepted forms are now rejected in install-family commands (3.4073ms)
   ✔ property: for EVERY protected key, every abbreviation/negation/case/= spelling is refused (install family) (41.2187ms)
   ✔ property: the per-package config family (@scope:registry, //…:auth) is refused everywhere (3.3738ms)
-  ✔ property: accepted install argv ends with Canary protected flags after every user token (4.8061ms)
+  ✔ property: accepted install argv ends with Amabie protected flags after every user token (4.8061ms)
   ✔ invariant: no allowed install spelling resolves to a protected key (prefix-disjoint) (0.519ms)
   ✔ legitimate script-family passthrough and fixture install shapes still expand (4.1609ms)
   ✔ resolveOptionToken normalizes case, =-values, and one leading no- (0.1676ms)
@@ -602,7 +602,7 @@ CMD: npm test (build + node --test, single reporter invocation)
 ✔ audit F6 — child env observation: declared == observed (1505.1971ms)
 ▶ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline)
   ✔ every npm-origin entry has a manifest and the hashes agree (4.9393ms)
-  ✔ canary-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.4654ms)
+  ✔ amabie-double entries are the ONLY non-manifested pins (offline e2e bytes live in-repo) (0.4654ms)
 ✔ KNOWN_RUNNER_RELEASES — npm pins equal their reviewed manifests (offline) (6.7268ms)
 ▶ post-GLM F5 — findRunnerPin: origin is an execution-authority gate
   ✔ double bytes are UNSELECTABLE by default: pinned hash, zero execution authority (0.3349ms)

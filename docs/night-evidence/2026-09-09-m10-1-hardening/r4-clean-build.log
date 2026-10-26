@@ -1,5 +1,5 @@
 
-> canary-reliability-network@0.0.0 build
+> amabie-reliability-network@0.0.0 build
 > tsc -b --force
 
 npm notice

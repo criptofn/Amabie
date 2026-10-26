@@ -1,15 +1,15 @@
 /**
- * v1.3 §C — `setup` registers Canary's MCP server, so the agent can ASK Canary whether it is done
+ * v1.3 §C — `setup` registers Amabie's MCP server, so the agent can ASK Amabie whether it is done
  * instead of running its own verification campaign. Measured token effect: on the long fixture ~36 of
  * 57 confined execs were the model re-running its own checks (see docs/V1.3-PRODUCT-AUDIT.md).
  *
  * The risk this file pins is not whether the server works — `mcp.test.ts` covers the protocol — but
- * that installing it makes Canary write ONE MORE FILE into a user's repository. So every property the
+ * that installing it makes Amabie write ONE MORE FILE into a user's repository. So every property the
  * Stop hook already has must hold for it, and the failure directions matter:
  *
  *   - a stranger's MCP server entry is never touched, and a server under OUR KEY that we did not
  *     write is REFUSED rather than replaced (a confused-deputy guard: silently swapping someone's
- *     `canary` server would be Canary claiming an entry it does not own);
+ *     `amabie` server would be Amabie claiming an entry it does not own);
  *   - the entry is owned by its ARGV SIGNATURE, not by the key name, so uninstall removes exactly
  *     what this installation wrote;
  *   - a re-run is byte-identical, and uninstall leaves the file exactly as it found it otherwise.
@@ -22,10 +22,10 @@ import { after, describe, it } from 'node:test';
 
 import {
   hasMcpEntry, installMcpServer, mcpArgSignature, mcpConfigPath, mcpServerArgs,
-  pruneOwnedMcp, uninstallHooks, type CanaryConfig,
+  pruneOwnedMcp, uninstallHooks, type AmabieConfig,
 } from '../src/onboarding.js';
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-mcp-wiring-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-mcp-wiring-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 let seq = 0;
@@ -34,22 +34,22 @@ const repo = (): string => {
   fs.mkdirSync(root, { recursive: true });
   return root;
 };
-const CLI = 'C:\\fake\\canary\\main.js';
-const backups = (root: string): string => path.join(root, '.canary', 'backups');
+const CLI = 'C:\\fake\\amabie\\main.js';
+const backups = (root: string): string => path.join(root, '.amabie', 'backups');
 const read = (root: string): Record<string, unknown> => JSON.parse(fs.readFileSync(mcpConfigPath(root), 'utf8')) as Record<string, unknown>;
 const servers = (root: string): Record<string, unknown> => (read(root).mcpServers ?? {}) as Record<string, unknown>;
 const write = (root: string, doc: unknown): void => fs.writeFileSync(mcpConfigPath(root), JSON.stringify(doc, null, 2) + '\n');
 
 describe('v1.3 MCP wiring: setup registers the server without owning anything it did not write', () => {
-  it('writes one entry that runs THIS Canary as an MCP server, and records it as an mcp touch', () => {
+  it('writes one entry that runs THIS Amabie as an MCP server, and records it as an mcp touch', () => {
     const root = repo();
     const res = installMcpServer(root, CLI, new Set(), backups(root));
     assert.equal(res.ok, true, res.problem);
     assert.equal(res.touched?.kind, 'mcp');
     assert.equal(res.touched?.created, true);
-    const entry = servers(root).canary as { command: string; args: string[] };
+    const entry = servers(root).amabie as { command: string; args: string[] };
     assert.deepEqual(entry.args, mcpServerArgs(CLI));
-    assert.equal(entry.args.at(-1), 'mcp');
+    assert.deepEqual(entry.args.slice(-2), ['--profile', 'everyday']);
     assert.ok(entry.command.length > 0, 'a server needs a command');
   });
 
@@ -59,13 +59,13 @@ describe('v1.3 MCP wiring: setup registers the server without owning anything it
     write(root, { mcpServers: { someoneelse: foreign } });
     assert.equal(installMcpServer(root, CLI, new Set(), backups(root)).ok, true);
     assert.deepEqual(servers(root).someoneelse, foreign);
-    assert.ok(servers(root).canary, 'and ours is added beside it');
+    assert.ok(servers(root).amabie, 'and ours is added beside it');
   });
 
   it('REFUSES to replace a server under our key that we did not write, and changes nothing', () => {
     const root = repo();
     const squatter = { command: 'node', args: ['not-ours.js'] };
-    write(root, { mcpServers: { canary: squatter } });
+    write(root, { mcpServers: { amabie: squatter } });
     const before = fs.readFileSync(mcpConfigPath(root), 'utf8');
     const res = installMcpServer(root, CLI, new Set(), backups(root));
     assert.equal(res.ok, false);
@@ -81,6 +81,34 @@ describe('v1.3 MCP wiring: setup registers the server without owning anything it
     assert.equal(installMcpServer(root, CLI, owned, backups(root)).ok, true);
     assert.equal(fs.readFileSync(mcpConfigPath(root), 'utf8'), first);
     assert.equal(Object.keys(servers(root)).length, 1, 'exactly one entry, never a growing pile');
+  });
+
+  it('migrates an older managed MCP entry to everyday and preserves an explicit expert choice', () => {
+    const root = repo();
+    const legacyArgs = [CLI, 'mcp'];
+    write(root, { mcpServers: { amabie: { command: 'node', args: legacyArgs } } });
+    const legacy = new Set([JSON.stringify(legacyArgs)]);
+    assert.equal(installMcpServer(root, CLI, legacy, backups(root)).ok, true);
+    assert.deepEqual((servers(root).amabie as { args: string[] }).args, mcpServerArgs(CLI, 'everyday'));
+
+    const expertRoot = repo();
+    assert.equal(installMcpServer(expertRoot, CLI, new Set(), backups(expertRoot), 'expert').ok, true);
+    assert.deepEqual((servers(expertRoot).amabie as { args: string[] }).args, mcpServerArgs(CLI, 'expert'));
+  });
+
+  it('dry-run validates merge and trust rules without creating a file or backup', () => {
+    const root = repo();
+    const res = installMcpServer(root, CLI, new Set(), backups(root), 'everyday', true);
+    assert.equal(res.ok, true, res.problem);
+    assert.equal(fs.existsSync(mcpConfigPath(root)), false);
+    assert.equal(fs.existsSync(backups(root)), false);
+
+    write(root, { mcpServers: { amabie: { command: 'node', args: ['foreign.js'] } } });
+    const before = fs.readFileSync(mcpConfigPath(root), 'utf8');
+    const refused = installMcpServer(root, CLI, new Set(), backups(root), 'everyday', true);
+    assert.equal(refused.ok, false);
+    assert.equal(fs.readFileSync(mcpConfigPath(root), 'utf8'), before);
+    assert.equal(fs.existsSync(backups(root)), false);
   });
 
   it('refuses invalid JSON and a non-object mcpServers, writing nothing', () => {
@@ -100,12 +128,12 @@ describe('v1.3 MCP wiring: setup registers the server without owning anything it
 
   it('ownership is the ARGV SIGNATURE, so a same-named foreign server is never mistaken for ours', () => {
     const root = repo();
-    write(root, { mcpServers: { canary: { command: 'node', args: ['not-ours.js'] } } });
+    write(root, { mcpServers: { amabie: { command: 'node', args: ['not-ours.js'] } } });
     const owned = new Set([mcpArgSignature(mcpServerArgs(CLI))]);
     assert.equal(hasMcpEntry(read(root), owned), false, 'the key name alone proves nothing');
     assert.equal(pruneOwnedMcp(read(root), owned), 0, 'and it must not be pruned');
     // the recorded signature, on the other hand, is ours and IS prunable
-    write(root, { mcpServers: { canary: { command: 'node', args: mcpServerArgs(CLI) } } });
+    write(root, { mcpServers: { amabie: { command: 'node', args: mcpServerArgs(CLI) } } });
     assert.equal(hasMcpEntry(read(root), owned), true);
     const doc = read(root);
     assert.equal(pruneOwnedMcp(doc, owned), 1);
@@ -114,7 +142,7 @@ describe('v1.3 MCP wiring: setup registers the server without owning anything it
 });
 
 describe('v1.3 MCP wiring: uninstall undoes exactly what setup did', () => {
-  const config = (root: string, touched: CanaryConfig['touched']): CanaryConfig => ({
+  const config = (root: string, touched: AmabieConfig['touched']): AmabieConfig => ({
     version: 'product-0.1', installedAt: '2026-01-01T00:00:00.000Z', pm: 'npm', plan: [],
     cliPath: CLI, hookCommand: `node "${CLI}" checkpoint`, hookCommands: [`node "${CLI}" checkpoint`],
     mcpArgSignatures: [mcpArgSignature(mcpServerArgs(CLI))], touched,
@@ -130,7 +158,7 @@ describe('v1.3 MCP wiring: uninstall undoes exactly what setup did', () => {
     assert.deepEqual(out.problems, []);
     assert.equal(out.removed, 1);
     assert.deepEqual(servers(root).someoneelse, foreign);
-    assert.equal(servers(root).canary, undefined);
+    assert.equal(servers(root).amabie, undefined);
   });
 
   it('deletes the file it created when nothing else is left in it', () => {
@@ -138,6 +166,6 @@ describe('v1.3 MCP wiring: uninstall undoes exactly what setup did', () => {
     const res = installMcpServer(root, CLI, new Set(), backups(root));
     const out = uninstallHooks(root, config(root, [res.touched!]));
     assert.equal(out.removed, 1);
-    assert.equal(fs.existsSync(mcpConfigPath(root)), false, 'a file Canary created and emptied is removed');
+    assert.equal(fs.existsSync(mcpConfigPath(root)), false, 'a file Amabie created and emptied is removed');
   });
 });

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-r12-bound-requirements-workflow-1",
   "task": "bound-requirements",
   "arm": "workflow",
@@ -18,7 +18,7 @@
     "oracleKind": "correctness",
     "startsGreen": true,
     "intent": "implement normalize() so every stated requirement holds",
-    "what": "three stated requirements, each declared as its own check in canary.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
+    "what": "three stated requirements, each declared as its own check in amabie.project.json and BOUND to the requirement's digest — the configuration in which 'every objective requirement has a frozen proof obligation' is attainable",
     "expectedOutcome": "hidden PASS means all three requirements are implemented with the checks intact; the visible suite is green before AND after, so only the bound per-requirement checks can tell the difference",
     "requirements": [
       "leading and trailing whitespace is trimmed from the result",
@@ -27,7 +27,7 @@
     ]
   },
   "startedAt": "2026-09-13T03:45:02.075Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-bound-requirements-workflow-meev1E",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-bound-requirements-workflow-meev1E",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -46,16 +46,16 @@
       "CLAUDE_CODE_SUBAGENT_MODEL"
     ]
   },
-  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`canary.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
+  "prompt": "# Task: normalize text\n\n`src/text.js` exports `normalize(text)`. It currently returns the input unchanged.\nImplement it so that every stated requirement below holds.\n\n1. Leading and trailing whitespace is trimmed from the result.\n2. An empty or whitespace-only input becomes the word `empty`.\n3. The result is lower-case.\n\nThe project's visible test suite covers only the identity case, so it can be green\nwhile a requirement is still unmet. The project also declares one check per\nrequirement (`amabie.project.json`), and each requirement is bound to its check —\nthose checks are the proof, and they run as part of the project's sealed plan.\nDo not weaken, delete or re-point any check to make it pass.",
   "setup": {
     "exitCode": 2,
     "secs": 0.7,
     "readme": "NEEDS ATTENTION",
     "hookInstalled": true,
-    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\canary\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
-    "stdoutTail": "\nsmoke test (running your own project scripts):\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 1)\n      FAIL normalize(\"AbC\") -> \"AbC\", want abc\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 1)\n      FAIL normalize(\"\") -> \"\", want \"empty\"\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 1)\n      FAIL trim(\"  ada  \") -> \"  ada  \", want \"ada\"\n\nNEEDS ATTENTION — Canary is wired here, but your project's own checks did not pass (tests, tests, tests). That is your project talking, not Canary.\nnext: fix the failing checks (ask the agent), then: canary doctor\n"
+    "hookCommand": "{\"hooks\":{\"Stop\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"node \\\"C:\\\\Users\\\\Johannes\\\\Desktop\\\\amabie\\\\apps\\\\cli\\\\dist\\\\src\\\\main.js\\\" checkpoint\",\"timeout\":1800}]}]}}",
+    "stdoutTail": "\nsmoke test (running your own project scripts):\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 1)\n      FAIL normalize(\"AbC\") -> \"AbC\", want abc\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 1)\n      FAIL normalize(\"\") -> \"\", want \"empty\"\n✗ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 1)\n      FAIL trim(\"  ada  \") -> \"  ada  \", want \"ada\"\n\nNEEDS ATTENTION — Amabie is wired here, but your project's own checks did not pass (tests, tests, tests). That is your project talking, not Amabie.\nnext: fix the failing checks (ask the agent), then: amabie doctor\n"
   },
-  "canary": {
+  "amabie": {
     "doctorExitCode": 0,
     "verdict": "READY",
     "hookFired": true,
@@ -113,7 +113,7 @@
       }
     ],
     "baseMoved": true,
-    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Canary checks\n"
+    "stdoutTail": "running the verification plan:\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-case.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-empty.cjs (exit 0)\n✓ tests: C:\\Program Files\\nodejs\\node.exe checks/check-trim.cjs (exit 0)\n\nREADY — wiring verified; the checks just ran and passed, and no proof obligation is open.\nnext: nothing to do — the agent finishes, Amabie checks\n"
   },
   "agentResult": {
     "isError": false,
@@ -144,7 +144,7 @@
       ]
     },
     "streamedUsageUsable": false,
-    "finalText": "Everything works now — the candidate was verified from outside and promoted, and `canary doctor` reports READY with no open proof obligations.\n\n**What I did**\n\n1. **Registered the work with all three requirements** via `canary work normalize-text ... --requirement \"leading and trailing whitespace is trimmed from the result\" --requirement \"an empty or whitespace-only input becomes the word empty\" --requirement \"the result is lower-case\"`. The declared digests matched the proofs already bound in `canary.project.json` (`check-trim`, `check-empty`, `check-case`), so nothing needed re-binding and no check was touched.\n\n2. **Implemented `normalize` in the candidate only** (`.canary/candidates/normalize-text/src/text.js`):\n   ```js\n   const trimmed = String(text).trim();\n   if (trimmed === '') return 'empty';\n   return trimmed.toLowerCase();\n   ```\n   Trim → empty-check → lower-case, which satisfies all three requirements simultaneously. Updated the stale doc comment. Committed there.\n\n3. **Ran `canary finish normalize-text`** — it verified from outside the tree: all three bound checks passed (exit 0), CANDIDATE PASS, **PROMOTED** (main fast-forwarded `f30934f` → `25db7e6`), and POST-PROOF PASS confirmed the base is byte-identical to the verified tree.\n\n4. Cleaned up the candidate (`isolate --remove`) and confirmed with `canary doctor`: all three requirement checks pass on the promoted base, no obligations open.\n\n**What changed:** only `src/text.js` (5 insertions, 3 deletions). No tests, checks, or `canary.project.json` were modified."
+    "finalText": "Everything works now — the candidate was verified from outside and promoted, and `amabie doctor` reports READY with no open proof obligations.\n\n**What I did**\n\n1. **Registered the work with all three requirements** via `amabie work normalize-text ... --requirement \"leading and trailing whitespace is trimmed from the result\" --requirement \"an empty or whitespace-only input becomes the word empty\" --requirement \"the result is lower-case\"`. The declared digests matched the proofs already bound in `amabie.project.json` (`check-trim`, `check-empty`, `check-case`), so nothing needed re-binding and no check was touched.\n\n2. **Implemented `normalize` in the candidate only** (`.amabie/candidates/normalize-text/src/text.js`):\n   ```js\n   const trimmed = String(text).trim();\n   if (trimmed === '') return 'empty';\n   return trimmed.toLowerCase();\n   ```\n   Trim → empty-check → lower-case, which satisfies all three requirements simultaneously. Updated the stale doc comment. Committed there.\n\n3. **Ran `amabie finish normalize-text`** — it verified from outside the tree: all three bound checks passed (exit 0), CANDIDATE PASS, **PROMOTED** (main fast-forwarded `f30934f` → `25db7e6`), and POST-PROOF PASS confirmed the base is byte-identical to the verified tree.\n\n4. Cleaned up the candidate (`isolate --remove`) and confirmed with `amabie doctor`: all three requirement checks pass on the promoted base, no obligations open.\n\n**What changed:** only `src/text.js` (5 insertions, 3 deletions). No tests, checks, or `amabie.project.json` were modified."
   },
   "visible": {
     "exitCode": 0,
@@ -220,24 +220,24 @@
     "bytes": {
       "toolResultTotal": 15172,
       "largestToolResult": 4988,
-      "canaryVisible": 8931,
+      "amabieVisible": 8931,
       "hookOutput": 0
     },
     "commands": {
       "total": 10,
-      "canary": 5,
+      "amabie": 5,
       "checks": 1,
-      "canaryCommands": [
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" work --help 2>&1 | head -40; echo ---; node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" --help 2>&1 | head -60",
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" work normalize-text \"Implement normalize(text): trim, empty->'empty', lower-case\" --requirement \"leading and trailing whitespace is trimmed from the result\" --requirement \"an empty or whitespace-only input becomes the word empty\" --requirement \"the result is lower-case\" 2>&1",
-        "node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" finish normalize-text 2>&1",
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-bound-requirements-workflow-meev1E/project\" && git log --oneline -2 && git show HEAD:src/text.js | tail -8 && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" isolate --remove normalize-text 2>&1 | tail -2",
-        "cd \"C:/Users/Johannes/AppData/Local/Temp/canary-bench-bound-requirements-workflow-meev1E/project\" && node \"C:\\Users\\Johannes\\Desktop\\canary\\apps\\cli\\dist\\src\\main.js\" doctor 2>&1 | tail -15"
+      "amabieCommands": [
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" work --help 2>&1 | head -40; echo ---; node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" --help 2>&1 | head -60",
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" work normalize-text \"Implement normalize(text): trim, empty->'empty', lower-case\" --requirement \"leading and trailing whitespace is trimmed from the result\" --requirement \"an empty or whitespace-only input becomes the word empty\" --requirement \"the result is lower-case\" 2>&1",
+        "node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" finish normalize-text 2>&1",
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-bound-requirements-workflow-meev1E/project\" && git log --oneline -2 && git show HEAD:src/text.js | tail -8 && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" isolate --remove normalize-text 2>&1 | tail -2",
+        "cd \"C:/Users/Johannes/AppData/Local/Temp/amabie-bench-bound-requirements-workflow-meev1E/project\" && node \"C:\\Users\\Johannes\\Desktop\\amabie\\apps\\cli\\dist\\src\\main.js\" doctor 2>&1 | tail -15"
       ]
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

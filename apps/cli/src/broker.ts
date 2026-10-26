@@ -10,7 +10,7 @@ import { canonicalTask, subjectDigest, taskWeakening, type AuthorizationSubject 
 import { openSealed, sealRecord, type TrustStore } from './trust-store.js';
 import { requireAuthorizationLevel, validateNetworkAuthority, type NetworkAuthority } from './platform-boundary.js';
 
-export const BROKER_SCHEMA = 'canary-broker/1';
+export const BROKER_SCHEMA = 'amabie-broker/1';
 const HEX = /^[0-9a-f]{64}$/;
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -68,7 +68,7 @@ export interface PromotionIntent {
   subjectDigest: string; verificationDigest: string;
 }
 interface State {
-  schema: typeof BROKER_SCHEMA; enrollment: Enrollment;
+  schema: typeof BROKER_SCHEMA | 'amabie-broker/1'; enrollment: Enrollment;
   phase: 'enrolled' | 'running' | 'verified' | 'accepted' | 'promotion-reserved';
   run: RunTicket | null;
   verification: VerificationStatement | null;
@@ -84,7 +84,9 @@ export function validateSubject(v: unknown): AuthorizationSubject {
   const frozen = canonicalTask(v.frozenTask), live = canonicalTask(v.liveTask);
   requireThat(frozen && live && frozen.kinds.length && !taskWeakening(frozen, live).length, 'invalid or weakened task authority');
   for (const t of [v.frozenTask, v.liveTask]) {
-    exact(t, ['taskDigest', 'kinds', 'requirementCount', 'requirementDigests', 'subjectiveVisual', 'subjectivePerformance', 'objectiveTargets']);
+    const taskFields = ['taskDigest', 'kinds', 'requirementCount', 'requirementDigests', 'subjectiveVisual', 'subjectivePerformance', 'objectiveTargets'];
+    if (t && typeof t === 'object' && 'subjectiveRequirementDigests' in t) taskFields.push('subjectiveRequirementDigests');
+    exact(t, taskFields);
     for (const target of t.objectiveTargets as unknown[]) exact(target, ['digest', 'kind']);
   }
   ids(v.subjectiveDuties);
@@ -125,18 +127,18 @@ export class LocalAuthorityBroker {
     const copy: Enrollment = JSON.parse(authorityJson(enrollment));
     validateEnrollment(copy);
     const state: State = { schema: BROKER_SCHEMA, enrollment: copy, phase: 'enrolled', run: null, verification: null, verificationReceipt: null, acceptanceReceipt: null };
-    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, canaryVersion: BROKER_SCHEMA }, 0);
+    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, amabieVersion: BROKER_SCHEMA }, 0);
   }
   #load(): { state: State; seq: number } {
     const opened = openSealed(this.#store, { projectId: this.#projectId, kind: 'broker-state' });
     requireThat(opened.status === 'valid' && opened.envelope, `broker authority unavailable: ${opened.status}`);
     const state = opened.envelope.payload as State;
-    requireThat(state?.schema === BROKER_SCHEMA, 'broker state schema mismatch');
+    requireThat(state?.schema === BROKER_SCHEMA || state?.schema === 'amabie-broker/1', 'broker state schema mismatch');
     validateEnrollment(state.enrollment);
-    return { state, seq: opened.envelope.seq };
+    return { state: { ...state, schema: BROKER_SCHEMA }, seq: opened.envelope.seq };
   }
   #save(state: State, seq: number): void {
-    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, canaryVersion: BROKER_SCHEMA }, seq);
+    sealRecord(this.#store, { projectId: this.#projectId, kind: 'broker-state', payload: state, amabieVersion: BROKER_SCHEMA }, seq);
   }
   #start(state: State, seq: number, purpose: RunTicket['purpose']): RunTicket {
     requireThat(state.phase !== 'promotion-reserved', 'promotion pending reconciliation');

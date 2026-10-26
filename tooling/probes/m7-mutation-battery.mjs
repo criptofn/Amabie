@@ -33,7 +33,8 @@ import { beginDistMutation, endDistMutation } from '../test-support/dist-mutatio
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CAND = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'candidate.js');
-const ONB = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'onboarding.js');
+const STATUS_COMMANDS = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'status-commands.js');
+const VERIFICATION_EVIDENCE = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'verification-evidence.js');
 const M7TEST = path.join(REPO, 'apps', 'cli', 'dist', 'test', 'm7-candidate-isolation.test.js');
 const M3TEST = path.join(REPO, 'apps', 'cli', 'dist', 'test', 'm3-trust-classes.test.js');
 const PROBE = path.join(REPO, 'tooling', 'probes', 'm7-candidate-isolation.mjs');
@@ -41,7 +42,7 @@ const PROBE = path.join(REPO, 'tooling', 'probes', 'm7-candidate-isolation.mjs')
 let failures = 0;
 function report(verdict, msg) { console.log(`${verdict} ${msg}`); if (verdict === 'FAIL') failures++; }
 
-const original = new Map([[CAND, fs.readFileSync(CAND)], [ONB, fs.readFileSync(ONB)]]);
+const original = new Map([[CAND, fs.readFileSync(CAND)], [STATUS_COMMANDS, fs.readFileSync(STATUS_COMMANDS)], [VERIFICATION_EVIDENCE, fs.readFileSync(VERIFICATION_EVIDENCE)]]);
 // Custody: a sidecar copy of every file this battery is about to mutate, so an
 // interrupted run is discovered and repaired instead of silently trusted.
 const custody = beginDistMutation([...original.keys()]);
@@ -88,11 +89,11 @@ const MUTS = [
   { id: 'Windows reserved device-name gate', file: CAND, win32Only: true,
     search: '/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i', replace: '/^__never__$/i', count: 1,
     probe: false, own: 'Windows reserved device names' },
-  { id: 'uninstall candidate-registry gate', file: ONB,
+  { id: 'uninstall candidate-registry gate', file: STATUS_COMMANDS,
     search: "fs.readdirSync(path.join(root, CONFIG_DIR, 'candidates')).length > 0",
     replace: "fs.readdirSync(path.join(root, CONFIG_DIR, 'candidates')).length > Number.MAX_SAFE_INTEGER", count: 1,
     probe: false, own: 'uninstall refuses to delete' },
-  { id: 'BUNDLE_RESERVED side-door filter', file: ONB,
+  { id: 'BUNDLE_RESERVED side-door filter', file: VERIFICATION_EVIDENCE,
     search: 'filter(([k]) => !BUNDLE_RESERVED.has(k))', replace: 'filter(([k]) => BUNDLE_RESERVED.has(k))', count: 1,
     probe: false, own: 'no side door', testFile: M3TEST },
 ];

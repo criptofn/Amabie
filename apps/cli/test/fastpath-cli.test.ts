@@ -2,7 +2,7 @@
  * 1.1 §23 — the fast path, WIRED. The decision logic has its own unit tests; this
  * pins the end-to-end behaviour that matters:
  *
- *   - setup SEALS the project's `canary.paths` declaration;
+ *   - setup SEALS the project's `amabie.paths` declaration;
  *   - `doctor --fast` leaves out exactly the declared checks the change missed,
  *     says so loudly, and carries the skips in the JSON envelope;
  *   - WITHOUT `--fast` the full plan runs — the fast path is opt-in;
@@ -16,18 +16,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 const PASS = path.join(REPO, 'tooling', 'test-support', 'fixtures', 'f-pass.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-fastpath-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-fastpath-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const canary = (args: string[], cwd: string) => spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 300_000 });
+const amabie = (args: string[], cwd: string) => retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8', timeout: 300_000 }));
 const git = (args: string[], cwd: string) => spawnSync('git', args, { cwd, encoding: 'utf8' });
 const commit = (dir: string, message: string): void => {
   git(['add', '-A'], dir);
@@ -43,11 +44,11 @@ function fixture(name: string): string {
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
     name,
     scripts: { test: `node "${PASS}"`, typecheck: `node "${PASS}"` },
-    canary: { paths: { typecheck: ['src/**'] } },
+    amabie: { paths: { typecheck: ['src/**'] } },
   }, null, 2));
   fs.writeFileSync(path.join(root, 'src', 'app.js'), 'export const v = 1;\n');
   git(['init', '-b', 'main'], root);
-  git(['config', 'user.email', 'fast@canary.local'], root);
+  git(['config', 'user.email', 'fast@amabie.local'], root);
   git(['config', 'user.name', 'Fast'], root);
   commit(root, 'base');
   return root;
@@ -56,9 +57,9 @@ function fixture(name: string): string {
 describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
   it('setup seals the declaration, and doctor --fast skips only the declared check the change missed', () => {
     const root = fixture('docs-only');
-    const setup = canary(['setup', '--yes'], root);
+    const setup = amabie(['setup', '--yes'], root);
     assert.equal(setup.status, 0, setup.stdout + setup.stderr);
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.canary', 'canary.local.json'), 'utf8')) as {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'amabie.local.json'), 'utf8')) as {
       planAuthority?: { stepPaths?: Record<string, string[]> };
     };
     assert.deepEqual(cfg.planAuthority?.stepPaths, { typecheck: ['src/**'] }, 'the declaration must be sealed with the plan');
@@ -67,7 +68,7 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
     fs.writeFileSync(path.join(root, 'README.md'), '# docs only\n');
     commit(root, 'docs: readme only');
 
-    const fast = canary(['doctor', '--fast', root], root);
+    const fast = amabie(['doctor', '--fast', root], root);
     assert.equal(fast.status, 0, fast.stdout + fast.stderr);
     assert.match(fast.stdout, /FAST PATH/, 'the skip must be announced');
     assert.match(fast.stdout, /skipped typecheck: typecheck/, 'the declared check must be left out');
@@ -78,11 +79,11 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
 
   it('the JSON envelope carries the skips, so a machine cannot read a fast run as a full one', () => {
     const root = fixture('envelope');
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
     fs.writeFileSync(path.join(root, 'README.md'), '# docs only\n');
     commit(root, 'docs: readme only');
 
-    const r = canary(['doctor', '--json', '--fast', root], root);
+    const r = amabie(['doctor', '--json', '--fast', root], root);
     assert.equal(r.status, 0, r.stderr);
     const env = JSON.parse(r.stdout) as { status: string; skipped?: Array<{ step: string; reason: string }> };
     // A docs-only change carries no product behaviour, so there is nothing for a regression check to
@@ -96,11 +97,11 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
 
   it('without --fast the full plan runs (the fast path is opt-in)', () => {
     const root = fixture('opt-in');
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
     fs.writeFileSync(path.join(root, 'README.md'), '# docs only\n');
     commit(root, 'docs: readme only');
 
-    const normal = canary(['doctor', root], root);
+    const normal = amabie(['doctor', root], root);
     assert.equal(normal.status, 0, normal.stdout + normal.stderr);
     assert.match(normal.stdout, /✓ typecheck/, 'the declared check must run when the flag is absent');
     assert.match(normal.stdout, /✓ tests/);
@@ -109,11 +110,11 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
 
   it('a change INSIDE the declaration runs the check as usual (and gets no READY without regression evidence)', () => {
     const root = fixture('src-change');
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
     fs.appendFileSync(path.join(root, 'src', 'app.js'), '// touched\n');
     commit(root, 'feat: touch src');
 
-    const fast = canary(['doctor', '--fast', root], root);
+    const fast = amabie(['doctor', '--fast', root], root);
     // The question is whether the declared check RAN. Asserting the ✓ GLYPH made this test
     // load/encoding-dependent (it failed once inside the productization oracle and passed 3/3
     // standalone), and the glyph is not what the test is about: "not skipped" + a reported typecheck
@@ -126,26 +127,26 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
     assert.match(fast.stdout, /NOT PROVEN/);
   });
 
-  it('editing canary.paths after setup is reported as drift — the sealed copy still governs', () => {
+  it('editing amabie.paths after setup is reported as drift — the sealed copy still governs', () => {
     const root = fixture('declaration-drift');
-    assert.equal(canary(['setup', '--yes'], root).status, 0);
+    assert.equal(amabie(['setup', '--yes'], root).status, 0);
     const pkgPath = path.join(root, 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
     // widen the declaration in the live file: it must NOT loosen the sealed one,
     // and the project must be told that it did not
-    (pkg.canary as Record<string, unknown>).paths = { typecheck: ['**'] };
+    (pkg.amabie as Record<string, unknown>).paths = { typecheck: ['**'] };
     fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
     commit(root, 'chore: widen the fast-path declaration without re-sealing');
 
-    const d = canary(['doctor', root], root);
+    const d = amabie(['doctor', root], root);
     assert.equal(d.status, 2, d.stdout);
-    assert.match(d.stdout, /fast-path declaration \(canary\.paths\) changed since setup sealed it/);
+    assert.match(d.stdout, /fast-path declaration \(amabie\.paths\) changed since setup sealed it/);
 
     // and the widened live declaration grants nothing: doctor refuses outright on
     // drifted authority, so there is no plan execution to skip inside
     fs.writeFileSync(path.join(root, 'README.md'), '# docs only\n');
     commit(root, 'docs: readme only');
-    const fast = canary(['doctor', '--fast', root], root);
+    const fast = amabie(['doctor', '--fast', root], root);
     assert.equal(fast.status, 2, fast.stdout);
     assert.ok(!/FAST PATH/.test(fast.stdout), 'a drifted declaration must not authorize a skip');
     assert.ok(!/✓ typecheck/.test(fast.stdout), 'drifted authority must refuse before executing anything');
@@ -155,21 +156,21 @@ describe('1.1 fast path: sealed declaration, opt-in skipping', () => {
   it('a malformed declaration is refused at setup rather than quietly ignored', () => {
     const root = fixture('bad-declaration');
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as Record<string, unknown>;
-    (pkg.canary as Record<string, unknown>).paths = { nosuchcheck: ['src/**'] };
+    (pkg.amabie as Record<string, unknown>).paths = { nosuchcheck: ['src/**'] };
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(pkg, null, 2));
     commit(root, 'chore: declare paths for a check that does not exist');
 
-    const setup = canary(['setup', '--yes'], root);
+    const setup = amabie(['setup', '--yes'], root);
     assert.equal(setup.status, 2, setup.stdout);
     // v1.4 §E: the everyday message is translated — it says what happened and what to do — and the
     // precise internal reason moved behind --verbose. BOTH halves are asserted below, so neither the
     // translation nor the detail can disappear silently, and the refusal itself is unchanged.
     assert.match(setup.stdout, /NEEDS ATTENTION/);
     assert.match(setup.stdout, /could not record which checks to run/);
-    assert.match(setup.stdout, /canary setup --verbose/);
-    const verbose = canary(['setup', '--yes', '--verbose'], root);
+    assert.match(setup.stdout, /amabie setup --verbose/);
+    const verbose = amabie(['setup', '--yes', '--verbose'], root);
     assert.equal(verbose.status, 2, verbose.stdout);
     assert.match(verbose.stdout, /not a check in the sealed plan/);
-    assert.ok(!fs.existsSync(path.join(root, '.canary', 'canary.local.json')), 'a refused seal must write no config');
+    assert.ok(!fs.existsSync(path.join(root, '.amabie', 'amabie.local.json')), 'a refused seal must write no config');
   });
 });

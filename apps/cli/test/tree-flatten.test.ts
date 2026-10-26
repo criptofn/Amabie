@@ -26,7 +26,7 @@ import assert from 'node:assert/strict';
 
 import { flattenNpmLsJson, MAX_TREE_NODES, MAX_TREE_DEPTH } from '../src/pipeline.js';
 import { reflattenNpmLs, statusOfObservation, MAX_TREE_NODES as V_NODES, MAX_TREE_DEPTH as V_DEPTH } from '../src/verify-tree.js';
-import { classifyTreeObservation, dependencyInTree, inDependencySubtree, diffTrees } from '@canary-rn/comparator';
+import { classifyTreeObservation, dependencyInTree, inDependencySubtree, diffTrees } from '@amabie/comparator';
 
 const J = (o: unknown): string => JSON.stringify(o);
 

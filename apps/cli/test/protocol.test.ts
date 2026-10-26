@@ -14,17 +14,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
 assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-protocol-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-protocol-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
-const canary = (args: string[]) => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 });
+const amabie = (args: string[]) => retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], { cwd: REPO, encoding: 'utf8', timeout: 120_000 }));
 const same = (a: string, b: string): boolean => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 const makeProject = (name: string): string => {
   const root = path.join(TMP, name);
@@ -38,10 +39,10 @@ const makeProject = (name: string): string => {
 describe('1.1 protocol: one JSON object, and no verdict changes', () => {
   it('status --json on an unwired project: pure JSON on stdout, prose on stderr', () => {
     const root = makeProject('unwired');
-    const r = canary(['status', '--json', root]);
+    const r = amabie(['status', '--json', root]);
     assert.equal(r.status, 2);
     const env = JSON.parse(r.stdout) as Record<string, unknown>; // stdout must BE the object
-    assert.equal(env.schema, 'canary-status/1');
+    assert.equal(env.schema, 'amabie-status/1');
     assert.equal(env.command, 'status');
     assert.equal(env.status, 'NOT CONNECTED');
     assert.equal(env.exitCode, 2);
@@ -51,9 +52,9 @@ describe('1.1 protocol: one JSON object, and no verdict changes', () => {
 
   it('status --json on a wired project carries checks, the measured level and harness facts', () => {
     const root = makeProject('wired');
-    const s = canary(['setup', '--yes', root]);
+    const s = amabie(['setup', '--yes', root]);
     assert.equal(s.status, 0, s.stdout + s.stderr);
-    const r = canary(['status', '--json', root]);
+    const r = amabie(['status', '--json', root]);
     assert.equal(r.status, 0, r.stderr);
     const env = JSON.parse(r.stdout) as {
       status: string;
@@ -72,8 +73,8 @@ describe('1.1 protocol: one JSON object, and no verdict changes', () => {
   it('the exit code and the status word are identical with and without --json', () => {
     const root = makeProject('parity');
     for (const base of [['status', root], ['doctor', root], ['result', root]]) {
-      const human = canary(base);
-      const json = canary([...base.slice(0, 1), '--json', ...base.slice(1)]);
+      const human = amabie(base);
+      const json = amabie([...base.slice(0, 1), '--json', ...base.slice(1)]);
       assert.equal(json.status, human.status, `exit codes differ for ${base.join(' ')}`);
       const env = JSON.parse(json.stdout) as { exitCode: number };
       assert.equal(env.exitCode, json.status, 'the envelope must agree with the process exit code');
@@ -82,9 +83,9 @@ describe('1.1 protocol: one JSON object, and no verdict changes', () => {
 
   it('doctor --json reports problems as a list and keeps stdout to one object', () => {
     const root = makeProject('doctor-json');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'doctor-json', scripts: {} }, null, 2)); // the sealed check is gone
-    const r = canary(['doctor', '--json', root]);
+    const r = amabie(['doctor', '--json', root]);
     assert.equal(r.status, 2);
     const env = JSON.parse(r.stdout) as { status: string; problems?: string[] };
     assert.equal(env.status, 'NEEDS ATTENTION');
@@ -93,22 +94,93 @@ describe('1.1 protocol: one JSON object, and no verdict changes', () => {
 
   it('result is the free state answer: no plan run, compact, and it names where evidence lives', () => {
     const root = makeProject('result');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfgPath = path.join(root, '.canary', 'canary.local.json');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfgPath = path.join(root, '.amabie', 'amabie.local.json');
     const before = fs.readFileSync(cfgPath, 'utf8');
-    const stateBefore = fs.readdirSync(path.join(root, '.canary')).sort().join(',');
+    const stateBefore = fs.readdirSync(path.join(root, '.amabie')).sort().join(',');
 
-    const r = canary(['result', '--json', root]);
+    const r = amabie(['result', '--json', root]);
     assert.equal(r.status, 0, r.stderr);
-    const env = JSON.parse(r.stdout) as { schema: string; command: string; status: string; checks: unknown[]; evidencePath: string };
-    assert.equal(env.schema, 'canary-result/1');
+    const env = JSON.parse(r.stdout) as {
+      schema: string; command: string; status: string; checks: unknown[]; evidencePath: string;
+      lastVerification?: { status: string; historical: boolean; checks: Array<{ ok: boolean }>; hookResponse: string; sessionEnd: string };
+    };
+    assert.equal(env.schema, 'amabie-result/1');
     assert.equal(env.command, 'result');
     assert.equal(env.status, 'CONNECTED');
     assert.equal(env.checks.length, 1);
-    assert.match(env.evidencePath, /\.canary$/, 'the envelope points at the state, it does not paste it');
+    assert.equal(env.lastVerification?.status, 'pass');
+    assert.equal(env.lastVerification?.historical, true);
+    assert.deepEqual(env.lastVerification?.checks.map((x) => x.ok), [true]);
+    assert.equal(env.lastVerification?.hookResponse, 'not-applicable');
+    assert.equal(env.lastVerification?.sessionEnd, 'unknown');
+    assert.match(env.evidencePath, /\.amabie$/, 'the envelope points at the state, it does not paste it');
     assert.ok(r.stdout.length < 4000, `the envelope must stay compact, got ${r.stdout.length} bytes`);
     // and it never executes the plan or writes anything
     assert.equal(fs.readFileSync(cfgPath, 'utf8'), before, 'result must not touch the sealed config');
-    assert.equal(fs.readdirSync(path.join(root, '.canary')).sort().join(','), stateBefore, 'result must not add state');
+    assert.equal(fs.readdirSync(path.join(root, '.amabie')).sort().join(','), stateBefore, 'result must not add state');
+  });
+
+  it('human results expose historical proof scope, open duties and caveats without claiming current proof', () => {
+    const root = makeProject('result-proof-scope');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cpPath = path.join(root, '.amabie', 'last-checkpoint.json');
+    const cp = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
+    cp.proof = { registeredRequirements: 2, obligations: [
+      { id: 'one', mode: 'objective', status: 'met', caveat: 'agent-authored test' },
+      { id: 'two', mode: 'objective', status: 'unproven' },
+      { id: 'three', mode: 'objective', status: 'unmet' },
+    ] };
+    fs.writeFileSync(cpPath, JSON.stringify(cp));
+    const before = fs.readFileSync(cpPath, 'utf8');
+    const r = amabie(['result', root]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /proof in that run: 2 registered requirement\(s\); obligations: 1 met, 1 unproven, 1 unmet/);
+    assert.match(r.stdout, /evidence caveat in that run \[one\]: agent-authored test/);
+    assert.match(r.stdout, /historical only/);
+    assert.equal(fs.readFileSync(cpPath, 'utf8'), before);
+
+    delete cp.proof;
+    fs.writeFileSync(cpPath, JSON.stringify(cp));
+    const legacy = amabie(['result', root]);
+    assert.match(legacy.stdout, /proof in that run: not recorded/);
+    assert.doesNotMatch(legacy.stdout, /obligations: .*met/);
+  });
+
+  it('doctor states when no task acceptance criteria were registered, even when checks pass', () => {
+    const root = makeProject('doctor-proof-scope');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const r = amabie(['doctor', root]);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /proof scope: 0 registered requirement\(s\); obligations:/);
+    assert.match(r.stdout, /task acceptance criteria were not registered/);
+    assert.match(r.stdout, /READY/);
+  });
+
+  it('result separates a diagnostic pass from completion-hook history and never claims session completion', () => {
+    const root = makeProject('diagnostic-is-not-completion');
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
+    const cpPath = path.join(root, '.amabie', 'last-checkpoint.json');
+    const before = fs.readFileSync(cpPath, 'utf8');
+    const diagnostic = amabie(['result', root]);
+    assert.equal(diagnostic.status, 0);
+    assert.match(diagnostic.stdout, /diagnostic run; no completion-hook response in this record/);
+    assert.match(diagnostic.stdout, /last recorded verification: pass \(doctor\)/);
+    assert.doesNotMatch(diagnostic.stdout, /last recorded completion/);
+    assert.equal(fs.readFileSync(cpPath, 'utf8'), before, 'reading history cannot run checks or update it');
+
+    const blocked = { ...JSON.parse(before), source: 'checkpoint', status: 'unproven', hookResponse: 'blocked' };
+    fs.writeFileSync(cpPath, JSON.stringify(blocked));
+    const history = amabie(['result', root]);
+    assert.equal(history.status, 0);
+    assert.match(history.stdout, /completion hook in that run: blocked; session end: unknown/);
+    assert.match(history.stdout, /last recorded verification: unproven \(checkpoint\)/);
+    assert.doesNotMatch(history.stdout, /last recorded completion/);
+    const envelope = JSON.parse(amabie(['result', '--json', root]).stdout);
+    assert.equal(envelope.status, 'CONNECTED');
+    assert.equal(envelope.lastVerification.hookResponse, 'blocked');
+    assert.equal(envelope.lastVerification.sessionEnd, 'unknown');
+    assert.equal(envelope.lastVerification.historical, true);
   });
 });

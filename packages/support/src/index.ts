@@ -1,6 +1,6 @@
 /**
  * Sanitized process execution — the security contract of docs/SECURITY.md
- * implemented as the ONLY way Canary spawns external processes.
+ * implemented as the ONLY way Amabie spawns external processes.
  *
  * Allowlist by construction: anything not listed is invisible to untrusted
  * fixture code — Anthropic / GitHub / cloud credentials, SSH agents,
@@ -12,7 +12,9 @@
  * the permanent observation test (test/env.test.ts), not by prose.
  */
 
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawn, spawnSync, ChildProcess, type SpawnSyncReturns } from 'node:child_process';
+import { windowsSyncProcess, type WindowsSyncOptions } from './windowsSyncProcess.js';
+import { WINDOWS_PROCESS_IDENTITY_BOOTSTRAP } from './windowsProcessIdentity.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -32,12 +34,12 @@ export interface EnvOptions {
   /** Metadata-only callers need an isolated environment without creating dirs. */
   materialize?: boolean;
   /**
-   * CANARY-OWNED observer injection (v1.1 Phase 2).
+   * AMABIE-OWNED observer injection (v1.1 Phase 2).
    *
    * This is deliberately NOT an env-merge and NOT a general `envExtra`: audit F9
    * removed that vector, and the master-pass M7 mutant ("merge the CALLER
    * environment under the sanitized one") must stay dead. Every value here is a
-   * path or token CANARY computed — the directory must live inside Canary's own
+   * path or token AMABIE computed — the directory must live inside Amabie's own
    * workspace root, and the variable NAMES are fixed by `kind`, so no
    * caller/subject-supplied string can reach the child's environment through this
    * door.
@@ -56,11 +58,11 @@ export interface EnvOptions {
    * HOME/USERPROFILE are redirected and Go derives its cache from them. Verified
    * fix (tooling/probes/runner-channels-rust-go.mjs): declaring a
    * workspace-scoped GOCACHE/GOPATH makes `go test` — and `go test -json` — run
-   * inside a Canary step.
+   * inside an Amabie step.
    *
    * Containment is the same as the observer door and for the same reason (audit
    * F9 / master-pass M7 must stay dead): the KEYS come from a fixed allowlist and
-   * every PATH-shaped value must resolve inside Canary's own workspace, so an
+   * every PATH-shaped value must resolve inside Amabie's own workspace, so an
    * adapter — which is product code, never project input — still cannot point a
    * toolchain at a subject-chosen directory.
    */
@@ -70,17 +72,17 @@ export interface EnvOptions {
    *
    * WHY THIS EXISTS, with the measurement that forced it: the step PATH is
    * `${nodeDir};System32;%SystemRoot%`, so a project whose own check spawns a tool
-   * transitively — `npm test` → `java`, `python`, `git` — fails INSIDE Canary on a
+   * transitively — `npm test` → `java`, `python`, `git` — fails INSIDE Amabie on a
    * host where the same command passes outside it, and the failure was reported as
    * the project's fault (docs/CLAIM-EVIDENCE-MATRIX-1.5.md, probe
    * tooling/probes/v15-realworld-gate-env.mjs: 12 PATH entries against the shell's 41,
    * `java`/`python`/`git` invisible).
    *
    * WHAT THIS IS NOT: it is never `process.env.PATH`. The calling PATH stays ignored,
-   * because a worker could plant `python.cmd` earlier on it and have Canary execute
+   * because a worker could plant `python.cmd` earlier on it and have Amabie execute
    * that as sealed authority. These directories are ABSOLUTE, must exist, and are
-   * named by the OPERATOR at `canary setup` time (`--toolchain-dir`) and sealed into
-   * the local config, so a later ambient PATH edit changes nothing. Canary's own
+   * named by the OPERATOR at `amabie setup` time (`--toolchain-dir`) and sealed into
+   * the local config, so a later ambient PATH edit changes nothing. Amabie's own
    * resolution of the plan's program still never consults PATH at all
    * (`resolveProgram`), and these directories are appended AFTER the Node install dir
    * and the OS-managed dirs, so nothing here can shadow them.
@@ -93,21 +95,21 @@ export interface ObserverInjection {
    * `python` = PYTHONPATH=<dir> + a nonce + no user site-packages (the
    *            `sitecustomize` door).
    * `pytest` = the same PYTHONPATH door PLUS `PYTEST_PLUGINS`, whose value is the
-   *            fixed module name Canary writes — pytest imports it before any test.
+   *            fixed module name Amabie writes — pytest imports it before any test.
    * `node`   = the per-round nonce only: Node's own `--test-reporter` mechanism
-   *            loads Canary's bytes from an argv specifier, so the environment's
+   *            loads Amabie's bytes from an argv specifier, so the environment's
    *            single job is to bind the frames to THIS spawn.
    */
   kind: 'python' | 'pytest' | 'node';
-  /** Directory holding Canary's observer bytes. Must resolve inside ws.root. */
+  /** Directory holding Amabie's observer bytes. Must resolve inside ws.root. */
   dir: string;
   /** Per-round binding token the observer echoes in its `hello` frame. */
   nonce: string;
 }
 
-/** The plugin name Canary asks pytest to load. Fixed by the channel, never a
+/** The plugin name Amabie asks pytest to load. Fixed by the channel, never a
  *  caller-supplied string — this door accepts no module name from outside. */
-export const PYTEST_PLUGIN_MODULE_NAME = 'canary_pytest_observer';
+export const PYTEST_PLUGIN_MODULE_NAME = 'amabie_pytest_observer';
 
 /** Variables an adapter may declare, and nothing else. */
 export const TOOLCHAIN_ENV_KEYS: ReadonlySet<string> = new Set([
@@ -116,7 +118,7 @@ export const TOOLCHAIN_ENV_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 export interface ToolchainInjection {
-  /** Allowlisted keys, values computed by Canary-side adapter code. */
+  /** Allowlisted keys, values computed by Amabie-side adapter code. */
   env: Record<string, string>;
 }
 
@@ -135,9 +137,9 @@ export interface ToolchainInjection {
  * implementation follows symlinks and junctions but returns the SHORT spelling
  * unchanged. `fs.realpathSync.native` is the OS call (`GetFinalPathNameByHandle`
  * on Windows, `realpath(3)` elsewhere) and DOES return the canonical long form.
- * MEASURED: short `...\CAA02B~1\A-LONG~1` -> long `...\canary-shortname-iZPuS2\a-long-directory-name`.
+ * MEASURED: short `...\CAA02B~1\A-LONG~1` -> long `...\amabie-shortname-iZPuS2\a-long-directory-name`.
  *
- * WHAT WENT WRONG WITHOUT IT: Canary compared a canonical root against a
+ * WHAT WENT WRONG WITHOUT IT: Amabie compared a canonical root against a
  * git-reported long path, or a stored identity against a freshly read one, saw two
  * different strings for one object, and refused. That direction is fail-closed —
  * no boundary was ever crossed — but it is a FALSE REFUSAL, and in the worst case
@@ -201,8 +203,8 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     fs.mkdirSync(home, { recursive: true });
     fs.mkdirSync(tmp, { recursive: true });
   }
-  // Canary-owned observer variables. Fail closed on anything that is not a real
-  // directory inside Canary's own workspace: this door must never become a way to
+  // Amabie-owned observer variables. Fail closed on anything that is not a real
+  // directory inside Amabie's own workspace: this door must never become a way to
   // put a subject-chosen path (or value) into a verification child's environment.
   const observed: NodeJS.ProcessEnv = {};
   if (observer !== undefined) {
@@ -213,7 +215,7 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     }
     const rel = path.relative(rootReal, dirReal);
     if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-      throw new Error(`observer injection directory must live inside Canary's workspace root (got ${dirReal}, root ${rootReal})`);
+      throw new Error(`observer injection directory must live inside Amabie's workspace root (got ${dirReal}, root ${rootReal})`);
     }
     if (observer.kind === 'python' || observer.kind === 'pytest') {
       observed.PYTHONPATH = dirReal;
@@ -223,22 +225,22 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     // The nonce is the binding for EVERY channel: it is what binds a frame to
     // THIS spawn (see the python observer's note on why pid equality alone is not
     // sufficient on Windows, and why the node reporter needs it too).
-    observed.CANARY_OBSERVER_NONCE = observer.nonce;
+    observed.AMABIE_OBSERVER_NONCE = observer.nonce;
   }
   // Adapter-declared toolchain variables, under the same containment rule.
   if (toolchain !== undefined) {
     const wsReal = (() => { try { return canonicalPath(ws.root); } catch { return path.resolve(ws.root); } })();
     for (const [key, value] of Object.entries(toolchain.env)) {
       if (!TOOLCHAIN_ENV_KEYS.has(key)) {
-        throw new Error(`adapter declared toolchain variable "${key}", which is not in Canary's toolchain allowlist`);
+        throw new Error(`adapter declared toolchain variable "${key}", which is not in Amabie's toolchain allowlist`);
       }
-      // Any value that LOOKS like a path must live inside Canary's workspace; a
+      // Any value that LOOKS like a path must live inside Amabie's workspace; a
       // plain token (GOTOOLCHAIN=local, GOFLAGS=-mod=mod) is taken as declared.
       if (path.isAbsolute(value)) {
         const resolved = (() => { try { return canonicalPath(value); } catch { return path.resolve(value); } })();
         const rel = path.relative(wsReal, resolved);
         if (rel !== '' && (rel.startsWith('..') || path.isAbsolute(rel))) {
-          throw new Error(`adapter declared ${key}=${value}, which is outside Canary's workspace (${wsReal})`);
+          throw new Error(`adapter declared ${key}=${value}, which is outside Amabie's workspace (${wsReal})`);
         }
       }
       observed[key] = value;
@@ -286,9 +288,9 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
       USERPROFILE: home,
       // Neutralized session identity (loader would otherwise inject the real
       // account identity into every fixture-visible environment):
-      USERNAME: 'canary',
-      USERDOMAIN: 'CANARY',
-      LOGONSERVER: '\\\\CANARY',
+      USERNAME: 'amabie',
+      USERDOMAIN: 'AMABIE',
+      LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: homeDrive,
       HOMEPATH: homeRelative,
       SYSTEMDRIVE: homeDrive,
@@ -314,7 +316,7 @@ export function sanitizedEnvKeys(env: NodeJS.ProcessEnv): string[] {
 /**
  * Audit F-6 (GLM minor closure): the containment helpers (taskkill / ps /
  * powershell) ran with the FULL caller environment — an inconsistency with
- * the hygiene every other Canary child gets. These paths are and remain
+ * the hygiene every other Amabie child gets. These paths are and remain
  * NON-verdict-authoritative: no classification or promotion decision reads
  * their success (a failed sweep is reported `failed: true`, never as
  * "nothing survived"), so this closes env-inheritance hygiene, not a claimed
@@ -326,7 +328,7 @@ export function sanitizedEnvKeys(env: NodeJS.ProcessEnv): string[] {
  * host temp because these tools may scratch there; temp contents are not a
  * code path for `taskkill`, bare `ps`, or `-NoProfile` `powershell -Command`.
  * `SystemRoot` itself is still honored as-is — same-UID actors able to set
- * the caller environment can equally overwrite Canary's own state, which is
+ * the caller environment can equally overwrite Amabie's own state, which is
  * the documented local-forgery ceiling, not what this narrows.
  */
 export function containmentEnv(): NodeJS.ProcessEnv {
@@ -344,9 +346,9 @@ export function containmentEnv(): NodeJS.ProcessEnv {
       ComSpec: path.join(sys32, 'cmd.exe'),
       TEMP: tmp,
       TMP: tmp,
-      USERNAME: 'canary',
-      USERDOMAIN: 'CANARY',
-      LOGONSERVER: '\\\\CANARY',
+      USERNAME: 'amabie',
+      USERDOMAIN: 'AMABIE',
+      LOGONSERVER: '\\\\AMABIE',
       HOMEDRIVE: tmpDrive,
       HOMEPATH: tmp.slice(tmpParsed.root.length - 1),
       SYSTEMDRIVE: tmpDrive,
@@ -386,7 +388,7 @@ export function resolvePsBinary(): string {
  * <prefix>, whose npm lives at <prefix>/lib/node_modules/npm). Probing order
  * is legacy-first, so hosts that already resolved the old way keep resolving
  * to the SAME byte-for-byte path. PATH and env are never consulted: an
- * untrusted shell must not be able to steer which npm Canary samples.
+ * untrusted shell must not be able to steer which npm Amabie samples.
  * Returns null when NO bundled npm exists — callers must fail or skip
  * explicitly, never record an empty sample as if it were a measurement.
  */
@@ -409,16 +411,16 @@ export interface RunOptions {
   /**
    * Observation hardening: open a FOURTH stdio slot (child fd 3) as a pipe
    * and return its bytes in `observation`. Used ONLY for measurement rounds
-   * where Canary injected its own observer into the child — the channel is
+   * where Amabie injected its own observer into the child — the channel is
    * inherited by the spawned process, never by the subject's own tools.
    * 'close' waits for every stdio stream, so no post-exit race exists.
    */
   observeChildFd3?: boolean;
   /**
-   * Canary-owned observer environment injection for a round that injects its own
+   * Amabie-owned observer environment injection for a round that injects its own
    * observer bytes (v1.1 Phase 2). Passed straight through to `sanitizedEnv`,
    * where the variable names are fixed by `kind` and the directory must live
-   * inside Canary's workspace root — see `ObserverInjection`.
+   * inside Amabie's workspace root — see `ObserverInjection`.
    */
   observer?: ObserverInjection;
   /** Adapter-declared toolchain variables (see EnvOptions.toolchain). */
@@ -434,7 +436,7 @@ export interface RunOutcome {
   durationMs: number;
   argv: readonly string[];
   envKeys: readonly string[];
-  /** PID Canary spawned (absent on spawn-error paths). */
+  /** PID Amabie spawned (absent on spawn-error paths). */
   childPid?: number | undefined;
   /**
    * Audit F5: descendant PIDs still alive when the child exited, swept after
@@ -465,7 +467,8 @@ export interface RunOutcome {
 export async function runCommand(o: RunOptions): Promise<RunOutcome> {
   const env = sanitizedEnv(o);
   const envKeys = sanitizedEnvKeys(env);
-  const start = Date.now();
+  const start = performance.now(); // monotonic: the wall clock can step back (WSL resync)
+  const elapsed = (): number => Math.round(performance.now() - start);
   return new Promise<RunOutcome>((resolve) => {
     let child: ChildProcess;
     try {
@@ -480,7 +483,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     } catch (e) {
       resolve({
         exitCode: -1, killedByTimeout: false, stdout: '',
-        stderr: String((e as Error).message ?? e), durationMs: Date.now() - start,
+        stderr: String((e as Error).message ?? e), durationMs: elapsed(),
         argv: [...o.argv], envKeys,
         ...(o.observeChildFd3 ? { observation: '' } : {}),
       });
@@ -493,6 +496,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     let obs = '';
     let obsTruncated = false;
     let killed = false;
+    let exitSweep: SweepResult | undefined;
     child.stdout?.setEncoding('utf8');
     child.stderr?.setEncoding('utf8');
     child.stdout?.on('data', (d: string) => { stdout = cap(stdout + d); });
@@ -536,6 +540,13 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
     // hello-bye-boundary/flood ⇒ INVALID regardless: this window trades a
     // 600s hang for a 2s delay, it cannot forge or rescue anything.
     child.on('exit', () => {
+      clearTimeout(timer);
+      if (process.platform === 'win32') {
+        // libuv releases the kernel process handle after this callback returns.
+        // Sweep synchronously here while that original identity still reserves
+        // its PID; waiting for drained stdio/'close' permits PID recycling.
+        exitSweep = sweepRetainedWindowsRoot(childPid, spawnedAtMs);
+      }
       if (!f3stream || f3stream.destroyed) return;
       setTimeout(() => { try { f3stream?.destroy(); } catch { /* already ended */ } }, POST_EXIT_DRAIN_MS);
     });
@@ -550,7 +561,7 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
       stderr += `\nspawn error: ${err.message}`;
       resolve({
         exitCode: -1, killedByTimeout: false, stdout, stderr,
-        durationMs: Date.now() - start, argv: [...o.argv], envKeys,
+        durationMs: elapsed(), argv: [...o.argv], envKeys,
         ...(o.observeChildFd3 ? { observation: obs, observationTruncated: obsTruncated } : {}),
       });
     });
@@ -559,15 +570,17 @@ export async function runCommand(o: RunOptions): Promise<RunOutcome> {
       // Audit F5: containment must hold on NORMAL exit too, not just timeout.
       // The child is gone but its descendants may live on (a runner's helper
       // daemons holding ports/files poison later rounds asymmetrically).
-      // Sweeps AFTER exit are still precise: Windows keeps the numeric PPID of
-      // a dead parent in its process records, and on POSIX the child was
-      // spawned detached into its own process group which outlives it.
-      const sweep = sweepDescendants(childPid, spawnedAtMs);
+      // Windows has already measured cleanup inside exit while the original
+      // process handle is retained. Never fall back to a later numeric-PID sweep.
+      // POSIX retains the existing own-session/group cleanup path.
+      const sweep = process.platform === 'win32'
+        ? (exitSweep ?? { killed: [], failed: true })
+        : sweepDescendants(childPid, spawnedAtMs);
       resolve({
         exitCode: killed ? -1 : (code ?? (signal ? -1 : -1)),
         killedByTimeout: killed,
         stdout, stderr,
-        durationMs: Date.now() - start,
+        durationMs: elapsed(),
         argv: [...o.argv], envKeys,
         childPid, sweptPids: sweep.killed, sweepFailed: sweep.failed,
         ...(o.observeChildFd3 ? { observation: obs, observationTruncated: obsTruncated } : {}),
@@ -613,16 +626,60 @@ export interface SweepResult {
   failed: boolean;
 }
 
+// An in-process lifetime scope, never an environment variable or agent claim.
+const retainedWindowsRoots = new Set<number>();
+function sweepRetainedWindowsRoot(pid: number | undefined, spawnedAtMs: number): SweepResult {
+  if (pid === undefined) return { killed: [], failed: true };
+  retainedWindowsRoots.add(pid);
+  try { return sweepDescendants(pid, spawnedAtMs); }
+  finally { retainedWindowsRoots.delete(pid); }
+}
+
+/** @internal Attach before exit; the getter never reopens a stale numeric root. */
+export function cleanupWindowsChildOnExit(child: ChildProcess, spawnedAtMs: number): () => SweepResult | undefined {
+  let measured: SweepResult | undefined;
+  if (!(child instanceof ChildProcess) || child.exitCode !== null || child.signalCode !== null) {
+    return () => ({ killed: [], failed: true });
+  }
+  // Some process adapters (cross-spawn on Windows) turn the native exit
+  // emission into an error before registered exit listeners can observe it.
+  // Intercept that emission while libuv still owns the original handle, then
+  // delegate unchanged to the adapter. No private Node fields or late PID query.
+  const originalEmit = child.emit;
+  function retainExit(this: ChildProcess, event: string | symbol, ...args: unknown[]): boolean {
+    if (this === child && event === 'exit' && measured === undefined) {
+      if (child.emit === retainExit) child.emit = originalEmit;
+      measured = sweepRetainedWindowsRoot(child.pid, spawnedAtMs);
+    }
+    return Reflect.apply(originalEmit, this, [event, ...args]);
+  }
+  child.emit = retainExit;
+  return () => measured;
+}
+
+/** Sweep a still-owned live ChildProcess; its exit callback cannot release its handle during this synchronous call. */
+export function sweepLiveChild(child: ChildProcess, spawnedAtMs: number): SweepResult {
+  if (!(child instanceof ChildProcess) || child.exitCode !== null || child.signalCode !== null) return { killed: [], failed: true };
+  return process.platform === 'win32' ? sweepRetainedWindowsRoot(child.pid, spawnedAtMs) : sweepDescendants(child.pid, spawnedAtMs);
+}
+
+/** @internal Windows sync checks keep their original process handle through cleanup. */
+export function runWindowsProcessSync(file: string, args: readonly string[], options: WindowsSyncOptions): SpawnSyncReturns<string> {
+  return windowsSyncProcess(file, args, options, containmentEnv(), sweepRetainedWindowsRoot);
+}
+
 const SWEEP_MAX_PROCESSES = 200;
 
 /**
  * Audit F5: after the spawned child has EXITED (normal or killed), sweep any
- * descendants that outlived it. Precise on both platforms post-exit:
+ * descendants that outlived it. Bounded, fail-closed LOCAL cleanup:
  *  - Windows: `Win32_Process.ParentProcessId` keeps the numeric PPID of a dead
  *    parent, so a BFS over stale-PPID lineage finds grandchildren even when
- *    intermediate ancestors are gone. A CreationDate >= spawn-time filter
- *    guards against PID-reuse collateral (a recycled PPID belongs to a newer
- *    unrelated tree).
+ *    intermediate ancestors are gone. Callers must retain the original root
+ *    kernel handle through cleanup. The sweep reads native root creation,
+ *    pins accepted descendants, matches CIM microsecond identities to native
+ *    creation times and terminates through those handles. This is not a kernel
+ *    sandbox or a guarantee that every escaped/unobserved process is discoverable.
  *  - POSIX: the child was spawned `detached` => it led its own process GROUP
  *    and SESSION (setsid ⇒ sid == childPid). Members still alive after close
  *    are found via /proc (or `ps`) by SESSION or group membership (audit S1:
@@ -638,6 +695,9 @@ const SWEEP_MAX_PROCESSES = 200;
  */
 export function sweepDescendants(pid: number | undefined, spawnedAtMs: number): SweepResult {
   if (!pid || pid <= 0) return { killed: [], failed: false };
+  // A PID/time pair is not Windows ownership. Production entry points establish
+  // the scope only while the ORIGINAL ChildProcess kernel handle is retained.
+  if (process.platform === 'win32' && !retainedWindowsRoots.has(pid)) return { killed: [], failed: true };
   try {
     return process.platform === 'win32'
       ? sweepWin32(pid, spawnedAtMs)
@@ -658,13 +718,17 @@ export type ProcessRow = { p: number; ppid: number; pgrp: number; sid: number };
  * is never rendered as "no survivors"; audit F5 honesty law unchanged).
  */
 export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | null {
-  const ps = spawnSync(psBin, ['-o', 'pid=,ppid=,pgid=,sid='],
+  // -A: every process. The default query lists only processes attached to a terminal, so a session helper
+  // without one would be invisible to the sweep.
+  const ps = spawnSync(psBin, ['-A', '-o', 'pid=,ppid=,pgid=,sid=,stat='],
     { timeout: 10_000, encoding: 'utf8', env: containmentEnv(), shell: false });
   if (ps.error || ps.status !== 0 || typeof ps.stdout !== 'string') return null;
   const rows: ProcessRow[] = [];
   for (const line of ps.stdout.split('\n')) {
-    const [p, pp, pg, sd] = line.trim().split(/\s+/).map(Number);
+    const fields = line.trim().split(/\s+/);
+    const [p, pp, pg, sd] = fields.slice(0, 4).map(Number);
     if (p === undefined || pp === undefined || !Number.isFinite(p) || !Number.isFinite(pp)) continue;
+    if (isDeadState(fields[4])) continue;
     rows.push({
       p, ppid: pp,
       pgrp: pg !== undefined && Number.isFinite(pg) ? pg : -1,
@@ -674,52 +738,102 @@ export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | n
   return rows;
 }
 
-function sweepPosix(pid: number): SweepResult {
-  const killed: number[] = [];
-  // collect: [pid, ppid, pgrp, session]
+/** Zombie (Z) and dead (X) processes hold nothing to contain; they are not sweep targets. */
+function isDeadState(state: string | undefined): boolean {
+  return state !== undefined && (state.startsWith('Z') || state.startsWith('X'));
+}
+
+/** Enumeration passes before the sweep stops and reports whatever still lives. */
+const SWEEP_MAX_PASSES = 10;
+const SWEEP_PASS_PAUSE_MS = 25;
+
+/** Process-table access for the POSIX sweep. Injectable so the pass logic is testable on any platform. */
+export interface PosixSweepIo {
+  /** The sweeping process itself; never a target. */
+  self: number;
+  /** Full process table (zombies and dead rows excluded), or null when it cannot be read. */
+  table(): ProcessRow[] | null;
+  /** SIGKILL one pid. Returns whether the signal was delivered; survivors are decided by the next enumeration. */
+  kill(pid: number): boolean;
+  /** SIGKILL the process group led by pid, as a race backstop for members the table did not show. */
+  killGroup(pid: number): void;
+  pause(ms: number): void;
+}
+
+function procTableRows(): ProcessRow[] {
   const rows: ProcessRow[] = [];
-  if (fs.existsSync('/proc')) {
-    for (const entry of fs.readdirSync('/proc')) {
-      if (!/^\d+$/.test(entry)) continue;
-      let stat = '';
-      try { stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8'); } catch { continue; }
-      // fields after the parenthesized comm: state ppid pgrp session ...
-      const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
-      const ppid = Number(rest[1]); const pgrp = Number(rest[2]); const sid = Number(rest[3]);
-      if (!Number.isFinite(ppid)) continue;
-      rows.push({ p: Number(entry), ppid, pgrp, sid });
-    }
-  } else {
-    const psRows = psTableRows();
-    if (psRows === null) return { killed, failed: true };
-    rows.push(...psRows);
+  for (const entry of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(entry)) continue;
+    let stat = '';
+    try { stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8'); } catch { continue; }
+    // fields after the parenthesized comm: state ppid pgrp session ...
+    const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+    const ppid = Number(rest[1]); const pgrp = Number(rest[2]); const sid = Number(rest[3]);
+    if (!Number.isFinite(ppid) || isDeadState(rest[0])) continue;
+    rows.push({ p: Number(entry), ppid, pgrp, sid });
   }
-  // Membership: same session as the (setsid'd) child — catches descendants that
-  // setpgid()ed into their own group but never escaped the session; OR stale
-  // direct-ppid lineage (BFS below handles intermediate deaths). A process that
-  // BOTH setsid()es and reparents is a documented residual (SECURITY Tier B).
-  const inSession = (r: { pgrp: number; sid: number }): boolean => posixSessionMember(r.pgrp, r.sid, pid);
+  return rows;
+}
+
+function posixProcessIo(): PosixSweepIo {
+  return {
+    self: process.pid,
+    table: () => (fs.existsSync('/proc') ? procTableRows() : psTableRows()),
+    kill: pid => {
+      try { process.kill(pid, 'SIGKILL'); return true; } catch { return false; }
+    },
+    killGroup: pid => { try { process.kill(-pid, 'SIGKILL'); } catch { /* group already empty */ } },
+    pause: ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); },
+  };
+}
+
+/**
+ * Lineage of the swept child from one fresh enumeration: members of its SESSION or group (setpgid()
+ * descendants keep the session) plus a transitive PPID closure. Null when the table cannot be read.
+ */
+function posixLineage(io: PosixSweepIo, pid: number): number[] | null {
+  const rows = io.table();
+  if (rows === null) return null;
+  // A process that BOTH setsid()es and reparents is a documented residual (SECURITY Tier B).
   const members = new Set<number>();
   for (const r of rows) {
-    if (r.p === pid || r.p === process.pid) continue;
-    if (inSession(r)) members.add(r.p);
+    if (r.p === pid || r.p === io.self) continue;
+    if (posixSessionMember(r.pgrp, r.sid, pid)) members.add(r.p);
   }
-  // transitive PPID BFS (catches lineage whose session was reset but parentage
-  // retained — rare, bounded by SWEEP_MAX_PROCESSES)
   let grew = true;
   while (grew) {
     grew = false;
     for (const r of rows) {
-      if (r.p === pid || r.p === process.pid || members.has(r.p)) continue;
-      if (members.has(r.ppid)) { members.add(r.p); grew = true; }
+      if (r.p === pid || r.p === io.self || members.has(r.p)) continue;
+      // Seed with the swept child itself: a detached direct child is its own session, so only its PPID links it.
+      if (r.ppid === pid || members.has(r.ppid)) { members.add(r.p); grew = true; }
     }
   }
-  for (const m of members) {
-    if (killed.length >= SWEEP_MAX_PROCESSES) break;
-    try { process.kill(m, 'SIGKILL'); killed.push(m); } catch { /* already dead */ }
+  return [...members];
+}
+
+/**
+ * Bounded, identity-safe sweep. Each pass re-enumerates and kills at most SWEEP_MAX_PROCESSES members, so
+ * the per-pass budget never silently drops a helper: the next pass sees the rest. The sweep is complete only
+ * when a fresh enumeration finds no members. Anything still alive after the last pass is a failed sweep.
+ */
+export function sweepPosixPasses(pid: number, io: PosixSweepIo): SweepResult {
+  const killed = new Set<number>();
+  let survivors = posixLineage(io, pid);
+  for (let pass = 0; pass < SWEEP_MAX_PASSES && survivors !== null && survivors.length > 0; pass++) {
+    for (const m of survivors.slice(0, SWEEP_MAX_PROCESSES)) {
+      if (io.kill(m)) killed.add(m);
+    }
+    io.killGroup(pid);
+    io.pause(SWEEP_PASS_PAUSE_MS);
+    survivors = posixLineage(io, pid);
   }
-  try { process.kill(-pid, 'SIGKILL'); } catch { /* group already empty */ }
-  return { killed, failed: false };
+  // Post-check: `survivors` is the last fresh enumeration, so anything left is a known survivor.
+  return { killed: [...killed], failed: survivors === null || survivors.length > 0 };
+}
+
+function sweepPosix(pid: number): SweepResult {
+  return sweepPosixPasses(pid, posixProcessIo());
 }
 
 /**
@@ -732,13 +846,217 @@ export function posixSessionMember(pgrp: number, sid: number, childPid: number):
   return sid === childPid || pgrp === childPid;
 }
 
+let windowsPowerShellAccessViolationPath: string | undefined;
+const WIN32_SWEEP_TRACE_PREFIX = 'amabie-sweep-trace ';
+
 function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
-  // F-6: same trusted absolute System32 resolution (bare-name fail-safe is
-  // unchanged), plus the sanitized environment on the spawn below.
-  const psExe = resolveSystemTool('WindowsPowerShell', 'v1.0', 'powershell.exe');
-  // 60s clock slack: CIM CreationDate truncates to seconds.
-  const cut = new Date(spawnedAtMs - 60_000).toISOString();
-  // ONE SNAPSHOT, NOT ONE QUERY PER PROCESS. MEASURED (v1.4 release gate, GitHub
+  const allCandidates = windowsPowerShellCandidates();
+  const systemHost = allCandidates[0];
+  // Once this process has observed the specific CLR crash, do not pay the
+  // multi-second crash cost on every later sweep in the same Amabie run.
+  const candidates = windowsPowerShellAccessViolationPath === systemHost
+    ? allCandidates.filter((candidate) => candidate !== windowsPowerShellAccessViolationPath)
+    : allCandidates;
+  const script = buildWin32SweepScript(pid, spawnedAtMs);
+  const result = runWin32SweepWithFallback(pid, spawnedAtMs, candidates, (psExe, command) => {
+    const invocationStartedAt = new Date().toISOString();
+    const r = spawnSync(psExe,
+      ['-NoProfile', '-NonInteractive', '-Command', command],
+      // Bounded snapshots request only process identity fields; a timeout still fails CLOSED
+      // (never "no survivors") and names its cause.
+      { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
+    if (process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1' && typeof r.stderr === 'string') {
+      // Parent-side metadata survives a host failure before its first script line.
+      process.stderr.write(`amabie-sweep-invocation ${JSON.stringify({
+        schema: 'amabie-windows-sweep-invocation/1', diagnosticOnly: true,
+        phase: command === WIN32_HOST_PROBE_SCRIPT ? 'preflight' : 'sweep',
+        rootPid: pid, rootSpawnedAtMs: spawnedAtMs, callerPid: process.pid,
+        hostName: path.basename(psExe), hostPid: r.pid ?? null,
+        startedAt: invocationStartedAt, endedAt: new Date().toISOString(),
+        status: r.status, signal: r.signal ?? null,
+        errorCode: (r.error as NodeJS.ErrnoException | undefined)?.code ?? null,
+        // A three-line human summary loses the native stack needed to diagnose
+        // CLR failures. Keep a bounded, explicitly marked payload only on opt-in
+        // failed invocations. JSON escaping prevents multiline record forgery.
+        ...((r.status !== 0 || r.error) ? { failureStderr: {
+          text: r.stderr.slice(0, 16_384), length: r.stderr.length, truncated: r.stderr.length > 16_384,
+        } } : {}),
+      })}\n`);
+      for (const line of r.stderr.split(/\r?\n/u)) {
+        if (line.startsWith(WIN32_SWEEP_TRACE_PREFIX)) process.stderr.write(`${line}\n`);
+      }
+    }
+    return {
+      status: r.status,
+      stdout: typeof r.stdout === 'string' ? r.stdout : '',
+      stderr: typeof r.stderr === 'string' ? r.stderr : '',
+      ...(r.error ? {
+        error: {
+          ...((r.error as NodeJS.ErrnoException).code ? { code: (r.error as NodeJS.ErrnoException).code! } : {}),
+          message: r.error.message,
+        },
+      } : {}),
+    };
+  }, (previous, next, reason) => {
+    if (previous === systemHost && reason === 'engine access violation 0xC0000005') {
+      windowsPowerShellAccessViolationPath = previous;
+    }
+    process.stderr.write(`containment sweep: ${path.basename(previous)} unavailable (${reason}); retrying with ${path.basename(next)}\n`);
+  });
+  if (result.failed) process.stderr.write(`containment sweep incomplete: ${result.reason ?? 'Windows process descendants survived or traversal reached its limit'}\n`);
+  return { killed: result.killed, failed: result.failed };
+}
+
+/**
+ * Resolve the Windows PowerShell hosts used by the process sweep. An explicit
+ * operator-selected Core host takes precedence; otherwise the signed-in inbox
+ * host stays first and Core is recovery for a missing or access-violating
+ * Windows PowerShell engine, never an ordinary query failure. User-profile
+ * module paths are not auto-discovered.
+ */
+export function windowsPowerShellCandidates(): string[] {
+  const configuredPowerShellCore = process.env.AMABIE_POWERSHELL_CORE_PATH;
+  const candidates: string[] = [];
+  if (configuredPowerShellCore && path.isAbsolute(configuredPowerShellCore)
+      && path.basename(configuredPowerShellCore).toLowerCase() === 'pwsh.exe') {
+    candidates.push(configuredPowerShellCore);
+  }
+  candidates.push(resolveSystemTool('WindowsPowerShell', 'v1.0', 'powershell.exe'));
+  const programRoots = [process.env.ProgramW6432, process.env.ProgramFiles, process.env['ProgramFiles(x86)']]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+  for (const root of new Set(programRoots)) candidates.push(path.join(root, 'PowerShell', '7', 'pwsh.exe'));
+
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (candidate === 'powershell.exe') {
+      unique.push(candidate);
+      continue;
+    }
+    try {
+      if (fs.statSync(candidate).isFile()) unique.push(candidate);
+    } catch { /* an optional PowerShell Core installation is absent */ }
+  }
+  return unique;
+}
+
+export type WindowsPowerShellRunResult = {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: { code?: string; message: string };
+};
+
+/**
+ * Read-only host preflight: one CIM process snapshot, no kill. It exists so a host
+ * that crashes on CIM enumeration is passed over BEFORE any kill is requested.
+ * @internal
+ */
+export const WIN32_HOST_PROBE_SCRIPT =
+  `$ErrorActionPreference='Stop';` +
+  `$all=@(Get-CimInstance -ClassName Win32_Process -Property ProcessId -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+  `if($all.Count -le 0){ throw 'empty process snapshot' };` +
+  `Write-Output 'probe=ok';`;
+
+/**
+ * Choose the Windows PowerShell host, then run the kill-capable sweep ONCE on it.
+ * Only the read-only preflight may move to the next host, and only after a missing
+ * executable or the specifically observed CLR access violation. A sweep that fails
+ * after its preflight succeeded is never repeated on another host: an earlier
+ * attempt may already have requested kills, so a retry would be an unplanned
+ * second side effect. That failure fails closed and names its cause. A completed
+ * scan, a malformed result, survivors, timeouts, and all other failures are
+ * authoritative.
+ * @internal Exported so the host-selection boundary can be regression-tested.
+ */
+export function runWin32SweepWithFallback(
+  pid: number,
+  spawnedAtMs: number,
+  candidates: readonly string[],
+  run: (executable: string, script: string) => WindowsPowerShellRunResult,
+  onFallback: (previous: string, next: string, reason: 'engine access violation 0xC0000005' | 'executable unavailable') => void = () => {},
+): SweepResult & { reason?: string } {
+  if (candidates.length === 0) return { killed: [], failed: true, reason: 'no PowerShell host is available' };
+  const script = buildWin32SweepScript(pid, spawnedAtMs, process.env.AMABIE_TRACE_WINDOWS_SWEEP === '1');
+  for (let index = 0; index < candidates.length; index++) {
+    const executable = candidates[index]!;
+    const probe = invokeWin32Host(run, executable, WIN32_HOST_PROBE_SCRIPT);
+    if ('reason' in probe) return { killed: [], failed: true, reason: probe.reason };
+
+    const probed = probe.result;
+    if (probed.status === 0 && !probed.error) {
+      if (!probed.stdout.includes('probe=ok')) {
+        return { killed: [], failed: true, reason: `${path.basename(executable)} returned no process snapshot` };
+      }
+      const swept = invokeWin32Host(run, executable, script);
+      if ('reason' in swept) return { killed: [], failed: true, reason: swept.reason };
+      if (swept.result.status === 0 && !swept.result.error) return parseWin32SweepOutput(swept.result.stdout);
+      return {
+        killed: [], failed: true,
+        reason: `${describeWin32HostFailure(executable, swept.result)}; the sweep is not retried on another host because it may already have requested kills`,
+      };
+    }
+
+    const accessViolation = probed.status !== null && (probed.status >>> 0) === 0xc0000005;
+    const executableMissing = probed.status === null && probed.error?.code === 'ENOENT';
+    if (index + 1 < candidates.length && (accessViolation || executableMissing)) {
+      const reason = accessViolation ? 'engine access violation 0xC0000005' : 'executable unavailable';
+      onFallback(executable, candidates[index + 1]!, reason);
+      continue;
+    }
+    const remedy = accessViolation
+      ? ` (engine access violation 0xC0000005 before any kill; install PowerShell 7 or set AMABIE_POWERSHELL_CORE_PATH to an absolute pwsh.exe, see QUICKSTART)`
+      : '';
+    return { killed: [], failed: true, reason: describeWin32HostFailure(executable, probed) + remedy };
+  }
+  return { killed: [], failed: true, reason: 'no PowerShell host produced a result' };
+}
+
+function invokeWin32Host(
+  run: (executable: string, script: string) => WindowsPowerShellRunResult,
+  executable: string,
+  script: string,
+): { result: WindowsPowerShellRunResult } | { reason: string } {
+  try {
+    return { result: run(executable, script) };
+  } catch (error) {
+    return { reason: `PowerShell host invocation threw: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+function describeWin32HostFailure(executable: string, result: WindowsPowerShellRunResult): string {
+  const hostErrors = result.stderr.split('\n').filter(line => !line.startsWith(WIN32_SWEEP_TRACE_PREFIX)).join('\n').trim();
+  const details = result.error
+    ? `spawn error ${result.error.code ?? 'unknown'}: ${result.error.message}`
+    : `exited ${String(result.status)}${hostErrors ? `: ${hostErrors.split('\n').slice(0, 3).join(' | ').slice(0, 400)}` : ''}`;
+  return `${path.basename(executable)} ${details}`;
+}
+
+/** @internal — shared with a deterministic Windows test for snapshot refresh. */
+export function buildWin32SweepScript(pid: number, spawnedAtMs: number, trace = false): string {
+  if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isFinite(spawnedAtMs)) {
+    throw new RangeError('Windows sweep requires a positive PID and finite spawn time');
+  }
+  const properties = `ProcessId,ParentProcessId,CreationDate${trace ? ',Name' : ''}`;
+  const traceSetup = trace
+    ? `function Write-SweepTrace { param([string]$Event,[hashtable]$Data); try{` +
+      `$record=[ordered]@{schema='amabie-windows-sweep-trace/1';diagnosticOnly=$true;event=$Event;at=[DateTime]::UtcNow.ToString('o');rootPid=${pid};rootSpawnedAtMs=${spawnedAtMs};sweepHostPid=$PID};` +
+      `foreach($field in $Data.Keys){$record[$field]=$Data[$field]}; [Console]::Error.WriteLine(('${WIN32_SWEEP_TRACE_PREFIX}'+($record|ConvertTo-Json -Compress -Depth 3))) }catch{} };` +
+      `Write-SweepTrace 'start' @{};`
+    : '';
+  const traceHost = trace
+    ? `$traceHost=$all|Where-Object{$_.ProcessId -eq $PID}|Select-Object -First 1;` +
+      `Write-SweepTrace 'host' @{hostName=[string]$traceHost.Name;hostParentPid=$traceHost.ParentProcessId;hostCreatedTicks=$(if($traceHost.CreationDate){$traceHost.CreationDate.ToUniversalTime().Ticks.ToString()}else{$null})};`
+    : '';
+  const traceRequest = trace
+    ? `$traceFields=@{processId=$id;createdTicks=$created.ToString();parentProcessId=[int]$row.ParentProcessId;processName=[string]$row.Name;pass=$pass}; Write-SweepTrace 'kill-request' $traceFields;`
+    : '';
+  // Normal snapshots need only identity fields. Opt-in diagnostics also request Name,
+  // never command lines or executable paths; names never affect a kill or verdict.
+  // BOUNDED FULL-TREE SNAPSHOTS, NOT ONE QUERY PER PROCESS. MEASURED (v1.4 release gate, GitHub
   // Windows runner, run 35636516908): the previous shape issued
   // `Get-CimInstance -Filter "ParentProcessId=$p"` for EVERY node of the BFS. A
   // fixture command that spawns a whole test suite has a large descendant tree,
@@ -747,68 +1065,106 @@ function sweepWin32(pid: number, spawnedAtMs: number): SweepResult {
   // round of every pipeline became "not a valid test run" — 27 of the 29 real
   // Windows CI failures, each costing ~334s of sweeps.
   //
-  // A single snapshot carries the same information (Windows keeps the numeric
-  // PPID of a dead parent) at one query. The traversal then runs inside this one
-  // PowerShell, and the kills are attempted AFTER it — from the snapshot, so a
-  // process the BFS discovered cannot be missed because its parent died mid-sweep.
+  // Windows retains a dead parent's numeric PPID. Traverse both pre-kill
+  // snapshots and union exact process identities, so a transient omission in
+  // the first enumeration does not hide a live descendant from the kill pass.
+  // Re-traverse post-kill snapshots too. Late-visible descendants get their own
+  // bounded kill-and-confirm pass; persistent or unconfirmable survivors still
+  // fail closed. Retain known ancestry when an intermediate parent vanishes,
+  // but never seed traversal through a visibly reused ancestor PID.
   //
-  // The row count is printed FIRST and required to be a positive number by the
-  // caller: a snapshot that silently came back empty (`Get-CimInstance` failing
-  // under -ErrorAction SilentlyContinue) would otherwise be indistinguishable
-  // from a genuine "no survivors" — the one reading the honesty law forbids.
-  const script =
-    `$ErrorActionPreference='Continue';` +
-    `$cut=[DateTime]::Parse('${cut}').ToUniversalTime();` +
-    `$all=@(Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_ -ne $null });` +
-    `Write-Output $all.Count;` +
-    `$byParent=@{};` +
-    `foreach($p in $all){ $pp=[int]$p.ParentProcessId; if(-not $byParent.ContainsKey($pp)){ $byParent[$pp]=New-Object System.Collections.ArrayList }; [void]$byParent[$pp].Add($p) };` +
+  // Output is a small, strict protocol: snapshot count, whether the traversal
+  // hit its cap, successfully requested kills, and same-identity survivors.
+  // The input root itself is only traversed; it is never put in the kill list.
+  return (
+    `$ErrorActionPreference='Stop';` +
+    // This host is spawned after the subject exits. If it received that PID,
+    // its children belong to the observer, never to the original subject.
+    // Refuse before any snapshot/kill instead of certifying ambiguous ancestry.
+    `if(${pid} -eq $PID){throw 'sweep root PID has been reused by containment observer'};` +
+    traceSetup +
+    WINDOWS_PROCESS_IDENTITY_BOOTSTRAP +
+    `$script:owned=@{}; try{ $script:owned[${pid}]=Open-SweepIdentity -ProcessId ${pid} -Root;` +
+    `$all=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `if($all.Count -le 0){ throw 'empty process snapshot' };` +
+    traceHost +
+    `Write-Output ('snapshot=' + $all.Count);` +
+    `$script:desc=New-Object System.Collections.Generic.List[object];` +
+    `$script:descIds=New-Object System.Collections.Generic.HashSet[string];` +
+    `$script:uncertain=$false; $script:limited=$false;` +
+    `function Add-Descendants { param([object[]]$Rows);` +
+    `$byParent=@{}; $byId=@{}; foreach($proc in $Rows){ $pp=[int]$proc.ParentProcessId; $byId[[int]$proc.ProcessId]=$proc; if(-not $byParent.ContainsKey($pp)){ $byParent[$pp]=New-Object System.Collections.ArrayList }; [void]$byParent[$pp].Add($proc) };` +
     `$q=New-Object System.Collections.Generic.Queue[int]; $q.Enqueue(${pid});` +
-    `$seen=New-Object System.Collections.Generic.List[int];` +
-    `$done=New-Object System.Collections.Generic.HashSet[int];` +
-    `while($q.Count -and $done.Count -lt ${SWEEP_MAX_PROCESSES}){` +
-    `$p=$q.Dequeue(); if(-not $done.Add($p)){continue};` +
-    `$seen.Add($p);` +
-    `if($byParent.ContainsKey($p)){ foreach($c in $byParent[$p]){` +
-    `if($c.CreationDate -and $c.CreationDate.ToUniversalTime() -ge $cut){ $q.Enqueue([int]$c.ProcessId) } } } };` +
-    `$k=@();` +
-    `foreach($id in $seen){ try{ Stop-Process -Id $id -Force -ErrorAction Stop; $k+=$id }catch{} };` +
-    `$k -join ','`;
-  const r = spawnSync(psExe,
-    ['-NoProfile', '-NonInteractive', '-Command', script],
-    // One enumeration instead of 30+ queries; the budget is per sweep and a
-    // timeout still fails CLOSED (never "no survivors") and now names its cause.
-    { timeout: 60_000, windowsHide: true, encoding: 'utf8', shell: false, env: containmentEnv() });
-  const why = r.error !== undefined && r.error !== null
-    ? `powershell spawn failed: ${r.error.message}`
-    : r.status !== 0
-      ? `powershell exited ${String(r.status)}: ${(r.stderr ?? '').trim().split('\n').slice(0, 3).join(' | ').slice(0, 400)}`
-      : '';
-  if (why !== '') {
-    // A sweep that could not LOOK must say so where an operator can see it: the
-    // round is about to be invalidated, and "could not confirm" without a reason
-    // cost this repository a full CI archaeology round.
-    process.stderr.write(`containment sweep could not run: ${why}\n`);
-    return { killed: [], failed: true };
+    `foreach($ancestor in $script:desc){ $aid=[int]$ancestor.ProcessId; if($byId.ContainsKey($aid)){ $current=$byId[$aid]; if(-not $current.CreationDate){$script:uncertain=$true;continue}; if($current.CreationDate.ToUniversalTime().Ticks -ne $ancestor.CreationDate.ToUniversalTime().Ticks){continue} }; $q.Enqueue($aid) };` +
+    `$seen=New-Object System.Collections.Generic.HashSet[int]; $done=New-Object System.Collections.Generic.HashSet[int];` +
+    `while($q.Count -gt 0){ $parent=$q.Dequeue(); if(-not $done.Add($parent)){continue}; if(-not $byParent.ContainsKey($parent)){continue};` +
+    `foreach($child in $byParent[$parent]){ $childId=[int]$child.ProcessId; if($childId -eq ${pid} -or -not $seen.Add($childId)){continue}; if(-not $child.CreationDate){$script:uncertain=$true;continue};` +
+    `$childTicks=$child.CreationDate.ToUniversalTime().Ticks; $parentTicks=$script:owned[$parent].CreationTicks; if($childTicks+9 -lt $parentTicks){continue};` +
+    `$identity=('{0}:{1}' -f $childId, $child.CreationDate.ToUniversalTime().Ticks);` +
+    `if(-not $script:descIds.Contains($identity)){ if($script:desc.Count -ge ${SWEEP_MAX_PROCESSES}){ $script:limited=$true; break };` +
+    `try{$pin=Open-SweepIdentity -ProcessId $childId -ExpectedTicks $childTicks -ParentTicks $parentTicks}catch{$script:uncertain=$true;continue}; if($null -eq $pin){continue};` +
+    `if($script:owned.ContainsKey($childId)){$pin.Dispose();$script:uncertain=$true;continue}; $script:owned[$childId]=$pin; [void]$script:descIds.Add($identity); [void]$script:desc.Add($child) }; $q.Enqueue($childId) }; if($script:limited){break} } };` +
+    `Add-Descendants $all;` +
+    `$before=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `if($before.Count -le 0){ throw 'empty pre-kill process snapshot' }; Add-Descendants $before;` +
+    // Index exact identities once. Filtering the entire WMI snapshot for every
+    // descendant made cleanup quadratic on large Windows test process trees.
+    `$k=New-Object System.Collections.Generic.List[int];` +
+    `$attempted=New-Object System.Collections.Generic.HashSet[string]; $pending=$before; $survivors=New-Object System.Collections.Generic.List[int];` +
+    `for($pass=0; $pass -lt ${SWEEP_MAX_PASSES}; $pass++){` +
+    `$beforeIds=@{}; foreach($row in $pending){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $beforeIds[$key]=$true } };` +
+    `$roundKills=New-Object System.Collections.Generic.List[int];` +
+    `for($i=$script:desc.Count-1; $i -ge 0; $i--){ $row=$script:desc[$i]; $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks;` +
+    `$key=('{0}:{1}' -f $id, $created); if($beforeIds.ContainsKey($key) -and $attempted.Add($key)){` + traceRequest +
+    `try{ if(Stop-ProcessIdentity -Identity $script:owned[$id]){ $k.Add($id); $roundKills.Add($id); ${trace ? "Write-SweepTrace 'kill-requested' $traceFields" : ''} } }catch{$script:uncertain=$true;${trace ? "Write-SweepTrace 'kill-request-failed' $traceFields" : ''}} } };` +
+    `if($roundKills.Count -gt 0){ try{ Wait-Process -Id $roundKills.ToArray() -Timeout 2 -ErrorAction SilentlyContinue }catch{} };` +
+    `$after=@(Get-CimInstance -ClassName Win32_Process -Property ${properties} -ErrorAction Stop | Where-Object { $_ -ne $null });` +
+    `if($after.Count -le 0){ throw 'empty post-kill process snapshot' }; Add-Descendants $after;` +
+    `$afterIds=@{}; foreach($row in $after){ if($row.CreationDate){ $key=('{0}:{1}' -f [int]$row.ProcessId, $row.CreationDate.ToUniversalTime().Ticks); $afterIds[$key]=$true } };` +
+    `$survivors.Clear(); $more=$false; foreach($row in $script:desc){ $id=[int]$row.ProcessId; $created=$row.CreationDate.ToUniversalTime().Ticks; $key=('{0}:{1}' -f $id, $created); if($afterIds.ContainsKey($key)){[void]$survivors.Add($id); if(-not $attempted.Contains($key)){$more=$true}} };` +
+    // A kill request plus Wait-Process does not prove the next CIM row is gone.
+    // Reconfirm within the existing pass/time caps; never repeat an attempted kill.
+    `if($survivors.Count -eq 0 -or $script:limited -or $script:uncertain){break}; if(-not $more){Start-Sleep -Milliseconds 100}; $pending=$after };` +
+    (trace ? "Write-SweepTrace 'complete' @{survivorCount=$survivors.Count;limited=$script:limited;uncertain=$script:uncertain};" : '') +
+    `Write-Output ('limit=' + $(if($script:limited){1}else{0}));` +
+    `Write-Output ('uncertain=' + $(if($script:uncertain){1}else{0}));` +
+    `Write-Output ('killed=' + ($k -join ','));` +
+    `Write-Output ('survivors=' + ($survivors -join ','))` +
+    `}finally{foreach($owned in $script:owned.Values){$owned.Dispose()}}`);
+}
+
+/** Strictly decode Windows sweep output. Unknown/truncated output is failure, never an empty tree. */
+export function parseWin32SweepOutput(stdout: string): SweepResult & { reason?: string } {
+  const lines = stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const fields = new Map<string, string>();
+  for (const line of lines) {
+    const match = /^(snapshot|limit|uncertain|killed|survivors)=(.*)$/.exec(line);
+    if (!match || fields.has(match[1]!)) return { killed: [], failed: true, reason: `unrecognised output: ${line.slice(0, 160)}` };
+    fields.set(match[1]!, match[2]!);
   }
-  const lines = (r.stdout ?? '').split('\n').map((l) => l.trim()).filter((l) => l !== '');
-  const surveyed = Number(lines[0]);
-  if (!Number.isFinite(surveyed) || surveyed <= 0) {
-    process.stderr.write(`containment sweep could not run: the process snapshot came back empty or unreadable (first line: '${String(lines[0] ?? '')}')\n`);
-    return { killed: [], failed: true };
+  const snapshot = Number(fields.get('snapshot'));
+  const limit = fields.get('limit');
+  const uncertain = fields.get('uncertain');
+  if (!Number.isSafeInteger(snapshot) || snapshot <= 0 || (limit !== '0' && limit !== '1')
+      || (uncertain !== '0' && uncertain !== '1') || !fields.has('killed') || !fields.has('survivors')) {
+    return { killed: [], failed: true, reason: 'missing or malformed snapshot/limit/result fields' };
   }
-  const text = lines.slice(1).join('');
-  // Shape check: anything beyond the count and one CSV line is output this
-  // parser does not understand, and an unparsed listing must never be read as
-  // "nothing survived".
-  if (lines.length > 2 || (lines.length === 2 && !/^[0-9,]*$/.test(lines[1] as string))) {
-    process.stderr.write(`containment sweep could not run: unrecognised powershell output (${lines.slice(1).join(' / ').slice(0, 200)})\n`);
-    return { killed: [], failed: true };
-  }
-  const killed = text
-    ? text.split(',').map(Number).filter((n) => Number.isFinite(n) && n > 0)
-    : [];
-  return { killed, failed: false };
+  const parsePids = (value: string): number[] | null => {
+    if (value === '') return [];
+    if (!/^[1-9]\d*(?:,[1-9]\d*)*$/.test(value)) return null;
+    const values = value.split(',').map(Number);
+    return values.every(Number.isSafeInteger) ? values : null;
+  };
+  const killed = parsePids(fields.get('killed')!);
+  const survivors = parsePids(fields.get('survivors')!);
+  if (killed === null || survivors === null) return { killed: [], failed: true, reason: 'malformed process id list' };
+  const failed = limit === '1' || uncertain === '1' || survivors.length > 0;
+  const reason = limit === '1'
+    ? `process traversal exceeded ${SWEEP_MAX_PROCESSES} descendants`
+    : uncertain === '1'
+      ? 'process identity unavailable for one or more descendants'
+      : `surviving process ids: ${survivors.join(',')}`;
+  return { killed, failed, ...(failed ? { reason } : {}) };
 }
 
 export const ExitCode = {
@@ -820,12 +1176,12 @@ export const ExitCode = {
 
 export * from './knownRunners.js';
 
-export class CanaryError extends Error {
+export class AmabieError extends Error {
   constructor(
     message: string,
     readonly reasonCode: string,
   ) {
     super(message);
-    this.name = 'CanaryError';
+    this.name = 'AmabieError';
   }
 }

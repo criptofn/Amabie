@@ -61,7 +61,7 @@ export const BUNDLE_CONTRACT: Field = obj('always', {
   schemaVersion: num(),
   runId: s(),
   createdAt: iso(),
-  canaryVersion: s(),
+  amabieVersion: s(),
   experimentId: s(),
   dependency: obj('always', {
     package: s(), baselineVersion: s(), candidateVersion: s(),
@@ -96,9 +96,9 @@ export const BUNDLE_CONTRACT: Field = obj('always', {
     failingTestNames: { req: 'optional', arr: s() },
     crashSignal: { req: 'optional', kind: 'bool' },
     sweepFailed: { req: 'optional', kind: 'bool' },
-    // Post-GLM observation hardening (panel E): Canary's OWN per-round
+    // Post-GLM observation hardening (panel E): Amabie's OWN per-round
     // execution record. REQUIRED on every round of every bundle — an honest
-    // run always carries it (ABSENT with a reason when Canary did not inject;
+    // run always carries it (ABSENT with a reason when Amabie did not inject;
     // old bundles failing here is the intended fail-closed direction).
     // Cross-field iff-rules are SEMANTIC (validateBundle): VALID⇔counts+
     // versions+tree-sha; INVALID⇔invalidReason; ABSENT⇔absentKind;
@@ -220,10 +220,10 @@ export function buildPublishedSchema(): Record<string, unknown> {
   const root = toSchema(BUNDLE_CONTRACT) as Record<string, unknown>;
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: 'https://canary-reliability-network.local/schemas/evidence.schema.json',
-    title: 'Canary Evidence Bundle',
+    $id: 'https://amabie-reliability-network.local/schemas/evidence.schema.json',
+    title: 'Amabie Evidence Bundle',
     description:
-      'Machine-readable output of one Canary experiment. GENERATED FILE — the single source of truth is packages/evidence/schema/src/contract.ts (schema.test.ts regenerates and deep-compares; edit the contract, never this file). The classification field is produced exclusively by the deterministic decision table (docs/PLAN.md section 6); no field in this schema can be authored by an AI provider. Trustful-tier fields (round infraSignal; treeComparison.snapshots/observationAnomalies) are required exactly when classification.label is PASS/CONFIRMED_REGRESSION/PRE_EXISTING_FAILURE — see the allOf block; the runtime validator enforces the same tier and additionally requires the anomaly lists to be EMPTY for a trustful label (a rule beyond JSON-schema presence).',
+      'Machine-readable output of one Amabie experiment. GENERATED FILE — the single source of truth is packages/evidence/schema/src/contract.ts (schema.test.ts regenerates and deep-compares; edit the contract, never this file). The classification field is produced exclusively by the deterministic decision table (docs/PLAN.md section 6); no field in this schema can be authored by an AI provider. Trustful-tier fields (round infraSignal; treeComparison.snapshots/observationAnomalies) are required exactly when classification.label is PASS/CONFIRMED_REGRESSION/PRE_EXISTING_FAILURE — see the allOf block; the runtime validator enforces the same tier and additionally requires the anomaly lists to be EMPTY for a trustful label (a rule beyond JSON-schema presence).',
     ...root,
     allOf: [{
       if: {

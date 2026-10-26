@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark-trial/2",
+  "schema": "amabie-benchmark-trial/2",
   "label": "bench-final-spec-edges-plain-2",
   "task": "spec-edges",
   "arm": "plain",
@@ -32,7 +32,7 @@
     ]
   },
   "startedAt": "2026-09-13T02:16:39.312Z",
-  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\canary-bench-spec-edges-plain-cRJh38",
+  "runRoot": "C:\\Users\\Johannes\\AppData\\Local\\Temp\\amabie-bench-spec-edges-plain-cRJh38",
   "agent": {
     "command": "claude",
     "model": "qwen3.8-flash",
@@ -53,7 +53,7 @@
   },
   "prompt": "# Task: implement `parseDuration` to its specification\n\n`parseDuration(text)` in `src/duration.js` converts a human duration string into a whole\nnumber of **seconds**. It currently handles only the simplest form; implement the whole\nspecification below.\n\n## Accepted forms\n\n- one or more `<number><unit>` parts, concatenated in **descending** unit order:\n  `d`, `h`, `m`, `s` (e.g. `1d2h3m4s`)\n- optional whitespace **between** parts and around the whole string: `\" 1h 30m \"`\n- units are case-insensitive: `\"1H30M\"` is the same as `\"1h30m\"`\n- a single part is valid: `\"90s\"`, `\"2m\"`, `\"1d\"`\n- `\"0s\"` is valid and equals 0\n- numbers are non-negative integers, with no leading `+`, no fractions, no `1.5h`\n\n## Rejected forms (each must throw a `TypeError`)\n\n- a non-string argument (including `null`, `undefined`, numbers, objects)\n- an empty or whitespace-only string\n- an unknown or missing unit: `\"90\"`, `\"1x\"`\n- units out of descending order, or a repeated unit: `\"1m1h\"`, `\"1h1h\"`\n- a negative or signed number: `\"-5s\"`, `\"+5s\"`\n- a fractional number: `\"1.5h\"`\n- trailing garbage: `\"1h30\"`, `\"1h!\"`\n- whitespace **inside** a part: `\"1 h\"` (space between number and unit)\n\nReturn an integer number of seconds. Do not change the module's export name or shape.",
   "setup": null,
-  "canary": null,
+  "amabie": null,
   "agentResult": {
     "isError": false,
     "parseFailure": false,
@@ -157,18 +157,18 @@
     "bytes": {
       "toolResultTotal": 3000,
       "largestToolResult": 1274,
-      "canaryVisible": 0,
+      "amabieVisible": 0,
       "hookOutput": 0
     },
     "commands": {
       "total": 2,
-      "canary": 0,
+      "amabie": 0,
       "checks": 0,
-      "canaryCommands": []
+      "amabieCommands": []
     },
     "hooks": {
       "count": 0,
-      "canaryCount": 0,
+      "amabieCount": 0,
       "names": [],
       "events": []
     },

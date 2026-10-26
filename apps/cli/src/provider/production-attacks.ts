@@ -7,8 +7,8 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { enrollment, nativeRoot, read, plainFile, native as runNative, quote } from './production.js';
-import { anchorPath, publishProductionMeasurement, type ProductionTranscript, type NativeObservation } from './production-measurement.js';
-import { candidateIdentity } from '../onboarding.js';
+import { anchorPath, productionNativePowerShellExecutable, publishProductionMeasurement, type ProductionTranscript, type NativeObservation } from './production-measurement.js';
+import { candidateIdentity } from '../git-state.js';
 
 const fixture = path.resolve(nativeRoot, '../../tooling/test-support/fixtures');
 /** How long a HELPER process may take to announce itself.
@@ -27,7 +27,7 @@ export async function measureProductionAttacks(store: string): Promise<void> {
   // All provider launches use this same exclusive lock. A second live builder
   // cannot rewrite the measurement fixture while its package grant is present.
   const lock = path.join(store, 'caller.lock'), handle = fs.openSync(lock, 'wx');
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-production-measure-'));
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-production-measure-'));
   const native: NativeObservation[] = [];
   let server: ReturnType<typeof spawn> | undefined;
   let negativePipe: ReturnType<typeof spawn> | undefined;
@@ -43,7 +43,7 @@ export async function measureProductionAttacks(store: string): Promise<void> {
     }).filter(x => x.request?.challenge === challenge);
     const review = authority.find(x => x.request.verb === 'review' && x.response.status === 200);
     if (!review || typeof review.request.candidate !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,40}$/.test(review.request.candidate)) throw new Error('reviewed production subject missing');
-    const privateCheckout = path.join(os.tmpdir(), `canary-production-${e.id}-${review.request.candidate}`);
+    const privateCheckout = path.join(os.tmpdir(), `amabie-production-${e.id}-${review.request.candidate}`);
     const host = Object.values(os.networkInterfaces()).flat().find(x => x?.family === 'IPv4' && !x.internal && !x.address.startsWith('169.254.') && !x.address.startsWith('100.'))?.address;
     if (!host) throw new Error('controlled local network endpoint unavailable');
     for (const sid of [e.package, e.verifier]) {
@@ -60,7 +60,7 @@ export async function measureProductionAttacks(store: string): Promise<void> {
       while (!fs.existsSync(ready) && Date.now() < deadline) await new Promise(r => setTimeout(r, 25));
       if (!fs.existsSync(ready)) throw new Error(`independent listener failed to start within ${String(HELPER_STARTUP_MS / 1000)}s`);
       const port = plainFile(ready).toString('utf8');
-      const r = spawnSync('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      const r = spawnSync(productionNativePowerShellExecutable(),
         ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(fixture, 'boundary-native-run.ps1'),
           '-Work', work, '-Store', store, '-Package', sid, '-HostAddress', host, '-Port', port, '-Side', side, '-Symlink', 'symlink', '-SecretPath', secret, '-AuthorityTargets', targets],
         { windowsHide: true, encoding: 'utf8', timeout: 45000 });
@@ -84,8 +84,8 @@ export async function measureProductionAttacks(store: string): Promise<void> {
     fs.copyFileSync(path.join(fixture, 'confined-caller.cjs'), caller);
     const ready = path.join(store, 'pipe-negative-ready'), side = path.join(store, 'pipe-negative-side');
     fs.rmSync(ready, { force: true });
-    const pipe = `canary-negative-${e.id}`;
-    negativePipe = spawn('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    const pipe = `amabie-negative-${e.id}`;
+    negativePipe = spawn(productionNativePowerShellExecutable(),
       ['-NoProfile', '-NonInteractive', '-File', path.join(fixture, 'medium-pipe.ps1'), '-Pipe', pipe, '-Package', e.package, '-Ready', ready, '-DenyPackage'],
       { windowsHide: true, stdio: 'ignore' });
     const deadline = Date.now() + HELPER_STARTUP_MS;

@@ -20,7 +20,7 @@
  *
  * WHY IT IS INVISIBLE ON A NORMAL MACHINE: a path component only HAS a
  * distinct 8.3 short name when its long name does not fit 8.3. `Johannes` is
- * exactly 8 characters, `Desktop` is 7, `canary` is 6 -- so on a developer
+ * exactly 8 characters, `Desktop` is 7, `amabie` is 6 -- so on a developer
  * workstation the short and long forms are byte-identical and the comparison
  * passes. The runner's `runneradmin` (11) does not fit, so it becomes
  * `RUNNER~1`. A real user's temp or repo path can do the same.
@@ -85,7 +85,7 @@ if (process.platform !== 'win32') {
 
 // A directory whose LAST component does not fit 8.3, so a distinct short name
 // is guaranteed to exist (mirrors the runner's `runneradmin` -> `RUNNER~1`).
-const BASE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-shortname-'));
+const BASE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-shortname-'));
 const LONG_ROOT = path.join(BASE, 'a-long-directory-name');
 fs.mkdirSync(LONG_ROOT, { recursive: true });
 

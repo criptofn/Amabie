@@ -38,14 +38,14 @@ import { beginDistMutation, endDistMutation } from '../test-support/dist-mutatio
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CAND = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'candidate.js');
-const ONB = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'onboarding.js');
+const VERIFICATION_EVIDENCE = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'verification-evidence.js');
 const M8TEST = path.join(REPO, 'apps', 'cli', 'dist', 'test', 'm8-promotion.test.js');
 const PROBE = path.join(REPO, 'tooling', 'probes', 'm8-promotion.mjs');
 
 let failures = 0;
 function report(verdict, msg) { console.log(`${verdict} ${msg}`); if (verdict === 'FAIL') failures++; }
 
-const original = new Map([[CAND, fs.readFileSync(CAND)], [ONB, fs.readFileSync(ONB)]]);
+const original = new Map([[CAND, fs.readFileSync(CAND)], [VERIFICATION_EVIDENCE, fs.readFileSync(VERIFICATION_EVIDENCE)]]);
 // Custody: a sidecar copy of every file this battery is about to mutate, so an
 // interrupted run is discovered and repaired instead of silently trusted.
 const custody = beginDistMutation([...original.keys()]);
@@ -83,8 +83,8 @@ const MUTS = [
   { id: '--discard stays --remove-only under --promote too', file: CAND,
     search: "discard && mode !== 'remove'", replace: "discard && mode === 'nope'", count: 1,
     probe: false, own: 'misuse exits 3', testFile: M8TEST },
-  { id: 'promotion bundles obey bounded evidence retention', file: ONB,
-    search: '(setup|doctor|checkpoint|candidate|promotion)', replace: '(setup|doctor|checkpoint|candidate)', count: 1,
+  { id: 'promotion bundles obey bounded evidence retention', file: VERIFICATION_EVIDENCE,
+    search: '|promotion)', replace: '|__never__)', count: 1,
     probe: false, own: 'bounded evidence retention', testFile: M8TEST },
 ];
 

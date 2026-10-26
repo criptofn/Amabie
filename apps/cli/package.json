@@ -1,25 +1,30 @@
 {
-  "name": "@canary-rn/cli",
-  "version": "1.5.0",
+  "name": "@amabie/cli",
+  "version": "2.0.1",
   "private": true,
-  "description": "canary \u2014 independent verification layer CLI: run / prove / report.",
+  "description": "amabie — independent verification layer CLI: run / prove / report.",
   "type": "module",
   "main": "./dist/src/main.js",
   "bin": {
-    "canary": "./dist/src/main.js"
+    "amabie": "./dist/src/main.js"
   },
   "dependencies": {
-    "@canary-rn/support": "*",
-    "@canary-rn/planner": "*",
-    "@canary-rn/comparator": "*",
-    "@canary-rn/classification": "*",
-    "@canary-rn/executor": "*",
-    "@canary-rn/workspace": "*",
-    "@canary-rn/environment": "*",
-    "@canary-rn/github": "*",
-    "@canary-rn/normalizers": "*",
-    "@canary-rn/hashing": "*",
-    "@canary-rn/evidence-schema": "*",
-    "@canary-rn/report": "*"
+    "@amabie/support": "*",
+    "@amabie/planner": "*",
+    "@amabie/prompt-evidence": "*",
+    "@amabie/comparator": "*",
+    "@amabie/classification": "*",
+    "@amabie/executor": "*",
+    "@amabie/workspace": "*",
+    "@amabie/environment": "*",
+    "@amabie/github": "*",
+    "@amabie/normalizers": "*",
+    "@amabie/hashing": "*",
+    "@amabie/evidence-schema": "*",
+    "@amabie/report": "*",
+    "cross-spawn": "7.0.6"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "6.0.6"
   }
 }

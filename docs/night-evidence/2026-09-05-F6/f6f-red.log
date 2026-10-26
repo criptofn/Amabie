@@ -53,7 +53,7 @@
 test at apps\cli\dist\test\prove.test.js:340:5
 ✖ post-glm F6f: an ABSENT proofHost can never grant host-exact trust — resealed env metadata cannot PASS the proof (4.6046ms)
   AssertionError [ERR_ASSERTION]: host-exact check asserted without a committed proofHost: {"name":"candidate normalized stdout hashes","ok":true,"actual":["df77ca05aa66f907"],"expected":["df77ca05aa66f907"]}
-      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/canary-observation-hardening/apps/cli/dist/test/prove.test.js:351:20)
+      at TestContext.<anonymous> (file:///C:/Users/Johannes/Desktop/amabie-observation-hardening/apps/cli/dist/test/prove.test.js:351:20)
       at Test.runInAsyncScope (node:async_hooks:226:14)
       at Test.run (node:internal/test_runner/test:1397:25)
       at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)

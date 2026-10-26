@@ -1,4 +1,4 @@
-# Canary Execution Authority — what a strong verdict actually proves
+# Amabie Execution Authority — what a strong verdict actually proves
 
 **Scope:** v0.1, branch lineage post-audit observation hardening (base `c1ff4e7`;
 commits `d8fbcdb` RED batteries → `2f4a706` channel → `eb61f61` matcher
@@ -31,8 +31,8 @@ The governing principle, now structural:
 The fix is at the level of **evidence authority**, not output heuristics: no
 `passing > 0` threshold, no keyword blacklist, no `node -e` special case —
 those are treadmills a hostile string can cross. Instead: a **strong verdict
-requires every execution fact to be Canary-controlled or independently
-derived**, and text is demoted to a claim that must *agree* with what Canary
+requires every execution fact to be Amabie-controlled or independently
+derived**, and text is demoted to a claim that must *agree* with what Amabie
 watched. If no trustworthy observation adapter exists for a round, a strong
 verdict is **structurally unreachable** — the run degrades to
 INCONCLUSIVE/INFRASTRUCTURE_FAILURE. There are no confidence scores: a verdict
@@ -47,17 +47,17 @@ CONFIRMED_REGRESSION from text alone — now rule 14).
 ## 2. The trust ladder — four distinct facts, never conflated
 
 ```
-PROCESS-LAUNCHED          Canary spawned this argv with Canary-derived argv
+PROCESS-LAUNCHED          Amabie spawned this argv with Amabie-derived argv
                           (sanitized-env record; the only tier that is fully
-                          Canary-side by construction).
+                          Amabie-side by construction).
 PINNED-RUNNER-EXECUTED    that argv ran inside a runner whose ON-DISK BYTES
-                          match a Canary-pinned release (treeSha256), with a
-                          Canary-authored in-process observer injected via a
+                          match an Amabie-pinned release (treeSha256), with a
+                          Amabie-authored in-process observer injected via a
                           protected, last-position --require.
 RUNNER-CLAIMED-N          the runner's stdout text summary says "N passing".
                           A claim. Downgrade-only: text may refute the
                           channel, never establish counts.
-CANARY-OBSERVED-N         Canary's observer, running inside the pinned
+AMABIE-OBSERVED-N         Amabie's observer, running inside the pinned
                           process, watched per-test lifecycle events on a
                           private channel (fd 3) and recounted N itself.
 ```
@@ -65,7 +65,7 @@ CANARY-OBSERVED-N         Canary's observer, running inside the pinned
 These are **different**: launching a process does not mean a test runner ran
 it; a runner executing does not mean the counts are its; and the runner
 claiming 128 does not mean 128 tests ran. A strong label requires
-**PINNED-RUNNER-EXECUTED + CANARY-OBSERVED-N with cross-channel agreement**
+**PINNED-RUNNER-EXECUTED + AMABIE-OBSERVED-N with cross-channel agreement**
 against RUNNER-CLAIMED-N on every round of both arms (rule 14, §5).
 
 The tier was deliberately *not* called "TEST-RUNNER-EXECUTED": the surviving
@@ -77,8 +77,8 @@ the whole channel is stated in §7.
 
 **One more conflation this ladder rules out: sealed ≠ human-approved (audit
 F-5).** The verification PLAN is itself a trust input, and
-`canary setup --yes` is **authority-sensitive**: whoever controls the trusted
-base bytes *and* invokes setup decides what Canary treats as objective proof.
+`amabie setup --yes` is **authority-sensitive**: whoever controls the trusted
+base bytes *and* invokes setup decides what Amabie treats as objective proof.
 Sealing a bench script flips `performance-proof` from a human-judgment duty
 (non-objective) to a measured sealed-bench objective one; sealing an e2e step
 does the same for `ui-proof`; sealing a trivial `echo ok` as the `test` script
@@ -126,28 +126,28 @@ CLAIM, not the mechanism.
   argv — so an off-position token is refused fail-closed
   (`mocha-bin-not-executed` → InfraAbort), the same posture as
   `subject-require-refused`: subject-controlled argv is refused, not parsed.
-  Then, and only on a pin hit, Canary appends
-  `--require <canaryPreloadPath>` **last** inside argv, for a Canary-authored
+  Then, and only on a pin hit, Amabie appends
+  `--require <amabiePreloadPath>` **last** inside argv, for an Amabie-authored
   preload written outside the artifacts dir. **Miss ⇒ no injection at all ⇒
   ABSENT ⇒ strong labels structurally unreachable.** Unpinned is never an
   error — the subject simply cannot earn strength. Any supported future
   mocha release = one added line to the pin table.
 - **Pinned releases today (TOFU):** `mocha@10.8.2` and
-  `mocha@0.0.0-canary-double` (Canary's own offline test double,
+  `mocha@0.0.0-amabie-double` (Amabie's own offline test double,
   byte-identical to its fixture under `.gitattributes` `text eol=lf`).
   **ORIGIN IS PART OF THE TRUST DECISION (post-audit F5):** the double's bytes
   are public in-repo and its observation seams are the seams an attacker
   knows best, so `(version, treeSha256)` alone never confers execution
-  authority — `findRunnerPin` selects a `canary-double` pin ONLY behind an
-  explicit in-process grant (`allowCanaryDoubleOrigin`, the
+  authority — `findRunnerPin` selects a `amabie-double` pin ONLY behind an
+  explicit in-process grant (`allowAmabieDoubleOrigin`, the
   PipelineDeps/ExecutorDeps seam channel: the same trust channel as
   fetch/extract), which the production CLI never passes and spec files, env,
   and argv cannot reach. An untrusted spec staging these exact bytes at the
   canonical anchor gets the same `runner-identity-unpinned` ABSENT round as
   any unpinned runner — `observedRunnerTreeSha256` still records what bytes
   were there (byte observation is trust-independent), and no `expected*`
-  field rides a round Canary never injected into. Prove-side replay parity
-  needs no authority channel: `recordedClaimsCanaryDouble` honors the claim
+  field rides a round Amabie never injected into. Prove-side replay parity
+  needs no authority channel: `recordedClaimsAmabieDouble` honors the claim
   the retained evidence already makes (a double-named `expectedMochaVersion`
   can only exist if capture held the grant). npm-origin pins stay selectable
   in BOTH postures — the gate is origin-scoped, and the golden proof path is
@@ -169,9 +169,9 @@ CLAIM, not the mechanism.
   `pending`, `fail`, `retry`, `reject`, `bye`, `adapter-error` — with
   identity = non-empty `titlePath()` joined by `' > '`. Only the preload
   writes fd 3, exactly once, after flushing `bye` on `process.on('exit')`.
-- **Vocabulary:** **ABSENT** = Canary attempted no observation (no
+- **Vocabulary:** **ABSENT** = Amabie attempted no observation (no
   injection: `absentKind ∈ {not-mocha-bin, runner-identity-unpinned, …}`);
-  **INVALID** = Canary attempted one and the channel failed to produce a
+  **INVALID** = Amabie attempted one and the channel failed to produce a
   trustworthy result (`invalidReason`, e.g. `empty-stream`,
   `hello-bye-boundary`, `bye-vs-recount`, `mochaVersion-vs-pin`,
   `pid-mismatch`, `duplicate-pass`, `rejected-event`, `flood-truncated`).
@@ -193,7 +193,7 @@ CLAIM, not the mechanism.
   first**. `capability: 'STRONG'` is a claim about implementation, so it is
   declared per adapter and then CHECKED against `KNOWN_RUNNER_RELEASES` by
   `runnerRegistryProblems()` (STRONG without a pin, or with only a
-  `canary-double` pin, is a reported problem; `INCONCLUSIVE_ONLY` without a
+  `amabie-double` pin, is a reported problem; `INCONCLUSIVE_ONLY` without a
   stated reason is too). `resolveRunnerAdapter` / `observationCapabilityFor` are
   the ONE place a caller asks the question; anything unrecognised answers
   `INCONCLUSIVE_ONLY` with runner `unknown`, so "unknown/unverified ⇒
@@ -228,7 +228,7 @@ CLAIM, not the mechanism.
   to those bytes like every other digest. A bundle that reseals everything
   *except* the observation is refused (proven by test).
 - **Subject-controlled argv is refused, not parsed:** a spec argv carrying any
-  `--require` (or unambiguous abbreviation) targeting mocha makes Canary
+  `--require` (or unambiguous abbreviation) targeting mocha makes Amabie
   throw at expansion → `InfraAbort` → **INFRASTRUCTURE_FAILURE, exit 2**
   (policy refusals never crash as unexpected errors and never proceed).
 - **Matcher symmetry (finding B):** infra/crash/summary matchers fold case
@@ -251,11 +251,11 @@ CLAIM, not the mechanism.
 
 ## 4. Claim scope — the honest label for the capability
 
-What Canary now proves about a **PASS / CONFIRMED_REGRESSION /
+What Amabie now proves about a **PASS / CONFIRMED_REGRESSION /
 PRE_EXISTING_FAILURE / FLAKY** verdict is precisely:
 
-> **SUPPORTED TRUSTED MOCHA ADAPTER**: the experiment ran a Canary-pinned-
-> bytes mocha release, Canary injected the observer, and Canary's in-process
+> **SUPPORTED TRUSTED MOCHA ADAPTER**: the experiment ran an Amabie-pinned-
+> bytes mocha release, Amabie injected the observer, and Amabie's in-process
 > watcher counted lifecycle events that agree with the runner's own text
 > summary — with all bytes bound into the evidence and re-derived at prove.
 
@@ -325,23 +325,23 @@ bytes that merely look like test output carry no strength.
 None of this is **authenticated provenance**: there is **no signing key, no
 trust root, no attestation authority**. A forger who controls the entire
 filesystem can recompute everything offline (the pre-existing documented
-ceiling); the pin table is TOFU — Canary's own list, not registry-verified.
+ceiling); the pin table is TOFU — Amabie's own list, not registry-verified.
 The real binding is *live*: the golden proof re-runs the experiment on the
 committed proof host — pinned by BYTES, not claims (post-audit F2: the
 fingerprint includes the SHA-256 of the actual node executable; a committed
 proofHost lacking that digest pin is refused, because four self-reported
 metadata strings are exactly what a trojan runtime can print) — and asserts
-the re-derived facts against `proof.json`/`spec`. Canary claims **integrity, plus observation by
-Canary-controlled code inside the pinned process** — and says so wherever it
+the re-derived facts against `proof.json`/`spec`. Amabie claims **integrity, plus observation by
+Amabie-controlled code inside the pinned process** — and says so wherever it
 claims anything.
 
 ## 7. Residual limits (verbatim design-panel §3 — this wording is contractual)
 
-> Canary's execution observation is an **integrity bound, not a trust root**.
+> Amabie's execution observation is an **integrity bound, not a trust root**.
 > A strong verdict (PASS / CONFIRMED_REGRESSION / PRE_EXISTING_FAILURE /
-> FLAKY) proves that Canary spawned the process with Canary-injected argv,
-> that the runner's on-disk bytes matched a Canary-pinned release at
-> expansion time, and that a Canary-authored in-process observer saw per-test
+> FLAKY) proves that Amabie spawned the process with Amabie-injected argv,
+> that the runner's on-disk bytes matched an Amabie-pinned release at
+> expansion time, and that an Amabie-authored in-process observer saw per-test
 > lifecycle events on a private channel that agree with the runner's own text
 > summary. It does **not** prove honest intent of code running inside that
 > process: test files, `.mocharc.*`/`package.json` mocha config, or a
@@ -364,7 +364,7 @@ claims anything.
 > provenance.
 
 The demonstrated finding-A class — printed text with **no runner installed at
-all** — is structurally dead: it now requires simultaneously Canary-derived
+all** — is structurally dead: it now requires simultaneously Amabie-derived
 injection, byte-pinned runner identity, and lifecycle-channel agreement,
 none of which text can reach.
 
@@ -408,12 +408,12 @@ tests in separate worker processes whose lifecycle this channel cannot see —
 worker events would never reach the parent's fd 3, the text/observed recount
 would disagree, and the round would degrade to INVALID/ABSENT → rule 14. In
 other words: **unsupported runner modes fail closed toward weak labels, and
-no claim is made for them.** Canary's supported adapter scope is the
+no claim is made for them.** Amabie's supported adapter scope is the
 single-process pinned-mocha shape named in §4.
 
 ## 10. Northstar adapter invariant (contractual documentation only)
 
-The northstar-v0.2 foundation (`canary-northstar`) consumes v0.1 experiment
+The northstar-v0.2 foundation (`amabie-northstar`) consumes v0.1 experiment
 bundles at exactly one boundary: the `regression-free` obligation, which
 reads the closed triple `{label, rule, confined}`. Today an independently
 attested PASS and a legacy text-summary PASS serialize **identically** there.
@@ -461,23 +461,23 @@ recorded as a known gap until then.
 This worktree is driven by a local Claude Code harness that lives OUTSIDE the
 tracked tree: the hook registrations are in the never-committed per-worktree
 `.claude/settings.json`, and the Stop gate is
-`%USERPROFILE%\Tools\canary-stop-gate.ps1`. The audit record must not conflate
+`%USERPROFILE%\Tools\amabie-stop-gate.ps1`. The audit record must not conflate
 presence of a hook with enforcement of verification:
 
 - **Wired ≠ enforced.** A Stop hook is registered and runs on every stop; what
-  it does is decided entirely by `<cwd>/.canary-gate.local.json`, which is also
+  it does is decided entirely by `<cwd>/.amabie-gate.local.json`, which is also
   NOT tracked.
 - **No config file ⇒ the gate allows stopping.** Absent (or invalid JSON, or
   no `cwd` in the hook input) the gate prints a systemMessage and allows the
   stop. `mode` values other than `"enforce"` take the intended **shadow**
   posture: message + allow. As of 2026-09-06 this worktree has **no
-  `.canary-gate.local.json` at all** — the gate is wired but inert.
+  `.amabie-gate.local.json` at all** — the gate is wired but inert.
 - **Enforcement requires an explicit trusted local command.** Only
   `{"mode":"enforce","command":"…"}` can block; enforce-without-command blocks
   as misconfiguration. The command runs via `cmd.exe /d /s /c` from `cwd`,
-  output captured to `.canary-gate-last.log`, non-zero exit ⇒ stop blocked.
+  output captured to `.amabie-gate-last.log`, non-zero exit ⇒ stop blocked.
 - **The command belongs to the local trust boundary.** Whatever
-  `.canary-gate.local.json` names is operator-local, unsigned, and untracked;
+  `.amabie-gate.local.json` names is operator-local, unsigned, and untracked;
   it is a trust-boundary input, not repo content, and the tracked tree neither
   defines nor endorses any particular command for it. Enabling enforcement is
   a separate decision reserved for after the GitHub checkpoint; this document
@@ -490,9 +490,9 @@ trusted command is configured.
 
 ## 13. Registered intent is stated, not observed (audit F-4 — under-declaration)
 
-Task registration (`canary task … --kind … --requirement …`) is
+Task registration (`amabie task … --kind … --requirement …`) is
 **agent-reported input with the same zero authority as everything else a
-subject says**. What Canary seals is the *declaration*, never an understanding
+subject says**. What Amabie seals is the *declaration*, never an understanding
 of the work. Everything downstream is mechanically derived from that
 declaration: `--kind refactor` without a single `--requirement` creates only
 refactor duties; a `ui` task with no sealed e2e command creates a non-objective
@@ -508,7 +508,7 @@ quietly narrow later is closed), and since F-3 the acceptance-scope digest
 makes an acceptance answerable only for the duties that existed when it was
 signed (accept early, let growth ride it is closed). What no local check can
 close is the *first* move: an agent that registers `--kind refactor` for work
-that is really a UI overhaul has under-declared at intake, and Canary will be
+that is really a UI overhaul has under-declared at intake, and Amabie will be
 honest about exactly that registration. Requirement prose is never stored —
 only digests — and a digest is an identity, not a review.
 

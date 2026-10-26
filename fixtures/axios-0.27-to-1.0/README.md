@@ -54,7 +54,7 @@ baseline ×2 → swap → candidate ×3) produced:
   `passThrough tests (requires Node) > handles baseURL correctly`,
   `onNoMatch=passthrough option tests (requires Node) > handles baseURL correctly`
 - committed expectation file: `specs/axios-mock-adapter.proof.json`
-- machine check: `npm run prove` (CLI: `canary prove`) → 36/36 assertions with
+- machine check: `npm run prove` (CLI: `amabie prove`) → 36/36 assertions with
   ZERO skips on the designated proof host (win32/x64, node v26.3.0, npm
   11.16.0); on other hosts every portable assertion (22) still executes and
   the run reports INCOMPLETE (exit 2) instead of claiming PASS
@@ -72,7 +72,7 @@ baseline ×2 → swap → candidate ×3) produced:
   resolver (both arms), nested copies counted and recorded in the bundle
 - sample evidence artifacts: not committed (they are generated run outputs
   containing machine-local paths) — `npm run prove` writes the fresh bundle
-  and HTML report under `.canary-runs/` on every run
+  and HTML report under `.amabie-runs/` on every run
 
 One era-faithful toolchain override is declared in the spec and recorded in
 every bundle: `yargs@16.2.2` (the May-2022 patch of mocha@10's CLI dep; the
@@ -83,6 +83,6 @@ Node 20+). Both arms always receive the identical override.
 
 A fixture that "should" fail because of a changelog entry is a story; a
 fixture that observably fails — same commit, same artifacts, one swapped
-subtree, unanimous across reruns — is proof. Canary exists to make that
+subtree, unanimous across reruns — is proof. Amabie exists to make that
 distinction mechanical, and the first candidate was rejected by exactly the
 mechanism the product promises.

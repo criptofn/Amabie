@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/classification",
+  "name": "@amabie/classification",
   "version": "0.0.1",
   "private": true,
   "description": "Deterministic dependency-regression classification. The LLM is structurally unable to reach this function's inputs.",

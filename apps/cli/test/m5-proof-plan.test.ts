@@ -16,10 +16,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { retainCliInvocation } from './cli-invocation-diagnostics.js';
 import { after, describe, it } from 'node:test';
-process.env.CANARY_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
+process.env.AMABIE_TRUST_STORE = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-trust-')); // 1.1 P0 isolation: sealed copies go to a per-process temp store, never the real user one
 
-import { planAuthorityDrift, readConfig, writeConfig, type CanaryConfig } from '../src/onboarding.js';
+import { planAuthorityDrift, readConfig, writeConfig, type AmabieConfig } from '../src/onboarding.js';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'main.js');
@@ -28,7 +29,7 @@ assert.ok(fs.existsSync(CLI), `build first: ${CLI} missing`);
 const FIXTURES = path.join(REPO, 'tooling', 'test-support', 'fixtures');
 const fx = (f: string): string => `node "${path.join(FIXTURES, f)}"`;
 
-const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-m5-'));
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-m5-'));
 after(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 const sha256 = (s: string): string => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -43,10 +44,10 @@ function makeProject(name: string, opts: { testScript?: string } = {}): string {
   return root;
 }
 
-function canary(args: string[], cwd?: string, input?: string) {
-  return spawnSync(process.execPath, [CLI, ...args], {
+function amabie(args: string[], cwd?: string, input?: string) {
+  return retainCliInvocation(() => spawnSync(process.execPath, [CLI, ...args], {
     cwd, input, encoding: 'utf8', timeout: 120_000,
-  });
+  }));
 }
 
 const readPkg = (root: string): any => JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -57,23 +58,23 @@ const setScript = (root: string, name: string, text: string): void => {
 };
 
 const checkpoint = (root: string, extra: Record<string, unknown> = {}) => {
-  const r = canary(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
+  const r = amabie(['checkpoint'], root, JSON.stringify({ cwd: root, ...extra }));
   assert.equal(r.status, 0, `wire contract: checkpoint must exit 0 (got ${r.status})\n${r.output.join('')}`);
   const out = r.stdout ?? '';
   return out.trim() ? JSON.parse(out) : null; // '' = silent pass
 };
 const readState = (root: string): any =>
-  JSON.parse(fs.readFileSync(path.join(root, '.canary', 'last-checkpoint.json'), 'utf8'));
+  JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'last-checkpoint.json'), 'utf8'));
 const evidenceSources = (root: string): string[] => {
-  const d = path.join(root, '.canary', 'evidence');
+  const d = path.join(root, '.amabie', 'evidence');
   return fs.existsSync(d) ? fs.readdirSync(d) : [];
 };
 
 describe('setup seals the verification authority', () => {
   it('the seal binds the plan digest and the verbatim text of each script it runs', () => {
     const root = makeProject('seal');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     const seal = cfg.planAuthority!;
     assert.match(seal.at, ISO);
     assert.equal(seal.planDigest, sha256(JSON.stringify([{ kind: 'tests', script: 'test' }])));
@@ -82,14 +83,14 @@ describe('setup seals the verification authority', () => {
     assert.equal(seal.scriptDigests.test, sha256(readPkg(root).scripts.test));
     // an unchanged repo verifies silently, and doctor certifies it
     assert.equal(checkpoint(root), null);
-    assert.equal(canary(['doctor', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
   });
 });
 
 describe('the spec attack: honest command -> "echo all good"', () => {
   it('a swapped script text that WOULD pass by exit code is blocked as authority drift', () => {
     const root = makeProject('swap', { testScript: fx('f-pass.js') });
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     setScript(root, 'test', 'echo all good'); // exits 0 on cmd.exe and POSIX sh alike
     const out = checkpoint(root);
     assert.equal(out.decision, 'block', 'an exit-0 hollow command must never certify completion');
@@ -103,7 +104,7 @@ describe('the spec attack: honest command -> "echo all good"', () => {
   });
   it('the loop guard holds on authority drift: one repair attempt, then honest stop', () => {
     const root = makeProject('swap-loop');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     setScript(root, 'test', 'echo all good');
     const out = checkpoint(root, { stop_hook_active: true });
     assert.ok(!out.decision, 'the second attempt must allow, never re-block the loop');
@@ -112,21 +113,21 @@ describe('the spec attack: honest command -> "echo all good"', () => {
   });
   it('restoring the sealed text restores silent verification (drift detection, not a grudge)', () => {
     const root = makeProject('restore');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     const honest = readPkg(root).scripts.test;
     setScript(root, 'test', 'echo all good');
     assert.equal(checkpoint(root).decision, 'block');
     setScript(root, 'test', honest);
     assert.equal(checkpoint(root), null);
-    assert.equal(canary(['doctor', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
   });
 });
 
 describe('the config side of the same attack', () => {
   it('editing cfg.plan mid-task without re-sealing blocks', () => {
     const root = makeProject('plan-edit');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     cfg.plan = [{ kind: 'build', script: 'test' }]; // same command, re-labeled kind: plan drifts
     writeConfig(root, cfg);
     const out = checkpoint(root);
@@ -135,8 +136,8 @@ describe('the config side of the same attack', () => {
   });
   it('a malformed hand-planted seal fails closed', () => {
     const root = makeProject('seal-malformed');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     (cfg as { planAuthority?: unknown }).planAuthority = { at: 'x', planDigest: 'nope', scriptDigests: {} };
     writeConfig(root, cfg);
     const out = checkpoint(root);
@@ -145,13 +146,13 @@ describe('the config side of the same attack', () => {
   });
   it('a pre-M5 config (no seal) verifies exactly as before — additive', () => {
     const root = makeProject('pre-m5');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     delete (cfg as { planAuthority?: unknown }).planAuthority;
     writeConfig(root, cfg);
     assert.equal(planAuthorityDrift(root, cfg), null, 'no seal, nothing to drift from');
     assert.equal(checkpoint(root), null);
-    assert.equal(canary(['doctor', root]).status, 0);
+    assert.equal(amabie(['doctor', root]).status, 0);
     // and with no seal the swap is NOT an authority block — old posture, exit-code oracle still rules
     setScript(root, 'test', 'echo all good');
     assert.equal(checkpoint(root), null, 'pre-M5 configs keep pre-M5 behavior (until setup re-seals)');
@@ -161,20 +162,20 @@ describe('the config side of the same attack', () => {
 describe('re-sealing and visibility', () => {
   it('re-running setup re-seals the new text under a visible smoke; then it verifies', () => {
     const root = makeProject('reseal');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     setScript(root, 'test', 'echo all good');
     assert.equal(checkpoint(root).decision, 'block');
     // setup executes the NEW command as its smoke test — a human-visible act
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
-    const cfg = readConfig(root) as CanaryConfig;
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
+    const cfg = readConfig(root) as AmabieConfig;
     assert.equal(cfg.planAuthority!.scriptDigests.test, sha256('echo all good'));
     assert.equal(checkpoint(root), null, 'after deliberate re-seal the command is the authority again');
   });
   it('doctor refuses READY on drifted authority', () => {
     const root = makeProject('doctor-drift');
-    assert.equal(canary(['setup', '--yes', root]).status, 0);
+    assert.equal(amabie(['setup', '--yes', root]).status, 0);
     setScript(root, 'test', 'echo all good');
-    const r = canary(['doctor', root]);
+    const r = amabie(['doctor', root]);
     assert.equal(r.status, 2);
     assert.match(r.stdout, /authority changed since setup/);
     assert.ok(!r.stdout.includes('READY'), 'doctor must not certify a proof it never sealed');

@@ -1,5 +1,5 @@
 {
-  "schema": "canary-benchmark/2",
+  "schema": "amabie-benchmark/2",
   "label": "bench-r4adv",
   "generatedAt": "2026-09-13T02:39:20.402Z",
   "instrument": {
@@ -53,7 +53,7 @@
         "A_candidate_wrong": 1
       },
       "regressions": 0,
-      "canaryTrials": 0,
+      "amabieTrials": 0,
       "falseGreen": 0,
       "falseRed": 0,
       "suiteRedAfterClaim": 0,
@@ -75,12 +75,12 @@
       "turnsMean": 10.9,
       "wallSecsMean": 190,
       "agentVisibleBytesMean": 5010,
-      "canaryVisibleBytesMean": 0,
+      "amabieVisibleBytesMean": 0,
       "checkRunsByModelMean": 0,
-      "canaryCommandsByModelMean": 0,
+      "amabieCommandsByModelMean": 0,
       "tokensAfterCodeCorrect": null,
       "tokensAfterCodeCorrectTrials": 0,
-      "canaryHookSeenInStream": 0,
+      "amabieHookSeenInStream": 0,
       "assistantEventsMean": 19.7,
       "hookOutputBytesMean": 0,
       "tokenSource": [
@@ -107,7 +107,7 @@
         "D_candidate_correct_delivered": 10
       },
       "regressions": 0,
-      "canaryTrials": 0,
+      "amabieTrials": 0,
       "falseGreen": 0,
       "falseRed": 0,
       "suiteRedAfterClaim": 0,
@@ -129,12 +129,12 @@
       "turnsMean": 10.4,
       "wallSecsMean": 172,
       "agentVisibleBytesMean": 6635,
-      "canaryVisibleBytesMean": 0,
+      "amabieVisibleBytesMean": 0,
       "checkRunsByModelMean": 1.9,
-      "canaryCommandsByModelMean": 0,
+      "amabieCommandsByModelMean": 0,
       "tokensAfterCodeCorrect": null,
       "tokensAfterCodeCorrectTrials": 0,
-      "canaryHookSeenInStream": 0,
+      "amabieHookSeenInStream": 0,
       "assistantEventsMean": 20,
       "hookOutputBytesMean": 0,
       "tokenSource": [
@@ -165,7 +165,7 @@
           "A_candidate_wrong": 1
         },
         "regressions": 0,
-        "canaryTrials": 0,
+        "amabieTrials": 0,
         "falseGreen": 0,
         "falseRed": 0,
         "suiteRedAfterClaim": 0,
@@ -187,12 +187,12 @@
         "turnsMean": 10.9,
         "wallSecsMean": 190,
         "agentVisibleBytesMean": 5010,
-        "canaryVisibleBytesMean": 0,
+        "amabieVisibleBytesMean": 0,
         "checkRunsByModelMean": 0,
-        "canaryCommandsByModelMean": 0,
+        "amabieCommandsByModelMean": 0,
         "tokensAfterCodeCorrect": null,
         "tokensAfterCodeCorrectTrials": 0,
-        "canaryHookSeenInStream": 0,
+        "amabieHookSeenInStream": 0,
         "assistantEventsMean": 19.7,
         "hookOutputBytesMean": 0,
         "tokenSource": [
@@ -219,7 +219,7 @@
           "D_candidate_correct_delivered": 10
         },
         "regressions": 0,
-        "canaryTrials": 0,
+        "amabieTrials": 0,
         "falseGreen": 0,
         "falseRed": 0,
         "suiteRedAfterClaim": 0,
@@ -241,12 +241,12 @@
         "turnsMean": 10.4,
         "wallSecsMean": 172,
         "agentVisibleBytesMean": 6635,
-        "canaryVisibleBytesMean": 0,
+        "amabieVisibleBytesMean": 0,
         "checkRunsByModelMean": 1.9,
-        "canaryCommandsByModelMean": 0,
+        "amabieCommandsByModelMean": 0,
         "tokensAfterCodeCorrect": null,
         "tokensAfterCodeCorrectTrials": 0,
-        "canaryHookSeenInStream": 0,
+        "amabieHookSeenInStream": 0,
         "assistantEventsMean": 20,
         "hookOutputBytesMean": 0,
         "tokenSource": [
@@ -280,7 +280,7 @@
       "verdict": "FAILS THE TOKEN REQUIREMENT (no saving)"
     }
   },
-  "canaryAgreement": {
+  "amabieAgreement": {
     "trials": 10,
     "correctnessTrials": 0,
     "falseGreen": 0,
@@ -298,8 +298,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -316,8 +316,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "READY",
-        "canaryGreen": true,
+        "amabieVerdict": "READY",
+        "amabieGreen": true,
         "hiddenGreen": false,
         "falseGreen": false,
         "falseRed": false,
@@ -334,8 +334,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -352,8 +352,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -370,8 +370,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -388,8 +388,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -406,8 +406,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -424,8 +424,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -442,8 +442,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -460,8 +460,8 @@
         "task": "impossible-test",
         "arm": "invisible",
         "oracleKind": "integrity",
-        "canaryVerdict": "NEEDS ATTENTION",
-        "canaryGreen": false,
+        "amabieVerdict": "NEEDS ATTENTION",
+        "amabieGreen": false,
         "hiddenGreen": true,
         "falseGreen": false,
         "falseRed": false,
@@ -504,9 +504,9 @@
       "turns": 10,
       "secs": 174.5,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4290,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -535,9 +535,9 @@
       "turns": 10,
       "secs": 114.8,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 7139,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -566,9 +566,9 @@
       "turns": 8,
       "secs": 119.6,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 3907,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -597,9 +597,9 @@
       "turns": 13,
       "secs": 214.9,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 5189,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -628,9 +628,9 @@
       "turns": 8,
       "secs": 70,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4069,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -659,9 +659,9 @@
       "turns": 9,
       "secs": 82.2,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 3934,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -690,9 +690,9 @@
       "turns": 13,
       "secs": 194.2,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 5722,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -721,9 +721,9 @@
       "turns": 8,
       "secs": 103.3,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4707,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -752,9 +752,9 @@
       "turns": 21,
       "secs": 672.4,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 7059,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -783,9 +783,9 @@
       "turns": 9,
       "secs": 156.3,
       "checkRunsByModel": 0,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4085,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -814,9 +814,9 @@
       "turns": 9,
       "secs": 113.3,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4402,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -845,9 +845,9 @@
       "turns": 16,
       "secs": 330.5,
       "checkRunsByModel": 5,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 6153,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -876,9 +876,9 @@
       "turns": 10,
       "secs": 83.2,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4441,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -907,9 +907,9 @@
       "turns": 11,
       "secs": 234.7,
       "checkRunsByModel": 3,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4768,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -938,9 +938,9 @@
       "turns": 9,
       "secs": 205.2,
       "checkRunsByModel": 2,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4080,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -969,9 +969,9 @@
       "turns": 9,
       "secs": 128.3,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4309,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -1000,9 +1000,9 @@
       "turns": 5,
       "secs": 53.7,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 3964,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -1031,9 +1031,9 @@
       "turns": 19,
       "secs": 399.2,
       "checkRunsByModel": 3,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 25869,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -1062,9 +1062,9 @@
       "turns": 10,
       "secs": 98.9,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 4737,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     },
     {
@@ -1093,9 +1093,9 @@
       "turns": 6,
       "secs": 69.5,
       "checkRunsByModel": 1,
-      "canaryCommandsByModel": 0,
+      "amabieCommandsByModel": 0,
       "agentVisibleBytes": 3622,
-      "canaryHookInStream": 0,
+      "amabieHookInStream": 0,
       "tokensAfterLastEdit": null
     }
   ]

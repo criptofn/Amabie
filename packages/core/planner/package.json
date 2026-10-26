@@ -1,5 +1,5 @@
 {
-  "name": "@canary-rn/planner",
+  "name": "@amabie/planner",
   "version": "0.0.1",
   "private": true,
   "description": "Experiment spec validation + arm planning. Pure.",

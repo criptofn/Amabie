@@ -6,7 +6,7 @@
  * shape (strict ledger equality, CAS, fsync'd atomic writes, signed payloads
  * passed through authorityJson) and the SINGLE minting lock. This branch adds
  * back, on top of it:
- *   - the CANARY_TRUST_STORE pointer (storeFromEnv) and projectIdForRoot, the
+ *   - the AMABIE_TRUST_STORE pointer (storeFromEnv) and projectIdForRoot, the
  *     two names setup/status/doctor are wired through;
  *   - a BOUNDED WAIT plus an explicit busy REFUSAL folded into Astra's lock —
  *     one lock, no nesting, and a lock is still NEVER stolen (a killed writer
@@ -24,7 +24,7 @@ import fs from 'node:fs';
 // v1.4 — canonical identity for the project id. This value is PERSISTED and compared on later runs,
 // so a short/long spelling difference would shelve one repository under two ids and read the
 // second as foreign.
-import { canonicalPath } from '@canary-rn/support';
+import { canonicalPath } from '@amabie/support';
 import os from 'node:os';
 import path from 'node:path';
 import { authorityJson, isEnvelope, RECORD_SCHEMA, signedBytes, verifySeal, type RecordEnvelope } from './authority-envelope.js';
@@ -37,21 +37,21 @@ export type TrustLevel = 'HARDENED' | 'LOCAL' | 'ADVISORY' | 'UNSUPPORTED';
 /** Broker installation configuration, NEVER a worker request parameter. */
 export interface TrustStore { root: string }
 export function defaultStoreRoot(home: string = os.userInfo().homedir): string {
-  return process.platform === 'win32' ? path.join(home, 'AppData', 'Local', 'canary', 'trust')
-    : path.join(home, '.local', 'share', 'canary', 'trust');
+  return process.platform === 'win32' ? path.join(home, 'AppData', 'Local', 'amabie', 'trust')
+    : path.join(home, '.local', 'share', 'amabie', 'trust');
 }
 
 /**
  * The store this process uses: the OS-home default, or an explicit
- * CANARY_TRUST_STORE pointer (test/dev steering — the same legitimate need the
+ * AMABIE_TRUST_STORE pointer (test/dev steering — the same legitimate need the
  * fake-home test already serves, without touching git identity). The override
- * changes WHERE Canary looks, never WHETHER it verifies: it can only ever aim
+ * changes WHERE Amabie looks, never WHETHER it verifies: it can only ever aim
  * at an empty or already-valid store. Aimed at an empty one, every read fails
  * closed (missing/unavailable) — records are never trusted more because a
  * pointer named them.
  */
 export function storeFromEnv(env: NodeJS.ProcessEnv = process.env): TrustStore {
-  const v = env.CANARY_TRUST_STORE?.trim();
+  const v = env.AMABIE_TRUST_STORE?.trim();
   return { root: v ? path.resolve(v) : defaultStoreRoot() };
 }
 
@@ -73,7 +73,7 @@ function safeSegment(value: string, what: string): string {
 }
 const keyPath = (s: TrustStore) => path.join(s.root, 'keys', 'ed25519');
 
-/** A custody refusal: the path exists but is not a plain file/directory Canary
+/** A custody refusal: the path exists but is not a plain file/directory Amabie
  *  may trust. Carries a marker so readers can report it as 'unavailable'
  *  (refused for cause) instead of 'malformed' (bytes that do not parse). */
 function custody(message: string): Error {
@@ -148,13 +148,31 @@ function locked<T>(s: TrustStore, action: () => T): T {
   fs.mkdirSync(root, { recursive: true, mode: 0o700 });
   checked(s, root); // re-verify what the kernel actually created
   const lock = checked(s, path.join(root, '.authority-lock'));
-  const deadline = Date.now() + LOCK_WAIT_MS;
+  const deadline = process.hrtime.bigint() + BigInt(LOCK_WAIT_MS) * 1_000_000n;
+  const expired = (): boolean => process.hrtime.bigint() >= deadline;
   let acquired = false;
   for (;;) {
     try { fs.mkdirSync(lock, { mode: 0o700 }); acquired = true; break; }
     catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
-      if (Date.now() >= deadline) throw new Error(`the trust store is busy: another Canary process holds ${lock} — refusing to mint a record that could overwrite a concurrent seal; the lock is never stolen, so a killed writer needs the lock directory removed`);
+      const code = (e as NodeJS.ErrnoException).code;
+      let held = code === 'EEXIST';
+      // Windows can surface a racing mkdir of an existing directory as EPERM.
+      // Treat it as lock contention only when lstat confirms a real directory;
+      // other permission errors and links still fail closed.
+      if (!held && code === 'EPERM') {
+        try {
+          const stat = fs.lstatSync(lock);
+          held = stat.isDirectory() && !stat.isSymbolicLink();
+        } catch (probeError) {
+          if ((probeError as NodeJS.ErrnoException).code === 'ENOENT') {
+            if (expired()) throw e;
+            sleepSync(LOCK_POLL_MS);
+            continue;
+          }
+        }
+      }
+      if (!held) throw e;
+      if (expired()) throw new Error(`the trust store is busy: another Amabie process holds ${lock} — refusing to mint a record that could overwrite a concurrent seal; the lock is never stolen, so a killed writer needs the lock directory removed`);
       sleepSync(LOCK_POLL_MS);
     }
   }
@@ -209,7 +227,7 @@ function readLedger(s: TrustStore): Record<string, number> {
 /** Reserve seq BEFORE record publication. Interrupted writes deny, never pass.
  * CAS is optional for legacy callers; mandatory for broker state transitions. */
 export function sealRecord(s: TrustStore, input: {
-  projectId: string; kind: string; payload: unknown; canaryVersion: string;
+  projectId: string; kind: string; payload: unknown; amabieVersion: string;
 }, expectedSeq?: number): RecordEnvelope {
   const projectId = safeSegment(input.projectId, 'project id'), kind = safeSegment(input.kind, 'record kind');
   const payload = JSON.parse(authorityJson(input.payload));
@@ -222,7 +240,7 @@ export function sealRecord(s: TrustStore, input: {
     if (expectedSeq !== undefined && expectedSeq !== previous) throw new Error('authority compare-and-swap conflict');
     const seq = previous + 1;
     if (!Number.isSafeInteger(seq)) throw new Error('authority sequence exhausted');
-    const body = { schema: RECORD_SCHEMA, projectId, kind, seq, issuedAt: new Date().toISOString(), canaryVersion: input.canaryVersion, payload };
+    const body = { schema: RECORD_SCHEMA, projectId, kind, seq, issuedAt: new Date().toISOString(), amabieVersion: input.amabieVersion, payload };
     const signature = crypto.sign(null, signedBytes(body), crypto.createPrivateKey(read(s, keyPath(s)))).toString('base64');
     const envelope = { ...body, signature };
     ledger[lane] = seq;
@@ -292,14 +310,14 @@ export function probeTrustLevel(s: TrustStore): { level: TrustLevel; reasons: st
     // v1.5 audit finding: re-sealing a DIFFERENT plan/baseline needs no privilege either, so
     // "sealed" must never be read as "the worker could not have chosen what is sealed". This is
     // the level's selection story, and it is stated wherever the level is reported.
-    'the same user — including the worker — can re-run `canary setup --yes` and re-seal a different plan and baseline: LOCAL proof is same-user and operator-selected, not worker-independent',
+    'the same user — including the worker — can re-run `amabie setup --yes` and re-seal a different plan and baseline: LOCAL proof is same-user and operator-selected, not worker-independent',
   ] };
 }
 
 /**
  * The READ-ONLY companion to probeTrustLevel.
  *
- * `canary status` and `canary result` promise to write nothing, and the write
+ * `amabie status` and `amabie result` promise to write nothing, and the write
  * probe above would silently break that promise: the productization metrics
  * probe caught exactly that — three write syscalls on a command documented as
  * zero-write (the probe file is created and unlinked, so the bytes on disk are
@@ -327,7 +345,7 @@ export function probeTrustLevelReadOnly(s: TrustStore): { level: TrustLevel; rea
     'the same uid that runs the worker can also write this store — sealing detects, it does not prevent; HARDENED requires a broker with a different identity and is NOT claimed',
     // v1.5 audit finding: which plan and which baseline are sealed is chosen by a caller the
     // product never checks, so a worker with this user's authority can re-seal its own commit.
-    'the same user — including the worker — can re-run `canary setup --yes` and re-seal a different plan and baseline: LOCAL proof is same-user and operator-selected, not worker-independent',
-    'read-only assessment: this command wrote nothing, so writability was checked by access rather than by a write probe (canary doctor measures it by writing)',
+    'the same user — including the worker — can re-run `amabie setup --yes` and re-seal a different plan and baseline: LOCAL proof is same-user and operator-selected, not worker-independent',
+    'read-only assessment: this command wrote nothing, so writability was checked by access rather than by a write probe (amabie doctor measures it by writing)',
   ] };
 }

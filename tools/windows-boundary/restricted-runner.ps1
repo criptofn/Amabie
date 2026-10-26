@@ -6,13 +6,13 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($SandboxDirectory) {
   Add-Type -Path (Join-Path $PSScriptRoot 'AppContainerRunner.cs')
-  exit [CanaryAppContainer]::Run($Integrity, $CommandLine, $SandboxDirectory)
+  exit [AmabieAppContainer]::Run($Integrity, $CommandLine, $SandboxDirectory)
 }
 Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-public static class CanaryRestrictedWin32 {
+public static class AmabieRestrictedWin32 {
   const uint QUERY=8, DUP=2, ASSIGN=1, ADJUST_DEFAULT=0x80, DISABLE_MAX=1, PRIMARY=1, IMPERSONATION=2, LOGON_PROFILE=1;
   const int Integrity=25;
   [StructLayout(LayoutKind.Sequential)] struct SI { public uint cb; public string r,d,t; public uint x,y,xs,ys,xc,yc,fill,flags; public ushort show,res; public IntPtr res2,hin,hout,herr; }
@@ -45,4 +45,4 @@ public static class CanaryRestrictedWin32 {
   }
 }
 '@
-exit [CanaryRestrictedWin32]::Run($Integrity, $CommandLine)
+exit [AmabieRestrictedWin32]::Run($Integrity, $CommandLine)

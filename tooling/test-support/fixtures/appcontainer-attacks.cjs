@@ -15,7 +15,7 @@ record('authority-read', () => fs.readFileSync(path.join(root, 'authority', 'sec
 record('authority-write', () => fs.writeFileSync(path.join(root, 'authority', 'secret.txt'), 'attacked'));
 record('junction-read', () => fs.readFileSync(path.join(process.cwd(), 'escape', 'secret.txt')));
 report.attempts.push({ id: 'environment-secret', executed: true,
-  result: process.env.CANARY_PROBE_SECRET === nonce ? 'EXPOSED' : 'ABSENT' });
+  result: process.env.AMABIE_PROBE_SECRET === nonce ? 'EXPOSED' : 'ABSENT' });
 const socket = net.connect({ host: '127.0.0.1', port: Number(port) });
 let finished = false;
 function finish(result) {

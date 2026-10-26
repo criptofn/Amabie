@@ -1,4 +1,4 @@
-# Canary v1.5 — post-audit closure report
+# Amabie v1.5 — post-audit closure report
 
 **Audited candidate:** `a004f5544af6ea62e1f3a4c036af8c8358e23462` (branch `codex/v15-evidence-release`).
 **Auditor:** independent (GPT-5.6). **Candidate head:** `d3f6a9c5da730d9828be5b5751861b92a028cfd2`,
@@ -22,7 +22,7 @@ defect was in this candidate's own published claim.
 | 3 | `--from-saved` printed a stale transcript as a current `PASS` | CONFIRMED (product validator NOT bypassed) | the PROBE read the OS-temp transcript regardless of age, host, store or a failed live battery | `--from-saved` is HISTORICAL, exit **2**, prints its own disproof; a failed live battery exits **4** | `hardened-evidence.test.mjs` | **PASS** |
 | 4 | Two R1 attempts **mixed** in one output directory | CONFIRMED | the run-task probe reused one directory per task across attempts | one attempt per directory, **refusal on existing evidence**; index corrected | `tooling/probes/v15-attempt-provenance.mjs` | **PASS** (historical gap documented, not invented) |
 | 5 | `LOCAL` implied worker-independent proof | **CLAIM TOO STRONG** (behaviour expected at LOCAL) | wording | LOCAL stated as same-user / operator-selected; HARDENED kept as the worker-independent path | `apps/cli/test/local-authority-same-user.test.ts` | **PASS — 5/5.** A claim correction, **not** a boundary: at LOCAL the same user can still replace the store, the key and the ledger together |
-| 6 | Sealed step loses `python`/`java`/`git`; Canary blamed the project | CONFIRMED PRODUCT DEFECT | the sealed environment builds its own PATH and ignores the calling PATH **by design** (anti-shadowing); a project whose check spawns an unresolvable tool then failed and was attributed to the project | an operator-authorized directory is **appended after** the trusted Node/OS dirs (never in front) and refused inside the repository; `SEALED ENV CANNOT RESOLVE` when Canary's restriction is the cause, `PROJECT CHECK FAILURE` only when the project genuinely failed | `tooling/probes/v15-sealed-toolchain.mjs`, `apps/cli/test/v15-sealed-toolchain.test.ts` | **PASS for the tested cases — 25/25**, and the probe measures that the suggested remediation makes the same check pass inside Canary. **Limits:** authorization is an OPERATOR act; no `JAVA_HOME` handling; `HOME` still redirected; not-found signatures cover en/de-DE text plus exit 9009/127 only; the real repositories were **not** re-run with an authorized directory |
+| 6 | Sealed step loses `python`/`java`/`git`; Amabie blamed the project | CONFIRMED PRODUCT DEFECT | the sealed environment builds its own PATH and ignores the calling PATH **by design** (anti-shadowing); a project whose check spawns an unresolvable tool then failed and was attributed to the project | an operator-authorized directory is **appended after** the trusted Node/OS dirs (never in front) and refused inside the repository; `SEALED ENV CANNOT RESOLVE` when Amabie's restriction is the cause, `PROJECT CHECK FAILURE` only when the project genuinely failed | `tooling/probes/v15-sealed-toolchain.mjs`, `apps/cli/test/v15-sealed-toolchain.test.ts` | **PASS for the tested cases — 25/25**, and the probe measures that the suggested remediation makes the same check pass inside Amabie. **Limits:** authorization is an OPERATOR act; no `JAVA_HOME` handling; `HOME` still redirected; not-found signatures cover en/de-DE text plus exit 9009/127 only; the real repositories were **not** re-run with an authorized directory |
 | 7 | Legitimate sealed-script check outside a test path = false red | CONFIRMED | the same `isTestPath` predicate that caused #1, failing in the opposite direction | check surface anchored to a **sealed plan script's text** (digest-verified) instead of a path heuristic | same probe, CASE A + CONTROL | **PASS** |
 | — | No-git first-run fixture was inside an ancestor repo | harness gap, **not** a product defect | `git -C %TEMP% rev-parse --show-toplevel` → `C:/Users/Johannes`, so the fixture was never repo-free | fixture now proven repo-free (`rev-parse` fails **and** no ancestor `.git`) | `tooling/probes/v15-first-run.mjs` | **PASS** 66/0/0 |
 
@@ -37,12 +37,12 @@ defect was in this candidate's own published claim.
 | Valid cells | the two measurable runs disagree in **sign**; 39.7-point spread against **46.5 % drift in the plain arm alone** |
 | Claim supported | **NONE.** Not a smaller saving, not a different percentage. At n=1 per cell this benchmark cannot resolve an effect of this size in either direction |
 | Not substituted | the auditor's five-pair −16.38 %. Dropping the failed pair is selection, not a replacement measurement |
-| Survives | the standing MCP payload **is** inside the measurement (6/6 guarded advertised `mcp__canary`, 0/6 plain) and costs **~438 tokens** measured provider-natively, not the ~1,432 `bytes ÷ 4` implied |
+| Survives | the standing MCP payload **is** inside the measurement (6/6 guarded advertised `mcp__amabie`, 0/6 plain) and costs **~438 tokens** measured provider-natively, not the ~1,432 `bytes ÷ 4` implied |
 
 ## Root of trust
 
 - **LOCAL** — records are sealed outside the repository, but the **same user** may select and re-seal
-  authority (`canary setup --yes`). A worker with that user's authority can re-seal its own commit.
+  authority (`amabie setup --yes`). A worker with that user's authority can re-seal its own commit.
   Stated as such in the UI and docs; **not** presented as worker-independent.
 - **HARDENED** — the worker-independent path: authority is protected from the worker's own OS
   identity, established only by a measured boundary (see `HARDENED-1.5.md`).
@@ -75,16 +75,16 @@ inventory). Ubuntu then went green, confirming all three.
 not ok 1 - setup accepts --toolchain-dir with spaces, records it, and the sealed step sees it
   setup exited 2:
 
-  + C:\Users\runneradmin\AppData\Local\Temp\canary-v15st-unit-gSmlhm\a tool chain with spaces\bin
+  + C:\Users\runneradmin\AppData\Local\Temp\amabie-v15st-unit-gSmlhm\a tool chain with spaces\bin
   the plan's own program is still pinned to an absolute path; these directories exist for what your
-  check spawns itself. Revoke with: canary setup --clear-toolchain-dirs
+  check spawns itself. Revoke with: amabie setup --clear-toolchain-dirs
 
   smoke test (running your own project scripts):
   ✗ tests: npm run test (exit 3)
     the authorized directory never reached the child PATH
 
   NEEDS ATTENTION — PROJECT CHECK FAILURE — your project's own checks did not pass (tests).
-  That is your project talking, not Canary.
+  That is your project talking, not Amabie.
 ```
 
 **This is not a test defect.** The product accepted and sealed an operator-authorized directory whose
@@ -95,7 +95,7 @@ half of BLOCKER 6 undoing itself in this case.
 
 **It does not reproduce locally**: the same suite passes on this machine (37/37 after a forced
 rebuild). One environmental difference is a candidate and has NOT been confirmed: the GitHub runner
-checks out to **`D:\a\Canary\Canary`** while `TEMP` is on **`C:`**, so the authorized directory lives
+checks out to **`D:\a\Amabie\Amabie`** while `TEMP` is on **`C:`**, so the authorized directory lives
 on a different drive from the repository. **No mechanism is claimed** — it needs a host that can
 reproduce it.
 
@@ -103,7 +103,7 @@ reproduce it.
 **NOT GREEN on the Windows runner**. The Windows core leg is a required gate, so the closure is
 **not complete** and the candidate stays unreleased.
 
-**The cross-drive candidate is REFUTED, by experiment.** `subst R: C:\Users\Johannes\Desktop\canary`
+**The cross-drive candidate is REFUTED, by experiment.** `subst R: C:\Users\Johannes\Desktop\amabie`
 puts the repository on a different drive from `TEMP` (which stays on `C:`) — the same shape as the
 runner — and the suite run through `R:` passes:
 
@@ -261,7 +261,7 @@ claimed it did. Both are addressed in this pass. **No product behaviour changed.
 | Everyday benchmark document | its "Claim reset" section still listed the withdrawn aggregate as *supported* | that section now supports **nothing** about an everyday percentage, and the retained tables are labelled as the **withdrawn generation** |
 | Real-world evidence document | §4 and §5.1 described defects without their post-audit state | each carries a one-line post-audit note: fixed for the **measured/tested** cases, with the limitation, and with "the repositories were not re-run" said explicitly |
 | Windows sweep diagnostic | could not distinguish which exclusion occurred | see the section above: four shapes, a fresh CIM observation, the cut recomputed from the sweep input, and a **measured** self-test of the output path |
-| CI trigger | `canary-ci` had no manual dispatch — the only reason draft PR #8 existed | `workflow_dispatch:` added. **Operational plumbing, not a product feature:** 12 inserted lines (comments plus the one trigger), **0 deletions**, and push / pull_request / schedule semantics unchanged. **Not usable from this branch yet, stated as an expectation rather than a measurement:** GitHub builds the dispatchable set from the **default branch**, so a manual dispatch of `canary-ci` is expected to become available only once this file reaches `main`. Nothing here pushes or merges, so that behaviour was **not verified**, and **PR #8 remains the way to run CI on this branch today** |
+| CI trigger | `amabie-ci` had no manual dispatch — the only reason draft PR #8 existed | `workflow_dispatch:` added. **Operational plumbing, not a product feature:** 12 inserted lines (comments plus the one trigger), **0 deletions**, and push / pull_request / schedule semantics unchanged. **Not usable from this branch yet, stated as an expectation rather than a measurement:** GitHub builds the dispatchable set from the **default branch**, so a manual dispatch of `amabie-ci` is expected to become available only once this file reaches `main`. Nothing here pushes or merges, so that behaviour was **not verified**, and **PR #8 remains the way to run CI on this branch today** |
 
 **A tripwire, because every one of those was found by a person reading carefully.**
 `tooling/probes/v15-evidence-consistency.mjs` fails when a withdrawn figure appears without a marker

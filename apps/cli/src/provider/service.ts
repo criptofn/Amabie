@@ -22,7 +22,7 @@ export { PROVIDER_PIPE_NAME, PROVIDER_SERVICE_NAME, WORKER_USER_ENV };
 
 /** What the provider reports about itself. Never a verdict about a candidate. */
 export interface ProviderStatus {
-  schema: 'canary-provider-status/1';
+  schema: 'amabie-provider-status/1';
   service: string;
   pipe: string;
   /** The measured boundary — the authority for `hardened`. */
@@ -61,9 +61,9 @@ export function providerStatus(store: TrustStore = storeFromEnv(), env: NodeJS.P
       ? { kind: 'identity-runner', account: boundary.workerUser }
       : null;
   return {
-    schema: 'canary-provider-status/1',
+    schema: 'amabie-provider-status/1',
     service: PROVIDER_SERVICE_NAME,
-    pipe: providerEndpoint(production ? `canary-production-${production.deployment}` : PROVIDER_PIPE_NAME),
+    pipe: providerEndpoint(production ? `amabie-production-${production.deployment}` : PROVIDER_PIPE_NAME),
     boundary,
     hardened: boundary.hardenedAvailable,
     unavailable,
@@ -102,7 +102,7 @@ export class RestrictedRunner {
     if (this.confinement?.kind === 'win32-appcontainer-restricted-low') {
       // The confined caller is launched by the native helper, never by a shell:
       // one command line, a mandatory disposable sandbox, a side-channel record.
-      return ['CanaryConfinedLauncher', 'run', program, ...args, cwd];
+      return ['AmabieConfinedLauncher', 'run', program, ...args, cwd];
     }
     if (this.workerUser === null) return null;
     if (program.includes('"') || cwd.includes('"')) return null; // cannot embed safely
@@ -110,7 +110,7 @@ export class RestrictedRunner {
       // runas cannot pass a password non-interactively; the supported mechanism is
       // a scheduled task or the service itself running as the worker. Printing the
       // shape keeps this honest instead of pretending runas is usable.
-      return ['schtasks', '/run', `/tn`, `CanaryRunner-${this.workerUser}`];
+      return ['schtasks', '/run', `/tn`, `AmabieRunner-${this.workerUser}`];
     }
     return ['sudo', '-n', '-u', this.workerUser, '--', program, ...args];
   }
@@ -146,7 +146,7 @@ export function createProviderHandler(opts: {
   return (req) => {
     switch (req.op) {
       case 'broker.hello':
-        return { schema: 'canary-broker/1', generation: opts.generation, service: PROVIDER_SERVICE_NAME };
+        return { schema: 'amabie-broker/1', generation: opts.generation, service: PROVIDER_SERVICE_NAME };
       case 'broker.status': {
         const s = providerStatus(opts.store);
         return { hardened: s.hardened, unavailable: s.unavailable, service: PROVIDER_SERVICE_NAME };
@@ -184,18 +184,18 @@ export async function providerServe(store: TrustStore = storeFromEnv()): Promise
   if (fs.existsSync(path.join(store.root, 'enrollment.json'))) return serveProduction(store.root);
   const status = providerStatus(store);
   if (!status.hardened) {
-    process.stderr.write('CANARY PROVIDER UNAVAILABLE — the boundary is not established, so the broker will not run.\n');
+    process.stderr.write('AMABIE PROVIDER UNAVAILABLE — the boundary is not established, so the broker will not run.\n');
     for (const u of status.unavailable) process.stderr.write(`  - ${u}\n`);
     process.stderr.write('\nwhy this is a refusal and not a warning: a broker without a measured boundary is our own\n');
     process.stderr.write('process with extra steps, and running candidate code under it is the exact overclaim that\n');
     process.stderr.write('HARDENED is reserved for. Measure the confined-caller deployment:\n');
     process.stderr.write('  node tooling/probes/v12-confined-caller.mjs\n');
-    process.stderr.write('and, only if a separate broker identity is wanted too, `canary provider install-plan`.\n');
+    process.stderr.write('and, only if a separate broker identity is wanted too, `amabie provider install-plan`.\n');
     return 2;
   }
   // Only real enrollment can start a production controller. No placeholder
   // project, enrollment resolver or generic local server is an authority path.
-  process.stderr.write('CANARY PROVIDER UNAVAILABLE — production enrollment required.\n');
+  process.stderr.write('AMABIE PROVIDER UNAVAILABLE — production enrollment required.\n');
   return 2;
 }
 

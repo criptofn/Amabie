@@ -3,26 +3,26 @@
 // FAIL. Restores the original bytes in all cases. exit 0 only when every mutation
 // was caught AND restore verified.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const TARGET = path.resolve('apps/cli/dist/src/onboarding.js');
+const CHECKPOINT = path.resolve('apps/cli/dist/src/checkpoint-command.js');
+const FILES = path.resolve('apps/cli/dist/src/local-files.js');
 const TEST = path.resolve('apps/cli/dist/test/onboarding.test.js');
-const backup = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'canary-mut-')), 'onboarding.orig.js');
-fs.copyFileSync(TARGET, backup);
-const original = fs.readFileSync(backup, 'utf8');
+const originals = new Map([CHECKPOINT, FILES].map(file => [file, fs.readFileSync(file, 'utf8')]));
 
 const MUTATIONS = [
   {
     name: 'A revert-F1 (corrupt config goes silent again)',
+    file: CHECKPOINT,
     pattern: 'S7|F-1',
     apply: (s) => s.replace(
-      "return emit({ systemMessage: 'Canary could not verify this task because its local config (.canary/canary.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: canary setup' });",
+      "return emit({ systemMessage: 'Amabie could not verify this task because its local config (.amabie/amabie.local.json) is unreadable — nothing was verified; this completion is UNVERIFIED, not a pass. Run: amabie setup' });",
       'return 0;'),
   },
   {
     name: 'B revert-F2 (writeFileAtomic becomes plain writeFileSync)',
+    file: FILES,
     pattern: 'atomic',
     apply: (s) => s.replace(
       'function writeFileAtomic(p, data) {\n    assertPlainTarget(p);',
@@ -30,6 +30,7 @@ const MUTATIONS = [
   },
   {
     name: 'C drop-temp-cleanup (failed rename leaves residue)',
+    file: FILES,
     pattern: 'atomic',
     apply: (s) => s.replace('fs.rmSync(tmp, { force: true });', 'void tmp;'),
   },
@@ -38,9 +39,10 @@ const MUTATIONS = [
 let allCaught = true;
 try {
   for (const m of MUTATIONS) {
+    const original = originals.get(m.file);
     const mutated = m.apply(original);
     if (mutated === original) { console.log(`FAIL ${m.name}: target string not found (stale dist?)`); allCaught = false; continue; }
-    fs.writeFileSync(TARGET, mutated, 'utf8');
+    fs.writeFileSync(m.file, mutated, 'utf8');
     const r = spawnSync(process.execPath, ['--test', `--test-name-pattern=${m.pattern}`, TEST],
       { encoding: 'utf8', timeout: 300_000 });
     const caught = r.status !== 0;
@@ -49,9 +51,12 @@ try {
       allCaught = false;
       console.log(r.stdout.split(/\r?\n/).filter((l) => /not ok|✖/.test(l)).slice(0, 8).join('\n'));
     }
+    fs.writeFileSync(m.file, original, 'utf8');
   }
 } finally {
-  fs.copyFileSync(backup, TARGET);
-  console.log(fs.readFileSync(TARGET, 'utf8') === original ? 'PASS restore-verified' : 'FAIL restore-mismatch');
+  for (const [file, original] of originals) {
+    fs.writeFileSync(file, original, 'utf8');
+    console.log(fs.readFileSync(file, 'utf8') === original ? 'PASS restore-verified' : 'FAIL restore-mismatch');
+  }
 }
 process.exit(allCaught ? 0 : 1);
