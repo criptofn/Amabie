@@ -7,7 +7,7 @@
  *   amabie check <spec.json> [proof.json]    prove without re-running (last evidence)
  *   amabie report [evidence.json] [out.html] render the human-readable report
  *                                          (no args: the latest run's evidence)
- *   --- productization surface (see onboarding.ts for its doctrine) ---
+ *   --- productization commands (module boundaries: CONTRIBUTING.md) ---
  *   amabie setup    [--check] [--yes]        inspect setup or install + smoke-run
  *                                          (--check is read-only; READY only after proof)
  *   amabie doctor                            runs the checks NOW; READY only from this run
@@ -59,7 +59,13 @@ import {
 } from './prove.js';
 import { verifyTreeSnapshots } from './verify-tree.js';
 import { cmdProfile } from './profile.js';
-import { CLI_ENTRY, cmdSetup, cmdStatus, cmdDoctor, cmdUninstall, cmdCheckpoint, cmdSessionStart, cmdClaim, cmdTask, cmdBind, cmdResult, cmdAgents } from './onboarding.js';
+import { CLI_ENTRY } from './cli-runtime.js';
+import { cmdSetup } from './setup-command.js';
+import { cmdStatus, cmdUninstall, cmdSessionStart, cmdClaim, cmdResult, cmdAgents } from './status-commands.js';
+import { cmdDoctor } from './doctor-command.js';
+import { cmdCheckpoint } from './checkpoint-command.js';
+import { cmdTask } from './task-command.js';
+import { cmdBind } from './bind-command.js';
 import { cmdIsolate, cmdAccept } from './candidate.js';
 import { appendMetric, metricFor, metricsTarget, streamSnapshot } from './metrics.js';
 import { cmdWork, cmdFinish } from './orchestrate.js';

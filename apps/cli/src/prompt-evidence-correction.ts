@@ -17,7 +17,13 @@ import {
 } from '@amabie/prompt-evidence';
 import { killTree, sweepDescendants, sweepLiveChild, cleanupWindowsChildOnExit } from '@amabie/support';
 import { isolateCreate, loadRecord, verifyCandidate, type CandidateRecord } from './candidate.js';
-import { CLI_ENTRY, Out, containedRealPath, findRepoRoot, planDigest, planWithFreshTests, readConfig, readTaskRecord, type AmabieConfig, type StepResult } from './onboarding.js';
+import { CLI_ENTRY } from './cli-runtime.js';
+import { Out } from './cli-output.js';
+import { planWithFreshTests, type StepResult } from './check-runner.js';
+import { readTaskRecord } from './task-state.js';
+import { containedRealPath } from './local-files.js';
+import { findRepoRoot, readConfig, type AmabieConfig } from './local-config.js';
+import { planDigest } from './project.js';
 import { CODING_SEALED_PLAN_ADAPTER, createCodingSealedPlanAdapter, type SealedStepResult } from './prompt-evidence.js';
 import {
   buildCorrectionAgentEnvironment,

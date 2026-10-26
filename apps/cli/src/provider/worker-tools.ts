@@ -2,7 +2,7 @@
  * sealing, review and promotion are not model-callable transport operations. */
 import readline from 'node:readline';
 import { enrollment, productionTool } from './production.js';
-import { readConfig } from '../onboarding.js';
+import { readConfig } from '../local-config.js';
 
 /**
  * v1.3 §23 — the project's own check command, for OPT-IN per-batch feedback.

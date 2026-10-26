@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { enrollment, nativeRoot, read, plainFile, native as runNative, quote } from './production.js';
 import { anchorPath, productionNativePowerShellExecutable, publishProductionMeasurement, type ProductionTranscript, type NativeObservation } from './production-measurement.js';
-import { candidateIdentity } from '../onboarding.js';
+import { candidateIdentity } from '../git-state.js';
 
 const fixture = path.resolve(nativeRoot, '../../tooling/test-support/fixtures');
 /** How long a HELPER process may take to announce itself.

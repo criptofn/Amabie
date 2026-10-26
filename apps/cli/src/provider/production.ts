@@ -12,7 +12,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { cmdIsolate, controllerCandidate } from '../candidate.js';
-import { candidateIdentity, configPath, gitCommand, readConfig, untrustedConfigReason, CLI_ENTRY } from '../onboarding.js';
+import { candidateIdentity } from '../git-state.js';
+import { configPath, readConfig, untrustedConfigReason } from '../local-config.js';
+import { gitCommand } from '../execution-environment.js';
+import { CLI_ENTRY } from '../cli-runtime.js';
 import { controllerExecution, type ControllerExecution } from './execution.js';
 import { enrollMeasurementAuthority, measurementGeneration, productionHost, productionNativePowerShellExecutable } from './production-measurement.js';
 

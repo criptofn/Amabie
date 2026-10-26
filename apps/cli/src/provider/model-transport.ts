@@ -4,7 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
-import { selfArgv, readConfig, readTaskRecord, unboundRequirements } from '../onboarding.js';
+import { selfArgv } from '../cli-runtime.js';
+import { readConfig } from '../local-config.js';
+import { readTaskRecord } from '../task-state.js';
+import { unboundRequirements } from '../proof-obligations.js';
 import { enrollment, productionTool } from './production.js';
 
 export const TRANSPORT_TOOL = 'mcp__amabie_confined__implement';

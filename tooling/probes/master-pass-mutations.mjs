@@ -52,7 +52,11 @@ import os from 'node:os';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CLI_FILES = {
-  onboarding: path.join(REPO, 'apps/cli/dist/src/onboarding.js'),
+  setup_command: path.join(REPO, 'apps/cli/dist/src/setup-command.js'),
+  integration_status: path.join(REPO, 'apps/cli/dist/src/integration-status.js'),
+  local_config: path.join(REPO, 'apps/cli/dist/src/local-config.js'),
+  execution_environment: path.join(REPO, 'apps/cli/dist/src/execution-environment.js'),
+  check_runner: path.join(REPO, 'apps/cli/dist/src/check-runner.js'),
   candidate: path.join(REPO, 'apps/cli/dist/src/candidate.js'),
 };
 const OWNERS = {
@@ -67,8 +71,8 @@ const MUTATIONS = [
   // a conjunction, so forcing one arm true still leaves the other arms to catch
   // a script change. The real failure mode is the whole guard deciding nothing:
   // mutate the ternary's else-branch to reuse anyway.
-  { id: 'M1', file: 'onboarding', from: '? prevCfg : null;', to: '? prevCfg : prevCfg;', owner: 'onboarding', what: 'S4 stamp-reuse fires whenever ANY prior config exists, digests be damned (drifted seals keep their original approval stamps)' },
-  { id: 'M2', file: 'onboarding', from: 'if (!opts.yes && !interactive) {', to: 'if (!opts.yes && !interactive) { return 2;', owner: 'onboarding', what: 'S1 reverted: unattended setup demands --yes again after writing everything' },
+  { id: 'M1', file: 'setup_command', from: '? prevCfg : null;', to: '? prevCfg : prevCfg;', owner: 'onboarding', what: 'S4 stamp-reuse fires whenever ANY prior config exists, digests be damned (drifted seals keep their original approval stamps)' },
+  { id: 'M2', file: 'setup_command', from: 'if (!opts.yes && !interactive) {', to: 'if (!opts.yes && !interactive) { return 2;', owner: 'onboarding', what: 'S1 reverted: unattended setup demands --yes again after writing everything' },
   { id: 'M3', file: 'candidate', from: "unproven.every((x) => x.mode === 'non-objective')", to: "unproven.some((x) => x.mode === 'non-objective')", owner: 'subjectivity', what: 'S3 split verdict leaks onto objectives-open candidates (any non-objective unproven claims TECHNICAL EVIDENCE: PROVEN)' },
   { id: 'M4', file: 'candidate', from: 'for (const x of unproven)', to: 'for (const x of [])', owner: 'subjectivity', what: 'S3 compact stdout drops the UNPROVEN duty list entirely (PART III failure UX gutted)' },
   // RE-PINNED (v1.1): M5, M8 and M9's original anchors were refactored away by
@@ -76,21 +80,21 @@ const MUTATIONS = [
   // named `gitCandidates()` helper. The battery's own rule is "update this
   // battery in the same change as the gate", so the anchors follow the code and
   // each mutation keeps its ORIGINAL failure mode, not its original text.
-  { id: 'M5', file: 'onboarding', from: 'const drift = planAuthorityDrift(root, cfg);\n    if (drift)\n        problems.push(', to: 'const drift = null;\n    if (drift)\n        problems.push(', owner: 'status', what: 'S1 status becomes drift-blind (sealed authority changes go unreported)' },
-  { id: 'M6', file: 'onboarding', from: 'const seen = configTrackedMemo.get(root);', to: 'const seen = false;', owner: 'status', what: 'S2 memo poisons config ownership: a git-committed config reads as this machine\'s own' },
+  { id: 'M5', file: 'integration_status', from: 'const drift = planAuthorityDrift(root, cfg);\n    if (drift)\n        problems.push(', to: 'const drift = null;\n    if (drift)\n        problems.push(', owner: 'status', what: 'S1 status becomes drift-blind (sealed authority changes go unreported)' },
+  { id: 'M6', file: 'local_config', from: 'const seen = configTrackedMemo.get(root);', to: 'const seen = false;', owner: 'status', what: 'S2 memo poisons config ownership: a git-committed config reads as this machine\'s own' },
   // Pre-1.0 blocker closure: each mutant re-opens exactly one door the GLM audit
   // found. pre10-env-authority owns the execution-authority trio,
   // pre10-acceptance the human-acceptance quartet, M13's root duty belongs to the
   // subjectivity battery (its G case is the no-authority law).
-  { id: 'M7', file: 'onboarding', from: 'const hardenedEnv = (fixture) => sanitizedEnv({ ws: { root: os.tmpdir(), fixture }, nodeDir: NODE_DIR });', to: 'const hardenedEnv = (fixture) => ({ ...process.env, ...sanitizedEnv({ ws: { root: os.tmpdir(), fixture }, nodeDir: NODE_DIR }) });', owner: 'env', what: 'B1 merge escape: caller NODE_OPTIONS/npm_config_* poison reaches proof-authoritative children (deny-by-omission becomes allow-by-inheritance)' },
+  { id: 'M7', file: 'execution_environment', from: 'const hardenedEnv = (fixture) => sanitizedEnv({ ws: { root: os.tmpdir(), fixture }, nodeDir: NODE_DIR });', to: 'const hardenedEnv = (fixture) => ({ ...process.env, ...sanitizedEnv({ ws: { root: os.tmpdir(), fixture }, nodeDir: NODE_DIR }) });', owner: 'env', what: 'B1 merge escape: caller NODE_OPTIONS/npm_config_* poison reaches proof-authoritative children (deny-by-omission becomes allow-by-inheritance)' },
   // M8 re-pinned onto the real step-execution resolution: keep the exact command
   // (spawnArgv stays the full argv) but stop resolving the program through the
   // trusted dirs, so `exec.file` becomes the bare name and a caller-PATH shim can
   // decide the verdict. That is the same door the original anchor mutated.
-  { id: 'M8', file: 'onboarding', from: 'const resolved = resolveProgram(program, step.adapter);', to: "const resolved = { spawnArgv: argv, file: program, via: 'trusted-path' };", owner: 'env', what: 'B1 pm door: the step program is no longer resolved through the trusted dirs — a bare name on the caller PATH decides PASS and promotion' },
+  { id: 'M8', file: 'check_runner', from: 'const resolved = resolveProgram(program, step.adapter);', to: "const resolved = { spawnArgv: argv, file: program, via: 'trusted-path' };", owner: 'env', what: 'B1 pm door: the step program is no longer resolved through the trusted dirs — a bare name on the caller PATH decides PASS and promotion' },
   // M9 re-pinned onto the current gitExe(): the helper is named now, the door is
   // the same — resolve git as a bare name on PATH instead of the fixed literals.
-  { id: 'M9', file: 'onboarding', from: 'gitExeCache = gitCandidates().find((c) => fs.existsSync(c)) ?? null;', to: "gitExeCache = 'git';", owner: 'env', what: 'B1 git door: bare git resolves on the caller PATH — attacker git forges base/evidence at promotion' },
+  { id: 'M9', file: 'execution_environment', from: 'gitExeCache = gitCandidates().find((c) => fs.existsSync(c)) ?? null;', to: "gitExeCache = 'git';", owner: 'env', what: 'B1 git door: bare git resolves on the caller PATH — attacker git forges base/evidence at promotion' },
   { id: 'M10', file: 'candidate', from: 'if (!process.stdin.isTTY || !process.stdout.isTTY) {', to: 'if (false) {', owner: 'acceptance', what: 'B3 terminal gate gone: an agent pipe that merely supplies the name self-accepts its own work' },
   { id: 'M11', file: 'candidate', from: "typeof context !== 'string' && acc.subjectDigest === subjectDigest(context.subject)", to: 'true', owner: 'acceptance', what: 'B3 freshness gutted: acceptance rides onto commits made AFTER the human signed' },
   { id: 'M12', file: 'candidate', from: 'if (!frozen || !frozen.kinds.length)', to: 'if (!frozen)', owner: 'acceptance', what: 'B3 accept mints authority: an empty frozen kind set can be accepted' },

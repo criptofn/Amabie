@@ -15,12 +15,12 @@ const mutants = [
  ['M4','B1',[['authorization','taskDigest: t.taskDigest,',"taskDigest: digest(''),"]]],
  ['M5','C1',[['authorization','for (const d of frozen.requirementDigests)','for (const d of [])']]],
  ['M6','B1',[['authorization','if (frozen.taskDigest !== live.taskDigest)','if (false)'],['candidate',"typeof context !== 'string' && acc.subjectDigest === subjectDigest(context.subject)",'true']]],
- ['M7','D1',[['onboarding','if (task?.subjectiveVisual)','if (false)']]],
- ['M8','E1-E3-E5',[['onboarding','const bound = script !== undefined && authority.plan.some','const bound = target.kind === "bench" || script !== undefined && authority.plan.some']]],
+ ['M7','D1',[['proof-obligations','if (task?.subjectiveVisual)','if (false)']]],
+ ['M8','E1-E3-E5',[['proof-obligations','const bound = script !== undefined && authority.plan.some','const bound = target.kind === "bench" || script !== undefined && authority.plan.some']]],
  ['M9','C7',[['authorization','if (requirements.length > MAX_REQUIREMENTS)','if (false)'],['authorization','const parts = [text, ...requirements];','requirements = requirements.slice(0, MAX_REQUIREMENTS); const parts = [text, ...requirements];']]],
  ['M10','C8',[['authorization','digest(canonicalText(s))','digest(canonicalText(s).slice(0, 4000))']]],
  ['M11','E1-E3-E5',[['candidate',"obligations.filter((x) => x.mode === 'non-objective' && x.status === 'unproven')","obligations.filter((x) => x.status === 'unproven')"]]],
- ['M12','B4',[['onboarding','[kindFlag, ...inferred]','[kindFlag]']]],
+ ['M12','B4',[['task-command','[kindFlag, ...inferred]','[kindFlag]']]],
  ['M13','F1',[['candidate','if (!frozenKinds.length || !canonicalTask(frozenTask))','if (false)']]],
 ];
 /**

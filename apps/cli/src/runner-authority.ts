@@ -29,12 +29,11 @@
  * unreachable — the honest outcome for a machine where nobody has run
  * `amabie setup` for this project.
  *
- * This lives in its own module because `onboarding.ts` imports `pipeline.ts` for
- * `AMABIE_VERSION`; the other direction would make the graph cyclic.
+ * Reads configuration and plan authority directly, without importing CLI commands.
  */
 import { PYTEST_RUNNER_ID, detectPythonRunner, pytestRunnerIdentity, pythonRunnerIdentity } from '@amabie/executor';
 
-import { readConfig, untrustedConfigReason } from './onboarding.js';
+import { readConfig, untrustedConfigReason } from './local-config.js';
 import { planAuthorityDrift } from './project.js';
 
 export type RunnerIdentityGrant = Record<string, { version: string; identitySha256: string }>;

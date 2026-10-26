@@ -13,7 +13,12 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { Out, TASK_KINDS, cmdBind, cmdTask, findRepoRoot, gitWithinRoot, parseGlobals, readConfig, untrustedConfigReason } from './onboarding.js';
+import { Out, parseGlobals } from './cli-output.js';
+import { cmdBind } from './bind-command.js';
+import { cmdTask } from './task-command.js';
+import { TASK_KINDS } from './authorization.js';
+import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
+import { gitWithinRoot } from './git-state.js';
 import { materialDigest } from './authorization.js';
 
 export const PROFILES_FILE = 'amabie.profiles.json';

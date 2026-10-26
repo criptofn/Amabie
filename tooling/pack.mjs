@@ -5,7 +5,7 @@
  * esbuild (devDep, never shipped) bundles the compiled dist into ONE
  * self-contained ESM file named main.js. The name is load-bearing: the CLI
  * derives its own entry path as path.join(dirname(import.meta.url), 'main.js')
- * (CLI_ENTRY in onboarding.ts), and the Stop-hook command is built from it.
+ * (CLI_ENTRY in cli-runtime.ts), and the Stop-hook command is built from it.
  *
  * The staging manifest drops private:true and every "*" workspace dependency:
  * the bundle has zero runtime deps, so the tarball installs in any repo on any

@@ -128,12 +128,21 @@ import { canonicalPath } from '@amabie/support';
 import { controllerExecution } from './provider/execution.js';
 import { digest, canonicalTask, taskWeakening, subjectDigest, TASK_KINDS, type TaskIdentity, type AuthorizationSubject } from './authorization.js';
 
-import {
-  ACCEPTANCE_SUBDIR, CLI_ENTRY, CONFIG_DIR, ENV_POLICY, EVIDENCE_DIR, Out, candidateDiffSignals, candidateIdentity, containedRealPath, configPath, ensureAmabieSelfIgnore,
-  discriminationObligation, execDigest, findRepoRoot, gitCommand, gitExe, gitWithinRoot, hasAmabieEntry, obligationsFor, parseGlobals, parseJsonOrNull, planAuthorityDrift, planDigest, readAcceptance, readConfig,
-  readTaskRecord, runPlanSteps, planWithFreshTests, settingsPath, TASK_FILE, untrustedConfigReason, writeAcceptance, writeFileAtomic, writeVerificationBundle,
-  type AcceptanceRecord, type AmabieConfig, type GitResult, type PlanStep, type StepResult, type TaskKind,
-} from './onboarding.js';
+import { ACCEPTANCE_SUBDIR, readAcceptance, readTaskRecord, writeAcceptance, type AcceptanceRecord } from './task-state.js';
+import { EVIDENCE_DIR, writeVerificationBundle } from './verification-evidence.js';
+import { Out, parseGlobals } from './cli-output.js';
+import { candidateDiffSignals } from './change-signals.js';
+import { discriminationObligation } from './regression-proof.js';
+import { hasAmabieEntry, settingsPath } from './harness-hooks.js';
+import { obligationsFor } from './proof-obligations.js';
+import { runPlanSteps, planWithFreshTests, type StepResult } from './check-runner.js';
+import { CLI_ENTRY } from './cli-runtime.js';
+import { CONFIG_DIR, configPath, ensureAmabieSelfIgnore, findRepoRoot, readConfig, TASK_FILE, untrustedConfigReason, type AmabieConfig } from './local-config.js';
+import { ENV_POLICY, execDigest, gitCommand, gitExe, type GitResult } from './execution-environment.js';
+import { candidateIdentity, gitWithinRoot } from './git-state.js';
+import { containedRealPath, writeFileAtomic } from './local-files.js';
+import { parseJsonOrNull, planAuthorityDrift, planDigest, type PlanStep } from './project.js';
+import { type TaskKind } from './authorization.js';
 import { authorityDrift, quarantineInfo, QUARANTINE_FILE, shortState, snapshotAuthority, snapshotTree, stampQuarantine, treeDrift, type AuthorityChange } from './authority.js';
 import {
   brokerRoutingRequired, refusalText,

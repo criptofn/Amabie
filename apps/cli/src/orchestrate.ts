@@ -27,7 +27,11 @@
  */
 import { cmdIsolate } from './candidate.js';
 import { TASK_KINDS } from './authorization.js';
-import { cmdTask, findRepoRoot, Out, parseGlobals, readConfig, readTaskRecord, unboundRequirements } from './onboarding.js';
+import { cmdTask } from './task-command.js';
+import { Out, parseGlobals } from './cli-output.js';
+import { readTaskRecord } from './task-state.js';
+import { unboundRequirements } from './proof-obligations.js';
+import { findRepoRoot, readConfig } from './local-config.js';
 
 /** Flags the delegated primitive needs, minus the ones that shape OUR output:
  *  forwarding `--json` would make two commands each print an envelope, and a

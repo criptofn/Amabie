@@ -26,7 +26,9 @@
 import { spawnSync } from 'node:child_process';
 import readline from 'node:readline';
 
-import { CLI_ENTRY, selfArgv, projectTestEntryHint, type McpProfile } from './onboarding.js';
+import { CLI_ENTRY, selfArgv } from './cli-runtime.js';
+import { projectTestEntryHint } from './regression-proof.js';
+import { type McpProfile } from './mcp-registration.js';
 import { AMABIE_VERSION } from './pipeline.js';
 
 /** The MCP revision this server speaks. */

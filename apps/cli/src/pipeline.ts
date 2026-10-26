@@ -45,7 +45,7 @@ export interface PipelineResult {
 
 /**
  * THE PRODUCTION AUTHORITY SOURCE for a non-package runner's identity lives in
- * `runner-authority.ts` (it needs `onboarding.ts`, which imports this module).
+ * `runner-authority.ts`, using the sealed local configuration directly.
  * Re-exported here so the spec path's authority has one discoverable address.
  */
 export { runnerIdentitiesFromSealedPlan } from './runner-authority.js';

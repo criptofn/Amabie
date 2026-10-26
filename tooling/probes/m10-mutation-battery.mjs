@@ -49,14 +49,16 @@ import { beginDistMutation, endDistMutation } from '../test-support/dist-mutatio
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
 const CAND = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'candidate.js');
-const ONB = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'onboarding.js');
+const PROOF_OBLIGATIONS = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'proof-obligations.js');
+const CHANGE_SIGNALS = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'change-signals.js');
+const GIT_STATE = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'git-state.js');
 const AUTH = path.join(REPO, 'apps', 'cli', 'dist', 'src', 'authorization.js');
 const PROBE = path.join(REPO, 'tooling', 'probes', 'm10-obligations.mjs');
 
 let failures = 0;
 function report(verdict, msg) { console.log(`${verdict} ${msg}`); if (verdict === 'FAIL') failures++; }
 
-const original = new Map([[CAND, fs.readFileSync(CAND)], [ONB, fs.readFileSync(ONB)], [AUTH, fs.readFileSync(AUTH)]]);
+const original = new Map([[CAND, fs.readFileSync(CAND)], [PROOF_OBLIGATIONS, fs.readFileSync(PROOF_OBLIGATIONS)], [CHANGE_SIGNALS, fs.readFileSync(CHANGE_SIGNALS)], [GIT_STATE, fs.readFileSync(GIT_STATE)], [AUTH, fs.readFileSync(AUTH)]]);
 // Custody: a sidecar copy of every file this battery is about to mutate, so an
 // interrupted run is discovered and repaired instead of silently trusted.
 const custody = beginDistMutation([...original.keys()]);
@@ -91,16 +93,16 @@ const MUTS = [
   { id: 'obligations ride EVERY bundle (incl. the FAIL arm — M11 repair fuel)', file: CAND,
     search: 'extra: { ...extra, obligations: obList }', replace: 'extra: { ...extra }', count: 4, own: 'S1 positive' },
   // --- the obligation engine in onboarding.js ---
-  { id: 'regression evidence reads the candidate diff (always-false: a proven bugfix goes NOT PROVEN)', file: ONB,
+  { id: 'regression evidence reads the candidate diff (always-false: a proven bugfix goes NOT PROVEN)', file: PROOF_OBLIGATIONS,
     search: 'const testTouched = sig.changes.some(isTestPath);', replace: 'const testTouched = false;', count: 1, own: 'S1 positive' },
-  { id: 'tests-green is met when the plan has a tests step (inverted = breaks the positive control)', file: ONB,
+  { id: 'tests-green is met when the plan has a tests step (inverted = breaks the positive control)', file: PROOF_OBLIGATIONS,
     search: "add(has('tests')", replace: "add(!has('tests')", count: 1, own: 'S1 positive' },
-  { id: 'committed test deletions ARE attributed to the coverage-loss obligation', file: ONB,
+  { id: 'committed test deletions ARE attributed to the coverage-loss obligation', file: CHANGE_SIGNALS,
     search: 'deletedTestsAttributable: [...new Set(attrDel)].filter(isTestPath),', replace: 'deletedTestsAttributable: [],', count: 1, own: 'S3 committed' },
   // --- the review-round gates (adversary F2/F3, correctness #1/#4b, evidence) ---
-  { id: 'the lying index (--assume-unchanged / skip-worktree) folds into dirty (adversary F2)', file: ONB,
+  { id: 'the lying index (--assume-unchanged / skip-worktree) folds into dirty (adversary F2)', file: GIT_STATE,
     search: 'const sneaky = status === null ? false : flags !== null && /^(?:[a-z]|S) /m.test(flags);', replace: 'const sneaky = false;', count: 1, own: 'S8' },
-  { id: 'a test renamed out of the test DIRECTORY is coverage loss even keeping the suffix (adversary F3)', file: ONB,
+  { id: 'a test renamed out of the test DIRECTORY is coverage loss even keeping the suffix (adversary F3)', file: CHANGE_SIGNALS,
     search: 'isTestDirPath(e.paths[0]) && !isTestDirPath(e.paths[1])', replace: 'false', count: 1, own: 'S9' },
   { id: 'the ladder reads signals captured BEFORE the window, not re-read after it (correctness #4b)', file: CAND,
     search: 'obligationsFor(task?.kinds ?? [], sig,', replace: 'obligationsFor(task?.kinds ?? [], candidateDiffSignals(rec.root, rec.baseHead),', count: 1, own: 'S10' },
