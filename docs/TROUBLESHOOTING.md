@@ -167,6 +167,22 @@ you should read it: an untrusted hook does not execute. Amabie's hook runs
 
 ---
 
+## "a hook from another Amabie installation is already present"
+
+**Why.** `.claude/settings.json`, `.codex/hooks.json` and `.mcp.json` record the
+absolute path to Amabie on the machine that ran `amabie setup`, so they are
+per-machine files. If one machine's copy was committed, a clone receives a hook
+that points at a path that does not exist here, and setup will not rewrite an
+entry it did not write.
+
+**What to do.** Remove that exact entry (setup lists it), then run `amabie setup --yes`.
+To stop it coming back, do not commit these files: add them to `.git/info/exclude`
+(local to this clone), or, if the team already tracks `.claude/settings.json`,
+commit your other changes without Amabie's hook entry (`git add -p`). Amabie does
+not edit your git exclude file or your tracked files for you.
+
+---
+
 ## It works on my machine and is red in CI
 
 This is a documented class of failure in this project, not a mystery. Fixtures and

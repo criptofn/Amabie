@@ -5,7 +5,7 @@ import { PROTOCOL_RESULT, type ProtocolIntegration } from './protocol.js';
 import { AGENT_INTEGRATIONS, hasAdvisory, installAdvisory, removeAdvisory } from './agents.js';
 import { Out, dirArg, parseGlobals } from './cli-output.js';
 import { installedCliPrefix } from './cli-runtime.js';
-import { codexHooksPath, detectHarnesses, findUnownedAmabieHookEntries, hasAmabieEntry, settingsPath, uninstallHooks } from './harness-hooks.js';
+import { codexHooksPath, detectHarnesses, findUnownedAmabieHookEntries, hasAmabieEntry, machineFilesNote, settingsPath, uninstallHooks } from './harness-hooks.js';
 import { agentCapability, gatingHookInstalled, proofLevelLine, protocolChecks, readOnlyProblems, sealedCopyReport, securityCapability } from './integration-status.js';
 import { CHECKPOINT_FILE, CONFIG_DIR, findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { containedRealPath, rel, writeFileAtomic } from './local-files.js';
@@ -390,9 +390,8 @@ export function cmdAgents(rawArgs: string[]): number {
   for (const i of trustPending) o.say(`note: ${i.label} — ${i.gatingNeedsTrust}.`);
   // v1.5 §4C — the question this command exists to answer ("what is actually wired here?") had no
   // answer for SCOPE: MEASURED (`git status` after setup) .claude/settings.json, .codex/hooks.json
-  // and .mcp.json are tracked PROJECT files, while .amabie/ self-ignores. One line, and the user
-  // can decide what to commit without reading source.
-  o.say('scope: the harness and tool entries Amabie writes (.claude/settings.json, .codex/hooks.json, .mcp.json) are PROJECT files — committing them shares them with a clone, and each developer then runs `amabie setup --yes` once so the recorded path matches their machine. Amabie\'s own state is local to you: .amabie/ (self-ignored) and this machine\'s trust store.');
+  // and .mcp.json hold this machine's absolute path (per-machine), while .amabie/ self-ignores. One line.
+  o.say(machineFilesNote('.claude/settings.json, .codex/hooks.json and .mcp.json'));
   o.verdict('CONNECTED', `${gated.map((i) => i.label).join(', ')} can gate completions here — the hook is installed in this repository.${trustPending.length > 0 ? ` (${trustPending.map((i) => i.label).join(', ')} gates once the hook is trusted.)` : ''}`, 'to confirm end to end: amabie doctor');
   return 0;
 }

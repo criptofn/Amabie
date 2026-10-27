@@ -422,3 +422,12 @@ export function uninstallHooks(root: string, cfg: AmabieConfig): { removed: numb
   }
   return { removed, problems };
 }
+
+/**
+ * The files setup writes record this machine's absolute path to Amabie so a hook can run it. That makes them
+ * per-machine: a clone that receives another machine's copy is refused by setup ("a hook from another
+ * installation"), because Amabie will not rewrite an entry it does not own. So the guidance is NOT to commit them.
+ */
+export function machineFilesNote(files: string): string {
+  return `scope: ${files} hold this machine's absolute path to Amabie, so they are per-machine and not project files to share: do not commit them (a teammate who clones another machine's copy is stopped by setup until the entry is removed). To keep them out of git on this machine only, add them to .git/info/exclude; if your team already tracks .claude/settings.json, commit your other changes without Amabie's hook entry (git add -p). Amabie's own state is local to you: .amabie/ (self-ignored) and this machine's trust store.`;
+}

@@ -15,7 +15,7 @@ import { Out, dirArg, parseGlobals, takePassEnv, takeToolchainDirs } from './cli
 import { CLI_ENTRY, buildHookCommand } from './cli-runtime.js';
 import { pinPlanPrograms, stepDisplay } from './execution-environment.js';
 import { candidateIdentity, gitWithinRoot } from './git-state.js';
-import { codexHooksPath, detectHarnesses, findForeignAmabieHooks, installClaudeHooks, installCodexStopHook, settingsPath } from './harness-hooks.js';
+import { codexHooksPath, detectHarnesses, findForeignAmabieHooks, installClaudeHooks, installCodexStopHook, machineFilesNote, settingsPath } from './harness-hooks.js';
 import { type AmabieConfig, CHECKPOINT_FILE, CONFIG_DIR, configPath, configTracked, ensureAmabieSelfIgnore, findRepoRoot, readConfig, retiredPackageCliPath, untrustedConfigReason, writeConfig } from './local-config.js';
 import { sealPassEnvNames, sealedPassEnvNames } from './pass-env.js';
 import { assertPlainTarget, containedRealPath, isRecord, rel, writeFileAtomic } from './local-files.js';
@@ -388,7 +388,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   if (foreignHooks.length) {
     o.verdict('NEEDS ATTENTION',
       'a hook from another Amabie installation is already present. Setup will not stack another completion hook or rewrite an entry this installation does not own.',
-      'remove the listed hook with the installation that wrote it, or remove that exact entry manually, then run amabie setup again');
+      "the entry most likely came from another machine's committed copy of this file (it records that machine's absolute path): remove that exact entry, or remove the hook with the installation that wrote it, then run amabie setup again. Keep these files out of git so it does not return (.git/info/exclude)");
     for (const entry of foreignHooks) o.say('  - ' + entry);
     return 2;
   }
@@ -573,8 +573,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // files that `git status` reports as TRACKED PROJECT files (a clone carries them), and one
   // directory that self-ignores. Nothing user-facing said which was which, and the recorded hook
   // command names an ABSOLUTE path on THIS machine — so a teammate receiving the entry verbatim
-  // gets a command their machine cannot run. One sentence, no mechanism change.
-  o.say(`  scope: ${rel(root, mcpConfigPath(root))} and the harness hook files are PROJECT files — commit them and a checkout/teammate gets them, and each person then runs \`amabie setup --yes\` once so the recorded path matches where Amabie is installed on their machine. Amabie's own state is local to you: .amabie/ (self-ignored) and this machine's trust store.`);
+  // gets a command their machine cannot run — so they are per-machine, not for committing. One sentence.
+  o.say(`  ${machineFilesNote(`${rel(root, mcpConfigPath(root))} and the harness hook files`)}`);
   // v1.3 §E, MEASURED with the real agent CLI (`claude mcp list` reports our entry as
   // "Pending approval"): the harness holds a project-scoped MCP server until a human approves it once.
   // That is one interactive step Amabie cannot take for you, so it is named here rather than left to

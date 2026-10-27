@@ -313,7 +313,7 @@ check('setup registers the agent tool server without touching the user\'s MCP se
 // 4B/4C: the trust step and the local-vs-project scope must be ANSWERED in the output.
 const trustWorded = /\/hooks/.test(setup.stdout) && /(will NOT run it|not gated|gates nothing)/i.test(setup.stdout);
 if (!trustWorded) check('setup explains the Codex trust step', false, setup.stdout); else check('setup explains the Codex trust step', true);
-const scopeWorded = /(PROJECT files|project file)/i.test(setup.stdout) && /(local to you|self-ignored)/i.test(setup.stdout);
+const scopeWorded = /per-machine/i.test(setup.stdout) && /do not commit/i.test(setup.stdout) && /(local to you|self-ignored)/i.test(setup.stdout);
 if (!scopeWorded) note_pending('setup states which Amabie files are PROJECT-scoped (shared) and which are local to this machine');
 else check('setup states which Amabie files are PROJECT-scoped (shared) and which are local', true);
 const undoWorded = /amabie uninstall/.test(setup.stdout);
