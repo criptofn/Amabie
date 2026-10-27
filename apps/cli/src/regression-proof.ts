@@ -531,7 +531,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
     const executionPlan = planWithFreshTests(cfg.plan);
     for (const s of executionPlan) {
       let r: StepResult;
-      try { r = runPlanStep(tree, cfg.pm, s, timeoutMs); } catch (e) {
+      try { r = runPlanStep(tree, cfg.pm, s, timeoutMs, root); } catch (e) {
         return unknown(`the sealed checks could not run against the baseline (${String(e).slice(0, 120)})`, changed);
       }
       ran.push(r);
@@ -570,7 +570,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
         if (!overlaid.includes(p) && gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) === null) continue;
         if (!copyInto(root, controlTree, p)) return unknown(`comparison input control could not copy ${safePath(p)}`, changed);
       }
-      const control = runPlanSteps(controlTree!, cfg.pm, planWithFreshTests(cfg.plan), timeoutMs);
+      const control = runPlanSteps(controlTree!, cfg.pm, planWithFreshTests(cfg.plan), timeoutMs, root);
       if (control.some((r) => !r.ok)) {
         const provenance = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
         const baseEvidence = writeComparison(root, 'baseline', ran, 'fail', provenance, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });

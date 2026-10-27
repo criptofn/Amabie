@@ -5,6 +5,7 @@ import { attributeFailures, npmScriptDirs, pathEntries, type AttributeInput, typ
 import { type PlanStep } from './project.js';
 import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
 import { type AmabieConfig, readConfig } from './local-config.js';
+import { passEnvValues } from './pass-env.js';
 
 /**
  * v1.5 BLOCKER 6 — THE OPERATOR-AUTHORIZED EXECUTABLE DIRECTORIES, AND NOTHING ELSE.
@@ -111,7 +112,13 @@ export function unresolvedStep(root: string, pm: string, step: PlanStep, err: un
   };
 }
 
-export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs = 600_000): StepResult {
+/**
+ * `authorityRoot` is the project whose sealed authority applies (toolchain directories, passed-through
+ * variable names). It differs from `root` when the step runs in a throwaway copy of the project, such
+ * as the baseline worktree, which has no `.amabie` of its own: without it the baseline would run in a
+ * poorer environment than the candidate and fail for a reason that has nothing to do with the change.
+ */
+export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs = 600_000, authorityRoot = root): StepResult {
   const argv = stepCommand(pm, step); // throws unless the step's command is fully validated
   const display = argv.join(' ');
   const program = argv[0] as string;
@@ -141,7 +148,7 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   // v1.5 blocker 6: the OPERATOR-authorized executable dirs sealed in this repo's config. Resolution
   // of the plan's OWN program is untouched above (never PATH); these exist for what the project's
   // check spawns transitively.
-  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(root));
+  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(authorityRoot), passEnvValues(authorityRoot));
   const stdout = r.stdout ?? '';
   const processFailure = r.error ? r.error.message : r.status === null ? 'process ended without an exit code' : undefined;
   const stderr = (r.stderr ?? '') + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
@@ -160,10 +167,10 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
 }
 
 /** A measured nonzero exit may collect further checks; an unmeasured process must halt them. */
-export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[], timeoutMs = 600_000): StepResult[] {
+export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[], timeoutMs = 600_000, authorityRoot = root): StepResult[] {
   const results: StepResult[] = [];
   for (const step of plan) {
-    const result = runPlanStep(root, pm, step, timeoutMs);
+    const result = runPlanStep(root, pm, step, timeoutMs, authorityRoot);
     results.push(result);
     if (result.exitCode === null) break;
   }

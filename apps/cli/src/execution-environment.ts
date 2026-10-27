@@ -305,7 +305,7 @@ function resolveFromAdapterDirs(step: PlanStep, program: string): string | null 
 
 /** Shared spawn for a resolved pm: the plan runner and doctor's liveness
  *  probe must consult the SAME bytes, so they share this one door. */
-export function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string, timeoutMs: number, toolchain?: Record<string, string>, toolchainDirs?: readonly string[]) {
+export function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string, timeoutMs: number, toolchain?: Record<string, string>, toolchainDirs?: readonly string[], operatorEnv?: Record<string, string>) {
   const controller = controllerExecution.getStore();
   if (controller) return controller.run([...resolved.spawnArgv, ...args], cwd, timeoutMs);
   // v1.5 blocker 6: the operator-authorized dirs are appended to the SAME sanitized env amabie has
@@ -313,10 +313,12 @@ export function spawnHardened(resolved: ResolvedPm, args: string[], cwd: string,
   // unchanged one (`hardenedEnv` / `hardenedEnvWithToolchain`), so a config without `toolchain`
   // produces byte-identical children.
   const dirs = toolchainDirs ?? [];
-  const env = dirs.length === 0
+  const passed = operatorEnv !== undefined && Object.keys(operatorEnv).length > 0 ? operatorEnv : undefined;
+  const env = dirs.length === 0 && passed === undefined
     ? (toolchain !== undefined && Object.keys(toolchain).length > 0 ? hardenedEnvWithToolchain(cwd, toolchain) : hardenedEnv(cwd))
     : sanitizedEnv({
       ws: { root: os.tmpdir(), fixture: cwd }, nodeDir: NODE_DIR, extraPathDirs: dirs,
+      ...(passed !== undefined ? { operatorEnv: passed } : {}),
       ...(toolchain !== undefined && Object.keys(toolchain).length > 0 ? { toolchain: { env: toolchain } } : {}),
     });
   const spawnedAtMs = Date.now();

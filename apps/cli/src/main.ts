@@ -100,6 +100,11 @@ usage:
                             step environment on purpose, because a program planted earlier on
                             the calling PATH would run as Amabie's own authority. A directory
                             inside the repository is refused; --clear-toolchain-dirs revokes
+                            --pass-env NAME (repeatable) lets your checks receive ONE variable
+                            of your shell (for example a test token). Only the name is kept,
+                            outside the repo; the value is read when a check runs and never
+                            stored. PATH, loader and runtime-control names are refused;
+                            --clear-pass-env revokes
   amabie status             lazy reconnect: does Amabie already know this repo, and is its
                             wiring sound? READ-ONLY — no project commands executed, zero
                             writes (a few read-only git metadata reads);
@@ -434,7 +439,7 @@ async function main(argv: string[]): Promise<number> {
   if (cmd !== 'mcp' && (argv.includes('--help') || argv.includes('-h'))) return usage(0);
   if (['setup', 'bind', 'accept', 'uninstall'].includes(cmd ?? '') && !(cmd === 'setup' && rest.includes('--check'))) {
     const target = cmd === 'setup' || cmd === 'uninstall'
-      ? rest.find((arg, index) => !arg.startsWith('-') && !['--mcp-profile', '--toolchain', '--toolchain-dir'].includes(rest[index - 1] ?? ''))
+      ? rest.find((arg, index) => !arg.startsWith('-') && !['--mcp-profile', '--toolchain', '--toolchain-dir', '--pass-env'].includes(rest[index - 1] ?? ''))
       : undefined;
     const problem = await operatorSessionProblem(findRepoRoot(target ?? process.cwd()), cmd!);
     if (problem) {

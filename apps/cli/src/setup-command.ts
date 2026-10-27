@@ -11,12 +11,13 @@ import { type PlanAuthority } from './project.js';
 import { probeTrustLevel, sealRecord, storeFromEnv, projectIdForRoot } from './trust-store.js';
 import { AMABIE_VERSION } from './pipeline.js';
 import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep, unresolvedStep } from './check-runner.js';
-import { Out, dirArg, parseGlobals, takeToolchainDirs } from './cli-output.js';
+import { Out, dirArg, parseGlobals, takePassEnv, takeToolchainDirs } from './cli-output.js';
 import { CLI_ENTRY, buildHookCommand } from './cli-runtime.js';
 import { pinPlanPrograms, stepDisplay } from './execution-environment.js';
 import { candidateIdentity, gitWithinRoot } from './git-state.js';
 import { codexHooksPath, detectHarnesses, findForeignAmabieHooks, installClaudeHooks, installCodexStopHook, settingsPath } from './harness-hooks.js';
 import { type AmabieConfig, CHECKPOINT_FILE, CONFIG_DIR, configPath, configTracked, ensureAmabieSelfIgnore, findRepoRoot, readConfig, retiredPackageCliPath, untrustedConfigReason, writeConfig } from './local-config.js';
+import { sealPassEnvNames, sealedPassEnvNames } from './pass-env.js';
 import { assertPlainTarget, containedRealPath, isRecord, rel, writeFileAtomic } from './local-files.js';
 import { type McpProfile, installMcpServer, mcpArgSignature, mcpConfigPath, mcpServerArgs } from './mcp-registration.js';
 import { unboundRequirements } from './proof-obligations.js';
@@ -158,9 +159,14 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.say(`REFUSED — ${setupArgs.problems.join('; ') || '--check cannot be combined with --yes'}. Nothing was changed.`);
     return 3;
   }
-  const toolchainArgs = takeToolchainDirs(rest);
+  const passArgs = takePassEnv(rest);
+  const toolchainArgs = takeToolchainDirs(passArgs.rest);
   const root = findRepoRoot(dirArg(toolchainArgs.rest) ?? process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'this folder is not inside a git repository.', 'cd into your project and try again'); return 2; }
+  if (passArgs.problems.length > 0) {
+    o.verdict('NEEDS ATTENTION', `Amabie will not pass that variable to your checks: ${passArgs.problems.join('; ')}.`, 'name a variable that only carries data for your tests (a token or a URL), then run setup again — nothing was changed');
+    return 2;
+  }
   // The authorization is validated BEFORE anything is written: a directory inside the repository is
   // refused, because the tree the worker under verification can write is not a source of authority.
   const inventory = toolchainArgs.tools.length > 0 ? inventoryOperatorToolchain(process.env.PATH ?? '') : {};
@@ -498,6 +504,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   try {
     sealRecord(store, { projectId, kind: 'registration', amabieVersion: AMABIE_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
     sealRecord(store, { projectId, kind: 'plan-seal', amabieVersion: AMABIE_VERSION, payload: cfg.planAuthority });
+    // Names only, outside the repo; `--clear-pass-env` is the revocation and a plain re-run keeps what a human allowed.
+    if (passArgs.clear || passArgs.names.length > 0) sealPassEnvNames(root, passArgs.clear ? passArgs.names : [...sealedPassEnvNames(root), ...passArgs.names], store);
   } catch (e) {
     // v1.4 §E — translated for the everyday path. Same refusal, same exit code, same actionable
     // next step; the ordinary user is no longer asked to know what "sealing authority" means.
@@ -587,6 +595,10 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.say(`toolchain: ${effectiveToolchainDirs.length} executable director${effectiveToolchainDirs.length === 1 ? 'y' : 'ies'} you authorized${toolchainDirs.length > 0 ? '' : ' (kept from the previous setup)'} — appended AFTER Amabie's own trusted directories, never your shell's PATH:`);
     for (const d of effectiveToolchainDirs) o.say(`  + ${d}`);
     o.say('  the plan\'s own program is still pinned to an absolute path; these directories exist for what your check spawns itself. Revoke with: amabie setup --clear-toolchain-dirs');
+  }
+  const passedNames = sealedPassEnvNames(root);
+  if (passedNames.length > 0) {
+    o.say(`environment: ${passedNames.length} variable${passedNames.length === 1 ? '' : 's'} you allowed reach${passedNames.length === 1 ? 'es' : ''} your checks by name (${passedNames.join(', ')}); values are read from your shell when checks run and are never stored. Revoke with: amabie setup --clear-pass-env`);
   }
   o.say('\nsmoke test (running your own project scripts):');
   let allOk = true;

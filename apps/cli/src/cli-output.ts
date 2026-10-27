@@ -1,3 +1,4 @@
+import { passEnvNameProblem } from '@amabie/support';
 import { TOOLCHAIN_CANDIDATES } from './sealed-toolchain.js';
 import { emitEnvelope, PROTOCOL_STATUS, type ProtocolEnvelope } from './protocol.js';
 import { type StepResult } from './check-runner.js';
@@ -95,4 +96,30 @@ export function takeToolchainDirs(args: string[]): { dirs: string[]; tools: stri
     rest.push(a);
   }
   return { dirs, tools, rest, problems, clear };
+}
+
+/**
+ * `--pass-env NAME` (repeatable) names a variable of YOUR shell that checks may receive; the value is
+ * read when a check runs and never stored. `--clear-pass-env` revokes every earlier name. Loader and
+ * runtime-control names are refused here, before anything is sealed.
+ */
+export function takePassEnv(args: string[]): { names: string[]; rest: string[]; problems: string[]; clear: boolean } {
+  const names: string[] = [];
+  const rest: string[] = [];
+  const problems: string[] = [];
+  let clear = false;
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i] as string;
+    if (a === '--clear-pass-env') { clear = true; continue; }
+    if (a === '--pass-env' || a.startsWith('--pass-env=')) {
+      const value = a === '--pass-env' ? args[i + 1] : a.slice('--pass-env='.length);
+      if (value === undefined || value.startsWith('--')) { problems.push('--pass-env needs a variable name (nothing was authorized)'); continue; }
+      if (a === '--pass-env') i += 1;
+      const problem = passEnvNameProblem(value);
+      if (problem !== null) problems.push(problem); else names.push(value);
+      continue;
+    }
+    rest.push(a);
+  }
+  return { names, rest, problems, clear };
 }
