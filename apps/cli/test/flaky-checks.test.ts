@@ -4,7 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, test } from 'node:test';
+import { REPEAT_MAX_SECS, repeatFailedStep, runPlanStep } from '../src/check-runner.js';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
+import { readConfig } from '../src/onboarding.js';
 
 /**
  * A failed check is run again, a bounded number of times, to tell a reproducible failure from an
@@ -84,4 +86,29 @@ test('a passing check is run once', () => {
   const out = stopHook(p.root);
   assert.notEqual(out.decision, 'block');
   assert.deepEqual(p.left(), ['fail', 'fail'], 'no repeat after a pass');
+});
+
+test('the runner measures the elapsed time of a real run, which the repeat cap reads', () => {
+  const p = fixture();
+  const cfg = readConfig(p.root);
+  assert.ok(cfg && cfg !== 'corrupt');
+  const result = runPlanStep(p.root, cfg.pm, cfg.plan[0]!, 60_000);
+  assert.ok(Number.isFinite(result.secs) && result.secs > 0, `a real run takes measurable time, got ${result.secs}`);
+});
+
+test('a first failure that already took longer than the cap is not repeated, and stays the verdict', () => {
+  const p = fixture();
+  const cfg = readConfig(p.root);
+  assert.ok(cfg && cfg !== 'corrupt');
+  p.sequence(['fail']);
+  const first = runPlanStep(p.root, cfg.pm, cfg.plan[0]!, 60_000);
+  assert.equal(first.ok, false);
+  p.sequence(['pass', 'pass']);
+  const outcome = repeatFailedStep(p.root, cfg.pm, cfg.plan[0]!, { ...first, secs: REPEAT_MAX_SECS + 1 });
+  assert.deepEqual(outcome, { stable: true, runs: 1, passed: 0 }, 'the first failure is reported as it was');
+  assert.deepEqual(p.left(), ['pass', 'pass'], 'no extra run consumed the sequence');
+  // the same failure, measured within the cap, is repeated and answers the question
+  const again = repeatFailedStep(p.root, cfg.pm, cfg.plan[0]!, { ...first, secs: 1 });
+  assert.equal(again.runs, 2);
+  assert.equal(again.stable, false);
 });

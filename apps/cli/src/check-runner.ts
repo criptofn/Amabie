@@ -162,14 +162,17 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   // of the plan's OWN program is untouched above (never PATH); these exist for what the project's
   // check spawns transitively.
   const passed = passEnvValues(authorityRoot);
+  // Elapsed time of the real run only, on a monotonic clock (the repeat cap reads it; wall time can jump).
+  const began = process.hrtime.bigint();
   const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(authorityRoot), passed);
+  const secs = Number(process.hrtime.bigint() - began) / 1e9;
   const stdout = redactPassEnv(r.stdout ?? '', passed);
   const processFailure = r.error ? r.error.message : r.status === null ? 'process ended without an exit code' : undefined;
   const stderr = redactPassEnv(r.stderr ?? '', passed) + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
   const out = `${stdout}${stderr}`;
   const result: StepResult = {
     kind: step.kind, display, ok: processFailure === undefined && r.status === 0,
-    exitCode: processFailure === undefined ? r.status : null, secs: 0,
+    exitCode: processFailure === undefined ? r.status : null, secs,
     tail: out.split(/\r?\n/).filter(Boolean).slice(-12).join('\n'),
     argv, cwd, stdout, stderr,
     execArgv: [...resolved.spawnArgv, ...argv.slice(1)],
