@@ -6,6 +6,7 @@ import { CLI_ENTRY } from './cli-runtime.js';
 import { CONFIG_DIR } from './local-config.js';
 import { containedRealPath } from './local-files.js';
 import { readSessionRegistry } from './session-registry.js';
+import { storeFromEnv } from './trust-store.js';
 
 const OPERATOR_COMMANDS = new Set(['setup', 'bind', 'accept', 'uninstall']);
 const isOperator = (word: string): boolean => word.startsWith('\0');
@@ -134,7 +135,8 @@ export async function operatorSessionProblem(root: string | null, command: strin
   // The same fact, kept outside the repository: deleting `.amabie` (with any interpreter) and unsetting
   // the agent markers must not make a session that is still open look closed.
   const registry = readSessionRegistry(root);
-  if (registry.state === 'unreadable') return `Amabie could not inspect its record of open agent sessions (${registry.reason}); operator changes were refused. Repair the trust store, or remove the damaged record as a human operator.`;
+  // An unusable store is not an empty one: a session may be open behind it. The human is told which store, and how to point elsewhere.
+  if (registry.state === 'unreadable') return `Amabie could not inspect its record of open agent sessions (${registry.reason}); operator changes were refused. The trust store is ${storeFromEnv().root}: repair it, point AMABIE_TRUST_STORE at a usable directory, or remove the damaged record as a human operator.`;
   if (registry.state === 'active') active = true;
   if (!active) return null;
   if (!process.stdin.isTTY || !process.stdout.isTTY) return 'An agent session is open. Close it before changing verification authority, or review and confirm this action in a human terminal.';

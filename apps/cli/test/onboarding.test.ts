@@ -365,8 +365,11 @@ describe('setup', () => {
     const mcpDoc = { mcpServers: { teammate: { command: 'node', args: ['teammate.js'] } } };
     fs.writeFileSync(mcp, JSON.stringify(mcpDoc));
     const before = [settings, codexHooks, mcp].map((file) => fs.readFileSync(file));
-    const blockedStore = path.join(TMP, 'trust-store-is-a-file');
-    fs.writeFileSync(blockedStore, 'not a directory');
+    // A readable, never-used store that refuses every write: its authority lock is held, so sealing fails
+    // AFTER setup has written the integration files (a store that is not even a directory is refused
+    // earlier, by the open-session check, and would never reach the rollback).
+    const blockedStore = path.join(TMP, 'trust-store-locked');
+    fs.mkdirSync(path.join(blockedStore, '.authority-lock'), { recursive: true });
 
     const result = amabie(['setup', '--yes', root], undefined, undefined, { AMABIE_TRUST_STORE: blockedStore });
     assert.equal(result.status, 2, result.stdout + result.stderr);

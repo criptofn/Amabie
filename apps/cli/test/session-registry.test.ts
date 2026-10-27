@@ -104,6 +104,8 @@ test('a damaged session record refuses operator actions instead of reading as "n
   fs.writeFileSync(record, '{"not":"a sealed record"}');
   const problem = await operatorProblem(root);
   assert.match(problem ?? '', /could not inspect its record of open agent sessions/i);
+  assert.ok((problem ?? '').includes(store), 'the refusal names the trust store it could not read');
+  assert.match(problem ?? '', /AMABIE_TRUST_STORE/);
   assert.equal(readSessionRegistry(root).state, 'unreadable');
 });
 

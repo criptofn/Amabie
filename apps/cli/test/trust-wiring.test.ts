@@ -103,9 +103,11 @@ describe('1.1 P0 trust-store wiring', () => {
   });
 
   it('a store that cannot mint fails setup closed with NO config written', () => {
-    const blocker = path.join(TMP, 'blocked');
-    fs.writeFileSync(blocker, 'a file where a store directory must go');
-    process.env.AMABIE_TRUST_STORE = path.join(blocker, 'store');
+    // A usable-to-read store that refuses writes (its authority lock is held): the seal fails, not the
+    // earlier open-session check, which refuses a store that is not even a directory (next test).
+    const locked = path.join(TMP, 'locked');
+    fs.mkdirSync(path.join(locked, '.authority-lock'), { recursive: true });
+    process.env.AMABIE_TRUST_STORE = locked;
     try {
       const root = makeProject('wire-noseal');
       const r = amabie(['setup', '--yes'], root);
@@ -118,6 +120,25 @@ describe('1.1 P0 trust-store wiring', () => {
       assert.match(r.stdout, /could not store its verification record/);
       assert.match(r.stdout, /AMABIE_TRUST_STORE/);
       assert.ok(!fs.existsSync(cfgFile(root)), 'a failed seal must leave no half-wired config');
+    } finally {
+      process.env.AMABIE_TRUST_STORE = STORE_ROOT;
+    }
+  });
+
+  it('a store path that is not a directory refuses setup, names the store variable and writes no config', () => {
+    const blocker = path.join(TMP, 'blocked');
+    fs.writeFileSync(blocker, 'a file where a store directory must go');
+    process.env.AMABIE_TRUST_STORE = path.join(blocker, 'store');
+    try {
+      const root = makeProject('wire-notadir');
+      const r = amabie(['setup', '--yes'], root);
+      assert.equal(r.status, 2, r.stdout + r.stderr);
+      // Where the refusal comes from differs by platform: POSIX cannot read under a file (ENOTDIR), so the
+      // open-session check refuses first, on stderr; elsewhere the read says "never used" and the seal fails.
+      // Either way the human is told which variable to repair, and nothing was written.
+      assert.match(`${r.stdout}${r.stderr}`, /AMABIE_TRUST_STORE/);
+      assert.match(`${r.stdout}${r.stderr}`, /trust store|verification record/);
+      assert.ok(!fs.existsSync(cfgFile(root)), 'a refused setup must leave no config');
     } finally {
       process.env.AMABIE_TRUST_STORE = STORE_ROOT;
     }
