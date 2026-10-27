@@ -86,13 +86,16 @@ the evidence for each. Declare the intended one and run setup again.
 
 ```
 NEEDS ATTENTION — Amabie is wired here, but your project's own checks did not
-pass (test, build). That is your project talking, not Amabie.
+pass (test, build).
 ```
 
-**Why it matters.** This is not an Amabie failure. The checks you declared are
-already failing on the current working tree, which means the gate would block
-every completion until they pass. Amabie says so at setup instead of letting you
-discover it mid-task.
+**Why it matters.** The checks you declared ran in Amabie's sealed environment (a
+reduced PATH, none of your shell's variables) and are failing on the current
+working tree, so the gate would block every completion until they pass. Amabie
+says so at setup instead of letting you discover it mid-task. If a check passes in
+your own terminal but fails here, a missing tool or variable is the usual cause;
+that case is reported separately as an environment problem with the directory to
+allow, not as this message.
 
 **What to do.** Fix the failing checks (or ask your agent to), then `amabie
 doctor`. The full runner output is written to disk and its path is printed — read

@@ -244,15 +244,14 @@ function locateFor(program: string, seal: ToolchainSeal | null, operatorDirs: re
 }
 
 /**
- * The project-failure line. It KEEPS the sentence the product already printed for this case
- * ("your project's own checks did not pass … That is your project talking, not Amabie.") because that
- * sentence was TRUE here and existing consumers read it — the defect was never this branch, it was
- * this branch being printed when the cause was Amabie's own restriction. Only the vocabulary word
- * (`PROJECT CHECK FAILURE`) and the named step are new.
+ * The project-failure line: one factual sentence, the failed steps and, when known, what ran and how
+ * it exited. It no longer closes with a verdict on blame ("That is your project talking, not Amabie."):
+ * even where no tool was missing, the sealed environment is Amabie's own restriction (reduced PATH, no
+ * inherited variables), so the sentence over-claimed and sent people away from the recorded output that
+ * actually says why. The detailed output stays in the evidence; this line only says what to do next.
  */
 function projectFailureReason(kinds: readonly string[], detail?: string): string {
-  return `${PROJECT_CHECK_FAILURE} — your project's own checks did not pass (${kinds.join(', ')}). `
-    + `${detail === undefined ? '' : `${detail} `}That is your project talking, not Amabie.`;
+  return `${PROJECT_CHECK_FAILURE} — your project's own checks did not pass (${kinds.join(', ')}).${detail === undefined ? '' : ` ${detail}`}`;
 }
 
 export function attributeStepFailure(input: AttributeInput): FailureAttribution {
