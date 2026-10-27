@@ -32,7 +32,7 @@ export function proofScopeLine(proof: ProtocolProof): string {
  *  note byte-identical (m6 contract pins depend on it). */
 export function obligationsFor(
   kinds: TaskKind[], sig: DiffSignals, planKinds: Set<string>, requirementCount: number,
-  baseline: 'setup' | 'isolation' = 'setup',
+  baseline: 'setup' | 'isolation' | 'task' = 'setup',
   task?: TaskIdentity | null,
   authority?: { plan: PlanStep[]; planAuthority?: PlanAuthority },
 ): Obligation[] {
@@ -44,7 +44,7 @@ export function obligationsFor(
     const testTouched = sig.changes.some(isTestPath); // deletions are coverage LOSS, never regression evidence (review #4)
     add(testTouched
       ? { id: 'regression-evidence', mode: 'objective', status: 'unproven', note: 'test files were added/modified, but a changed filename is not regression proof — a measured baseline comparison must establish discrimination' }
-      : { id: 'regression-evidence', mode: 'objective', status: 'unproven', note: `no test file was added or changed since ${baseline} — regression evidence UNPROVEN (an old suite can stay green while the bug survives). Add a test that reproduces the fixed bug.` });
+      : { id: 'regression-evidence', mode: 'objective', status: 'unproven', note: `no test file was added or changed since ${baseline === 'task' ? 'this request began' : baseline} — regression evidence UNPROVEN (an old suite can stay green while the bug survives). Add a test that reproduces the fixed bug.` });
   }
   if (kinds.includes('refactor') || has('tests')) {
     add(has('tests')
@@ -61,6 +61,8 @@ export function obligationsFor(
     // silent — a different honest sentence (correctness review #5).
     const premise = baseline === 'isolation'
       ? 'the candidate-vs-isolation-base committed diff cannot be resolved'
+      : baseline === 'task'
+      ? 'the committed diff since this request began cannot be resolved'
       : sig.setupDirtProven
       ? 'the repo was already dirty at setup'
       : "Amabie cannot establish the repo's state at setup";

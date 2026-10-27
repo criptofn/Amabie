@@ -28,8 +28,10 @@ export interface ClaudeTurnState {
   promptId: string;
   registeredPromptId: string | null;
   task: TaskIdentity | null;
-  /** HEAD when the request started. Wording only (earlier-task provenance); never a verdict input. */
+  /** HEAD when the request started. Scopes the Stop verdict only together with `startClean`; otherwise earlier-task provenance wording. */
   startHead?: string;
+  /** The tree and index matched `startHead` (ignoring Amabie's own files) when the request started: the task boundary is provable. */
+  startClean?: boolean;
 }
 
 function claudeTurnStatePath(root: string, sessionId: string): string {
@@ -49,7 +51,8 @@ export function readClaudeTurnState(root: string, sessionId: string): ClaudeTurn
       || (v.registeredPromptId === null && v.task !== null)) return null;
     return { schema: 'amabie-turn/1', sessionDigest: v.sessionDigest, promptId: v.promptId,
       registeredPromptId: v.registeredPromptId as string | null, task,
-      ...(typeof v.startHead === 'string' && /^[0-9a-f]{40,64}$/i.test(v.startHead) ? { startHead: v.startHead } : {}) };
+      ...(typeof v.startHead === 'string' && /^[0-9a-f]{40,64}$/i.test(v.startHead) ? { startHead: v.startHead } : {}),
+      ...(v.startClean === true ? { startClean: true } : {}) };
   } catch { return null; }
 }
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { buildFailurePayload } from './failure-payload.js';
 import { agentToolProblem, isReadOnlyCommand, isTaskRegistration } from './agent-session-guard.js';
 import { adapterFor, planAuthorityDrift, planDigest, sha256, stepKey } from './project.js';
-import { collectDiffSignals, inferTaskKinds } from './change-signals.js';
+import { candidateDiffSignals, collectDiffSignals, inferTaskKinds, isAmabieOwnArtifact } from './change-signals.js';
 import { type StepResult, attributeRunFailures, planWithFreshTests, repeatFailedStep, runPlanStep } from './check-runner.js';
 import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
@@ -48,7 +48,12 @@ export async function cmdCheckpoint(): Promise<number> {
       registeredPromptId: null, task: null,
     };
     const startHead = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
-    if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) state.startHead = startHead;
+    if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) {
+      state.startHead = startHead;
+      // A request that begins on a clean tree has a provable boundary: what changes after this point is its own work.
+      const atStart = candidateDiffSignals(root, startHead);
+      if (atStart.resolved && atStart.touched.every(isAmabieOwnArtifact)) state.startClean = true;
+    }
     // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
     const registered = registerAgentSession(root, sessionId);
     if (registered === 'full') return emit({ decision: 'block', reason: `Amabie is tracking ${MAX_SESSIONS} open agent sessions for this project, the most it records, and will not forget a live one to make room. The prompt was stopped before project work; close the other sessions, or as a human operator remove the stale session record from the user trust store, then retry.` });
@@ -174,6 +179,33 @@ export async function cmdCheckpoint(): Promise<number> {
     return emit({ decision: 'block', reason: `Amabie blocked completion: verification authority changed by candidate — ${drift}. Amabie will not certify proof commands it never sealed. Restore the sealed checks, or have the human operator review the new plan and run: amabie setup from a terminal. An agent cannot reseal its own proof through this session.` });
   }
 
+  /**
+   * THE TASK BOUNDARY. A request that began on a clean tree is judged on what changed since it began
+   * (`startHead` to HEAD, plus staged and worktree), NOT on everything since `amabie setup`. Work an
+   * earlier request committed was judged at that request's own Stop; carrying it forward made every
+   * later request answer for it (a stale regression comparison on a plain question). Agent commits made
+   * DURING this request are still inside the range, so a commit never launders a change. The sealed
+   * authority check above is untouched, and a deleted test stays visible from the sealed baseline.
+   * A request that began on a dirty tree has no provable boundary and keeps the cumulative view.
+   */
+  const scopeBase = turn?.startHead !== undefined && turn.startClean === true ? turn.startHead : undefined;
+  const taskSignals = (): ReturnType<typeof collectDiffSignals> => {
+    const cumulative = collectDiffSignals(root, cfg);
+    if (scopeBase === undefined) return cumulative;
+    const own = candidateDiffSignals(root, scopeBase);
+    return { ...own,
+      deletedTestsAttributable: [...new Set([...own.deletedTestsAttributable, ...cumulative.deletedTestsAttributable])],
+      deletedTestsUnattributable: [...new Set([...own.deletedTestsUnattributable, ...cumulative.deletedTestsUnattributable])] };
+  };
+  if (scopeBase !== undefined && turn && turn.registeredPromptId !== turn.promptId && typeof input.task !== 'string') {
+    // Nothing was registered and nothing changed: a question. The sealed checks have nothing to certify.
+    const sig = taskSignals();
+    if (sig.resolved && sig.touched.every(isAmabieOwnArtifact)
+      && sig.deletedTestsAttributable.length === 0 && sig.deletedTestsUnattributable.length === 0) {
+      return emit({ systemMessage: 'Amabie: this request changed nothing in the project, so the sealed checks were not re-run.' });
+    }
+  }
+
   // M4 provenance for every bundle this invocation writes — from the TRUSTED
   // in-memory config (shape-checked, non-distrusted above), never re-read from
   // the evidence dir.
@@ -225,7 +257,7 @@ export async function cmdCheckpoint(): Promise<number> {
     const kinds = task && task.kinds.length > 0
       ? task.kinds
       : (typeof input.task === 'string' && input.task.trim() ? inferTaskKinds(input.task.trim().slice(0, 4000)) : []);
-    const obligations = obligationsFor(kinds, collectDiffSignals(root, cfg), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, 'setup', task, cfg);
+    const obligations = obligationsFor(kinds, taskSignals(), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, scopeBase === undefined ? 'setup' : 'task', task, cfg);
     /**
      * MEASUREMENT SUPERSEDES INFERENCE. `obligationsFor` decides regression evidence from the
      * DECLARED kind and the diff ("a bugfix with no test file touched is unproven"); the
@@ -233,7 +265,7 @@ export async function cmdCheckpoint(): Promise<number> {
      * a bugfix that turns an existing red check green (real regression evidence, no test file
      * touched) would be called unproven, and a test file touched for show would be called met.
      */
-    const regression = refactorPreservationLimit(discriminationObligation(root, cfg, 600_000, undefined, undefined, ran, turn?.startHead), kinds);
+    const regression = refactorPreservationLimit(discriminationObligation(root, cfg, 600_000, scopeBase, undefined, ran, turn?.startHead), kinds);
     if (regression !== null) {
       for (let i = obligations.length - 1; i >= 0; i -= 1) {
         if (obligations[i]!.id === regression.id) obligations.splice(i, 1);

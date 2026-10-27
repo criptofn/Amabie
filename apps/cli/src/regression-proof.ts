@@ -91,7 +91,8 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
    * worker-authored evidence, and the message says which is which.
    */
   /**
-   * Follow-up tasks: the sealed baseline stays at setup, so a check an EARLIER task added (and the
+   * Follow-up tasks that began on a DIRTY tree (a clean one is judged from its own start by the caller,
+   * and never reaches this): the sealed baseline stays at setup, so a check an EARLIER task added (and the
    * human kept) is still "added since the baseline". It is not this session's work, and only a
    * human re-running setup adopts it into the baseline; an agent edit never does. A file this task
    * has not touched since it started is therefore reported as earlier work, not as created now.
@@ -102,7 +103,7 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
     ...disc.modifiedChecks.map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`),
   ];
   const earlierCaveat = earlier.size > 0
-    ? `${[...earlier].slice(0, 3).map(safePath).join(', ')} was added after the sealed baseline and before this task, so it is earlier unadopted work, not independent authority; if you reviewed and kept it, run amabie setup in your own terminal to adopt it into the baseline`
+    ? `${[...earlier].slice(0, 3).map(safePath).join(', ')} was added after the sealed baseline and before this task, so it is earlier unadopted work, not independent authority; this request began with uncommitted changes, so Amabie cannot separate it from earlier work: commit it before the next request and that request is judged only on its own change (or, to adopt it into the baseline, run amabie setup in your own terminal)`
     : undefined;
   const workerCaveat = workerAuthored.length === 0 ? earlierCaveat : workerAuthored.length > 0
     ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. Retain this in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance${earlierCaveat === undefined ? '' : `; ${earlierCaveat}`}`
