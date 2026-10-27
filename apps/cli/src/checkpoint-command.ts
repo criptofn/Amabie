@@ -9,6 +9,7 @@ import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep 
 import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { obligationsFor, proofSummary } from './proof-obligations.js';
+import { gitWithinRoot } from './git-state.js';
 import { discriminationObligation } from './regression-proof.js';
 import { isAgentSessionRegistered, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
@@ -39,6 +40,8 @@ export async function cmdCheckpoint(): Promise<number> {
       schema: 'amabie-turn/1', sessionDigest: sha256(sessionId), promptId: crypto.randomUUID(),
       registeredPromptId: null, task: null,
     };
+    const startHead = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
+    if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) state.startHead = startHead;
     // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
     if (!registerAgentSession(root, sessionId)) return emit({ decision: 'block', reason: 'Amabie could not record this agent session in its trust store. The prompt was stopped before project work; repair the trust store (see: amabie doctor), then retry.' });
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
@@ -203,7 +206,7 @@ export async function cmdCheckpoint(): Promise<number> {
      * a bugfix that turns an existing red check green (real regression evidence, no test file
      * touched) would be called unproven, and a test file touched for show would be called met.
      */
-    const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran);
+    const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran, turn?.startHead);
     if (regression !== null) {
       for (let i = obligations.length - 1; i >= 0; i -= 1) {
         if (obligations[i]!.id === regression.id) obligations.splice(i, 1);

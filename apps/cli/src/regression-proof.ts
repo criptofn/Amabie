@@ -66,7 +66,7 @@ export function projectTestEntryHint(startDir: string): string {
  * `null` means no comparison duty applies (for example, no behavior changed).
  * A required comparison that could not run remains objectively UNPROVEN.
  */
-export function discriminationObligation(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[]): Obligation | null {
+export function discriminationObligation(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[], taskStartHead?: string): Obligation | null {
   const disc = planDiscrimination(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns);
   if (!disc.applicable) return null;
   if (disc.basePassed === null) return {
@@ -90,12 +90,22 @@ export function discriminationObligation(root: string, cfg: AmabieConfig, timeou
    * exactly as much as a creation does, so added and modified checks are now both
    * worker-authored evidence, and the message says which is which.
    */
+  /**
+   * Follow-up tasks: the sealed baseline stays at setup, so a check an EARLIER task added (and the
+   * human kept) is still "added since the baseline". It is not this session's work, and only a
+   * human re-running setup adopts it into the baseline; an agent edit never does. A file this task
+   * has not touched since it started is therefore reported as earlier work, not as created now.
+   */
+  const earlier = new Set(taskStartHead === undefined ? [] : disc.addedChecks.filter((p) => unchangedSince(root, taskStartHead, p)));
   const workerAuthored = [
-    ...disc.addedChecks.map((p) => `${safePath(p)} (created by this session)`),
+    ...disc.addedChecks.filter((p) => !earlier.has(p)).map((p) => `${safePath(p)} (created by this session)`),
     ...disc.modifiedChecks.map((p) => `${safePath(p)} (EXISTING check rewritten by this session)`),
   ];
-  const workerCaveat = workerAuthored.length > 0
-    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. Retain this in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance`
+  const earlierCaveat = earlier.size > 0
+    ? `${[...earlier].slice(0, 3).map(safePath).join(', ')} was added after the sealed baseline and before this task, so it is earlier unadopted work, not independent authority; if you reviewed and kept it, run amabie setup in your own terminal to adopt it into the baseline`
+    : undefined;
+  const workerCaveat = workerAuthored.length === 0 ? earlierCaveat : workerAuthored.length > 0
+    ? `the evidence that discriminates this change is CHECK TEXT WRITTEN BY THE WORKER ITSELF (${workerAuthored.slice(0, 3).join(', ')}) — sensitive to the change, but authored by the same worker whose work it judges, so it is NOT independent authority. Retain this in your report. Do not re-run setup or rewrite the baseline to remove it. Independent coverage needs an operator-bound check (amabie bind <script> --requirement "<exact text>" --reseal) or a human's acceptance${earlierCaveat === undefined ? '' : `; ${earlierCaveat}`}`
     : undefined;
   const pendingCaveat = disc.pendingCountIncreases?.length
     ? `the test runner reported more skipped/pending cases on the candidate than on the comparison baseline (${disc.pendingCountIncreases.map((x) => `test check ${x.testRun}: ${x.baseline}→${x.candidate} (${x.runner})`).join(', ')}); review those cases because a green exit code alone does not show that they ran${disc.baselineEvidence ? `; baseline comparison evidence: ${disc.baselineEvidence}` : ''}`
@@ -347,6 +357,14 @@ export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 
   // Preserve the original worker-origin caveat: a committed check has not become
   // independent authority merely because the additional base contains it.
   return sealed;
+}
+
+/** True when the working-tree file is byte-identical to the one committed at `head` (the task started with it). */
+function unchangedSince(root: string, head: string, file: string): boolean {
+  if (!/^[0-9a-f]{40,64}$/i.test(head)) return false;
+  const committed = gitWithinRoot(root, ['rev-parse', '--verify', '--quiet', `${head}:${file}`])?.trim();
+  const current = gitWithinRoot(root, ['hash-object', '--', file])?.trim();
+  return committed !== undefined && committed !== '' && committed === current;
 }
 
 function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, isolationBase?: string, writeComparison = writeVerificationBundle, candidateRuns?: readonly StepResult[]): DiscriminationResult {
