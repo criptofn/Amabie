@@ -63,11 +63,14 @@ other integrations can be advisory. The current capability is **LOCAL**: worker
 and verifier share an OS user. These guards are not an OS sandbox against a
 determined same-user process.
 
-No token-saving or comparative superiority claim is established. Historical
-benchmarks and their withdrawn claims are kept in the
+No token-saving or comparative superiority claim is established. Whether an agent
+is helped by the gate in everyday use is also not established: the saved
+benchmarks measure what the gate catches and blocks, not better agent outcomes.
+Historical benchmarks and their withdrawn claims are kept in the
 [dated reference](https://github.com/criptofn/Amabie/blob/main/docs/history/README-2.0.md).
 
 - [Runnable quickstart](https://github.com/criptofn/Amabie/blob/main/QUICKSTART.md)
+- [Documentation index](https://github.com/criptofn/Amabie/blob/main/docs/README.md) and [how the gate works](https://github.com/criptofn/Amabie/blob/main/docs/ARCHITECTURE.md)
 - [Compatibility](https://github.com/criptofn/Amabie/blob/main/docs/COMPATIBILITY.md)
 - [Security contract](https://github.com/criptofn/Amabie/blob/main/SECURITY.md)
 - [Contributing and module map](https://github.com/criptofn/Amabie/blob/main/CONTRIBUTING.md)
