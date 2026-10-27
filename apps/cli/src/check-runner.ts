@@ -6,7 +6,7 @@ import { attributeFailures, npmScriptDirs, pathEntries, projectVenv, type Attrib
 import { type PlanStep } from './project.js';
 import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, programIdentity, programInsideRoot, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
 import { type AmabieConfig, readConfig } from './local-config.js';
-import { passEnvValues } from './pass-env.js';
+import { passEnvValues, redactPassEnv } from './pass-env.js';
 
 /**
  * v1.5 BLOCKER 6 — THE OPERATOR-AUTHORIZED EXECUTABLE DIRECTORIES, AND NOTHING ELSE.
@@ -161,10 +161,11 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   // v1.5 blocker 6: the OPERATOR-authorized executable dirs sealed in this repo's config. Resolution
   // of the plan's OWN program is untouched above (never PATH); these exist for what the project's
   // check spawns transitively.
-  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(authorityRoot), passEnvValues(authorityRoot));
-  const stdout = r.stdout ?? '';
+  const passed = passEnvValues(authorityRoot);
+  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(authorityRoot), passed);
+  const stdout = redactPassEnv(r.stdout ?? '', passed);
   const processFailure = r.error ? r.error.message : r.status === null ? 'process ended without an exit code' : undefined;
-  const stderr = (r.stderr ?? '') + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
+  const stderr = redactPassEnv(r.stderr ?? '', passed) + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
   const out = `${stdout}${stderr}`;
   const result: StepResult = {
     kind: step.kind, display, ok: processFailure === undefined && r.status === 0,

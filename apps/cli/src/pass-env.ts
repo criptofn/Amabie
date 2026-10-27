@@ -5,11 +5,19 @@ import { openSealed, projectIdForRoot, sealRecord, storeFromEnv, type TrustStore
  * The variable NAMES a human allowed checks to receive (`amabie setup --pass-env NAME`), kept in the
  * USER trust store beside the other sealed records, not in the repo-writable `.amabie` config: a
  * worker that could add a name could pull any variable of the operator's (an API token) into a test it
- * wrote. Only names are stored. Values are read from the operator's process when a check runs and are
- * never written to the config, the trust store, the evidence or the output.
+ * wrote. Only names are stored: the config and the trust store never hold a value. Values are read
+ * from the operator's process when a check runs.
+ *
+ * What the check PRINTS is the child's own output, not Amabie's config. The common output boundary
+ * (`runPlanStep`) masks the exact value of each allowed variable (`redactPassEnv`) before the result
+ * reaches the log, the evidence bundle or the screen. That is exact-match only: a value shorter than
+ * MIN_REDACTED_LENGTH is left alone (masking a flag such as "1" would corrupt ordinary output and
+ * runner counts), and a transformed copy (base64, split across lines, sliced) is not recognised.
  *
  * Honest boundary (LOCAL): the store is owned by the same user as the agent; this stops an edit that is
- * not a valid sealed write, not a worker that deliberately rewrites the user's trust store.
+ * not a valid sealed write, not a worker that deliberately rewrites the user's trust store. A check
+ * that deliberately transforms and sends the value elsewhere is not prevented: the variable is by
+ * definition handed to code the project controls.
  */
 const KIND = 'pass-env';
 const VERSION = 'amabie-pass-env/1';
@@ -34,6 +42,17 @@ export function sealPassEnvNames(root: string, names: readonly string[], store: 
   const opened = openSealed(store, { projectId, kind: KIND });
   const expectedSeq = opened.status === 'valid' && opened.envelope ? opened.envelope.seq : 0;
   sealRecord(store, { projectId, kind: KIND, amabieVersion: VERSION, payload: { schema: VERSION, names: [...new Set(names)].sort() } }, expectedSeq);
+}
+
+/** Shorter values are not masked: they collide with ordinary output ("1", "true", a port). */
+export const MIN_REDACTED_LENGTH = 6;
+
+/** Mask the exact value of each allowed variable in `text`. Longest values first so a prefix cannot leave a tail. */
+export function redactPassEnv(text: string, values: Readonly<Record<string, string>>): string {
+  let out = text;
+  const entries = Object.entries(values).filter(([, v]) => v.length >= MIN_REDACTED_LENGTH).sort((a, b) => b[1].length - a[1].length);
+  for (const [name, value] of entries) out = out.split(value).join(`[${name} redacted by Amabie]`);
+  return out;
 }
 
 /**

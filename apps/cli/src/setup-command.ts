@@ -616,7 +616,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   }
   const passedNames = sealedPassEnvNames(root);
   if (passedNames.length > 0) {
-    o.say(`environment: ${passedNames.length} variable${passedNames.length === 1 ? '' : 's'} you allowed reach${passedNames.length === 1 ? 'es' : ''} your checks by name (${passedNames.join(', ')}); values are read from your shell when checks run and are never stored. Revoke with: amabie setup --clear-pass-env`);
+    o.say(`environment: ${passedNames.length} variable${passedNames.length === 1 ? '' : 's'} you allowed reach${passedNames.length === 1 ? 'es' : ''} your checks by name (${passedNames.join(', ')}); only the names are stored; values are read from your shell when checks run, and an exact copy of a value (6+ characters) that a check prints is masked in Amabie's log and evidence. Revoke with: amabie setup --clear-pass-env`);
   }
   o.say('\nsmoke test (running your own project scripts):');
   let allOk = true;

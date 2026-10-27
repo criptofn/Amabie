@@ -8,12 +8,14 @@ import { sanitizedEnv } from '@amabie/support';
 import { runPlanStep } from '../src/check-runner.js';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
 import { readConfig } from '../src/local-config.js';
-import { sealedPassEnvNames } from '../src/pass-env.js';
+import { redactPassEnv, sealedPassEnvNames } from '../src/pass-env.js';
 
 /**
  * `amabie setup --pass-env NAME`: a human allows ONE variable by name; checks receive its value from
  * the operator's shell at run time. Nothing else from the shell reaches a check, a loader or
- * runtime-control name is refused, and the value never lands in the config, the trust store or output.
+ * runtime-control name is refused, and the value is never written to the config or the trust store.
+ * What a check itself PRINTS is masked (exact value, 6+ characters) at the runner boundary; see the
+ * echoed-sentinel test. Intentional exfiltration by code the project controls is not prevented.
  */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pass-env-'));
 const STORE = path.join(TMP, 'store');
@@ -52,7 +54,7 @@ function filesUnder(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? filesUnder(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 }
 
-test('an allowed variable reaches the check, an unlisted one does not, and the value is stored nowhere', () => {
+test('an allowed variable reaches the check, an unlisted one does not, and neither the config nor the trust store holds the value', () => {
   const root = fixture('allowed');
   const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_UNLISTED: 'also-in-the-shell' };
   const withName = amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN');
@@ -71,6 +73,42 @@ test('an allowed variable reaches the check, an unlisted one does not, and the v
       assert.ok(!fs.readFileSync(file).includes(SECRET), `the secret value must not be written to ${path.relative(TMP, file)}`);
     }
   }
+});
+
+test('a check that prints the allowed value has it masked in the runner result (so the evidence and screen); short values are left alone', () => {
+  const root = path.join(TMP, 'echo');
+  fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'echo', private: true, scripts: { test: 'node --test tests/echo.test.cjs' } }));
+  fs.writeFileSync(path.join(root, 'tests/echo.test.cjs'), [
+    "const { test } = require('node:test'); const assert = require('node:assert/strict');",
+    "test('echoes the allowed variable and a short flag', () => {",
+    "  console.log('token=' + process.env.PASS_ENV_TEST_TOKEN + ' flag=' + process.env.PASS_ENV_SHORT);",
+    `  assert.equal(process.env.PASS_ENV_TEST_TOKEN, ${JSON.stringify(SECRET)});`,
+    '});', '',
+  ].join('\n'));
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local');
+  git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
+  const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_SHORT: '1' };
+  const setup = amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN', '--pass-env', 'PASS_ENV_SHORT');
+  assert.ok(!setup.out.includes(SECRET), 'the screen must not show the value a check printed');
+  for (const dir of [path.join(root, '.amabie'), STORE]) {
+    for (const file of filesUnder(dir)) assert.ok(!fs.readFileSync(file).includes(SECRET), `the printed value must not be written to ${path.relative(TMP, file)}`);
+  }
+
+  const cfg = readConfig(root);
+  assert.ok(cfg && cfg !== 'corrupt');
+  process.env['PASS_ENV_TEST_TOKEN'] = SECRET; process.env['PASS_ENV_SHORT'] = '1';
+  try {
+    const r = runPlanStep(root, cfg.pm, cfg.plan[0]!, 60_000);
+    const everything = [r.stdout, r.stderr, r.tail].join('\n');
+    assert.ok(!everything.includes(SECRET), 'stdout, stderr and tail are masked');
+    assert.match(r.stdout, /token=\[PASS_ENV_TEST_TOKEN redacted by Amabie\] flag=1/, 'the short flag is untouched and the runner output keeps its shape');
+    assert.match(r.stdout, /# pass 1/, 'the runner count survives masking');
+  } finally { delete process.env['PASS_ENV_TEST_TOKEN']; delete process.env['PASS_ENV_SHORT']; }
+
+  assert.equal(redactPassEnv('a 1 b', { X: '1' }), 'a 1 b', 'a short value is not masked');
+  assert.equal(redactPassEnv('abcdefgh abcdefghij', { A: 'abcdefgh', B: 'abcdefghij' }), '[A redacted by Amabie] [B redacted by Amabie]', 'longest value first');
 });
 
 test('loader and runtime-control names are refused at setup and change nothing', () => {
