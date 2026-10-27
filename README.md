@@ -12,11 +12,14 @@ amabie setup --yes
 Run setup once, from your own terminal, inside a Git repository with declared
 checks and Claude Code or Codex CLI. Requires Node.js 22+, npm and Git.
 
-**Version:** this source is 2.0.1, including the session guards and CLI registration
-fallback described below. These fixes are absent from 2.0.0. Check the published
+**Version:** this source is 2.0.2. It fixes false regression evidence when a
+baseline cannot find installed dependencies, and preserves open-session tracking
+outside the repository. Upgrade from 2.0.1 before relying on dependency-backed
+baseline evidence. The session guards and CLI registration fallback described
+below were introduced in 2.0.1. These fixes are absent from 2.0.0. Check the published
 version with `npm view amabie-cli version`. To test this checkout,
 run `npm ci`, `npm run build:force`, `node tooling/pack.mjs`, then install
-`./pack/npm/amabie-cli-2.0.1.tgz`.
+`./pack/npm/amabie-cli-2.0.2.tgz`.
 
 ![A simulated false completion blocked on the real escape-html repository](docs/demo.gif)
 

@@ -10,7 +10,28 @@ changed*; the evidence ledgers record *what was observed*.
 
 ## [Unreleased]
 
-### 2.0.1 candidate
+### 2.0.2 candidate
+
+- A baseline that cannot execute its checks, including missing runners, exits 126/127
+  and recognized zero-test failures, stays unestablished instead of proving a change.
+  Node dependency directories are copied privately; workspace links are rebased and
+  external dependency layouts remain inconclusive. A pinned Express CI probe exercises
+  both the Stop hook and doctor with ignored, vacuous and genuinely discriminating changes.
+- Active sessions are recorded in the user trust store; deleting repository-local state
+  no longer authorizes resealing. Missing or damaged tracking blocks verification.
+- Follow-up requests can compare from an earlier verified state. Committing an unproven
+  change or rewriting an existing test does not create a trusted task boundary.
+- Human-authorized `setup --pass-env NAME` passes named data variables to checks without
+  storing their values in configuration; exact printed values of six or more characters
+  are masked. Runtime-control variables remain refused.
+- Repository-resident Python interpreters are pinned by content. Missing-venv guidance,
+  read-only questions, bounded flaky-check diagnostics and no-checks starter guidance improve.
+- Generated hook/MCP files are documented as per-machine. Historical documentation moves
+  to `docs/history/`, with current-document and architecture indexes and focused macOS CI.
+- Refactors can still remain `NOT PROVEN`; coverage alone is not semantic proof. Organic
+  agent benefit and comparative or token-saving claims remain unestablished.
+
+## [2.0.1] - 2026-10-26
 
 - Claude task registration has an explicit CLI fallback while project MCP approval is pending.
 - Claude tools protect verifier state and hook files after task registration; operator commands

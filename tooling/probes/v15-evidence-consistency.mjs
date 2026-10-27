@@ -159,7 +159,7 @@ check('no document still asserts a statement the closure made false', () => {
  * check by reading the sentence it sits in; losing one means the claim changed.
  */
 const PINS = [
-  ['landing', '**Version:** this source is 2.0.1'],
+  ['landing', '**Version:** this source is 2.0.2'],
   ['landing', 'These fixes are absent from 2.0.0'],
   ['landing', 'No token-saving or comparative superiority claim is established'],
   ['landing', 'docs/history/README-2.0.md'],

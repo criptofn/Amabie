@@ -1,4 +1,4 @@
-# Amabie 2.0.1 quickstart
+# Amabie 2.0.2 quickstart
 
 **Your agent says done. Amabie checks the change.** It runs your declared checks
 independently and refuses to treat an agent's success claim as proof.
@@ -13,39 +13,37 @@ Start with the [reviewed failing-test workflow](https://github.com/criptofn/Amab
 
 ## Install
 
-The session guards and CLI registration fallback require 2.0.1 or later; they are absent from 2.0.0. Check registry availability before installing the pinned version:
+Use 2.0.2 or later for the corrected dependency-backed baseline comparison. The session guards and CLI registration fallback were introduced in 2.0.1; they are absent from 2.0.0. Check registry availability before installing the pinned version:
 
 ```sh
-npm view amabie-cli@2.0.1 version
-npm install --global amabie-cli@2.0.1
+npm view amabie-cli@2.0.2 version
+npm install --global amabie-cli@2.0.2
 amabie --version
 amabie --help
 ```
 
-Before publication, or when reviewing a supplied release candidate, use the local tarball instead. Registry availability can be checked with `npm view amabie-cli@2.0.1 version`; a missing version is not a successful installation.
-
-#Start with the [reviewed failing-test workflow](https://github.com/criptofn/Amabie/blob/main/docs/WORKFLOW.md). The checks still have to measure the requested behaviour; green tests alone do not prove every requirement.
+Before publication, or when reviewing a supplied release candidate, use the local tarball instead. Registry availability can be checked with `npm view amabie-cli@2.0.2 version`; a missing version is not a successful installation.
 
 ## Install a prepared local package
 
 Place the release tarball and its `.sha256` sidecar in the same working directory. In PowerShell, compare the two values explicitly:
 
 ```powershell
-$expected = ((Get-Content -Raw .\amabie-cli-2.0.1.tgz.sha256).Trim() -split '\s+')[0]
-$actual = (Get-FileHash .\amabie-cli-2.0.1.tgz -Algorithm SHA256).Hash.ToLowerInvariant()
+$expected = ((Get-Content -Raw .\amabie-cli-2.0.2.tgz.sha256).Trim() -split '\s+')[0]
+$actual = (Get-FileHash .\amabie-cli-2.0.2.tgz -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actual -ne $expected.ToLowerInvariant()) { throw 'Amabie package checksum mismatch; do not install it.' }
 'Checksum verified.'
 ```
 
-On Linux or in Git Bash (the `sh` snippets below also run in Git Bash on Windows), `sha256sum --check amabie-cli-2.0.1.tgz.sha256` performs the comparison. Stop if the files do not match.
+On Linux or in Git Bash (the `sh` snippets below also run in Git Bash on Windows), `sha256sum --check amabie-cli-2.0.2.tgz.sha256` performs the comparison. Stop if the files do not match.
 
 ```sh
-npm install -g ./amabie-cli-2.0.1.tgz
+npm install -g ./amabie-cli-2.0.2.tgz
 amabie --version
 amabie --help
 ```
 
-Expected version: `amabie 2.0.1`. If `amabie` was already on your PATH, check which one runs (`where amabie` in PowerShell, `which -a amabie` on Linux) and that it is the one you just installed (the first `where` entry runs; compare it with `npm prefix -g`, because `--version` is identical for both). The bundle has no runtime npm dependencies. An existing global installation of an earlier release needs the upgrade steps below before replacement.
+Expected version: `amabie 2.0.2`. If `amabie` was already on your PATH, check which one runs (`where amabie` in PowerShell, `which -a amabie` on Linux) and that it is the one you just installed (the first `where` entry runs; compare it with `npm prefix -g`, because `--version` is identical for both). The bundle has no runtime npm dependencies. An existing global installation of an earlier release needs the upgrade steps below before replacement.
 
 For a source checkout, `npm ci` and `npm run build:force` build the CLI but do not create a global executable. Use `node apps/cli/dist/src/main.js --help` or prepare and install the tarball with `node tooling/pack.mjs`.
 
@@ -64,11 +62,11 @@ that package and install the verified Amabie tarball:
 
 ```sh
 npm uninstall -g @canary-rn/cli
-npm install -g ./amabie-cli-2.0.1.tgz
+npm install -g ./amabie-cli-2.0.2.tgz
 amabie --version
 ```
 
-The command should print `amabie 2.0.1`. A direct install while the historical
+The command should print `amabie 2.0.2`. A direct install while the historical
 package owns the `amabie` bin can fail with `EEXIST`; do not use `--force` or delete
 an unidentified global executable. For another installation method or package
 name, inspect it before removing it.
