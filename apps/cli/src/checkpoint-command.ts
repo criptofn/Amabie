@@ -11,6 +11,7 @@ import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.
 import { obligationsFor, proofSummary } from './proof-obligations.js';
 import { gitWithinRoot } from './git-state.js';
 import { discriminationObligation, refactorPreservationLimit } from './regression-proof.js';
+import { openRequest, recordVerified, trustedStart } from './task-boundary.js';
 import { agentSessionStanding, MAX_SESSIONS, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
 import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
@@ -50,9 +51,14 @@ export async function cmdCheckpoint(): Promise<number> {
     const startHead = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
     if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) {
       state.startHead = startHead;
-      // A request that begins on a clean tree has a provable boundary: what changes after this point is its own work.
+      // This request's own accounting may begin here only if Amabie sealed or verified the project as it is now
+      // (a clean, committed tree is not enough: a commit is not acceptance). Recorded in the trust store, not here.
       const atStart = candidateDiffSignals(root, startHead);
-      if (atStart.resolved && atStart.touched.every(isAmabieOwnArtifact)) state.startClean = true;
+      const begun = readConfig(root);
+      const baseHead = begun && begun !== 'corrupt' && untrustedConfigReason(root, begun) === null && begun.baseline?.resolved ? begun.baseline.head : undefined;
+      if (typeof baseHead === 'string' && /^[0-9a-f]{40,64}$/i.test(baseHead)) {
+        openRequest(root, baseHead, sessionId, atStart.resolved && atStart.touched.every(isAmabieOwnArtifact) ? startHead : null);
+      }
     }
     // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
     const registered = registerAgentSession(root, sessionId);
@@ -180,15 +186,16 @@ export async function cmdCheckpoint(): Promise<number> {
   }
 
   /**
-   * THE TASK BOUNDARY. A request that began on a clean tree is judged on what changed since it began
-   * (`startHead` to HEAD, plus staged and worktree), NOT on everything since `amabie setup`. Work an
-   * earlier request committed was judged at that request's own Stop; carrying it forward made every
-   * later request answer for it (a stale regression comparison on a plain question). Agent commits made
-   * DURING this request are still inside the range, so a commit never launders a change. The sealed
+   * THE TASK BOUNDARY. A request whose start Amabie recorded in the user trust store (the project was
+   * then exactly the sealed baseline, or exactly what an earlier Stop let through) is judged on what
+   * changed since it began (that start to HEAD, plus staged and worktree), NOT on everything since
+   * `amabie setup`. Anything else keeps the cumulative view: a request that follows work that ended
+   * blocked, unproven or released unrepaired inherits it, because a clean tree and a commit are not
+   * acceptance and the repository's own per-request file is not trusted for this. Agent commits made
+   * DURING this request are inside the range, so a commit never launders a change. The sealed
    * authority check above is untouched, and a deleted test stays visible from the sealed baseline.
-   * A request that began on a dirty tree has no provable boundary and keeps the cumulative view.
    */
-  const scopeBase = turn?.startHead !== undefined && turn.startClean === true ? turn.startHead : undefined;
+  const scopeBase = sessionId ? trustedStart(root, sessionId) : undefined;
   const taskSignals = (): ReturnType<typeof collectDiffSignals> => {
     const cumulative = collectDiffSignals(root, cfg);
     if (scopeBase === undefined) return cumulative;
@@ -374,15 +381,23 @@ export async function cmdCheckpoint(): Promise<number> {
      * requirement was authorized to hold it to), but it must not stay silent either: an allow that
      * SAYS what the evidence is beats a READY that hides it.
      */
+    // Only a Stop that lets the work through with nothing open (a caveat is still an allow) moves the verified
+    // state forward; blocked, unproven and released-unrepaired outcomes return above and leave it where it was.
+    const verifiedState = (): void => {
+      const baseHead = cfg.baseline?.head;
+      if (cfg.baseline?.resolved && typeof baseHead === 'string') recordVerified(root, baseHead);
+    };
     const caveats = obligations.filter((x) => x.status === 'met' && x.caveat !== undefined);
     if (caveats.length > 0) {
       writeCheckpoint(root, 'pass', [], 'checkpoint', {
         checks: ran, hookResponse: 'message-and-continue', next: caveats.map((x) => x.caveat).join('; '), evidencePath: evidenceDir ?? undefined, proof,
       });
+      verifiedState();
       const evidenceHint = evidenceDir === null ? ' Full test evidence could not be written.' : ` Full test evidence: ${evidenceDir}.`;
       return emit({ systemMessage: `Amabie: the sealed checks passed — with a caveat. ${caveats.map((x) => `${x.id}: ${x.caveat}`).join(' ')}${evidenceHint}`.slice(0, 2000) });
     }
     writeCheckpoint(root, 'pass', [], 'checkpoint', { checks: ran, hookResponse: 'continued', evidencePath: evidenceDir ?? undefined, proof });
+    verifiedState();
     return 0; // silent even if an agent claim contradicts — claims never BLOCK, and never CREATE a pass
   }
   // The full runner output is written NEXT TO the evidence bundle and referred to by path, so

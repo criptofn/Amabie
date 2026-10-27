@@ -5,15 +5,17 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, test } from 'node:test';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
-import { readClaudeTurnState } from '../src/task-state.js';
+import { trustedStart } from '../src/task-boundary.js';
 
 /**
- * The task boundary at Stop. Work an earlier request committed was judged at that request's own Stop;
- * a later request must not answer for it (a source-only change credited with the earlier request's
- * regression test), and a plain question must not re-run the whole suite for it.
+ * The task boundary at Stop. Work an earlier request committed AND that its own Stop let through is not
+ * carried into a later request's verdict, and a plain question does not re-run the whole suite for it.
+ * Work an earlier request left blocked or unproven IS carried: a clean tree, a commit and a fresh prompt
+ * are not acceptance, so the next request is judged from the sealed baseline and cannot move past it.
  */
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-task-boundary-'));
 const store = path.join(temporary, 'store');
+process.env.AMABIE_TRUST_STORE = store;
 after(() => fs.rmSync(temporary, { recursive: true, force: true }));
 
 const SOURCE = "module.exports = n => 'hello ' + n;\n";
@@ -95,8 +97,7 @@ test('a later request is judged on its own change: the earlier request\'s commit
   // Request 2: a source-only change. It is judged from its own start, where request 1's fix and test are
   // already part of the starting tree: it has no evidence of its own.
   request(root, session, 'fix trailing whitespace in greet');
-  const turn = readClaudeTurnState(root, session);
-  assert.ok(turn?.startClean, 'a request that begins on a committed, clean tree has a provable boundary');
+  assert.ok(trustedStart(root, session), 'a request that begins on committed work its own Stop let through has a trusted boundary');
   write(root, 'greet.cjs', BOTH);
   const second = hook(root, session, 'Stop');
   assert.equal(second.decision, 'block', JSON.stringify(second));
@@ -125,13 +126,11 @@ test('a later request is judged on its own change: the earlier request\'s commit
   assert.ok(doctor.stdout.includes('regression-evidence'), doctor.stdout + doctor.stderr);
 });
 
-test('a request that begins with uncommitted work has no provable boundary and keeps the cumulative view', () => {
+test('a request that begins with uncommitted work has no trusted boundary and keeps the cumulative view', () => {
   const root = project('dirty-start');
   write(root, 'greet.cjs', FIXED); // earlier request's work, not committed
   request(root, 'session-task-boundary-dirty', 'fix trailing whitespace in greet');
-  const turn = readClaudeTurnState(root, 'session-task-boundary-dirty');
-  assert.ok(turn?.startHead);
-  assert.equal(turn?.startClean, undefined, 'a dirty start cannot be separated from the request\'s own work');
+  assert.equal(trustedStart(root, 'session-task-boundary-dirty'), undefined, 'a dirty start cannot be separated from the request\'s own work');
 });
 
 test('a question never skips the check of a deleted test: removed coverage stays visible from the sealed baseline', () => {
@@ -143,3 +142,80 @@ test('a question never skips the check of a deleted test: removed coverage stays
   assert.doesNotMatch(question.systemMessage ?? '', /changed nothing in the project/, 'the shortcut must not hide a deleted sealed test');
 });
 
+test('a new prompt on a clean committed tree does not launder an earlier request\'s blocked test rewrite', () => {
+  // The exact sequence Codex reproduced: the first request breaks main() and rewrites its sealed test to
+  // assert.ok(true) and commits; Stop correctly blocks. A fresh prompt on the clean tree must not make
+  // that commit part of its starting point.
+  const root = path.join(temporary, 'launder');
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  const session = 'session-task-boundary-launder';
+  const original = (assertion: string) => `const {test}=require('node:test'); const assert=require('node:assert/strict'); test('main',()=>${assertion});\n`;
+  write(root, 'package.json', JSON.stringify({ private: true, scripts: { test: 'node --test *.test.cjs' } }));
+  write(root, 'index.cjs', 'exports.main = () => 1;\n');
+  write(root, 'original.test.cjs', original("assert.equal(require('./index.cjs').main(),1)"));
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Boundary'); git(root, 'config', 'user.email', 'boundary@amabie.local');
+  commit(root);
+  assert.equal(cli(root, ['setup', '--yes']).status, 0); commit(root);
+  assert.equal(cli(root, ['setup', '--yes']).status, 0); commit(root);
+
+  request(root, session, 'fix main');
+  write(root, 'index.cjs', 'exports.main = () => -1;\n');
+  write(root, 'original.test.cjs', original('assert.ok(true)'));
+  commit(root);
+  const first = hook(root, session, 'Stop');
+  assert.equal(first.decision, 'block', JSON.stringify(first));
+
+  request(root, session, 'add a helper');
+  assert.equal(trustedStart(root, session), undefined, 'work its own Stop did not let through is not a trusted starting point');
+  fs.appendFileSync(path.join(root, 'index.cjs'), 'exports.helper = () => 42;\n');
+  write(root, 'helper.test.cjs', "const {test}=require('node:test'); const assert=require('node:assert/strict'); test('helper',()=>assert.equal(require('./index.cjs').helper(),42));\n");
+  const next = hook(root, session, 'Stop');
+  assert.equal(next.decision, 'block', `a later request must not move past an unresolved committed rewrite: ${JSON.stringify(next)}`);
+  assert.ok(fs.readFileSync(path.join(root, 'index.cjs'), 'utf8').includes('=> -1'));
+
+  // Not even a question after it passes quietly: nothing was verified, so the suite is not skipped.
+  commit(root);
+  request(root, session, null);
+  const question = hook(root, session, 'Stop');
+  assert.doesNotMatch(question.systemMessage ?? '', /changed nothing in the project/);
+});
+
+test('a source-only commit its own Stop called NOT PROVEN is not a starting point for the next request', () => {
+  const root = project('unproven-commit');
+  const session = 'session-task-boundary-unproven';
+
+  request(root, session, 'fix leading whitespace in greet');
+  write(root, 'greet.cjs', FIXED); // behaviour changed, no test of its own
+  commit(root);
+  const first = hook(root, session, 'Stop');
+  assert.equal(first.decision, 'block', JSON.stringify(first));
+  assert.match(first.reason ?? '', /NOT PROVEN/);
+
+  // A question on the clean committed tree is not a free pass: nothing was verified, so the suite and the
+  // regression comparison run again and the unresolved commit is still what Stop reports.
+  request(root, session, null);
+  assert.equal(trustedStart(root, session), undefined);
+  const question = hook(root, session, 'Stop');
+  assert.equal(question.decision, 'block', JSON.stringify(question));
+  assert.match(question.reason ?? '', /NOT PROVEN/);
+
+  // So is the next change on top of it: judged from the sealed baseline, the earlier commit is still in it.
+  request(root, session, 'fix trailing whitespace in greet');
+  write(root, 'greet.cjs', BOTH);
+  const second = hook(root, session, 'Stop');
+  assert.equal(second.decision, 'block', `the unresolved source-only commit stays unresolved: ${JSON.stringify(second)}`);
+  assert.match(second.reason ?? '', /NOT PROVEN/);
+});
+
+test('a start that its own Stop let through only counts for the content it verified', () => {
+  const root = project('verified-then-edited');
+  const session = 'session-task-boundary-edited';
+  request(root, session, 'fix leading whitespace in greet');
+  write(root, 'greet.cjs', FIXED); write(root, 'tests/leading.test.cjs', TEST + LEADING);
+  assert.notEqual(hook(root, session, 'Stop').decision, 'block');
+  // After the verdict, and before the next prompt, the verified file is rewritten and committed.
+  write(root, 'tests/leading.test.cjs', "const {test} = require('node:test'); test('leading whitespace', () => {});\n");
+  commit(root);
+  request(root, session, 'fix trailing whitespace in greet');
+  assert.equal(trustedStart(root, session), undefined, 'content that differs from what was verified is not verified');
+});
