@@ -71,10 +71,15 @@ function update(root: string, store: TrustStore, change: (p: Payload) => void): 
   return false;
 }
 
+/** The execute bit is part of a file's identity where it changes what runs; Windows has no such bit. */
+const executable = (stat: fs.Stats): string => (process.platform !== 'win32' && (stat.mode & 0o111) !== 0 ? '+x' : '');
+
 /**
  * A digest of everything the project differs by from the sealed baseline: which files, and their bytes
- * as they are on disk now. A commit does not change it, so "verified, then committed" is recognisable;
- * any edit, addition, deletion or rewrite after the verdict is not. null when it cannot be established.
+ * (and execute bit) as they are on disk now. A commit does not change it, so "verified, then committed"
+ * is recognisable; any edit, addition, deletion or rewrite after the verdict is not. null when it cannot
+ * be established, including when a changed entry is a directory or special file whose content is not
+ * measured: no boundary advances over what was not measured.
  */
 export function projectDigest(root: string, baselineHead: string): { digest: string; empty: boolean } | null {
   const signals = candidateDiffSignals(root, baselineHead);
@@ -83,14 +88,15 @@ export function projectDigest(root: string, baselineHead: string): { digest: str
   if (files.length > MAX_FILES) return null;
   const hash = crypto.createHash('sha256').update(`${VERSION}\0${baselineHead}\0`);
   for (const file of files) {
-    let body: string;
+    let body: string | null;
     try {
       const full = path.join(root, file);
       const stat = fs.lstatSync(full, { throwIfNoEntry: false });
       body = stat === undefined ? 'absent'
         : stat.isSymbolicLink() ? `link:${fs.readlinkSync(full)}`
-          : stat.isFile() ? `file:${crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')}`
-            : 'other';
+          : stat.isFile() ? `file${executable(stat)}:${crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')}`
+            : null; // a directory (a submodule or nested repository) or a special entry is not measured here
+      if (body === null) return null;
     } catch { return null; }
     hash.update(`${file}\0${body}\0`);
   }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { after, test } from 'node:test';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
-import { trustedStart } from '../src/task-boundary.js';
+import { projectDigest, trustedStart } from '../src/task-boundary.js';
 
 /**
  * The task boundary at Stop. Work an earlier request committed AND that its own Stop let through is not
@@ -218,4 +218,30 @@ test('a start that its own Stop let through only counts for the content it verif
   commit(root);
   request(root, session, 'fix trailing whitespace in greet');
   assert.equal(trustedStart(root, session), undefined, 'content that differs from what was verified is not verified');
+});
+
+test('the content digest measures what it can and refuses what it cannot: a directory entry is unmeasured, the execute bit counts', () => {
+  const root = path.join(temporary, 'digest-shapes');
+  fs.mkdirSync(root, { recursive: true });
+  write(root, 'tool.sh', '#!/bin/sh\necho hi\n');
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Boundary'); git(root, 'config', 'user.email', 'boundary@amabie.local');
+  commit(root);
+  const base = git(root, 'rev-parse', 'HEAD');
+  assert.equal(projectDigest(root, base)?.empty, true);
+
+  write(root, 'tool.sh', '#!/bin/sh\necho changed\n');
+  const edited = projectDigest(root, base);
+  assert.ok(edited && !edited.empty);
+  if (process.platform !== 'win32') {
+    fs.chmodSync(path.join(root, 'tool.sh'), 0o755);
+    assert.notEqual(projectDigest(root, base)?.digest, edited.digest, 'the same bytes, now executable, are not the verified file');
+  }
+
+  // A nested repository shows up as a directory entry: its contents are not hashed, so nothing is claimed.
+  const nested = path.join(root, 'vendor', 'lib');
+  fs.mkdirSync(nested, { recursive: true });
+  write(nested, 'a.txt', 'one\n');
+  git(nested, 'init', '-b', 'main'); git(nested, 'config', 'user.name', 'n'); git(nested, 'config', 'user.email', 'n@amabie.local');
+  git(nested, 'add', '.'); git(nested, 'commit', '-m', 'nested');
+  assert.equal(projectDigest(root, base), null, 'a changed directory entry yields no digest, so no boundary can advance over it');
 });
