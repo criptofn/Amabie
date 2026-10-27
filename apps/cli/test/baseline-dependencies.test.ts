@@ -144,6 +144,43 @@ test('workspace links in the copied dependencies resolve inside the baseline tre
   assert.equal(obligation?.status, 'met', `the base must run its OWN packages/lib, so the new check fails there: ${obligation?.note}`);
 });
 
+/** A directory link that needs no privilege here: a junction on Windows (what npm workspaces write), a symlink elsewhere. */
+function linkDir(target: string, at: string) {
+  fs.mkdirSync(path.dirname(at), { recursive: true });
+  fs.symlinkSync(target, at, process.platform === 'win32' ? 'junction' : 'dir');
+}
+
+test('an ABSOLUTE workspace link (a Windows junction) is rebased onto the baseline tree, never left pointing at the live source', () => {
+  const root = repo('dependency-absolute-link', { test: 'mini-runner tests' });
+  write(root, 'packages/lib/package.json', JSON.stringify({ name: 'lib', version: '1.0.0', main: 'index.cjs' }));
+  write(root, 'packages/lib/index.cjs', 'module.exports = () => 1;\n');
+  installMiniRunner(root);
+  linkDir(path.join(root, 'packages', 'lib'), path.join(root, 'node_modules', 'lib'));
+  const cfg = seal(root);
+  write(root, 'packages/lib/index.cjs', 'module.exports = () => 2;\n');
+  write(root, 'tests/lib.test.cjs', "exports.lib = () => require('node:assert').equal(require('lib')(), 2);\n");
+  const obligation = discriminationObligation(root, cfg, 60_000);
+  assert.equal(obligation?.status, 'met', `a link into the candidate would run the live lib (2) on the base and look vacuous: ${obligation?.note}`);
+});
+
+test('a dependency link that leaves the project makes the comparison INCONCLUSIVE with the way out, never a run against shared files', () => {
+  const root = repo('dependency-outside-link', { test: 'mini-runner tests' });
+  installMiniRunner(root);
+  const store = path.join(TMP, 'shared-store', 'pkg');
+  write(path.dirname(store), 'pkg/index.cjs', 'module.exports = 1;\n');
+  linkDir(store, path.join(root, 'node_modules', 'shared'));
+  const cfg = seal(root);
+  write(root, 'greet.cjs', FIXED);
+  write(root, 'tests/trims.test.cjs', REGRESSION);
+  const cmp = planDiscrimination(root, cfg, 60_000);
+  assert.equal(cmp.basePassed, null, cmp.reason);
+  assert.match(cmp.reason, /node_modules\/shared points outside the project/);
+  assert.match(cmp.reason, /install the dependencies inside the project/);
+  const obligation = discriminationObligation(root, cfg, 60_000);
+  assert.equal(obligation?.status, 'unproven');
+  assert.match(obligation?.note ?? '', /points outside the project/);
+});
+
 /** A project whose test command cannot start in the baseline tree: its tool lives outside anything Amabie can materialize. */
 function startFailureProject(name: string, baseline: string) {
   const root = repo(name, { test: 'node scripts/run.cjs' });

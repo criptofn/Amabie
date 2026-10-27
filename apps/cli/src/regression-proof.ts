@@ -195,11 +195,46 @@ function ranNoTests(text: string): boolean {
  * Untracked dependency directories (`node_modules`) do not ride a git checkout, so a baseline tree has
  * no installed executables. Give each throwaway tree a PRIVATE copy of them: a link would let a check
  * running there write the live dependencies, and a workspace link would resolve into candidate source.
- * Links inside the copy stay relative, so workspace members resolve inside the same tree.
- * shortcut: a dependency that is an absolute link into the repository still reaches the live tree, and
- * Python virtualenvs are not copied (their interpreter comes from the sealed toolchain directories);
- * when either matters, materialize through the package manager instead.
+ *
+ * Every link inside a dependency directory is re-created, never copied verbatim: a link whose target is
+ * inside the project (a workspace member or sibling package, spelled as a relative path, an absolute
+ * path or a Windows junction) is rebased onto the SAME path in the throwaway tree, so the comparison
+ * runs the base commit's own files. A link that leaves the project (a shared or global package store)
+ * cannot be made private and is not followed: the comparison is INCONCLUSIVE with the way out, never a
+ * run against live files.
+ * shortcut: Python virtualenvs are not copied (their interpreter comes from the sealed toolchain
+ * directories); when that matters, materialize through the package manager instead.
  */
+class DependencyLayoutError extends Error {}
+
+/** The path of `child` below `parent`, or null when it is not inside (case-folded on Windows). */
+function relativeInside(parent: string, child: string): string | null {
+  const fold = (p: string) => (process.platform === 'win32' ? p.toLowerCase() : p);
+  const rel = path.relative(fold(parent), fold(child));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel)) ? rel : null;
+}
+
+function rebaseDependencyLink(root: string, realRoot: string, tree: string, from: string, dest: string): void {
+  let text = fs.readlinkSync(from).replace(/^\\\\\?\\/, '');
+  if (text.length > 1) text = text.replace(/[\\/]+$/, '');
+  const lexical = path.resolve(path.dirname(from), text);
+  let target = lexical;
+  try { target = fs.realpathSync.native(lexical); } catch { /* dangling: judge the spelling */ }
+  const rel = relativeInside(realRoot, target) ?? relativeInside(root, lexical);
+  if (rel === null) {
+    throw new DependencyLayoutError(`the dependency link ${path.relative(root, from).split(path.sep).join('/')} points outside the project (${text.slice(0, 80)}), so a private baseline copy cannot be made; install the dependencies inside the project (for example a project-local package store), then run again`);
+  }
+  const rebased = path.join(tree, rel);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  if (process.platform === 'win32') {
+    let isDir = true;
+    try { isDir = fs.statSync(target).isDirectory(); } catch { /* dangling: keep the directory shape */ }
+    fs.symlinkSync(rebased, dest, isDir ? 'junction' : 'file');
+  } else {
+    fs.symlinkSync(path.relative(path.dirname(dest), rebased) || '.', dest);
+  }
+}
+
 function copyDependencyDirs(root: string, tree: string): string[] {
   const listed = gitWithinRoot(root, ['ls-files', '-z', '--others', '--directory']);
   if (listed === null) throw new Error('untracked dependency directories could not be listed');
@@ -209,7 +244,17 @@ function copyDependencyDirs(root: string, tree: string): string[] {
     if (!entry.endsWith('/') || path.posix.basename(rel) !== 'node_modules') continue;
     const from = path.join(root, rel);
     if (fs.lstatSync(from).isSymbolicLink()) throw new Error(`${rel} is a link, so a private copy cannot be made`);
-    fs.cpSync(from, path.join(tree, rel), { recursive: true, verbatimSymlinks: true });
+    const links: string[] = [];
+    fs.cpSync(from, path.join(tree, rel), {
+      recursive: true,
+      filter: (src) => {
+        if (!fs.lstatSync(src).isSymbolicLink()) return true;
+        links.push(src);
+        return false;
+      },
+    });
+    const realRoot = fs.realpathSync.native(root);
+    for (const link of links) rebaseDependencyLink(root, realRoot, tree, link, path.join(tree, path.relative(root, link)));
     copied.push(rel);
   }
   return copied;
@@ -598,6 +643,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
       ...(baselineEvidence ? { baselineEvidence } : {}),
     };
   } catch (e) {
+    if (e instanceof DependencyLayoutError) return unknown(e.message, changed);
     return unknown(`the baseline comparison failed (${String(e).slice(0, 120)})`, changed);
   } finally {
     try { if (controlTree) gitWithinRoot(root, ['worktree', 'remove', '--force', controlTree]); } catch { /* fall through to the rm */ }
