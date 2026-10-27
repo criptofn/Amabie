@@ -189,3 +189,35 @@ export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[]
   }
   return results;
 }
+
+/** The most extra runs a failed check gets, and the longest first run (seconds) worth repeating. */
+export const REPEAT_RUNS = 2;
+export const REPEAT_MAX_SECS = 120;
+
+export interface RepeatOutcome {
+  /** Every run failed with a measured exit code: the failure is reproducible and is reported exactly as before. */
+  stable: boolean;
+  /** Runs made including the first, and how many of them passed. */
+  runs: number; passed: number;
+}
+
+/**
+ * A failed check is run again, a bounded number of times, ONLY to tell a reproducible failure from an
+ * unstable one. The first failure is the recorded result either way: a later pass is never proof, so it
+ * cannot turn a failure into a pass. A check that failed because Amabie could not run it (no exit code),
+ * or that already took long, is not repeated. If a repeat cannot run, the failure stays reproducible
+ * as far as is known.
+ */
+export function repeatFailedStep(root: string, pm: string, step: PlanStep, first: StepResult, extra = REPEAT_RUNS): RepeatOutcome {
+  const outcome: RepeatOutcome = { stable: true, runs: 1, passed: 0 };
+  if (first.ok || first.exitCode === null || first.secs > REPEAT_MAX_SECS) return outcome;
+  for (let i = 0; i < extra; i++) {
+    let again: StepResult;
+    try { again = runPlanStep(root, pm, step); } catch { break; }
+    if (again.exitCode === null) break;
+    outcome.runs += 1;
+    if (again.ok) { outcome.passed += 1; break; } // one pass already answers the question
+  }
+  outcome.stable = outcome.passed === 0;
+  return outcome;
+}

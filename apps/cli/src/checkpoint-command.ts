@@ -5,7 +5,7 @@ import { buildFailurePayload } from './failure-payload.js';
 import { agentToolProblem, isReadOnlyCommand, isTaskRegistration } from './agent-session-guard.js';
 import { adapterFor, planAuthorityDrift, planDigest, sha256, stepKey } from './project.js';
 import { collectDiffSignals, inferTaskKinds } from './change-signals.js';
-import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep } from './check-runner.js';
+import { type StepResult, attributeRunFailures, planWithFreshTests, repeatFailedStep, runPlanStep } from './check-runner.js';
 import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { obligationsFor, proofSummary } from './proof-obligations.js';
@@ -28,6 +28,13 @@ import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheck
  *  - corrupt local config => loud honest UNVERIFIED (GLM F-1) — absence is silent,
  *    damaged authority is NOT
  */
+/** Said when a failed check passed on a re-run: unstable, still failing, and the cause to repair is the flakiness. */
+export function unstableNote(unstable: string[]): string {
+  if (unstable.length === 0) return '';
+  return ` UNSTABLE, not passing: ${unstable.join('; ')} failed on one run and passed on another. A check that sometimes passes proves nothing, `
+    + 'so do not re-run it hoping for green: find what makes it nondeterministic (timing, ordering, shared state, the network) and fix that.';
+}
+
 export async function cmdCheckpoint(): Promise<number> {
   let input: { cwd?: string; prompt?: string; stop_hook_active?: boolean; task?: string; hook_event_name?: string; tool_name?: string; tool_input?: unknown; session_id?: string } = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')) as typeof input; } catch { /* interactive invocation or empty stdin */ }
@@ -184,6 +191,15 @@ export async function cmdCheckpoint(): Promise<number> {
       evidencePath: evidenceDir ?? undefined,
     });
     return emit({ systemMessage: `Amabie could not run the checks (${infra.slice(0, 160)}) — this completion is UNVERIFIED, not a pass.` });
+  }
+  // A failed check that the project itself is to blame for is run again (bounded) to tell a reproducible
+  // failure from an unstable one. The first failure stays the result: a later pass is never proof.
+  const unstable: string[] = [];
+  for (const f of failed) {
+    const step = executionPlan[ran.indexOf(f)];
+    if (!step || attributeRunFailures(root, cfg, [f], cfg.plan).cause !== 'project') continue;
+    const again = repeatFailedStep(root, cfg.pm, step, f);
+    if (!again.stable) unstable.push(`${f.display} (passed ${again.passed} of ${again.runs} runs)`);
   }
   if (failed.length === 0) {
     const evidenceDir = writeVerificationBundle(root, 'checkpoint', ran, 'pass', prov);
@@ -342,7 +358,7 @@ export async function cmdCheckpoint(): Promise<number> {
     // already one repair attempt this turn — never loop the agent; surface honestly instead
     // v1.5 §4D — MEASURED (clean-room first run): this message named what failed and why Amabie
     // stopped, but gave the human it hands off to no next action. One clause, no mechanism change.
-    return emit({ systemMessage: `Amabie: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look. Run: ${installedDoctorCommand()}` });
+    return emit({ systemMessage: `Amabie: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look.${unstableNote(unstable)} Run: ${installedDoctorCommand()}` });
   }
   writeCheckpoint(root, 'fail', failed.map((f) => f.kind), 'checkpoint', {
     checks: ran, hookResponse: 'blocked', next: 'repair the observed failures and finish again', evidencePath: bundleDir ?? undefined,
@@ -365,7 +381,8 @@ export async function cmdCheckpoint(): Promise<number> {
   // otherwise a worker spends its budget repairing a project that was never at fault. The project
   // case needs no environment advice; the failure payload names the check and repair recheck.
   const attribution = attributeRunFailures(root, cfg, failed, cfg.plan);
-  const reason = `${claimNote}${attribution.cause !== 'project' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
+  const reason = `${claimNote}${unstable.length > 0 ? `${unstableNote(unstable).trim()}
+` : ''}${attribution.cause !== 'project' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
     steps: failed.map((f) => ({
       id: stepKey(executionPlan[ran.indexOf(f)]!),
       kind: f.kind, display: f.display, exitCode: f.exitCode,
