@@ -78,6 +78,14 @@ function scenario(name, { steps, tamper }) {
   git(dir, ['commit', '-m', 'reviewed greeting check and implementation']);
   const setup = amabie(dir, ['setup', '--yes']);
   if (setup.status !== 0) throw new Error(`setup failed in ${name}: ${setup.stdout}${setup.stderr}`);
+  // Binding is an operator act, made BEFORE any agent session opens (the product refuses to change
+  // verification authority once UserPromptSubmit has opened one). The final registration's requirements
+  // are the ones measured, so they are bound up front.
+  const last = steps.filter(s => s.requirements).at(-1).requirements;
+  for (const requirement of [...new Set(last)]) {
+    const bind = amabie(dir, ['bind', 'test', '--requirement', requirement, '--reseal']);
+    if (bind.status !== 0) throw new Error(`bind failed in ${name}: ${bind.stdout}${bind.stderr}`);
+  }
   for (const step of steps) {
     if (step.prompt !== undefined) {
       const hook = submitPrompt(dir, step.prompt);
@@ -87,11 +95,6 @@ function scenario(name, { steps, tamper }) {
       const task = amabie(dir, args);
       if (task.status !== 0) throw new Error(`task failed in ${name}: ${task.stdout}${task.stderr}`);
     }
-  }
-  const last = steps.filter(s => s.requirements).at(-1).requirements;
-  for (const requirement of [...new Set(last)]) {
-    const bind = amabie(dir, ['bind', 'test', '--requirement', requirement, '--reseal']);
-    if (bind.status !== 0) throw new Error(`bind failed in ${name}: ${bind.stdout}${bind.stderr}`);
   }
   if (tamper) tamper(path.join(dir, '.amabie', 'task-revisions.jsonl'));
   fs.writeFileSync(path.join(dir, '.amabie', 'prompt-evidence.json'), JSON.stringify({

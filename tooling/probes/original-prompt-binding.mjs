@@ -87,15 +87,17 @@ function scenario(name, { prompts, registeredGoal, requestGoal, mutate }) {
   git(dir, ['commit', '-m', 'reviewed greeting check and implementation']);
   const setup = amabie(dir, ['setup', '--yes']);
   if (setup.status !== 0) throw new Error(`setup failed in ${name}: ${setup.stdout}${setup.stderr}`);
+  // Binding is an operator act: the registered requirement is measured by the sealed test script. It is
+  // made BEFORE any agent session opens, as a human at a terminal would; once UserPromptSubmit has opened
+  // a session the product refuses to change verification authority (and this probe must not hide that).
+  const bind = amabie(dir, ['bind', 'test', '--requirement', registeredGoal, '--reseal']);
+  if (bind.status !== 0) throw new Error(`bind failed in ${name}: ${bind.stdout}${bind.stderr}`);
   for (const prompt of prompts) {
     const hook = submitPrompt(dir, prompt);
     if (hook.status !== 0) throw new Error(`UserPromptSubmit failed in ${name}: ${hook.stdout}${hook.stderr}`);
   }
   const task = amabie(dir, ['task', registeredGoal, '--kind', 'bugfix', '--requirement', registeredGoal]);
   if (task.status !== 0) throw new Error(`task failed in ${name}: ${task.stdout}${task.stderr}`);
-  // Binding is an operator act: the registered requirement is measured by the sealed test script.
-  const bind = amabie(dir, ['bind', 'test', '--requirement', registeredGoal, '--reseal']);
-  if (bind.status !== 0) throw new Error(`bind failed in ${name}: ${bind.stdout}${bind.stderr}`);
   fs.mkdirSync(path.join(dir, '.amabie'), { recursive: true });
   mutate?.(dir);
   fs.writeFileSync(path.join(dir, '.amabie', 'prompt-evidence.json'), JSON.stringify({
