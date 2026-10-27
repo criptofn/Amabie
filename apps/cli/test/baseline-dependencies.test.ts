@@ -181,6 +181,57 @@ test('a dependency link that leaves the project makes the comparison INCONCLUSIV
   assert.match(obligation?.note ?? '', /points outside the project/);
 });
 
+/** A project whose dependency link spells a path inside the project that, through another link, lands outside it. */
+function chainedLinkProject(name: string, linkInProject: (root: string, outside: string) => void) {
+  const root = repo(name, { test: 'mini-runner tests' });
+  installMiniRunner(root);
+  const outside = path.join(TMP, `${name}-shared`, 'lib');
+  write(outside, 'index.cjs', 'module.exports = 1;\n');
+  linkInProject(root, outside);
+  linkDir(path.join(root, 'packages', 'lib'), path.join(root, 'node_modules', 'lib'));
+  return { root, cfg: seal(root), outside };
+}
+
+function assertRefusedWithWayOut(root: string, cfg: Parameters<typeof planDiscrimination>[1], outside: string) {
+  write(root, 'greet.cjs', FIXED);
+  write(root, 'tests/trims.test.cjs', REGRESSION);
+  const cmp = planDiscrimination(root, cfg, 60_000);
+  assert.equal(cmp.basePassed, null, cmp.reason);
+  assert.match(cmp.reason, /node_modules\/lib/);
+  assert.match(cmp.reason, /install the dependencies inside the project/);
+  assert.equal(discriminationObligation(root, cfg, 60_000)?.status, 'unproven');
+  assert.equal(fs.readdirSync(outside).join(), 'index.cjs', 'nothing was written into the live shared directory');
+}
+
+test('a dependency link spelled inside the project that RESOLVES outside it through another link is refused, not rebased by its spelling', () => {
+  // packages/lib is an untracked (ignored) link to a directory outside the project; node_modules/lib -> ../packages/lib.
+  const { root, cfg, outside } = chainedLinkProject('dependency-chained-link', (r, out) => {
+    write(r, '.gitignore', 'node_modules/\n.tool-ready\npackages/\n');
+    linkDir(out, path.join(r, 'packages', 'lib'));
+  });
+  assertRefusedWithWayOut(root, cfg, outside);
+});
+
+test("a dependency link whose spelling is inside the project is refused when the baseline's own tracked link would lead out of the copy", { skip: process.platform === 'win32' && 'a tracked symlink needs privileges on this host' }, () => {
+  // packages/lib is TRACKED as a symlink to an outside directory, so the baseline checkout carries it too.
+  const { root, cfg, outside } = chainedLinkProject('dependency-tracked-link', (r, out) => {
+    fs.mkdirSync(path.join(r, 'packages'), { recursive: true });
+    fs.symlinkSync(out, path.join(r, 'packages', 'lib'), 'dir');
+  });
+  assertRefusedWithWayOut(root, cfg, outside);
+});
+
+test('a dangling dependency link inside the project is still judged by its spelling and does not stop the comparison', () => {
+  const root = repo('dependency-dangling-link', { test: 'mini-runner tests' });
+  installMiniRunner(root);
+  linkDir(path.join(root, 'packages', 'not-built-yet'), path.join(root, 'node_modules', 'later'));
+  const cfg = seal(root);
+  write(root, 'greet.cjs', FIXED);
+  write(root, 'tests/trims.test.cjs', REGRESSION);
+  const cmp = planDiscrimination(root, cfg, 60_000);
+  assert.notEqual(cmp.basePassed, null, cmp.reason);
+});
+
 /** A project whose test command cannot start in the baseline tree: its tool lives outside anything Amabie can materialize. */
 function startFailureProject(name: string, baseline: string) {
   const root = repo(name, { test: 'node scripts/run.cjs' });
