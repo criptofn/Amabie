@@ -74,7 +74,14 @@ try {
   });
 
   // ── what the AGENT is responsible for: it read that entry ──
-  const listed = run(claude, ['mcp', 'list'], temp);
+  // MEASURED: a parent that is itself a Claude Code safe-mode session exports CLAUDE_CODE_SAFE_MODE=1, and
+  // the child `claude mcp list` inherits it and lists NO servers at all (not even the user's own) — so the
+  // probe would report a missing "amabie" line that is the inherited environment, not Amabie. The listing
+  // child therefore runs without the parent's agent-session markers; the user's Claude settings are untouched.
+  const agentEnv = ['CLAUDE_CODE_SAFE_MODE', 'CLAUDECODE', 'AI_AGENT', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_DISABLE_CLAUDE_MDS'];
+  const listEnv = { ...process.env };
+  for (const name of agentEnv) delete listEnv[name];
+  const listed = spawnSync(claude, ['mcp', 'list'], { cwd: temp, encoding: 'utf8', windowsHide: true, timeout: 300000, env: listEnv });
   const out = `${listed.stdout}${listed.stderr}`;
   console.log('--- claude mcp list ---');
   console.log(out.trimEnd());
