@@ -110,6 +110,24 @@ function takeSetupOptions(args: string[]): { rest: string[]; check: boolean; pro
   return { rest, check, ...(profile ? { profile } : {}), problems };
 }
 
+/**
+ * What to do when a project declares no check at all: a real build or typecheck its files already point
+ * to, otherwise one first smoke test that imports the code and checks one result. Amabie never writes that
+ * test itself: a generated test that cannot fail would be a false proof.
+ */
+export function starterPath(root: string, adapters: string[]): string {
+  const ids = new Set(adapters);
+  const options: string[] = [];
+  if (ids.has('node')) {
+    options.push(fs.existsSync(path.join(root, 'tsconfig.json'))
+      ? 'add "typecheck": "tsc --noEmit" to the scripts in package.json (it checks your types for real)'
+      : 'add a "test" script to package.json that runs one real test, for example "test": "node --test" with one *.test.js file that imports your code and checks one result');
+  }
+  if (ids.has('python')) options.push('write one test that imports your package and checks one result (unittest or pytest), or configure mypy, pyright or ruff');
+  if (options.length === 0) options.push('add the build or typecheck command your stack already has, or one small test that imports your code and checks one result');
+  return `${options.join('; or ')}. Amabie does not generate tests for you, because a test that cannot fail proves nothing`;
+}
+
 function setupCheckResult(
   o: Out,
   root: string,
@@ -347,7 +365,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     for (const e of composed.empty) o.say(`  · declared no checks — ${e}`);
     o.verdict('NEEDS ATTENTION',
       'this project declares no check Amabie recognizes — a statement about what is DECLARED here, not about your stack. Amabie reads: Node package.json scripts (test / typecheck / type-check / build / bench / benchmark / e2e / test:e2e); Python (pytest, tox, unittest, or mypy / pyright / ruff); Rust (Cargo.toml); Go (go.mod / go.work); and the universal contract — a Makefile, Taskfile or Justfile target, a shipped gradlew or mvnw wrapper, a configured CMake, Meson, Zig, Swift, Elixir, Crystal, Rake, Composer or PHPUnit project, or a check your CI configuration already runs.',
-      'point Amabie at a check you already have (or declare one for your stack), then run setup again'); return 2;
+      `${starterPath(root, composed.scopes.map((s) => s.adapter.id))}; then run: amabie setup`); return 2;
   }
   o.say('verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):');
   for (const s of plan) o.say(`  ✓ [${stepKey(s)}] ${s.kind}: ${stepDisplay(pm, s)}`);

@@ -71,7 +71,7 @@ will not authorise proof for a requirement it cannot measure. A project with no
 recognizable check has no evidence to offer, so Amabie refuses at setup rather
 than wiring a gate that can never verify anything.
 
-**What to do.** Point Amabie at a check you already have. If you have one and
+**What to do.** Setup now ends with a starter path for your stack: for a TypeScript project, a `"typecheck": "tsc --noEmit"` script (a real check of your types); for plain Node or Python, one small first test that imports your code and checks one result. Amabie does not write that test for you: a generated test that cannot fail would be a false proof. Add it, then run `amabie setup` again. If you already have a check, point Amabie at it. If you have one and
 Amabie did not find it, that is a bug worth reporting — the message above lists
 everything Amabie reads, so if your check is in that list and was missed, say so.
 
