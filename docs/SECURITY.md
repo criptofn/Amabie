@@ -215,7 +215,10 @@ be a lie; here is the real picture.
   helper that outlived its parent cannot leak ports/files into a later round.
   The sweep follows stale-PPID lineage on Windows and group- AND session-level
   membership on POSIX (audit S1), so a `setpgid()`-escapee within the child's
-  session is still caught.
+  session is still caught. macOS has no `/proc` and its `ps` has no session id,
+  so there the sweep follows the process group and the PPID closure only: a
+  `setpgid()`-escapee that is also orphaned (re-parented to launchd) before the
+  sweep runs is not found.
 
 ### Tier B — structural convention (strong in practice, NOT OS-enforced)
 

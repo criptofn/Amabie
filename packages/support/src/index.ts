@@ -761,18 +761,23 @@ export type ProcessRow = { p: number; ppid: number; pgrp: number; sid: number };
  * could not run — the caller reports the sweep as FAILED ("could not look"
  * is never rendered as "no survivors"; audit F5 honesty law unchanged).
  */
-export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | null {
+export function psTableRows(psBin: string = resolvePsBinary(), platform: NodeJS.Platform = process.platform): ProcessRow[] | null {
+  // macOS `ps` has no `sid` keyword (it exits non-zero on one) and macOS has no /proc, so this is the only
+  // table there. Its rows carry no session (sid -1): the sweep follows the process group and the PPID
+  // closure, which is what a detached child's lineage reduces to without a session id.
+  const withSession = platform !== 'darwin';
   // -A: every process. The default query lists only processes attached to a terminal, so a session helper
   // without one would be invisible to the sweep.
-  const ps = spawnSync(psBin, ['-A', '-o', 'pid=,ppid=,pgid=,sid=,stat='],
+  const ps = spawnSync(psBin, ['-A', '-o', withSession ? 'pid=,ppid=,pgid=,sid=,stat=' : 'pid=,ppid=,pgid=,stat='],
     { timeout: 10_000, encoding: 'utf8', env: containmentEnv(), shell: false });
   if (ps.error || ps.status !== 0 || typeof ps.stdout !== 'string') return null;
   const rows: ProcessRow[] = [];
   for (const line of ps.stdout.split('\n')) {
     const fields = line.trim().split(/\s+/);
-    const [p, pp, pg, sd] = fields.slice(0, 4).map(Number);
+    const [p, pp, pg] = fields.slice(0, 3).map(Number);
+    const sd = withSession ? Number(fields[3]) : undefined;
     if (p === undefined || pp === undefined || !Number.isFinite(p) || !Number.isFinite(pp)) continue;
-    if (isDeadState(fields[4])) continue;
+    if (isDeadState(fields[withSession ? 4 : 3])) continue;
     rows.push({
       p, ppid: pp,
       pgrp: pg !== undefined && Number.isFinite(pg) ? pg : -1,

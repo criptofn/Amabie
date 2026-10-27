@@ -227,7 +227,8 @@ jobs:
     # links), POSIX shebang interpreters, and BSD userland. This runs only the focused suites that exercise
     # those paths after a normal build; it is not a second copy of the whole suite (the macOS runner is the
     # expensive one). No Go or pytest toolchain is needed by any file listed here. A new file belongs in this
-    # list when it spawns the CLI or resolves repository paths.
+    # list when it spawns the CLI, resolves repository paths or reads the process table (macOS has no /proc
+    # and a BSD `ps`).
     runs-on: macos-14
     timeout-minutes: 30
     steps:
@@ -249,6 +250,7 @@ jobs:
           apps/cli/dist/test/starter-path.test.js
           apps/cli/dist/test/pass-env.test.js
           apps/cli/dist/test/python-venv.test.js
+          packages/support/dist/test/posix-sweep-completeness.test.js
 
   standalone:
     name: standalone single executable (build AND execute, per host)
