@@ -11,7 +11,7 @@ import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.
 import { obligationsFor, proofSummary } from './proof-obligations.js';
 import { gitWithinRoot } from './git-state.js';
 import { discriminationObligation, refactorPreservationLimit } from './regression-proof.js';
-import { isAgentSessionRegistered, registerAgentSession, unregisterAgentSession } from './session-registry.js';
+import { agentSessionStanding, MAX_SESSIONS, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
 import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
 
@@ -50,7 +50,9 @@ export async function cmdCheckpoint(): Promise<number> {
     const startHead = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
     if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) state.startHead = startHead;
     // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
-    if (!registerAgentSession(root, sessionId)) return emit({ decision: 'block', reason: 'Amabie could not record this agent session in its trust store. The prompt was stopped before project work; repair the trust store (see: amabie doctor), then retry.' });
+    const registered = registerAgentSession(root, sessionId);
+    if (registered === 'full') return emit({ decision: 'block', reason: `Amabie is tracking ${MAX_SESSIONS} open agent sessions for this project, the most it records, and will not forget a live one to make room. The prompt was stopped before project work; close the other sessions, or as a human operator remove the stale session record from the user trust store, then retry.` });
+    if (registered !== 'ok') return emit({ decision: 'block', reason: 'Amabie could not record this agent session in its trust store. The prompt was stopped before project work; repair the trust store (see: amabie doctor), then retry.' });
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
     if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt, state.promptId);
     return emit({ hookSpecificOutput: {
@@ -126,7 +128,13 @@ export async function cmdCheckpoint(): Promise<number> {
   }
   // A session the trust store knows is open, whose project state has vanished, is NOT "nothing wired here":
   // `.amabie` (config, seals, turn state) was removed or damaged from inside the session.
-  if (root && sessionId && (cfg === null || cfg === 'corrupt' || !turn) && isAgentSessionRegistered(root, sessionId)) {
+  const standing = root && sessionId && (cfg === null || cfg === 'corrupt' || !turn) ? agentSessionStanding(root, sessionId) : 'absent';
+  // The external record being unreadable is not "no session": with local tracking gone, only the blocked answer is honest.
+  if (typeof standing === 'object') {
+    if (input.stop_hook_active === true) return emit({ systemMessage: `Amabie: its record of open agent sessions cannot be read (${standing.unreadable}) and this project's local tracking is incomplete — nothing was verified; this completion is UNVERIFIED, not a pass. A human should look.` });
+    return emit({ decision: 'block', reason: `Amabie blocked completion: its record of open agent sessions in the user trust store cannot be read (${standing.unreadable}), so it cannot tell whether this session was open when the project's Amabie state went missing. Do not recreate it; a human operator must repair the trust store and review the project.` });
+  }
+  if (root && sessionId && standing === 'open') {
     const lost = cfg === null ? 'its .amabie configuration is missing' : cfg === 'corrupt' ? 'its local configuration is unreadable' : 'this request has no tracking record';
     if (input.stop_hook_active === true) return emit({ systemMessage: `Amabie: this session is open in the trust store but ${lost} after one repair attempt — nothing was verified; this completion is UNVERIFIED, not a pass. A human should look.` });
     return emit({ decision: 'block', reason: `Amabie blocked completion: this agent session is open in the user trust store but ${lost}. The project's Amabie state was removed or damaged during the session, so nothing can be verified. Do not recreate it; a human operator must review the project and run amabie setup from a terminal.` });

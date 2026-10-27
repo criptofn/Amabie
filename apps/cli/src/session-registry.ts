@@ -17,7 +17,8 @@ import { type OpenResult, openSealed, projectIdForRoot, sealRecord, storeFromEnv
  */
 const KIND = 'agent-sessions';
 const VERSION = 'amabie-agent-sessions/1';
-const MAX_SESSIONS = 256;
+/** A bound on open sessions. At the bound a new session is REFUSED: dropping the oldest would forget a live one. */
+export const MAX_SESSIONS = 256;
 const ATTEMPTS = 3;
 
 export type SessionRegistry =
@@ -52,8 +53,10 @@ export function readSessionRegistry(root: string, store: TrustStore = storeFromE
   return digests.length === 0 ? { state: 'none' } : { state: 'active', digests };
 }
 
-/** Rewrite the project's session set with `change`; false when the record cannot be read or sealed. */
-function update(root: string, store: TrustStore, change: (sessions: Record<string, string>) => void): boolean {
+export type UpdateOutcome = 'ok' | 'full' | 'unavailable';
+
+/** Rewrite the project's session set with `change`; 'unavailable' when the record cannot be read or sealed. */
+function update(root: string, store: TrustStore, change: (sessions: Record<string, string>) => 'full' | void): UpdateOutcome {
   const projectId = projectIdForRoot(root);
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     const opened = openSealed(store, { projectId, kind: KIND });
@@ -61,32 +64,41 @@ function update(root: string, store: TrustStore, change: (sessions: Record<strin
     let expectedSeq: number | undefined;
     if (opened.status === 'valid' && opened.envelope) {
       const current = sessionsOf(opened.envelope.payload);
-      if (current === null) return false;
+      if (current === null) return 'unavailable';
       sessions = current;
       expectedSeq = opened.envelope.seq;
-    } else if (opened.status !== 'missing' && !isNeverUsed(opened)) return false;
-    change(sessions);
-    const newest = Object.entries(sessions).sort((a, b) => b[1].localeCompare(a[1])).slice(0, MAX_SESSIONS);
+    } else if (opened.status !== 'missing' && !isNeverUsed(opened)) return 'unavailable';
+    if (change(sessions) === 'full') return 'full';
     try {
-      sealRecord(store, { projectId, kind: KIND, amabieVersion: VERSION, payload: { schema: VERSION, sessions: Object.fromEntries(newest) } }, expectedSeq ?? 0);
-      return true;
+      sealRecord(store, { projectId, kind: KIND, amabieVersion: VERSION, payload: { schema: VERSION, sessions } }, expectedSeq ?? 0);
+      return 'ok';
     } catch { /* a concurrent writer moved the sequence, or the store refused; re-read and retry, then give up */ }
   }
-  return false;
+  return 'unavailable';
 }
 
-export function registerAgentSession(root: string, sessionId: string, store: TrustStore = storeFromEnv()): boolean {
-  return update(root, store, (sessions) => { sessions[digestOf(sessionId)] = new Date().toISOString(); });
+/** 'full' when MAX_SESSIONS other sessions are open: a registered session is never evicted to make room. */
+export function registerAgentSession(root: string, sessionId: string, store: TrustStore = storeFromEnv()): UpdateOutcome {
+  const digest = digestOf(sessionId);
+  return update(root, store, (sessions) => {
+    if (!(digest in sessions) && Object.keys(sessions).length >= MAX_SESSIONS) return 'full';
+    sessions[digest] = new Date().toISOString();
+  });
 }
 
 export function unregisterAgentSession(root: string, sessionId: string, store: TrustStore = storeFromEnv()): boolean {
   const digest = digestOf(sessionId);
   const registry = readSessionRegistry(root, store);
   if (registry.state === 'none' || (registry.state === 'active' && !registry.digests.includes(digest))) return true;
-  return update(root, store, (sessions) => { delete sessions[digest]; });
+  return update(root, store, (sessions) => { delete sessions[digest]; }) === 'ok';
 }
 
-export function isAgentSessionRegistered(root: string, sessionId: string, store: TrustStore = storeFromEnv()): boolean {
+/**
+ * Whether the trust store holds this session as open. 'unreadable' is its own answer: an external record
+ * that cannot be read is damaged authority, not proof that nothing is wired.
+ */
+export function agentSessionStanding(root: string, sessionId: string, store: TrustStore = storeFromEnv()): 'open' | 'absent' | { unreadable: string } {
   const registry = readSessionRegistry(root, store);
-  return registry.state === 'active' && registry.digests.includes(digestOf(sessionId));
+  if (registry.state === 'unreadable') return { unreadable: registry.reason };
+  return registry.state === 'active' && registry.digests.includes(digestOf(sessionId)) ? 'open' : 'absent';
 }

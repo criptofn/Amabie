@@ -7,8 +7,9 @@ import { after, test } from 'node:test';
 import { operatorSessionProblem } from '../src/agent-session-guard.js';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
 import { writeConfig } from '../src/local-config.js';
-import { readSessionRegistry } from '../src/session-registry.js';
-import { projectIdForRoot } from '../src/trust-store.js';
+import crypto from 'node:crypto';
+import { agentSessionStanding, MAX_SESSIONS, readSessionRegistry, registerAgentSession } from '../src/session-registry.js';
+import { projectIdForRoot, sealRecord, storeFromEnv } from '../src/trust-store.js';
 
 /**
  * The session-deletion bypass: a session removed `.amabie` (with Python, not a shell the hook guard
@@ -148,4 +149,46 @@ test('Stop after a legitimate SessionEnd is not blocked by the earlier registrat
   hook(root, session, 'SessionEnd');
   fs.rmSync(path.join(root, '.amabie'), { recursive: true, force: true });
   assert.equal(hook(root, session, 'Stop'), null);
+});
+
+/** A sealed record already holding \`count\` open sessions (no need to start hundreds of CLIs). */
+function sealedSessions(root: string, count: number): string[] {
+  const digests = Array.from({ length: count }, (_, index) => crypto.createHash('sha256').update(`earlier-session-${index}`).digest('hex'));
+  const sessions = Object.fromEntries(digests.map((digest, index) => [digest, new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString()]));
+  sealRecord(storeFromEnv(), { projectId: projectIdForRoot(root), kind: 'agent-sessions', amabieVersion: 'amabie-agent-sessions/1', payload: { schema: 'amabie-agent-sessions/1', sessions } }, 0);
+  return digests;
+}
+
+test('at capacity a new session is refused and no open session is forgotten', () => {
+  const { root, session } = project('capacity');
+  const before = sealedSessions(root, MAX_SESSIONS);
+  assert.equal(registerAgentSession(root, session), 'full');
+  const refused = hook(root, session, 'UserPromptSubmit');
+  assert.equal(refused?.decision, 'block');
+  assert.match(String(refused?.reason), /will not forget a live one/);
+  const registry = readSessionRegistry(root);
+  assert.equal(registry.state, 'active');
+  assert.deepEqual(registry.state === 'active' ? [...registry.digests].sort() : [], [...before].sort(), 'the oldest open session was not evicted');
+  assert.equal(registerAgentSession(root, 'earlier-session-0'), 'ok', 'an already-open session may be registered again at capacity');
+});
+
+test('one below capacity still admits a session', () => {
+  const { root, session } = project('below-capacity');
+  sealedSessions(root, MAX_SESSIONS - 1);
+  assert.equal(registerAgentSession(root, session), 'ok');
+  assert.equal(agentSessionStanding(root, session), 'open');
+});
+
+test('Stop does not read an unreadable external record as an unwired project', () => {
+  const { root, session } = project('stop-unreadable-record');
+  hook(root, session, 'UserPromptSubmit');
+  fs.rmSync(path.join(root, '.amabie'), { recursive: true, force: true });
+  fs.writeFileSync(path.join(store, 'records', projectIdForRoot(root), 'agent-sessions.json'), '{"not":"a sealed record"}');
+  assert.ok(typeof agentSessionStanding(root, session) === 'object');
+  const stop = hook(root, session, 'Stop');
+  assert.equal(stop?.decision, 'block');
+  assert.match(String(stop?.reason), /cannot be read/);
+  const again = hook(root, session, 'Stop', { stop_hook_active: true });
+  assert.equal(again?.decision, undefined);
+  assert.match(String(again?.systemMessage), /UNVERIFIED, not a pass/);
 });
