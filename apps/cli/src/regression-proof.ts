@@ -66,8 +66,8 @@ export function projectTestEntryHint(startDir: string): string {
  * `null` means no comparison duty applies (for example, no behavior changed).
  * A required comparison that could not run remains objectively UNPROVEN.
  */
-export function discriminationObligation(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[], taskStartHead?: string): Obligation | null {
-  const disc = planDiscrimination(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns);
+export function discriminationObligation(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[], taskStartHead?: string, authorityRoot = root): Obligation | null {
+  const disc = planDiscrimination(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns, authorityRoot);
   if (!disc.applicable) return null;
   if (disc.basePassed === null) return {
     id: 'regression-evidence', mode: 'objective', status: 'unproven',
@@ -313,8 +313,8 @@ export interface DiscriminationResult {
  * unproven change means. It also never mutates the working tree — the comparison happens in a
  * throwaway `git worktree` at the sealed baseline, removed in a `finally`.
  */
-export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[]): DiscriminationResult {
-  const sealed = comparePlanAtBase(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns);
+export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 600_000, isolationBase?: string, writeComparison?: typeof writeVerificationBundle, candidateRuns?: readonly StepResult[], authorityRoot = root): DiscriminationResult {
+  const sealed = comparePlanAtBase(root, cfg, timeoutMs, isolationBase, writeComparison, candidateRuns, authorityRoot);
   if (sealed.basePassed !== false) return sealed;
   // Keep the sealed comparison mandatory. A prior fix can make it fail forever,
   // however, so it cannot by itself distinguish the next change in the same repo.
@@ -349,7 +349,7 @@ export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 
     }
   }
   if (previous === base) return sealed;
-  const latest = comparePlanAtBase(root, cfg, timeoutMs, previous, writeComparison, candidateRuns);
+  const latest = comparePlanAtBase(root, cfg, timeoutMs, previous, writeComparison, candidateRuns, authorityRoot);
   if (!latest.applicable) return unknown('the latest change comparison could not establish a product delta');
   if (latest.basePassed !== false) return {
     ...latest, comparisonBase: previous, reason: `latest change comparison against ${previous}: ${latest.reason}`,
@@ -379,7 +379,7 @@ function unchangedSince(root: string, head: string, file: string): boolean {
   return committed !== undefined && committed !== '' && committed === current;
 }
 
-function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, isolationBase?: string, writeComparison = writeVerificationBundle, candidateRuns?: readonly StepResult[]): DiscriminationResult {
+function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, isolationBase?: string, writeComparison = writeVerificationBundle, candidateRuns?: readonly StepResult[], authorityRoot = root): DiscriminationResult {
   const none = (reason: string, changedPaths: string[] = []): DiscriminationResult =>
     ({ applicable: false, reason, changedPaths, overlaidChecks: [], addedChecks: [], modifiedChecks: [], basePassed: null, baseFailures: [] });
   const unknown = (reason: string, changedPaths: string[] = []): DiscriminationResult =>
@@ -531,7 +531,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
     const executionPlan = planWithFreshTests(cfg.plan);
     for (const s of executionPlan) {
       let r: StepResult;
-      try { r = runPlanStep(tree, cfg.pm, s, timeoutMs, root); } catch (e) {
+      try { r = runPlanStep(tree, cfg.pm, s, timeoutMs, authorityRoot); } catch (e) {
         return unknown(`the sealed checks could not run against the baseline (${String(e).slice(0, 120)})`, changed);
       }
       ran.push(r);
@@ -570,7 +570,7 @@ function comparePlanAtBase(root: string, cfg: AmabieConfig, timeoutMs: number, i
         if (!overlaid.includes(p) && gitWithinRoot(root, ['cat-file', '-e', `${head}:${p}`]) === null) continue;
         if (!copyInto(root, controlTree, p)) return unknown(`comparison input control could not copy ${safePath(p)}`, changed);
       }
-      const control = runPlanSteps(controlTree!, cfg.pm, planWithFreshTests(cfg.plan), timeoutMs, root);
+      const control = runPlanSteps(controlTree!, cfg.pm, planWithFreshTests(cfg.plan), timeoutMs, authorityRoot);
       if (control.some((r) => !r.ok)) {
         const provenance = { planDigest: planDigest(cfg.plan), baseline: cfg.baseline ?? null };
         const baseEvidence = writeComparison(root, 'baseline', ran, 'fail', provenance, { subjectRoot: tree, subjectIdentity: candidateIdentity(tree) });

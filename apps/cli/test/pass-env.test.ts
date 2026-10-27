@@ -114,3 +114,47 @@ test('--clear-pass-env revokes, and a baseline copy of the project still gets th
   assert.notEqual(cleared.code, 0, 'with the allowance revoked the check no longer sees the variable');
   assert.deepEqual(sealedPassEnvNames(root), []);
 });
+
+test('isolate --verify gives the candidate AND the baseline comparison the sealed variable, and candidate-local config grants nothing', () => {
+  const marker = path.join(TMP, 'isolated-runs.txt');
+  const root = path.join(TMP, 'isolated');
+  fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'isolated', private: true, scripts: { test: 'node --test tests/env.test.cjs' } }));
+  fs.writeFileSync(path.join(root, 'lib.cjs'), 'exports.value = 1;\n');
+  const check = (expected: number) => [
+    "const { test } = require('node:test'); const assert = require('node:assert/strict'); const fs = require('node:fs');",
+    `test('runs with the sealed variable', () => {`,
+    `  fs.appendFileSync(${JSON.stringify(marker)}, process.cwd() + ' ' + (process.env.PASS_ENV_TEST_TOKEN ? 'TOKEN' : 'NOTOKEN') + ' ' + (process.env.PASS_ENV_CANDIDATE_GRANT ? 'GRANTED' : 'ungranted') + '\\n');`,
+    `  assert.equal(process.env.PASS_ENV_TEST_TOKEN?.length, ${SECRET.length});`,
+    `  assert.equal(require('../lib.cjs').value, ${expected});`,
+    '});',
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(root, 'tests/env.test.cjs'), check(1));
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local');
+  git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
+  const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_CANDIDATE_GRANT: 'must-not-reach-a-check' };
+  assert.equal(amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN').code, 0);
+
+  const created = amabie(root, shell, 'isolate', 'cand', root);
+  assert.equal(created.code, 0, created.out);
+  const record = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'candidates', 'cand.json'), 'utf8')) as { root: string };
+  // The candidate carries its own "authority" files: a config granting a variable and a pass-env record cannot widen what runs.
+  fs.mkdirSync(path.join(record.root, '.amabie'), { recursive: true });
+  fs.writeFileSync(path.join(record.root, '.amabie', 'pass-env.json'), JSON.stringify({ names: ['PASS_ENV_CANDIDATE_GRANT'] }));
+  fs.writeFileSync(path.join(record.root, 'lib.cjs'), 'exports.value = 2;\n');
+  fs.writeFileSync(path.join(record.root, 'tests/env.test.cjs'), check(2));
+  git(record.root, 'add', '-A'); git(record.root, 'commit', '-m', 'candidate change');
+
+  const verified = amabie(root, shell, 'isolate', '--verify', 'cand', root);
+  const lines = fs.existsSync(marker) ? fs.readFileSync(marker, 'utf8').trim().split('\n') : [];
+  assert.ok(lines.some((l) => l.toLowerCase().includes(path.basename(record.root).toLowerCase())), `the candidate checkout's own check ran:\n${lines.join('\n')}\n${verified.out}`);
+  assert.ok(lines.some((l) => /amabie-discriminate/.test(l)), `the baseline comparison ran a check:\n${lines.join('\n')}\n${verified.out}`);
+  for (const line of lines) {
+    assert.match(line, / TOKEN ungranted$/, `every run (candidate and counterfactual) had the sealed variable and nothing else: ${line}`);
+  }
+  // The candidate's own sealed check passed (it needs the variable); the comparison then judged the base commit.
+  assert.match(verified.out, /✓ tests: npm run test \(exit 0\)/, verified.out);
+  assert.match(verified.out, /fails on the base commit/, verified.out);
+});

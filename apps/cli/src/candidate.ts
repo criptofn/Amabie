@@ -607,11 +607,12 @@ export function verifyCandidate(root: string, cfg: AmabieConfig, o: Out, name: s
     return null;
   };
   try {
-    results = runPlanSteps(rec.root, cfg.pm, planWithFreshTests(cfg.plan));
+    // The sealed authority (passed-through names, toolchain dirs) is the OPERATOR's project `root`, never the candidate checkout.
+    results = runPlanSteps(rec.root, cfg.pm, planWithFreshTests(cfg.plan), 600_000, root);
     if (sink) sink.results = results;
     // Both executions stay inside the authority sandwich. The comparison uses
     // the frozen isolation base, never setup's possibly older baseline.
-    if (results.every((r) => r.ok)) regression = discriminationObligation(rec.root, cfg, 600_000, rec.baseHead, deferComparison, results);
+    if (results.every((r) => r.ok)) regression = discriminationObligation(rec.root, cfg, 600_000, rec.baseHead, deferComparison, results, undefined, root);
   }
   catch (e) {
     const threwDrift = inWindowDrift();
