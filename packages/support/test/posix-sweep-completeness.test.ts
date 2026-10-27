@@ -74,10 +74,11 @@ describe('audit P0:19 — POSIX sweep processes the whole session (no silent 200
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ps-fallback-'));
     const ps = path.join(dir, 'ps');
     // Models the default ps query, which lists only terminal-attached processes; `-A` is the full table.
+    // Its rows carry a sid column, so it is parsed as the platform that asks for one (macOS has none).
     fs.writeFileSync(ps, '#!/bin/sh\ncase " $* " in\n  *" -A "*) printf "%s\\n" "  100 1 100 100 Ss" "  300 100 100 100 S" "  301 100 100 100 Z" ;;\n  *) printf "%s\\n" "  100 1 100 100 Ss" ;;\nesac\n');
     fs.chmodSync(ps, 0o755);
     try {
-      const rows = psTableRows(ps);
+      const rows = psTableRows(ps, 'linux');
       assert.notEqual(rows, null);
       assert.ok(rows?.some(row => row.p === 300), 'the helper without a terminal must be in the table the sweep uses');
       assert.equal(rows?.some(row => row.p === 301), false, 'a zombie is not a sweep target');
