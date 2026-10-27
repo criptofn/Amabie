@@ -10,6 +10,7 @@ import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { obligationsFor, proofSummary } from './proof-obligations.js';
 import { discriminationObligation } from './regression-proof.js';
+import { isAgentSessionRegistered, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
 import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
 
@@ -38,6 +39,8 @@ export async function cmdCheckpoint(): Promise<number> {
       schema: 'amabie-turn/1', sessionDigest: sha256(sessionId), promptId: crypto.randomUUID(),
       registeredPromptId: null, task: null,
     };
+    // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
+    if (!registerAgentSession(root, sessionId)) return emit({ decision: 'block', reason: 'Amabie could not record this agent session in its trust store. The prompt was stopped before project work; repair the trust store (see: amabie doctor), then retry.' });
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
     if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt, state.promptId);
     return emit({ hookSpecificOutput: {
@@ -46,7 +49,7 @@ export async function cmdCheckpoint(): Promise<number> {
     } });
   }
   if (input.hook_event_name === 'SessionEnd') {
-    if (root && sessionId) removeClaudeTurnState(root, sessionId);
+    if (root && sessionId) { removeClaudeTurnState(root, sessionId); unregisterAgentSession(root, sessionId); }
     return 0;
   }
   if (input.hook_event_name === 'PostToolUse') {
@@ -107,6 +110,13 @@ export async function cmdCheckpoint(): Promise<number> {
       && typeof toolInput?.command === 'string' && isTaskRegistration(toolInput.command, sessionId)) return 0;
     if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny(`Amabie task registration is missing for this request. Approve the project MCP server in Claude's /mcp menu and call mcp__amabie__amabie_task, or run: amabie task "<intent>" --requirement "<each stated criterion>" --session ${JSON.stringify(sessionId)}. Omit --requirement when none were stated. Project changes remain blocked until registration.`);
     return 0;
+  }
+  // A session the trust store knows is open, whose project state has vanished, is NOT "nothing wired here":
+  // `.amabie` (config, seals, turn state) was removed or damaged from inside the session.
+  if (root && sessionId && (cfg === null || cfg === 'corrupt' || !turn) && isAgentSessionRegistered(root, sessionId)) {
+    const lost = cfg === null ? 'its .amabie configuration is missing' : cfg === 'corrupt' ? 'its local configuration is unreadable' : 'this request has no tracking record';
+    if (input.stop_hook_active === true) return emit({ systemMessage: `Amabie: this session is open in the trust store but ${lost} after one repair attempt — nothing was verified; this completion is UNVERIFIED, not a pass. A human should look.` });
+    return emit({ decision: 'block', reason: `Amabie blocked completion: this agent session is open in the user trust store but ${lost}. The project's Amabie state was removed or damaged during the session, so nothing can be verified. Do not recreate it; a human operator must review the project and run amabie setup from a terminal.` });
   }
   if (!root || cfg === null) return 0; // nothing wired here — stay out of the way
   // GLM F-1: a config file that EXISTS but cannot be read is NOT "nothing wired
