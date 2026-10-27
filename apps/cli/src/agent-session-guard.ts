@@ -58,6 +58,30 @@ export function isTaskRegistration(command: string, sessionId: string): boolean 
   return sessions.length === 1 && sessions[0] === sessionId;
 }
 
+// Programs that only read: the commands a pure question needs before any task exists. Everything not named
+// here (interpreters, find, sed, awk, tee, package managers, git branch/checkout/...) stays blocked.
+const READ_PROGRAMS = new Set(['ls', 'dir', 'pwd', 'cat', 'type', 'head', 'tail', 'wc', 'get-content', 'get-childitem']);
+const READ_GIT = new Set(['status', 'diff', 'log', 'show', 'ls-files']);
+const PLAIN_ARGUMENT = /^[\p{L}\p{N}_@%+=:,./\\* ?~-]*$/u;
+
+/**
+ * A single literal command that only reads, so a pure question can look around before a task exists.
+ * Deliberately narrow: no operators or redirection (any of ; & | < > or a newline), no substitution or
+ * grouping (shellWords refuses $ and backticks; anything but plain path-like characters, so no parentheses
+ * or braces, is refused here), a fixed list of programs, and for git a fixed list of subcommands with no
+ * output-writing or external-program options. It reuses shellWords, the same parser the authority guard uses.
+ */
+export function isReadOnlyCommand(command: string): boolean {
+  const words = shellWords(command);
+  if (!words || words.length === 0 || words.some(isOperator)) return false;
+  const program = (words[0] ?? '').toLowerCase(); // a bare name only: ./cat or /tmp/x/cat is not "cat"
+  if (!words.slice(1).every(word => PLAIN_ARGUMENT.test(word))) return false;
+  if (program === 'git') {
+    return READ_GIT.has(words[1] ?? '') && !words.some(word => /^--(?:output|ext-diff|textconv|exec)/.test(word));
+  }
+  return READ_PROGRAMS.has(program);
+}
+
 function protectedPath(root: string, value: unknown): boolean {
   if (typeof value !== 'string') return false;
   const absolute = path.resolve(root, value);

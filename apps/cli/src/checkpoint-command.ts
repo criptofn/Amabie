@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildFailurePayload } from './failure-payload.js';
-import { agentToolProblem, isTaskRegistration } from './agent-session-guard.js';
+import { agentToolProblem, isReadOnlyCommand, isTaskRegistration } from './agent-session-guard.js';
 import { adapterFor, planAuthorityDrift, planDigest, sha256, stepKey } from './project.js';
 import { collectDiffSignals, inferTaskKinds } from './change-signals.js';
 import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep } from './check-runner.js';
@@ -111,6 +111,9 @@ export async function cmdCheckpoint(): Promise<number> {
     const toolInput = input.tool_input as { command?: unknown } | undefined;
     if ((toolName === 'Bash' || toolName === 'PowerShell') && sessionId
       && typeof toolInput?.command === 'string' && isTaskRegistration(toolInput.command, sessionId)) return 0;
+    // A pure question needs no task: a single read-only command may run before registration (it changes
+    // nothing, so there is nothing to verify). Anything that could write still waits for a task.
+    if ((toolName === 'Bash' || toolName === 'PowerShell') && typeof toolInput?.command === 'string' && isReadOnlyCommand(toolInput.command)) return 0;
     if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny(`Amabie task registration is missing for this request. Approve the project MCP server in Claude's /mcp menu and call mcp__amabie__amabie_task, or run: amabie task "<intent>" --requirement "<each stated criterion>" --session ${JSON.stringify(sessionId)}. Omit --requirement when none were stated. Project changes remain blocked until registration.`);
     return 0;
   }

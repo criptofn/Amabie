@@ -7,7 +7,7 @@ import { after, test } from 'node:test';
 import { CLI_ENTRY } from '../src/cli-runtime.js';
 import { writeConfig } from '../src/local-config.js';
 import { readClaudeTurnState } from '../src/task-state.js';
-import { agentToolProblem, isTaskRegistration } from '../src/agent-session-guard.js';
+import { agentToolProblem, isReadOnlyCommand, isTaskRegistration } from '../src/agent-session-guard.js';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-session-guard-'));
 after(() => fs.rmSync(temporary, { recursive: true, force: true }));
@@ -171,4 +171,26 @@ test('authority guards cover MCP filesystem writes, aliases and chained commands
   assert.equal(agentToolProblem(root, 'Bash', { command: 'echo ".mcp.json"' }), null);
   assert.equal(agentToolProblem(root, 'Bash', { command: 'printf "%s" ".amabie"' }), null);
   assert.ok(agentToolProblem(root, 'Bash', { command: 'echo "{}" > .mcp.json' }));
+});
+
+test('a pure question may read the project before a task exists, and nothing that could write', () => {
+  const { root, session } = fixture('pure-question', false);
+  for (const command of ['ls', 'ls -la src', 'cat package.json', 'head -n 20 README.md', 'git log --oneline -5', 'git diff HEAD~1', 'git status', 'Get-Content package.json', 'Get-ChildItem -Recurse src']) {
+    assert.equal(hook(root, session, 'PreToolUse', command.startsWith('Get-') ? 'PowerShell' : 'Bash', { command }), null, `${command} is a read`);
+    assert.equal(isReadOnlyCommand(command), true, command);
+  }
+  for (const command of [
+    'ls > out.txt', 'cat package.json | sh', 'ls; rm -rf .', 'ls && npm test', 'cat $(touch x)', 'cat `touch x`', 'ls\ntouch x',
+    'git log --output=evil.txt', 'git diff --ext-diff', 'git show --textconv HEAD', 'git branch -D main', 'git checkout .', 'git -c core.pager=sh log',
+    'find . -delete', 'find . -exec rm {} ;', 'sed -i s/a/b/ package.json', 'tee file', 'node -e 1', 'python -c 1', 'npm test', 'echo hi > x',
+    './cat package.json', '/tmp/evil/cat package.json', 'cat (Remove-Item x)', 'Get-Content {Remove-Item x}', 'ls "unterminated',
+  ]) {
+    assert.equal(isReadOnlyCommand(command), false, `${command} is not a pure read`);
+    const output = hook(root, session, 'PreToolUse', 'Bash', { command });
+    assert.equal(output?.hookSpecificOutput?.permissionDecision, 'deny', `${command} stays blocked until a task is registered`);
+    assert.match(output.hookSpecificOutput.permissionDecisionReason, /registration is missing/i);
+  }
+  // Writing tools are unchanged: reading is the only thing that became possible.
+  const edit = hook(root, session, 'PreToolUse', 'Write', { file_path: path.join(root, 'a.txt'), content: 'x' });
+  assert.equal(edit?.hookSpecificOutput?.permissionDecision, 'deny');
 });
