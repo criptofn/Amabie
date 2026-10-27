@@ -23,7 +23,7 @@ Each task-specific independent oracle reproduced the target defect on its baseli
 | R1 | Refactron | install, build, typecheck, tests, build: pass | READY / same checks pass | target defect reproduced | pass |
 | S1 | schniedelsmp.net | Gradle tests: pass | READY / Gradle tests pass | target defect reproduced | pass |
 
-Full command output, exit codes, repository identities, toolchain paths, oracle inputs/results, positive-control diffs, and SHA-256 manifests are in [`tooling/benchmark/results/session-evidence/post-v15-pilot-20260927/`](../tooling/benchmark/results/session-evidence/post-v15-pilot-20260927/). The task preparation now resets H2 and H5 to the clean Hermes base and maps task labels to the existing Hermes, Refactron, and schniedelsmp scratch repositories; those two corrections were required for the twelve preparations to complete.
+Full command output, exit codes, repository identities, toolchain paths, oracle inputs/results, positive-control diffs, and SHA-256 manifests are in [`tooling/benchmark/results/session-evidence/post-v15-pilot-20260927/`](../../tooling/benchmark/results/session-evidence/post-v15-pilot-20260927/). The task preparation now resets H2 and H5 to the clean Hermes base and maps task labels to the existing Hermes, Refactron, and schniedelsmp scratch repositories; those two corrections were required for the twelve preparations to complete.
 
 ## Product and package verification
 

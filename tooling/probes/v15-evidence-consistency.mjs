@@ -43,11 +43,11 @@ const REPO = path.resolve(import.meta.dirname, '..', '..');
 const FILES = {
   landing: 'README.md',
   readme: 'docs/history/README-2.0.md',
-  matrix: 'docs/CLAIM-EVIDENCE-MATRIX-1.5.md',
-  kit: 'docs/AUDIT-KIT-1.5.md',
-  closure: 'docs/POST-AUDIT-CLOSURE-1.5.md',
-  benchmark: 'docs/BENCHMARK-EVERYDAY-1.5.md',
-  realworld: 'docs/REAL-WORLD-EVIDENCE-1.5.md',
+  matrix: 'docs/history/CLAIM-EVIDENCE-MATRIX-1.5.md',
+  kit: 'docs/history/AUDIT-KIT-1.5.md',
+  closure: 'docs/history/POST-AUDIT-CLOSURE-1.5.md',
+  benchmark: 'docs/history/BENCHMARK-EVERYDAY-1.5.md',
+  realworld: 'docs/history/REAL-WORLD-EVIDENCE-1.5.md',
 };
 
 let failures = 0;
@@ -167,10 +167,10 @@ const PINS = [
   ['readme', 'the token-saving headline is WITHDRAWN'],
   ['readme', 'claims no token-saving percentage at all'],
   ['readme', '~438 provider-native tokens'],
-  ['readme', 'docs/AUDIT-KIT-1.5.md'],
-  ['readme', 'docs/CLAIM-EVIDENCE-MATRIX-1.5.md'],
-  ['readme', 'docs/POST-AUDIT-CLOSURE-1.5.md'],
-  ['readme', 'docs/BENCHMARK-EVERYDAY-1.5.md'],
+  ['readme', 'docs/history/AUDIT-KIT-1.5.md'],
+  ['readme', 'docs/history/CLAIM-EVIDENCE-MATRIX-1.5.md'],
+  ['readme', 'docs/history/POST-AUDIT-CLOSURE-1.5.md'],
+  ['readme', 'docs/history/BENCHMARK-EVERYDAY-1.5.md'],
   ['readme', 'open and unexplained'],
   ['matrix', 'no everyday token-saving percentage is claimed'],
   ['matrix', 'OPEN / UNEXPLAINED / DID NOT RECUR'],

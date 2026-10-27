@@ -4,7 +4,7 @@
  *
  * WHY THIS EXISTS: this session's most persistent defect was not in the product. It was summaries
  * drifting from the thing they summarise. MEASURED, repeatedly:
- *   - `docs/V1.2-PLAN.md`'s FINAL STANDINGS said "35 commits" then "54 commits" long after both were
+ *   - `docs/history/V1.2-PLAN.md`'s FINAL STANDINGS said "35 commits" then "54 commits" long after both were
  *     false, and was re-derived by hand each time;
  *   - the README and CHANGELOG quoted a token figure from a configuration the harness now rejects;
  *   - the CHANGELOG table and the results document quoted "nine paired trials" when there are eight
@@ -57,7 +57,7 @@ const actual = {
 };
 
 // --- what the documents assert --------------------------------------------------------------
-const plan = read('docs/V1.2-PLAN.md');
+const plan = read('docs/history/V1.2-PLAN.md');
 const findings = [];
 /**
  * The check COUNT is counted, not written down. It used to be the literal `4 + 3` in the summary
@@ -130,7 +130,7 @@ check(
  * about phrasing and strict about the claim - if any of them starts asserting an advantage, this
  * fails and a human looks.
  */
-for (const [file, text] of [['README.md', read('README.md')], ['CHANGELOG.md', read('CHANGELOG.md')], ['docs/V1.2-BENCHMARK.md', read('docs/V1.2-BENCHMARK.md')]]) {
+for (const [file, text] of [['docs/history/README-2.0.md', read('docs/history/README-2.0.md')], ['CHANGELOG.md', read('CHANGELOG.md')], ['docs/history/V1.2-BENCHMARK.md', read('docs/history/V1.2-BENCHMARK.md')]]) {
   const assertsNegative = /no correctness advantage|did not demonstrate|never a saving/i.test(text);
   check(`${file} states the result as a negative`, assertsNegative, 'no negative result statement found — was a claim added?');
 }
@@ -157,7 +157,7 @@ check(
 const deltaMisstated = (text) => /delta\s+is\s+\*{0,2}\+?82\.7%/.test(text);
 check(
   'no release document presents the contaminated +82.7% aggregate as the measured delta',
-  !deltaMisstated(read('docs/V1.2-BENCHMARK.md')) && !deltaMisstated(read('README.md')),
+  !deltaMisstated(read('docs/history/V1.2-BENCHMARK.md')) && !deltaMisstated(read('README.md')),
   'the contaminated-corpus aggregate is quoted as the headline; quote +115.1% and cite +82.7% only as the contaminated-corpus aggregate',
 );
 

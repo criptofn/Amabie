@@ -108,7 +108,7 @@ The installed package includes the same guide and its three-file example.
 > building does not put `amabie` on PATH. Prepare an installable local package
 > with `node tooling/pack.mjs`, then install `./pack/npm/amabie-cli-2.0.0.tgz`.
 > Hooks installed by v1.5 need `amabie setup` to point at the new installation.
-> v1.3's own bytes are described in [`docs/RELEASE-1.3.md`](../../docs/RELEASE-1.3.md).
+> v1.3's own bytes are described in [`docs/history/RELEASE-1.3.md`](RELEASE-1.3.md).
 
 ## Use your coding agent normally
 
@@ -320,7 +320,7 @@ re-run `setup` and complete against a plan and baseline it sealed itself.
 identity), and it is not available in this build. Full matrix,
 including what is deliberately *not* supported:
 [docs/COMPATIBILITY.md](../../docs/COMPATIBILITY.md). Upgrading an existing
-installation: [docs/MIGRATION-1.0-TO-1.1.md](../../docs/MIGRATION-1.0-TO-1.1.md).
+installation: [docs/history/MIGRATION-1.0-TO-1.1.md](MIGRATION-1.0-TO-1.1.md).
 
 **What `READY` means — and what it does not.** READY is printed only when
 Amabie's wiring was verified to exist *and* your detected checks were
@@ -351,7 +351,7 @@ but its contents are not independent authority.
 > itself. **No saving claim is supported, and none is made.** The standing MCP payload IS now inside
 > the measurement and costs ~438 tokens (measured, not derived), so the **accounting** is fixed -
 > the **saving** is not supported. See
-> [`docs/BENCHMARK-EVERYDAY-1.5.md`](../../docs/BENCHMARK-EVERYDAY-1.5.md).
+> [`docs/history/BENCHMARK-EVERYDAY-1.5.md`](BENCHMARK-EVERYDAY-1.5.md).
 >
 > **The qualification, which is part of the claim, not a footnote to it:**
 >
@@ -422,7 +422,7 @@ Read it this way, because it is the only reading the numbers support:
   are unambiguously one experiment.
   **This benchmark, at n=1 per cell on Amabie-authored fixtures, cannot resolve an effect of this size
   in either direction.** Method, every cell and every limit:
-  [`docs/BENCHMARK-EVERYDAY-1.5.md`](../../docs/BENCHMARK-EVERYDAY-1.5.md).
+  [`docs/history/BENCHMARK-EVERYDAY-1.5.md`](BENCHMARK-EVERYDAY-1.5.md).
 - **The standing payload costs ~438 tokens per session, MEASURED — not the ~1,432 that `bytes ÷ 4`
   implied.** JSON tool schemas tokenise far better than four bytes per token, so the derived figure
   overstated the payload by **3.3×**. `bytes ÷ 4` must not be quoted as tokens.
@@ -480,9 +480,9 @@ token savings.**
 
 Numbers, denominators and the counter-examples: [`tooling/benchmark/RESULTS.md`](../../tooling/benchmark/RESULTS.md) ·
 what the set can and cannot tell you: [`tooling/benchmark/BENCHMARKS.md`](../../tooling/benchmark/BENCHMARKS.md) ·
-the consolidated matrix and its three corrected defects: [`docs/V1.1-STATUS.md`](../../docs/V1.1-STATUS.md) ·
+the consolidated matrix and its three corrected defects: [`docs/history/V1.1-STATUS.md`](V1.1-STATUS.md) ·
 **v1.2's false-done corpus and its result — which is that no correctness advantage was demonstrated**:
-[`docs/V1.2-BENCHMARK.md`](../../docs/V1.2-BENCHMARK.md).
+[`docs/history/V1.2-BENCHMARK.md`](V1.2-BENCHMARK.md).
 
 > **The v1.2 result, in one line, so it cannot be missed:** five fixtures were authored for the failure
 > classes v1.1 had no coverage of. In the configuration the harness accepts, the guarded arm was
@@ -499,15 +499,15 @@ the consolidated matrix and its three corrected defects: [`docs/V1.1-STATUS.md`]
 > sessions on three projects using local `qwen3.5:9b` produced 6/6 correct solutions without
 > Amabie and 4/6 with Amabie after an explicitly post-pilot H1 check. Four Amabie sessions
 > passed their actual completion hook; native token use was 3.95× the plain arm. This small
-> pilot supports no token-saving claim. [Results, artifact identity and limits](../../docs/POST-V15-NATIVE-PILOT-COMPLETE-2026-10-01.md).
+> pilot supports no token-saving claim. [Results, artifact identity and limits](POST-V15-NATIVE-PILOT-COMPLETE-2026-10-01.md).
 
 The subsequent unpublished correction accepts sufficient imported `*-test.js` checks,
 including uncommitted files, and retains baseline failure logs. Its H3 controls reject
-weak tests and the old faulty implementation. [Repair and evidence](../../docs/POST-V15-IMPORTED-CHECK-REPAIR-2026-10-01.md).
+weak tests and the old faulty implementation. [Repair and evidence](POST-V15-IMPORTED-CHECK-REPAIR-2026-10-01.md).
 Its next native H3 pair completed correctly in both arms; Amabie's actual Stop
 hook passed with the worker-test provenance caveat retained. The Amabie session
 used 28 turns versus four without Amabie, so this remains a completion improvement
-without an efficiency claim. [Native follow-up](../../docs/POST-V15-IMPORTED-CHECK-NATIVE-2026-10-01.md).
+without an efficiency claim. [Native follow-up](POST-V15-IMPORTED-CHECK-NATIVE-2026-10-01.md).
 
 > **v1.5 status: the token-saving headline is WITHDRAWN.**
 > The v1.5 candidate published `83.21 % of Plain (−16.79 %)` for the everyday path. An
@@ -527,10 +527,10 @@ without an efficiency claim. [Native follow-up](../../docs/POST-V15-IMPORTED-CHE
 > is `d3f6a9c`, all six legs green in run
 > [`36168541720`](https://github.com/criptofn/Amabie/actions/runs/36168541720)** (Windows core
 > terminal success: 1,211 tests, 1,206 pass, 0 fail, 5 skipped). Evidence:
-> [`docs/AUDIT-KIT-1.5.md`](../../docs/AUDIT-KIT-1.5.md) ·
-> [`docs/CLAIM-EVIDENCE-MATRIX-1.5.md`](../../docs/CLAIM-EVIDENCE-MATRIX-1.5.md) ·
-> [`docs/POST-AUDIT-CLOSURE-1.5.md`](../../docs/POST-AUDIT-CLOSURE-1.5.md) ·
-> [`docs/BENCHMARK-EVERYDAY-1.5.md`](../../docs/BENCHMARK-EVERYDAY-1.5.md).
+> [`docs/history/AUDIT-KIT-1.5.md`](AUDIT-KIT-1.5.md) ·
+> [`docs/history/CLAIM-EVIDENCE-MATRIX-1.5.md`](CLAIM-EVIDENCE-MATRIX-1.5.md) ·
+> [`docs/history/POST-AUDIT-CLOSURE-1.5.md`](POST-AUDIT-CLOSURE-1.5.md) ·
+> [`docs/history/BENCHMARK-EVERYDAY-1.5.md`](BENCHMARK-EVERYDAY-1.5.md).
 
 ## Known limitations
 
@@ -587,8 +587,8 @@ What Amabie does **not** claim is as much a part of the product as what it does.
   means the agent is told and may ignore it, `UNMEASURED` means the mechanism is
   documented and nobody here has checked it.
 
-Full list: [`docs/RELEASE-1.1.md`](../../docs/RELEASE-1.1.md) ·
-[`docs/V1.3-PRODUCT-AUDIT.md`](../../docs/V1.3-PRODUCT-AUDIT.md).
+Full list: [`docs/history/RELEASE-1.1.md`](RELEASE-1.1.md) ·
+[`docs/history/V1.3-PRODUCT-AUDIT.md`](V1.3-PRODUCT-AUDIT.md).
 
 ---
 
@@ -852,7 +852,7 @@ instruction for a machine without it.
 - **Update**: replace the executable, then re-run `amabie setup --yes` in each
   wired repository. The plan and its seal are re-derived; nothing about the old
   binary is trusted afterwards. Upgrading an existing 1.0 installation is
-  documented separately in [`docs/MIGRATION-1.0-TO-1.1.md`](../../docs/MIGRATION-1.0-TO-1.1.md).
+  documented separately in [`docs/history/MIGRATION-1.0-TO-1.1.md`](MIGRATION-1.0-TO-1.1.md).
 - **Uninstall**: `amabie uninstall` in each wired repository removes exactly
   Amabie's own recorded changes (hook entries, config, its own ignore line) and
   refuses to delete `.amabie` while candidates exist; then delete the executable.

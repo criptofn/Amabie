@@ -122,7 +122,7 @@ commit with the candidate's check files overlaid — *do the checks fail without
 turns the answer into a proof obligation. If the checks pass on both sides, the verdict is **NOT
 PROVEN**: the Stop hook blocks with an actionable instruction, and `doctor` refuses READY (exit 2)
 instead of noting it. Measured end to end by `tooling/probes/regression-evidence-gate.mjs`
-(ALL PASS, six real repositories) and documented in `docs/V1.1-STATUS.md` (Update 4).
+(ALL PASS, six real repositories) and documented in `docs/history/V1.1-STATUS.md` (Update 4).
 
 `bench-r7` (3 tasks × {plain, guarded, invisible} × 5) is the first matrix taken with the gate — with
 one honest caveat, stated rather than smoothed over: **the batch straddles the product change**, so

@@ -33,7 +33,7 @@
  * control's own success satisfied the confined check — the probe measured itself and called it a
  * boundary. The corrected probe gives every attempt a unique file, requires the CHILD's own pid in
  * the content, and reports a child that never ran as "not evidence of a boundary" rather than as
- * protection. See the audit trail in `docs/V1.2-PLAN.md`.
+ * protection. See the audit trail in `docs/history/V1.2-PLAN.md`.
  *
  * CURRENT MEASUREMENT: the Win32 helper is tried before the historical runas fallback.
  * Its low child executes; the corrected attack battery measures 8/8 denied writes and 2/2

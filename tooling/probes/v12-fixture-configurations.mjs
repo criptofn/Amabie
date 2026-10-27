@@ -4,7 +4,7 @@
  *
  * WHY THIS EXISTS (v1.2, open items 6 and 7). `benchmarkConfig: { arm, registerRequirements }` is the
  * field that stops a fixture silently measuring a configuration it was not authored for — but the
- * field is only worth anything if the DECLARATION IS TRUE, and `docs/V1.2-PLAN.md` records the exact
+ * field is only worth anything if the DECLARATION IS TRUE, and `docs/history/V1.2-PLAN.md` records the exact
  * way it was got wrong the first time: the six v1.2 fixtures were declared `registerRequirements:
  * true` "because the pilot ran them that way", which would have blessed the configuration whose
  * guarded verdicts are already documented as NOT being about the code.
@@ -125,7 +125,7 @@ check('1. each fixture declares BOTH axes (arm and registerRequirements)', () =>
     for (const d of declared) {
       assert(typeof d.arm === 'string' && ARMS.has(d.arm), `${name} declares arm ${JSON.stringify(d.arm)} — not one of ${[...ARMS].join(', ')}`);
       assert(typeof d.registerRequirements === 'boolean',
-        `${name} declares arm "${d.arm}" WITHOUT registerRequirements — an arm-only declaration cannot be matched against a run that registered requirements, which is the case that produced the recorded false red (docs/V1.2-PLAN.md open item 7)`);
+        `${name} declares arm "${d.arm}" WITHOUT registerRequirements — an arm-only declaration cannot be matched against a run that registered requirements, which is the case that produced the recorded false red (docs/history/V1.2-PLAN.md open item 7)`);
     }
   }
   console.log(`     ${fixtureNames.length} fixture(s): every one declares arm + registerRequirements`);

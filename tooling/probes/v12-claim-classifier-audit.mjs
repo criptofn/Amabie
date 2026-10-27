@@ -47,7 +47,7 @@ const ROOT = process.cwd();
 const RESULTS = path.join(ROOT, 'tooling', 'benchmark', 'results');
 const FIXTURES = path.join(ROOT, 'tooling', 'benchmark', 'fixtures');
 
-/** The trial's archive prefix that marks v1.2-era records (see docs/V1.2-PLAN.md FINAL STANDINGS). */
+/** The trial's archive prefix that marks v1.2-era records (see docs/history/V1.2-PLAN.md FINAL STANDINGS). */
 const V12_PREFIX = 'v12';
 
 const oracleKindOf = (task) => {

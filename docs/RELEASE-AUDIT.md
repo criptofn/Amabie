@@ -65,7 +65,7 @@ These cases were present and passed in the current Windows full-suite log. They 
 
 ## Open historical containment incident — not closed by this mission
 
-The public [Amabie v1.5.0 release notes](https://github.com/criptofn/Canary/releases/tag/v1.5.0), `docs/AUDIT-KIT-1.5.md` section 7.0 and `docs/CLAIM-EVIDENCE-MATRIX-1.5.md` record one hosted Windows failure: the live-parent descendant test reported that the sweep killed PID 7564 but omitted expected PID 2144 after 35980 ms. Four later hosted greens and 14 local attempts did not explain it. The release explicitly kept its cause **OPEN / UNEXPLAINED / NOT FIXED**; the failure diagnostic did not run in successful repetitions.
+The public [Amabie v1.5.0 release notes](https://github.com/criptofn/Canary/releases/tag/v1.5.0), `docs/history/AUDIT-KIT-1.5.md` section 7.0 and `docs/history/CLAIM-EVIDENCE-MATRIX-1.5.md` record one hosted Windows failure: the live-parent descendant test reported that the sweep killed PID 7564 but omitted expected PID 2144 after 35980 ms. Four later hosted greens and 14 local attempts did not explain it. The release explicitly kept its cause **OPEN / UNEXPLAINED / NOT FIXED**; the failure diagnostic did not run in successful repetitions.
 
 The reviewed baseline at the time of this historical incident audit contained later, relevant product changes:
 

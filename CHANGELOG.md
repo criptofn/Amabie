@@ -92,8 +92,8 @@ changed*; the evidence ledgers record *what was observed*.
 `codex/v14-last-known-gaps`. **NOT published:** no tag, no GitHub release, no push.
 The release closes the concrete product gaps that were already known on 2026-09-20; it invents no
 new roadmap. Every gap and its classification is in
-[`docs/V1.4-GAP-AUDIT.md`](docs/V1.4-GAP-AUDIT.md); the frozen-bytes audit and the honest token
-position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
+[`docs/history/V1.4-GAP-AUDIT.md`](docs/history/V1.4-GAP-AUDIT.md); the frozen-bytes audit and the honest token
+position are in [`docs/history/RELEASE-1.4.md`](docs/history/RELEASE-1.4.md).
 
 ### Added
 
@@ -137,7 +137,7 @@ position are in [`docs/RELEASE-1.4.md`](docs/RELEASE-1.4.md).
   > cheaper**; `bug-sum` cost more with Amabie in **both** runs; the plain arm itself drifted **27 %**
   > between the two runs on identical configuration, so the *direction* is measured and the *size* is
   > not stable (**n=1 per cell**). The ≤ 75 % target remains **not met**. See
-  > [`docs/BENCHMARK-EVERYDAY-1.5.md`](docs/BENCHMARK-EVERYDAY-1.5.md).
+  > [`docs/history/BENCHMARK-EVERYDAY-1.5.md`](docs/history/BENCHMARK-EVERYDAY-1.5.md).
 - **Everyday-path messages are translated, not weakened.** `setup`'s trust-store refusal, its
   seal refusal and `result` no longer open with internal vocabulary (`REFUSED — <raw throw>`,
   "sealed in the trust store", "no sealed checks, no proof"); the last-resort handler no longer
@@ -341,7 +341,7 @@ the false-done question honestly, and states plainly what it could not establish
 - **Five fixtures covering the failure classes v1.1 had no coverage of**: CLI/external
   behaviour, requirement-coverage gap, test tampering, stub/mock completion, partial
   implementation. Each validated — untouched, known-good, known-bad — before registration.
-- **`docs/V1.2-BENCHMARK.md`**: the corpus and its result, including what it does **not**
+- **`docs/history/V1.2-BENCHMARK.md`**: the corpus and its result, including what it does **not**
   establish.
 - **A `dist` tripwire** (`tooling/probes/v12-dist-tripwire.mjs`) that fails loudly when the
   compiled artifact contains a mutation battery's leftover, run first in
@@ -384,7 +384,7 @@ the false-done question honestly, and states plainly what it could not establish
   duties while the operator believes otherwise.
 - **`npm test` no longer fails at random.** The suite now pins `--test-concurrency=8`: at node's
   default three process-spawning tests timed out across two runs and pass standalone in seconds
-  (`docs/V1.2-PLAN.md` audit entry 13). Scheduling only — no assertion, timeout or threshold moved.
+  (`docs/history/V1.2-PLAN.md` audit entry 13). Scheduling only — no assertion, timeout or threshold moved.
 
 ### Benchmark result, stated here as well as in the results document
 
@@ -407,7 +407,7 @@ other three are compared against plain means from earlier batches and are weaker
 agent was correct in every trial, and there were zero false dones in either arm.** Amabie's own KPI
 report therefore reads *FAILS THE TOKEN REQUIREMENT (no saving)*. **No correctness advantage was
 demonstrated**, for three measured reasons recorded in
-[`docs/V1.2-BENCHMARK.md`](docs/V1.2-BENCHMARK.md). n = 1 per cell is not a rate. The `workflow`
+[`docs/history/V1.2-BENCHMARK.md`](docs/history/V1.2-BENCHMARK.md). n = 1 per cell is not a rate. The `workflow`
 arm — the one that actually drives `amabie work` → candidate → `finish` — was separately run
 against `plain` on `bound-requirements`, the corpus's only fixture whose stated requirements are
 **bound**: both arms produced correct work, **zero false dones**, and the workflow arm cost
@@ -465,7 +465,7 @@ schema with no delivery verdict, so it can never read as completed work.
 Amabie v1.1 widens verification from one well-understood project to **any
 project, with its proof measured** — and closes two pre-release holes in the
 completion path. The release overview is
-[`docs/RELEASE-1.1.md`](docs/RELEASE-1.1.md); the detailed implementation record
+[`docs/history/RELEASE-1.1.md`](docs/history/RELEASE-1.1.md); the detailed implementation record
 verified for this release follows below.
 
 **What v1.1 adds**
@@ -541,7 +541,7 @@ verified for this release follows below.
 **Known limitations** — `LOCAL` has documented same-UID limits; `HARDENED` is
 **not** available and requires measured OS-level controls; bindings are declared
 proof coverage inside Amabie's model, not semantic truth. See
-[`docs/RELEASE-1.1.md`](docs/RELEASE-1.1.md#known-limitations).
+[`docs/history/RELEASE-1.1.md`](docs/history/RELEASE-1.1.md#known-limitations).
 
 ---
 
@@ -694,7 +694,7 @@ separate OS identity is installed — see
 [`docs/TRUST-ARCHITECTURE.md`](docs/TRUST-ARCHITECTURE.md)). The six probes that
 were previously reported as pre-existing host-bound failures are now **closed**
 — no assertion was weakened, and none of them was a product defect (see
-[`docs/V1.1-STATUS.md`](docs/V1.1-STATUS.md)).
+[`docs/history/V1.1-STATUS.md`](docs/history/V1.1-STATUS.md)).
 
 ### Fixed — the six previously-red probes
 
@@ -824,7 +824,7 @@ were previously reported as pre-existing host-bound failures are now **closed**
 - [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) (per-cell proof status),
   [`docs/CAPABILITY-LEVELS.md`](docs/CAPABILITY-LEVELS.md),
   [`docs/TRUST-ARCHITECTURE.md`](docs/TRUST-ARCHITECTURE.md),
-  [`docs/MIGRATION-1.0-TO-1.1.md`](docs/MIGRATION-1.0-TO-1.1.md),
+  [`docs/history/MIGRATION-1.0-TO-1.1.md`](docs/history/MIGRATION-1.0-TO-1.1.md),
   [`docs/SPEC-FORMAT.md`](docs/SPEC-FORMAT.md),
   [`schemas/spec.schema.json`](schemas/spec.schema.json),
   [`examples/`](examples/README.md) (Node, Python, Rust, Go, plus the generic
@@ -872,5 +872,5 @@ the committed axios 0.27.2 → 1.0.0 fixture.
 Verdict as released: **PASS WITH DOCUMENTED RESIDUALS** — same-UID forgery, PTY
 impersonation, test meaning and the other local trust limits remain; skips are not
 passes; GitHub-hosted CI is separate from the completed local checks. See
-[`docs/RELEASE-1.0-REVIEW.md`](docs/RELEASE-1.0-REVIEW.md) and
+[`docs/history/RELEASE-1.0-REVIEW.md`](docs/history/RELEASE-1.0-REVIEW.md) and
 [`docs/AUTHORIZATION-1.0.md`](docs/AUTHORIZATION-1.0.md).

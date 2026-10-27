@@ -136,7 +136,7 @@ Happy path: five Amabie commands including one-time setup, then four on later
 tasks. Subjective path: one additional `accept` command and one typed candidate
 name. Commit the actual reviewed state before acceptance; dirty review no longer
 authorizes different committed bytes. Numerical targets use the inspectable
-sealed mapping described in [AUTHORIZATION-1.0.md](AUTHORIZATION-1.0.md).
+sealed mapping described in [AUTHORIZATION-1.0.md](../AUTHORIZATION-1.0.md).
 
 One canonical module replaces the superseded `intentDigestOf` and
 `acceptanceScopeDigestOf` helpers. Frozen task types use the same `TaskIdentity`.

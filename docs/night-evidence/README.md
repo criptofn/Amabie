@@ -30,7 +30,7 @@ of the same commit contained **none** of the cited evidence.
 - `2026-09-05-F6/` — night-run F6 attempt-1 (starting SHA `34cf515`,
   five fixes, final HEAD `d327e71`), exported post-audit plus re-derivation
   logs. Index: `2026-09-05-F6/DONE` and
-  `docs/NIGHT-F6-HARDENING-2026-09-05.md` (errata section records what was
+  `docs/history/NIGHT-F6-HARDENING-2026-09-05.md` (errata section records what was
   wrong in attempt 1).
 - `2026-09-06-productization/` — productization workbench night
   (commit `2b72cc4`): clean-room runs (including the lazy-vibecoder
@@ -43,4 +43,4 @@ of the same commit contained **none** of the cited evidence.
   after-fix CLOSED repro, baseline/intermediate/final suite logs, the M7–M10
   mutation batteries, per-probe finals, dist sha byte-stability notes, and the
   `verify:productization` chain log. Report:
-  `docs/NIGHT-M10.1-HARDENING-2026-09-09.md`.
+  `docs/history/NIGHT-M10.1-HARDENING-2026-09-09.md`.

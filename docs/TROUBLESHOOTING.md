@@ -193,7 +193,7 @@ fixed it by making fixtures declare their own harness.
 
 **What to do.** If a test passes locally and fails on a clean runner, check
 whether it depends on something in your home directory or on a tool version the
-runner does not have. `docs/V1.4-GAP-AUDIT.md` (Gap G) records the five distinct
+runner does not have. `docs/history/V1.4-GAP-AUDIT.md` (Gap G) records the five distinct
 causes found in this repository and how each was classified.
 
 ---
