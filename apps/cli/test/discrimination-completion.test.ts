@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { after, test } from 'node:test';
 import { candidateDiffSignals, collectDiffSignals, discriminationObligation, planDiscrimination, readConfig } from '../src/onboarding.js';
+import { refactorPreservationLimit } from '../src/regression-proof.js';
 
 const packagedCli = process.env.AMABIE_TEST_CLI;
 const CLI = packagedCli ?? path.resolve(import.meta.dirname, '../src/main.js');
@@ -723,4 +724,18 @@ test('follow-up tasks: an earlier task\'s kept check is earlier work, not create
   assert.notEqual(adopted.baseline?.head, baseline);
   const next = planDiscrimination(root, adopted, 120_000);
   assert.ok(!next.addedChecks.includes('tests/leading.test.cjs'), 'accepted work is part of the baseline now');
+});
+
+test('a refactor that the sealed checks pass on both sides is named as an unmeasured limit, never as a missing regression test', () => {
+  const root = fixture('refactor-limit');
+  write(root, 'greet.cjs', "module.exports = n => 'hello ' + String(n);\n");
+  const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
+  const raw = discriminationObligation(root, cfg, 120_000);
+  assert.equal(raw?.status, 'unproven');
+  assert.match(raw?.note ?? '', /pass on the base commit too/);
+  const refactor = refactorPreservationLimit(raw, ['refactor']);
+  assert.equal(refactor?.status, 'unproven', 'the proof floor is unchanged');
+  assert.match(refactor?.note ?? '', /does not measure that those checks execute the lines you touched/);
+  assert.doesNotMatch(refactor?.note ?? '', /Add a regression assertion/);
+  assert.equal(refactorPreservationLimit(raw, ['bugfix']), raw, 'a bugfix keeps the regression-test instruction');
 });

@@ -359,6 +359,18 @@ export function planDiscrimination(root: string, cfg: AmabieConfig, timeoutMs = 
   return sealed;
 }
 
+/**
+ * A refactor is SUPPOSED to pass on the base too, so "add a check that fails without the change" is
+ * the wrong repair for it. Name the real limit instead, and keep the status: Amabie runs the sealed
+ * checks but cannot measure that they execute the lines that moved (no per-line coverage mapping
+ * across runners), so preservation is UNPROVEN, not failed, and the proof floor is unchanged.
+ */
+export function refactorPreservationLimit(regression: Obligation | null, kinds: readonly string[]): Obligation | null {
+  if (regression === null || !kinds.includes('refactor') || regression.status !== 'unproven'
+    || !/pass on the base commit too/.test(regression.note)) return regression;
+  return { ...regression, note: 'refactor: the sealed checks pass on the base commit and on this change, which is what preserved behaviour looks like, but Amabie does not measure that those checks execute the lines you touched (it has no per-line coverage mapping across test runners), so preservation is UNPROVEN, not failed. Do not add a test that fails without a refactor. Close it by a human review of the diff, or have the operator bind a coverage-threshold check (amabie bind <script> --reseal).' };
+}
+
 /** True when the working-tree file is byte-identical to the one committed at `head` (the task started with it). */
 function unchangedSince(root: string, head: string, file: string): boolean {
   if (!/^[0-9a-f]{40,64}$/i.test(head)) return false;

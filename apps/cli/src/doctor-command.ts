@@ -15,7 +15,7 @@ import { agentCapability, proofLevelLine, protocolChecks, readOnlyProblems, seal
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { containedRealPath } from './local-files.js';
 import { obligationsFor, proofScopeLine, proofSummary } from './proof-obligations.js';
-import { discriminationObligation, sealedTestEntryHint } from './regression-proof.js';
+import { discriminationObligation, refactorPreservationLimit, sealedTestEntryHint } from './regression-proof.js';
 import { bindOriginalPrompt, bindTaskRevisions, promptEpochIssues, readOriginalPrompt, readTaskRecord, taskRevisionIssues } from './task-state.js';
 import { promptEvidenceBundleSummary, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
 
@@ -299,7 +299,7 @@ export async function cmdDoctor(rawArgs: string[]): Promise<number> {
   const obligations = obligationsFor(task?.kinds ?? [], collectDiffSignals(root, cfg), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, 'setup', task, cfg);
   // Measured, not inferred: is the sealed plan SENSITIVE to this change at all? When the
   // measurement exists it supersedes the declared-kind heuristic (see cmdCheckpoint).
-  const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran);
+  const regression = refactorPreservationLimit(discriminationObligation(root, cfg, 600_000, undefined, undefined, ran), task?.kinds ?? []);
   if (regression !== null) {
     for (let i = obligations.length - 1; i >= 0; i -= 1) {
       if (obligations[i]!.id === regression.id) obligations.splice(i, 1);

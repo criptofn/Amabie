@@ -10,7 +10,7 @@ import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { obligationsFor, proofSummary } from './proof-obligations.js';
 import { gitWithinRoot } from './git-state.js';
-import { discriminationObligation } from './regression-proof.js';
+import { discriminationObligation, refactorPreservationLimit } from './regression-proof.js';
 import { isAgentSessionRegistered, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
 import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
@@ -206,7 +206,7 @@ export async function cmdCheckpoint(): Promise<number> {
      * a bugfix that turns an existing red check green (real regression evidence, no test file
      * touched) would be called unproven, and a test file touched for show would be called met.
      */
-    const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran, turn?.startHead);
+    const regression = refactorPreservationLimit(discriminationObligation(root, cfg, 600_000, undefined, undefined, ran, turn?.startHead), kinds);
     if (regression !== null) {
       for (let i = obligations.length - 1; i >= 0; i -= 1) {
         if (obligations[i]!.id === regression.id) obligations.splice(i, 1);
