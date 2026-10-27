@@ -91,6 +91,25 @@ export function execDigest(p: string): string | null {
   } catch { return null; }
 }
 
+/** Where a program really is, plus its full content hash: the identity a repo-resident interpreter is sealed by. */
+export function programIdentity(p: string): string | null {
+  try {
+    const real = fs.realpathSync.native(p);
+    if (!fs.statSync(real).isFile()) return null;
+    return `${real}#${crypto.createHash('sha256').update(fs.readFileSync(real)).digest('hex')}`;
+  } catch { return null; }
+}
+
+/** True when the program, named lexically OR after following links, is inside `root` (the worker-writable tree). */
+export function programInsideRoot(program: string, root: string): boolean {
+  const inside = (base: string, p: string): boolean => {
+    const rel = path.relative(base, p);
+    return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+  };
+  const real = (p: string): string => { try { return fs.realpathSync.native(p); } catch { return p; } };
+  return inside(path.resolve(root), path.resolve(program)) || inside(real(root), real(program));
+}
+
 let gitExeCache: string | null | undefined;
 
 /** Fixed literal candidates — a PATH or %SystemRoot% shim cannot become git. */
@@ -234,10 +253,14 @@ export function stepDisplay(pm: string, step: PlanStep): string {
  * spawn it as sealed authority — the thing `resolvePm` has always refused for
  * package managers, now extended to interpreters and toolchains.
  *
+ * A program that resolves INSIDE `root` (an activated virtualenv) is pinned too, with its identity
+ * sealed next to the path (`programId`): the worker can write that directory, so it is trusted only
+ * while its bytes are the ones the human authorized.
+ *
  * Returns the pinned plan and one problem per program that could not be pinned;
  * a step whose program cannot be found is never silently dropped.
  */
-export function pinPlanPrograms(plan: PlanStep[]): { plan: PlanStep[]; problems: string[] } {
+export function pinPlanPrograms(plan: PlanStep[], root?: string): { plan: PlanStep[]; problems: string[] } {
   const problems: string[] = [];
   const pathDirs = (process.env.PATH ?? '').split(path.delimiter).filter((d) => d.length > 0);
   const cache = new Map<string, string | null>();
@@ -282,7 +305,13 @@ export function pinPlanPrograms(plan: PlanStep[]): { plan: PlanStep[]; problems:
       problems.push(`"${head}" (needed by the ${step.kind} check "${step.script}") was not found on PATH at setup time`);
       return { ...step, argv };
     }
-    return { ...step, argv: [abs, ...argv.slice(1)] };
+    const pinned: PlanStep = { ...step, argv: [abs, ...argv.slice(1)] };
+    if (root !== undefined && programInsideRoot(abs, root)) {
+      const id = programIdentity(abs);
+      if (id === null) problems.push(`"${head}" resolved to ${abs}, inside the repository, but its identity could not be read`);
+      else pinned.programId = id;
+    }
+    return pinned;
   });
   return { plan: out, problems };
 }

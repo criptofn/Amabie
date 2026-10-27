@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { adapterForStep, scopeDir } from './project.js';
-import { attributeFailures, npmScriptDirs, pathEntries, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
+import { attributeFailures, npmScriptDirs, pathEntries, projectVenv, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
 import { type PlanStep } from './project.js';
-import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
+import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, programIdentity, programInsideRoot, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
 import { type AmabieConfig, readConfig } from './local-config.js';
 import { passEnvValues } from './pass-env.js';
 
@@ -65,6 +66,7 @@ export function attributeRunFailures(root: string, cfg: AmabieConfig, failed: St
     return {
       kind: f.kind, script: step?.script ?? f.display, exitCode: f.exitCode,
       output: `${f.stdout}${f.stderr}`, childPathDirs, vanishedDirs: vanished, seal, operatorDirs,
+      ...(step?.argv?.[0] !== undefined ? { program: step.argv[0] } : {}), venv: projectVenv(cwd),
       ...(stepProcessFailures.has(f) ? { executionFailure: stepProcessFailures.get(f)! } : {}),
     };
   });
@@ -127,6 +129,17 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
     throw new Error(PM_NAMES.has(program)
       ? `package manager "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir and OS-managed dirs only — the calling PATH is deliberately ignored). Install it with corepack or into the same Node prefix, then re-run.`
       : `program "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir, the OS-managed dirs, and the directories the declaring project adapter names — the calling PATH is deliberately ignored). Install it in one of those locations, or seal its absolute path in the plan, then re-run.`);
+  }
+  // A program inside the repository (an activated virtualenv's interpreter) is writable by the worker, so it
+  // runs only while it is byte-for-byte the one setup sealed; a plan that names one without a sealed identity
+  // (sealed before this rule) is refused rather than trusted.
+  if (path.isAbsolute(program) && (step.programId !== undefined || programInsideRoot(program, authorityRoot))) {
+    if (step.programId === undefined) {
+      throw new Error(`the program ${program} is inside the repository, where it can be replaced, and setup did not record its identity. Run \`amabie setup\` again from your own terminal to seal it.`);
+    }
+    if (programIdentity(resolved.file) !== step.programId) {
+      throw new Error(`the program ${program} is not the one sealed at setup (it was replaced, moved or upgraded). If you changed it, run \`amabie setup\` again from your own terminal; if you did not, check what changed in the project directory.`);
+    }
   }
   // A step runs in ITS OWN SCOPE's directory. In a nested polyglot repo the
   // scoped check is declared by `<scope>/package.json` (or `<scope>/pyproject

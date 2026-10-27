@@ -102,6 +102,7 @@ function validConfigShape(v: unknown): v is AmabieConfig {
       if (!isStr(p.kind) || !isStr(p.script)) return false;
       if (p.adapter !== undefined && !isStr(p.adapter)) return false;
       if (p.scope !== undefined && !isStr(p.scope)) return false;
+      if (p.programId !== undefined && !isStr(p.programId)) return false;
       if (p.argv !== undefined && (!Array.isArray(p.argv) || p.argv.length === 0 || !p.argv.every(isStr))) return false;
       return true;
     })

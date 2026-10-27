@@ -237,7 +237,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const rootDisc = rootScope ? planForScope(root, rootScope) : null;
   // pinning happens HERE, at the human-authorized moment, and what gets sealed
   // is the absolute path — never a name that a later PATH could re-point
-  const pin = pinPlanPrograms(composed.plan);
+  const pin = pinPlanPrograms(composed.plan, root);
   if (pin.problems.length) {
     if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })), pin.problems, 'install or explicitly locate the required program, then rerun: amabie setup --check');
     o.verdict('NEEDS ATTENTION', `Amabie could not pin a program these checks need: ${pin.problems.join('; ')}.`, 'install it (or declare its absolute path in the project), then run setup again'); return 2;
