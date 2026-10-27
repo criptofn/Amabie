@@ -9,7 +9,7 @@ import { candidateDiffSignals, collectDiffSignals, isAmabieOwnArtifact, isDepPat
 import { type StepResult, planWithFreshTests, runPlanStep, runPlanSteps } from './check-runner.js';
 import { candidateIdentity, gitWithinRoot } from './git-state.js';
 import { type AmabieConfig, findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
-import { safePath } from './local-files.js';
+import { containedRealPath, safePath } from './local-files.js';
 import { type Obligation } from './proof-obligations.js';
 import { writeVerificationBundle } from './verification-evidence.js';
 
@@ -245,30 +245,16 @@ function rebaseDependencyLink(root: string, realRoot: string, tree: string, from
   // The throwaway tree has its own tracked links: neither the new link nor what it points at may reach
   // outside the tree through one of them.
   for (const probe of [path.dirname(dest), rebased]) {
-    if (!deepestRealInside(tree, probe)) {
+    if (containedRealPath(tree, probe) === null) {
       throw new DependencyLayoutError(`the dependency link ${path.relative(root, from).split(path.sep).join('/')} would reach outside the baseline copy through a link in the project (${text.slice(0, 80)}), so a private baseline copy cannot be made; install the dependencies inside the project (for example a project-local package store), then run again`);
     }
   }
 }
 
-/** The real path of `p` or, if it does not exist, of its deepest existing ancestor with the rest appended. */
-function realOfDeepest(p: string): string {
-  const rest: string[] = [];
-  for (let at = p; ; at = path.dirname(at)) {
-    try { return path.join(fs.realpathSync.native(at), ...rest.reverse()); } catch { /* go up */ }
-    if (path.dirname(at) === at) return p;
-    rest.push(path.basename(at));
-  }
-}
-
-/** True when `p`, with every link on the way resolved, lies inside `parent` (itself resolved). */
-function deepestRealInside(parent: string, p: string): boolean {
-  return relativeInside(fs.realpathSync.native(parent), realOfDeepest(p)) !== null;
-}
-
 /** A dangling link's target below the project's real root, resolving the part of the path that exists. */
 function danglingInside(root: string, realRoot: string, lexical: string): string | null {
-  return relativeInside(root, lexical) === null ? null : relativeInside(realRoot, realOfDeepest(lexical));
+  const real = containedRealPath(root, lexical);
+  return real === null ? null : relativeInside(realRoot, real);
 }
 
 function copyDependencyDirs(root: string, tree: string): string[] {
