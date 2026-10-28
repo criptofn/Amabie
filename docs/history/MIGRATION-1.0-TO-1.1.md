@@ -31,7 +31,7 @@ promised.
    `pyproject.toml` in the same directory), setup now discovers and seals checks
    from all of them — read the plan it prints before accepting it. Checks in
    *sub*directories are deliberately not discovered (see
-   [`COMPATIBILITY.md`](COMPATIBILITY.md)).
+   [`COMPATIBILITY.md`](../COMPATIBILITY.md)).
 3. **`doctor` no longer requires a `package.json`.** A directory with no
    project Amabie can model reports `UNSUPPORTED`; a project that simply was
    never set up reports `NEEDS ATTENTION`. Previously both were `UNSUPPORTED`.

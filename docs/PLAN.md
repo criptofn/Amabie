@@ -2,7 +2,7 @@
 
 Status: HISTORICAL — the original migration plan, kept because §6 is the decision
 table the classifier implements. Its "v0.1 alpha" framing is out of date: 1.0.0
-shipped 2026-09-10 (`docs/RELEASE-1.0-REVIEW.md`) and a v1.1 implementation
+shipped 2026-09-10 (`docs/history/RELEASE-1.0-REVIEW.md`) and a v1.1 implementation
 candidate exists on the development branch (`CHANGELOG.md`). Read
 [`COMPATIBILITY.md`](COMPATIBILITY.md) for what is supported now and
 [`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md) for what Amabie can honestly
@@ -318,7 +318,7 @@ and `run-experiment.mjs` (the M0 ladder harnesses), promoted into
 | **M2** | executor + normalizers + hashing, unit + real-subprocess tests | ✅ done (61 tests green) |
 | **M3** | github + workspace-audit + environment + planner with spec validation | ✅ done |
 | **M4** | comparator + classification + evidence schema + HTML report + CLI run/prove/check/report; golden proof reproduces | ✅ done — 4 independent CONFIRMED_REGRESSION runs, 14/14 proof assertions incl. byte-exact cross-run normalized-hash equality via the CLI (refactor parity gate) |
-| **M5** | Adversarial validation (red-team of pipeline + boundary), docs pass | ✅ done — red-team 13 findings fixed; superseded/extended by the independent Codex audit (F1–F15) remediated in `audit-hardening` M1–M11, ledger docs/AUDIT-REMEDIATION-2026-08-30.md |
+| **M5** | Adversarial validation (red-team of pipeline + boundary), docs pass | ✅ done — red-team 13 findings fixed; superseded/extended by the independent Codex audit (F1–F15) remediated in `audit-hardening` M1–M11, ledger docs/history/AUDIT-REMEDIATION-2026-08-30.md |
 
 Known deliberate limits (v0.1):
 - Hash-exact proof is machine-local (path separators in stack traces). Resolved
@@ -333,7 +333,7 @@ Known deliberate limits (v0.1):
   `nodeExecSha256` (SHA-256 of the running node executable); a tampered
   runtime printing v26.3.0 from other bytes is off-host, and a committed
   proofHost without the digest pin is REFUSED (assertion fails, exit 1).
-- Round-3 ledger: docs/AUDIT-REMEDIATION-ROUND3-2026-08-31.md (blockers B1–B6,
+- Round-3 ledger: docs/history/AUDIT-REMEDIATION-ROUND3-2026-08-31.md (blockers B1–B6,
   secondaries, and the internal adversarial self-review N1–N10 + doc-truth
   pass). The golden proof has never been re-cut for host drift: drifted dev
   hosts are COMPATIBILITY evidence, not new canonical hosts.

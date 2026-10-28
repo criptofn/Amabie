@@ -1,7 +1,7 @@
 /**
  * v1.3 §C — `setup` registers Amabie's MCP server, so the agent can ASK Amabie whether it is done
  * instead of running its own verification campaign. Measured token effect: on the long fixture ~36 of
- * 57 confined execs were the model re-running its own checks (see docs/V1.3-PRODUCT-AUDIT.md).
+ * 57 confined execs were the model re-running its own checks (see docs/history/V1.3-PRODUCT-AUDIT.md).
  *
  * The risk this file pins is not whether the server works — `mcp.test.ts` covers the protocol — but
  * that installing it makes Amabie write ONE MORE FILE into a user's repository. So every property the

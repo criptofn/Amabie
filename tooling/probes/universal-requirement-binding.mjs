@@ -160,9 +160,15 @@ console.log('\n── a manifest binding that names a check it does not declare'
   const root = makeUniversal({ [materialDigest(REQ_TRIM)]: 'check-that-does-not-exist' });
   const setup = amabie(root, ['setup', '--yes']);
   console.log(`   setup: exit ${setup.status}`);
+  // The everyday refusal is deliberately short and points at `setup --verbose`; the exact declaration
+  // reason (which check id is unknown) lives behind that flag, as the product's own advice says.
+  const verbose = amabie(root, ['setup', '--yes', '--verbose']);
+  console.log(`   setup --verbose: exit ${verbose.status}`);
   check('8. setup REFUSES a binding to a check the manifest does not declare (fail closed)', () => {
     assert(setup.status !== 0, `an unknown proof must stop setup: ${setup.stdout}`);
-    assert(/is not a check this manifest declares/.test(`${setup.stdout}${setup.stderr}`), `the refusal must say why:\n${setup.stdout}${setup.stderr}`);
+    assert(verbose.status !== 0, `the verbose rerun must refuse too: ${verbose.stdout}`);
+    assert(/is not a check this manifest declares/.test(`${verbose.stdout}${verbose.stderr}`), `the refusal must say why:\n${verbose.stdout}${verbose.stderr}`);
+    assert(/check-that-does-not-exist/.test(`${verbose.stdout}${verbose.stderr}`), `the refusal must name the unknown check:\n${verbose.stdout}${verbose.stderr}`);
   });
   fs.rmSync(root, { recursive: true, force: true });
 }

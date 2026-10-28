@@ -2,7 +2,7 @@
 
 **Released 2026-09-13.** Artifact: `amabie-rn-cli-1.1.0.tgz` (+ `.sha256`) ·
 [GitHub release](https://github.com/criptofn/Canary/releases/tag/v1.1.0) ·
-[CHANGELOG](../CHANGELOG.md) · [README](../README.md)
+[CHANGELOG](../../CHANGELOG.md) · [README](../../README.md)
 
 > Amabie is an independent verification layer for coding agents.
 > **The agent builds. Amabie verifies. NO PROOF, NO DONE.**
@@ -83,7 +83,7 @@ Amabie discovers the checks your project already declares — it never invents o
 | **Any other command-driven project** | CI workflow commands, `Makefile`/`Taskfile`/`justfile` targets, CMake+CTest / Meson, `gradlew`/`mvnw`, `pom.xml`, `build.gradle*`, `*.sln`/`*.csproj`, `Package.swift`, `build.zig`, `phpunit.xml`, `composer.json`, `Rakefile`, `mix.exs`, `shard.yml` — or your own `amabie.project.json` | those commands, sealed and pinned to absolute paths |
 
 Four capability levels are reported **separately**, so nothing is inflated
-([`COMPATIBILITY.md`](COMPATIBILITY.md)):
+([`COMPATIBILITY.md`](../COMPATIBILITY.md)):
 
 | Level | Meaning |
 |---|---|
@@ -222,8 +222,8 @@ an OS isolation boundary.
 - **Same-UID limits are documented, not hidden.** A worker running as the same OS
   user can, in principle, replace the local root of trust. `LOCAL` does not
   prevent that, and this document does not claim it does
-  ([`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md),
-  [`SECURITY.md`](SECURITY.md)).
+  ([`CAPABILITY-LEVELS.md`](../CAPABILITY-LEVELS.md),
+  [`SECURITY.md`](../SECURITY.md)).
 - **`HARDENED` is not available here, and it is not "installation away".** The
   provider/broker architecture exists in the tree and refuses to start without a
   proven separation, but `HARDENED` is produced by exactly one thing: a boundary
@@ -231,7 +231,7 @@ an OS isolation boundary.
   (`amabie provider status`; the privileged steps are printed by
   `amabie provider install-plan` and executed by nobody automatically). On this
   host all six controls measure unavailable, so `HARDENED` stays unreachable
-  ([`TRUST-ARCHITECTURE.md`](TRUST-ARCHITECTURE.md)).
+  ([`TRUST-ARCHITECTURE.md`](../TRUST-ARCHITECTURE.md)).
 - **Evidence is tiered.** Only observed runners bound to an authority can carry a
   strong verdict; a byte-pinned runner with an Amabie-injected observer must agree
   with the printed summary, so fabricated output (`node -e "console.log('128
@@ -371,8 +371,8 @@ constraints · impossible requirements · injected instructions · regression gu
 multi-requirement tasks · version-consistency / spec-edge tasks. Each fixture
 ships a known-good and a known-bad solution and is validated by its own test, so
 the instrument cannot silently stop discriminating
-([`fixtures.test.mjs`](../tooling/benchmark/fixtures.test.mjs),
-[`BENCHMARKS.md`](../tooling/benchmark/BENCHMARKS.md)).
+([`fixtures.test.mjs`](../../tooling/benchmark/fixtures.test.mjs),
+[`BENCHMARKS.md`](../../tooling/benchmark/BENCHMARKS.md)).
 
 ---
 
@@ -435,9 +435,9 @@ handoff.** This is why the recommended order in
   delivered-correct result and produced a false green. **Reliability outranks
   token savings.**
 
-Full ledgers and every denominator: [`tooling/benchmark/RESULTS.md`](../tooling/benchmark/RESULTS.md) ·
+Full ledgers and every denominator: [`tooling/benchmark/RESULTS.md`](../../tooling/benchmark/RESULTS.md) ·
 method, KPI rules and what the set can/cannot tell you:
-[`tooling/benchmark/BENCHMARKS.md`](../tooling/benchmark/BENCHMARKS.md) ·
+[`tooling/benchmark/BENCHMARKS.md`](../../tooling/benchmark/BENCHMARKS.md) ·
 consolidated matrix and the three corrected defects:
 [`V1.1-STATUS.md`](V1.1-STATUS.md).
 
@@ -506,17 +506,17 @@ INCONCLUSIVE / proof INCOMPLETE off the proof host · `3` misuse or a refused bu
 | Question | File |
 |---|---|
 | What this release is, in full | **this file** |
-| What changed, version by version | [`CHANGELOG.md`](../CHANGELOG.md) |
+| What changed, version by version | [`CHANGELOG.md`](../../CHANGELOG.md) |
 | What was verified, when, and with which defects found | [`V1.1-STATUS.md`](V1.1-STATUS.md) |
-| Benchmark method, KPI rules, and what the set cannot tell you | [`tooling/benchmark/BENCHMARKS.md`](../tooling/benchmark/BENCHMARKS.md) |
-| Benchmark ledgers: every configuration, denominator and counter-example | [`tooling/benchmark/RESULTS.md`](../tooling/benchmark/RESULTS.md) |
-| What can honestly be protected, and at which level | [`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md) |
-| What a real OS boundary would require (HARDENED) | [`TRUST-ARCHITECTURE.md`](TRUST-ARCHITECTURE.md) |
-| Security contract, tiers and ceilings | [`SECURITY.md`](SECURITY.md), [`../SECURITY.md`](../SECURITY.md) |
-| Full support matrix, including what is not supported | [`COMPATIBILITY.md`](COMPATIBILITY.md) |
-| Task identity, numeric bindings, input limits, local trust boundaries | [`AUTHORIZATION-1.0.md`](AUTHORIZATION-1.0.md) |
-| Strong verdicts and the execution-observation channel | [`EXECUTION-AUTHORITY.md`](EXECUTION-AUTHORITY.md) |
-| How test counts are derived | [`TEST-COUNTING.md`](TEST-COUNTING.md) |
+| Benchmark method, KPI rules, and what the set cannot tell you | [`tooling/benchmark/BENCHMARKS.md`](../../tooling/benchmark/BENCHMARKS.md) |
+| Benchmark ledgers: every configuration, denominator and counter-example | [`tooling/benchmark/RESULTS.md`](../../tooling/benchmark/RESULTS.md) |
+| What can honestly be protected, and at which level | [`CAPABILITY-LEVELS.md`](../CAPABILITY-LEVELS.md) |
+| What a real OS boundary would require (HARDENED) | [`TRUST-ARCHITECTURE.md`](../TRUST-ARCHITECTURE.md) |
+| Security contract, tiers and ceilings | [`SECURITY.md`](../SECURITY.md), [`../SECURITY.md`](../../SECURITY.md) |
+| Full support matrix, including what is not supported | [`COMPATIBILITY.md`](../COMPATIBILITY.md) |
+| Task identity, numeric bindings, input limits, local trust boundaries | [`AUTHORIZATION-1.0.md`](../AUTHORIZATION-1.0.md) |
+| Strong verdicts and the execution-observation channel | [`EXECUTION-AUTHORITY.md`](../EXECUTION-AUTHORITY.md) |
+| How test counts are derived | [`TEST-COUNTING.md`](../TEST-COUNTING.md) |
 | Upgrading a 1.0 installation | [`MIGRATION-1.0-TO-1.1.md`](MIGRATION-1.0-TO-1.1.md) |
-| The `spec.json` contract for `run` / `prove` / `check` | [`SPEC-FORMAT.md`](SPEC-FORMAT.md) |
-| Contributor loop and repository rules | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
+| The `spec.json` contract for `run` / `prove` / `check` | [`SPEC-FORMAT.md`](../SPEC-FORMAT.md) |
+| Contributor loop and repository rules | [`../CONTRIBUTING.md`](../../CONTRIBUTING.md) |

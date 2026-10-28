@@ -6,17 +6,21 @@ Amabie’s long-term goal is **ONE-SHOT AGENT ASSURANCE**: a user states a goal 
 
 This is the product direction, not a claim that the complete workflow exists today. Product copy, APIs, and release notes must distinguish shipped behavior from experimental work and future capability.
 
+## Current priority
+
+**The verified coding gate (Phase 1) comes first.** Until it is dependable on real projects (not only on Amabie's own fixtures), work on it outranks everything else: no false proof on a real repository, no tamper path around the gate, clear and honest messages, and a first run that works. Phase 2 and Phase 3 below are the direction, deferred; they do not displace this work and nothing in the release path may depend on them. Whether an agent is organically helped by Amabie, and by how much, is **not established**; only the measured, executed results in the benchmark reports may be quoted.
+
 ## Strategic product phases
 
-### Phase 1 — Coding-Agent Verification
+### Phase 1 — Coding-Agent Verification (current priority)
 
-Independently verify coding-agent changes using project checks, baselines, reproducible evidence, and deterministic verdicts. Agent statements are context, never proof. Verification must not rely on the agent being its own root of trust.
+Independently verify coding-agent changes using project checks, baselines, reproducible evidence, and deterministic verdicts. Agent statements are context, never proof. Verification must not rely on the agent being its own root of trust. When a check cannot tell the change apart from the baseline, or cannot run, the answer is NOT PROVEN, INCONCLUSIVE or BLOCKED, never a pass.
 
 ### Phase 2 — Prompt-to-Evidence
 
 Translate the original user request into explicit, reviewable requirements and success criteria. Link each requirement to appropriate, independently collected evidence. Report each requirement as verified, failed, unproven, or blocked; a successful build or test suite cannot stand in for requirements it does not cover. Unclear requirements remain unclear until resolved rather than being silently treated as satisfied.
 
-**Current development priority:** implement and validate this phase for coding tasks while keeping the core contracts task-neutral where that is useful. Coding is the only required production adapter in this phase. A small mock verifier may test that another task domain can use the same contracts; that is an extensibility test, not support for that domain.
+**Status: deferred.** Phase 2 stays experimental and opt-in (`amabie prompt-evidence …`), coding-only, and out of the stable 2.0 interface until Phase 1 is shown to hold on real projects. Keep its core contracts task-neutral where that is cheap. Coding is the only adapter; a small mock verifier may test that another task domain can use the same contracts, but that is an extensibility test, not support for that domain.
 
 **Phase numbering is strategic, not a work-plan outline.** Numbered sections in an implementation request do not redefine these product phases. In particular, an implementation-plan Section 3 that delivers Prompt-to-Evidence V1 is work toward strategic **Phase 2**, not Universal Agent Assurance.
 

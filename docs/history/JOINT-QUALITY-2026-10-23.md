@@ -6,8 +6,8 @@ Codex and the existing Claude Code session coordinated separate worktrees, excha
 
 ## Changes
 
-- The deterministic splitter agrees with 16 of 18 hand-written corpus cases, up from 9. Seven concrete gaps are corrected; elliptical clauses and non-English prompts remain explicit gaps. Candidates still start unclear, with no criteria and NOT PROVEN. This is not a reliability rate or semantic-completeness proof; see [the corpus record](P2E-EXTRACTION-CORPUS.md).
-- `--retain-agent-output` explicitly opts into persistent LOCAL diagnostic bundles. Original process bytes, hashes and failure metadata are retained without exporting raw text in normal JSON or using claims as proof. Linked storage is refused and requested retention failures stop the loop. Default behavior does not retain raw agent text; see [privacy and retention limits](P2E-AGENT-DIAGNOSTICS.md).
+- The deterministic splitter agrees with 16 of 18 hand-written corpus cases, up from 9. Seven concrete gaps are corrected; elliptical clauses and non-English prompts remain explicit gaps. Candidates still start unclear, with no criteria and NOT PROVEN. This is not a reliability rate or semantic-completeness proof; see [the corpus record](../P2E-EXTRACTION-CORPUS.md).
+- `--retain-agent-output` explicitly opts into persistent LOCAL diagnostic bundles. Original process bytes, hashes and failure metadata are retained without exporting raw text in normal JSON or using claims as proof. Linked storage is refused and requested retention failures stop the loop. Default behavior does not retain raw agent text; see [privacy and retention limits](../P2E-AGENT-DIAGNOSTICS.md).
 - Invalid UTF-8 is retained before decoding: 400,000 bytes of `0xff` no longer falsely exceed the unchanged 1 MiB process limit after replacement-character expansion. Unit, CLI and freshly installed bundle checks verify byte identity and the true process failure reason.
 - The warning now correctly explains that Git-visible working-tree changes seed a disposable candidate; ignored files are excluded and no result is automatically adopted. This remains separate from an OS isolation boundary.
 
@@ -43,4 +43,4 @@ This supersedes the earlier same-day `717c3609…` artifact, which did not conta
 - D03 must remain a stopped-run incident independently of outcome success. An ordinary process adapter/Candidate is not an enforced gateway or sandbox. A combined acceptance must distinguish these paths and use fresh independent evidence.
 - Human acceptance, separately owned website/T34 work and publication/legal approvals remain separate. Neither an AI review nor these tests simulate `amabie accept`.
 
-Both product pillars and the [North Star](NORTH_STAR.md) remain intact. This increment improves their testability and requirement intake; it does not establish the full product vision.
+Both product pillars and the [North Star](../NORTH_STAR.md) remain intact. This increment improves their testability and requirement intake; it does not establish the full product vision.

@@ -215,7 +215,10 @@ be a lie; here is the real picture.
   helper that outlived its parent cannot leak ports/files into a later round.
   The sweep follows stale-PPID lineage on Windows and group- AND session-level
   membership on POSIX (audit S1), so a `setpgid()`-escapee within the child's
-  session is still caught.
+  session is still caught. macOS has no `/proc` and its `ps` has no session id,
+  so there the sweep follows the process group and the PPID closure only: a
+  `setpgid()`-escapee that is also orphaned (re-parented to launchd) before the
+  sweep runs is not found.
 
 ### Tier B — structural convention (strong in practice, NOT OS-enforced)
 
@@ -386,7 +389,7 @@ consulted in this decision (it cannot be — see docs/PLAN.md §6/§8).
 
 An internal red-team pass produced 13 findings; all confirmed ones were fixed
 (the numbering here is the RED-TEAM's, distinct from the independent audit's
-F1–F15 recorded in docs/AUDIT-REMEDIATION-2026-08-30.md):
+F1–F15 recorded in docs/history/AUDIT-REMEDIATION-2026-08-30.md):
 
 - **RT-F1/F5 — count-aware classification.** A round that exits nonzero while
   its summary reports *zero* failing tests died for non-test reasons
@@ -423,9 +426,9 @@ F1–F15 recorded in docs/AUDIT-REMEDIATION-2026-08-30.md):
 ## Independent audit remediation (Codex audit 2026-08-30, findings F1–F15)
 
 Full ledger with root causes, execution evidence and per-milestone commits:
-**docs/AUDIT-REMEDIATION-2026-08-30.md** (round 1),
-**docs/AUDIT-REMEDIATION-ROUND2-2026-08-31.md** (round 2) and
-**docs/AUDIT-REMEDIATION-ROUND3-2026-08-31.md** (round 3 + internal adversarial
+**docs/history/AUDIT-REMEDIATION-2026-08-30.md** (round 1),
+**docs/history/AUDIT-REMEDIATION-ROUND2-2026-08-31.md** (round 2) and
+**docs/history/AUDIT-REMEDIATION-ROUND3-2026-08-31.md** (round 3 + internal adversarial
 self-review). Headline outcomes, each covered by the then-current 371-test
 suite (baseline now 438; see the Post-audit section below):
 
@@ -467,7 +470,7 @@ suite (baseline now 438; see the Post-audit section below):
 
 A re-audit of `f823b98` found six release blockers where the round-1 fixes were
 real but incomplete; each is now fixed with reproduction + regression +
-adversarial + mutation evidence (ledger: AUDIT-REMEDIATION-ROUND2-2026-08-31.md):
+adversarial + mutation evidence (ledger: history/AUDIT-REMEDIATION-ROUND2-2026-08-31.md):
 
 - **B1 — suite-qualified identity.** Failing-test identities now carry the full
   describe path, so two same-leaf-title failures in different suites stay
@@ -497,7 +500,7 @@ adversarial + mutation evidence (ledger: AUDIT-REMEDIATION-ROUND2-2026-08-31.md)
 
 ### Round-3 Codex re-audit (B1–B6 + secondaries, 2026-08-31)
 
-Ledger: **docs/AUDIT-REMEDIATION-ROUND3-2026-08-31.md**. Headline outcomes:
+Ledger: **docs/history/AUDIT-REMEDIATION-ROUND3-2026-08-31.md**. Headline outcomes:
 
 - **R3-B1 — identity coverage.** A failing round must fully account for its
   reported failure count with parsed identities (`identityCoverage`); partial
@@ -542,7 +545,7 @@ Ledger: **docs/AUDIT-REMEDIATION-ROUND3-2026-08-31.md**. Headline outcomes:
 
 ### Round-4 remediation (RB-1/RB-2/M-1/M-2/F1, 2026-09-01)
 
-Ledger: **docs/AUDIT-REMEDIATION-ROUND4-2026-09-01.md**. The final
+Ledger: **docs/history/AUDIT-REMEDIATION-ROUND4-2026-09-01.md**. The final
 independent review of the frozen candidate `a0baa0c` confirmed five
 items, each fixed structurally here:
 

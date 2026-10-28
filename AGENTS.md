@@ -31,7 +31,7 @@ npm run verify:productization         # the whole productization surface, ONE co
   real pty) as an explicit host-bound `SKIP`; `master-pass-mutations` had a
   cascade and three stale source anchors, both re-pinned. `pre10-env-authority`
   was fixed earlier. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and
-  [`docs/V1.1-STATUS.md`](docs/V1.1-STATUS.md). Never re-open one of these by
+  [`docs/history/V1.1-STATUS.md`](docs/history/V1.1-STATUS.md). Never re-open one of these by
   weakening an assertion.
 - Quote numbers only from an executed reporter's output
   ([`docs/TEST-COUNTING.md`](docs/TEST-COUNTING.md)).
@@ -146,7 +146,7 @@ amabie finish <name>                      # verify from outside; promote only if
 
 **This path is measured to cost MORE, and the reason to choose it is isolation, not speed.** Over the
 recorded corpus it ran at **177.8 %** of a plain run against **92.7 %** for the everyday path, with
-identical correctness and no false done in either ([`docs/V1.3-PRODUCT-AUDIT.md`](docs/V1.3-PRODUCT-AUDIT.md)).
+identical correctness and no false done in either ([`docs/history/V1.3-PRODUCT-AUDIT.md`](docs/history/V1.3-PRODUCT-AUDIT.md)).
 Take it when you need the candidate — an untrusted worker, or bytes that must be promoted only under
 proof — not as the ordinary way to use Amabie.
 
@@ -224,7 +224,7 @@ generated files.
 | Security contract, tiers and ceilings | [`docs/SECURITY.md`](docs/SECURITY.md), [`SECURITY.md`](SECURITY.md) |
 | What 1.0/1.1 does and does not claim | [`docs/EXECUTION-AUTHORITY.md`](docs/EXECUTION-AUTHORITY.md), [`docs/AUTHORIZATION-1.0.md`](docs/AUTHORIZATION-1.0.md) |
 | `spec.json` for `run`/`prove`/`check` | [`docs/SPEC-FORMAT.md`](docs/SPEC-FORMAT.md), [`schemas/spec.schema.json`](schemas/spec.schema.json) |
-| Upgrading an installation | [`docs/MIGRATION-1.0-TO-1.1.md`](docs/MIGRATION-1.0-TO-1.1.md) |
+| Upgrading an installation | [`docs/history/MIGRATION-1.0-TO-1.1.md`](docs/history/MIGRATION-1.0-TO-1.1.md) |
 | How counts are derived | [`docs/TEST-COUNTING.md`](docs/TEST-COUNTING.md) |
 | Contributor loop and rules | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Runnable examples per ecosystem | [`examples/README.md`](examples/README.md) |

@@ -8,7 +8,7 @@
  * ---------------
  * v1.4 could say "HARDENED needs a measured boundary" but shipped no single
  * command a person OUTSIDE this project could run to see the boundary executed,
- * and the earlier evidence was written up in prose (`docs/V1.2-HARDENED-FINAL-BLOCKERS.md`)
+ * and the earlier evidence was written up in prose (`docs/history/V1.2-HARDENED-FINAL-BLOCKERS.md`)
  * rather than emitted by a command. This probe emits it: it EXECUTES the real
  * production boundary, then reports one row per control with the raw observation
  * the product itself validates.

@@ -71,7 +71,7 @@ will not authorise proof for a requirement it cannot measure. A project with no
 recognizable check has no evidence to offer, so Amabie refuses at setup rather
 than wiring a gate that can never verify anything.
 
-**What to do.** Point Amabie at a check you already have. If you have one and
+**What to do.** Setup now ends with a starter path for your stack: for a TypeScript project, a `"typecheck": "tsc --noEmit"` script (a real check of your types); for plain Node or Python, one small first test that imports your code and checks one result. Amabie does not write that test for you: a generated test that cannot fail would be a false proof. Add it, then run `amabie setup` again. If you already have a check, point Amabie at it. If you have one and
 Amabie did not find it, that is a bug worth reporting — the message above lists
 everything Amabie reads, so if your check is in that list and was missed, say so.
 
@@ -86,13 +86,16 @@ the evidence for each. Declare the intended one and run setup again.
 
 ```
 NEEDS ATTENTION — Amabie is wired here, but your project's own checks did not
-pass (test, build). That is your project talking, not Amabie.
+pass (test, build).
 ```
 
-**Why it matters.** This is not an Amabie failure. The checks you declared are
-already failing on the current working tree, which means the gate would block
-every completion until they pass. Amabie says so at setup instead of letting you
-discover it mid-task.
+**Why it matters.** The checks you declared ran in Amabie's sealed environment (a
+reduced PATH, none of your shell's variables) and are failing on the current
+working tree, so the gate would block every completion until they pass. Amabie
+says so at setup instead of letting you discover it mid-task. If a check passes in
+your own terminal but fails here, a missing tool or variable is the usual cause;
+that case is reported separately as an environment problem with the directory to
+allow, not as this message.
 
 **What to do.** Fix the failing checks (or ask your agent to), then `amabie
 doctor`. The full runner output is written to disk and its path is printed — read
@@ -164,6 +167,22 @@ you should read it: an untrusted hook does not execute. Amabie's hook runs
 
 ---
 
+## "a hook from another Amabie installation is already present"
+
+**Why.** `.claude/settings.json`, `.codex/hooks.json` and `.mcp.json` record the
+absolute path to Amabie on the machine that ran `amabie setup`, so they are
+per-machine files. If one machine's copy was committed, a clone receives a hook
+that points at a path that does not exist here, and setup will not rewrite an
+entry it did not write.
+
+**What to do.** Remove that exact entry (setup lists it), then run `amabie setup --yes`.
+To stop it coming back, do not commit these files: add them to `.git/info/exclude`
+(local to this clone), or, if the team already tracks `.claude/settings.json`,
+commit your other changes without Amabie's hook entry (`git add -p`). Amabie does
+not edit your git exclude file or your tracked files for you.
+
+---
+
 ## It works on my machine and is red in CI
 
 This is a documented class of failure in this project, not a mystery. Fixtures and
@@ -174,7 +193,7 @@ fixed it by making fixtures declare their own harness.
 
 **What to do.** If a test passes locally and fails on a clean runner, check
 whether it depends on something in your home directory or on a tool version the
-runner does not have. `docs/V1.4-GAP-AUDIT.md` (Gap G) records the five distinct
+runner does not have. `docs/history/V1.4-GAP-AUDIT.md` (Gap G) records the five distinct
 causes found in this repository and how each was classified.
 
 ---

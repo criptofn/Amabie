@@ -9,7 +9,7 @@ the doctrine the repository already writes down: **claims are not evidence**, **
 done**, **a skip is never a pass**, **unmeasured is never measured**.
 
 Raw artifacts: `tooling/benchmark/results/session-evidence/v15-realworld/` (index in
-[`INDEX.md`](../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md)).
+[`INDEX.md`](../../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md)).
 Reusable probes: `tooling/probes/v15-realworld-run-task.mjs`,
 `tooling/probes/v15-realworld-gate-env.mjs`,
 `tooling/probes/v15-realworld-falsedone-induced.mjs`.
@@ -123,7 +123,7 @@ survives there is attempt 2's.** The probe wrote every artifact into `runs/R1-re
 directly, so attempt 2 truncated attempt 1's raw stream, parsed stream, ledger, record, diff and git
 state, while attempt 1's `hook-input.json` and `checkpoint-manual.*` stayed behind. The result is
 attributed artifact by artifact, from an executed audit, in the bundle's
-[`INDEX.md`](../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md)
+[`INDEX.md`](../../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md)
 (`node tooling/probes/v15-attempt-provenance.mjs --audit <dir>` prints `AUDIT RESULT: MIXED`).
 **Attempt 1's raw record is not in the bundle and cannot be reconstructed** — see §8. This is a
 defect of the harness and it is fixed: the probe now gives every attempt its own directory and
@@ -310,7 +310,7 @@ session.** Manufacturing a story around one of the above would be dishonest.
 A reproducible end-to-end demonstration of the gate stopping a "done" whose objective evidence
 fails was produced by **the operator deliberately breaking the code after the agent had finished**.
 It is labelled `INDUCED` in the probe's output and in
-[`falsedone-INDUCED-schniedelsmp/LABEL.txt`](../tooling/benchmark/results/session-evidence/v15-realworld/falsedone-INDUCED-schniedelsmp/LABEL.txt).
+[`falsedone-INDUCED-schniedelsmp/LABEL.txt`](../../tooling/benchmark/results/session-evidence/v15-realworld/falsedone-INDUCED-schniedelsmp/LABEL.txt).
 **It must never be described as organic agent behaviour.**
 
 What is real in it: the worker's code (`761b863`, produced by the S1 session), the project's own
@@ -437,7 +437,7 @@ Recorded because a report that only lists wins is advertisement.
   makes impossible. The **169 s** figure for attempt 1 is a session note: the artifact that carried
   it was attempt 1's `ledger.json`, which no longer exists on disk. The per-artifact attribution,
   and the audit command that produces it, are in the bundle's
-  [`INDEX.md`](../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md).
+  [`INDEX.md`](../../tooling/benchmark/results/session-evidence/v15-realworld/INDEX.md).
   Attempt 1's stream is **not** recoverable from anything in this repository, and this document
   does not pretend otherwise.
 - **No organic false-done was observed.** §6.1. The demonstration in §6.2 is `INDUCED`.

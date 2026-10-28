@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { after, test } from 'node:test';
 import { candidateDiffSignals, collectDiffSignals, discriminationObligation, planDiscrimination, readConfig } from '../src/onboarding.js';
+import { refactorPreservationLimit } from '../src/regression-proof.js';
 
 const packagedCli = process.env.AMABIE_TEST_CLI;
 const CLI = packagedCli ?? path.resolve(import.meta.dirname, '../src/main.js');
@@ -68,7 +69,7 @@ test('a stale pre-build baseline failure cannot prove an unrelated change', () =
   assert.equal(genuine.basePassed, false, 'a failure after the base build still proves a real difference');
 });
 function write(root: string, file: string, text: string) { fs.writeFileSync(path.join(root, file), text); }
-function fixture(name: string): string {
+function fixture(name: string, testScript = 'node --test tests/greet.test.cjs'): string {
   const root = path.join(TMP, name);
   fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
   // v1.4 — the repository declares its harness. `setup` requires a DETECTED harness and
@@ -77,7 +78,7 @@ function fixture(name: string): string {
   // Claude Code installed and failed on every CI runner — a host-dependent test, not a
   // product defect. Every other fixture in this suite already declares `.claude`.
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
-  write(root, 'package.json', JSON.stringify({ name, private: true, scripts: { test: 'node --test tests/greet.test.cjs' } }));
+  write(root, 'package.json', JSON.stringify({ name, private: true, scripts: { test: testScript } }));
   write(root, 'greet.cjs', SOURCE); write(root, 'tests/greet.test.cjs', TEST);
   git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local'); commit(root);
   assert.equal(amabie(root, 'setup', '--yes').code, 0);
@@ -680,4 +681,61 @@ test('unavailable base, materialization, and execution remain objective UNPROVEN
   create.mock.restore();
   const unavailable = { ...cfg, plan: [{ ...cfg.plan[0]!, argv: [path.join(TMP, 'missing-program')] }] };
   assert.equal(discriminationObligation(root, unavailable)?.status, 'unproven');
+});
+
+test('follow-up tasks: an earlier task\'s kept check is earlier work, not created by this session, until a human re-seals', () => {
+  const root = fixture('successive-tasks', 'node --test "tests/*.test.cjs"');
+  const sealedHead = readConfig(root);
+  assert.ok(sealedHead && sealedHead !== 'corrupt');
+  const baseline = sealedHead.baseline?.head;
+
+  // Task 1: a fix plus its own new regression file; the human reviews it and commits.
+  write(root, 'greet.cjs', FIXED);
+  write(root, 'tests/leading.test.cjs', TEST + REGRESSION);
+  commit(root);
+  const task2Start = git(root, 'rev-parse', 'HEAD');
+
+  // Task 2: another fix with another new regression file.
+  write(root, 'greet.cjs', "module.exports = n => 'hello ' + n.trim();\n");
+  write(root, 'tests/trailing.test.cjs', TEST + "test('trailing whitespace', () => assert.equal(greet('Ada  '), 'hello Ada'));\n");
+  const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
+  const task2 = discriminationObligation(root, cfg, 120_000, undefined, undefined, undefined, task2Start);
+  assert.equal(task2?.status, 'met', task2?.note);
+  assert.match(task2?.caveat ?? '', /tests\/trailing\.test\.cjs \(created by this session\)/);
+  assert.match(task2?.caveat ?? '', /tests\/leading\.test\.cjs was added after the sealed baseline and before this task/);
+  assert.doesNotMatch(task2?.caveat ?? '', /tests\/leading\.test\.cjs \(created by this session\)/);
+
+  // A task that rewrites the earlier file is that task's own work again.
+  write(root, 'tests/leading.test.cjs', TEST + REGRESSION + '// touched\n');
+  const rewritten = discriminationObligation(root, cfg, 120_000, undefined, undefined, undefined, task2Start);
+  assert.doesNotMatch(rewritten?.caveat ?? '', /leading\.test\.cjs was added after the sealed baseline and before this task/);
+
+  // A read-only session changes nothing: no agent act moves the sealed baseline.
+  const after = readConfig(root);
+  assert.ok(after && after !== 'corrupt');
+  assert.equal(after.baseline?.head, baseline, 'the baseline advances only when a human re-runs setup');
+
+  // The human reviews and accepts: re-running setup adopts the committed work into the baseline.
+  write(root, 'tests/leading.test.cjs', TEST + REGRESSION);
+  commit(root);
+  assert.equal(amabie(root, 'setup', '--yes').code, 0);
+  const adopted = readConfig(root);
+  assert.ok(adopted && adopted !== 'corrupt');
+  assert.notEqual(adopted.baseline?.head, baseline);
+  const next = planDiscrimination(root, adopted, 120_000);
+  assert.ok(!next.addedChecks.includes('tests/leading.test.cjs'), 'accepted work is part of the baseline now');
+});
+
+test('a refactor that the sealed checks pass on both sides is named as an unmeasured limit, never as a missing regression test', () => {
+  const root = fixture('refactor-limit');
+  write(root, 'greet.cjs', "module.exports = n => 'hello ' + String(n);\n");
+  const cfg = readConfig(root); assert.ok(cfg && cfg !== 'corrupt');
+  const raw = discriminationObligation(root, cfg, 120_000);
+  assert.equal(raw?.status, 'unproven');
+  assert.match(raw?.note ?? '', /pass on the base commit too/);
+  const refactor = refactorPreservationLimit(raw, ['refactor']);
+  assert.equal(refactor?.status, 'unproven', 'the proof floor is unchanged');
+  assert.match(refactor?.note ?? '', /does not measure that those checks execute the lines you touched/);
+  assert.doesNotMatch(refactor?.note ?? '', /Add a regression assertion/);
+  assert.equal(refactorPreservationLimit(raw, ['bugfix']), raw, 'a bugfix keeps the regression-test instruction');
 });

@@ -98,6 +98,14 @@ export interface PlanStep {
    * existing seal, stay exactly as they were.
    */
   pm?: string;
+  /**
+   * The identity (resolved path + sha256) of an explicit-argv program that lives INSIDE the repository
+   * when setup pinned it, e.g. an activated `.venv/bin/python`. A directory the worker can write is not a
+   * trusted source of executables on its own, so such a program is accepted only while its bytes still
+   * match this sealed value (runPlanStep). Absent for every program outside the repository, so those
+   * plans hash exactly as before.
+   */
+  programId?: string;
 }
 
 /** The sealed-identity key of a step. Legacy steps (no scope) key on the bare
@@ -121,6 +129,7 @@ function canonicalStep(step: PlanStep): Record<string, unknown> {
   // executes, so it is authority. Present only on 1.1 scoped steps, so a 1.0 plan
   // still hashes exactly as before.
   if (step.pm !== undefined) out.pm = step.pm;
+  if (step.programId !== undefined) out.programId = step.programId;
   return out;
 }
 

@@ -639,7 +639,7 @@ try {
     // Every entry under `required` was OBSERVED true, and a deployment with any of
     // them false fails closed. The four values that follow are REPORTED rather than
     // required: they are the honest ceiling of this deployment (see
-    // docs/V1.2-CONFINED-CALLER.md), and hiding them inside "complete" would be the
+    // docs/history/V1.2-CONFINED-CALLER.md), and hiding them inside "complete" would be the
     // overclaim this project exists to prevent.
     required: {
       brokerOwnsKeyMaterial: fs.existsSync(path.join(store, 'custody-key-material.txt')),

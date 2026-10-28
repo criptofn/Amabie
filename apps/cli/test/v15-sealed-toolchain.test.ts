@@ -293,7 +293,8 @@ describe('attribution: is Amabie\'s environment the cause, or the project?', () 
       const a = attributeStepFailure({ ...base, childPathDirs: [resolvesDir] });
       assert.equal(a.cause, 'project');
       assert.match(a.reason, new RegExp(PROJECT_CHECK_FAILURE));
-      assert.match(a.reason, /That is your project talking, not Amabie\./);
+      assert.match(a.reason, /ran in the sealed environment and exited/, 'the line says what ran and how it ended');
+      assert.doesNotMatch(a.reason, /That is your project talking|not Amabie/, 'no verdict on blame: the sealed environment is Amabie\'s own restriction');
     } finally {
       fs.rmSync(resolvesDir, { recursive: true, force: true });
     }

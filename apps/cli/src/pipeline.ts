@@ -32,7 +32,7 @@ const NODE_DIR = path.dirname(NODE);
 // never silently masquerades as a measurement.
 const NPM_CLI = resolveNpmCli() ?? path.join(NODE_DIR, 'node_modules', 'npm', 'bin', 'npm-cli.js');
 const SYSTEMROOT = process.env['SystemRoot'] ?? 'C:\\WINDOWS';
-export const AMABIE_VERSION = '2.0.1';
+export const AMABIE_VERSION = '2.0.2';
 
 export interface PipelineResult {
   bundle: EvidenceBundle;

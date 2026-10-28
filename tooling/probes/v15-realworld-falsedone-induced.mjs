@@ -7,7 +7,7 @@
  * included because the workstream asks for a reproducible end-to-end demonstration
  * that the completion gate really does stop a "done" whose objective evidence fails,
  * and because in the whole real-world session NO organic case of that shape occurred
- * (what occurred instead is recorded in docs/REAL-WORLD-EVIDENCE-1.5.md, including a
+ * (what occurred instead is recorded in docs/history/REAL-WORLD-EVIDENCE-1.5.md, including a
  * natural NOT PROVEN block that investigation showed was NOT justified).
  *
  * WHAT IS REAL HERE (and what is not):

@@ -28,6 +28,8 @@ export interface ClaudeTurnState {
   promptId: string;
   registeredPromptId: string | null;
   task: TaskIdentity | null;
+  /** HEAD when the request started. Wording only (earlier-task provenance), and this file is repo-writable: never a verdict input. The trusted boundary is in task-boundary.ts. */
+  startHead?: string;
 }
 
 function claudeTurnStatePath(root: string, sessionId: string): string {
@@ -46,7 +48,8 @@ export function readClaudeTurnState(root: string, sessionId: string): ClaudeTurn
       || (v.registeredPromptId === v.promptId && task === null)
       || (v.registeredPromptId === null && v.task !== null)) return null;
     return { schema: 'amabie-turn/1', sessionDigest: v.sessionDigest, promptId: v.promptId,
-      registeredPromptId: v.registeredPromptId as string | null, task };
+      registeredPromptId: v.registeredPromptId as string | null, task,
+      ...(typeof v.startHead === 'string' && /^[0-9a-f]{40,64}$/i.test(v.startHead) ? { startHead: v.startHead } : {}), };
   } catch { return null; }
 }
 

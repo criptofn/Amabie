@@ -88,6 +88,41 @@ export interface EnvOptions {
    * and the OS-managed dirs, so nothing here can shadow them.
    */
   extraPathDirs?: readonly string[] | undefined;
+  /**
+   * OPERATOR-AUTHORIZED variables (`amabie setup --pass-env NAME`). The NAMES are sealed by a human
+   * outside the repository; the VALUES are read from the operator's process at run time and are never
+   * stored or logged. Every name is re-checked here by `passEnvNameProblem`, so a loader or
+   * runtime-control variable (PATH, NODE_OPTIONS, LD_PRELOAD, PYTHONPATH, ...) cannot arrive through
+   * this door even from a forged record, and Amabie's own variables are written after these and win.
+   */
+  operatorEnv?: Readonly<Record<string, string>> | undefined;
+}
+
+const PASS_ENV_BLOCKED_NAMES: ReadonlySet<string> = new Set([
+  'PATH', 'PATHEXT', 'HOME', 'USERPROFILE', 'TEMP', 'TMP', 'TMPDIR', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'SHELL',
+  'USERNAME', 'USERDOMAIN', 'LOGONSERVER', 'HOMEDRIVE', 'HOMEPATH', 'SYSTEMDRIVE', 'PSMODULEPATH',
+  'IFS', 'ENV', 'BASH_ENV', 'CDPATH', 'CLASSPATH', 'JAVA_HOME', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS',
+  'GOCACHE', 'GOPATH', 'GOTOOLCHAIN', 'GOFLAGS', 'GOROOT', 'GOENV', 'GOBIN', 'GOMODCACHE',
+  'RUSTFLAGS', 'PERL5OPT', 'PERL5LIB', 'RUBYOPT', 'RUBYLIB', 'PROMPT_COMMAND', 'AI_AGENT',
+]);
+const PASS_ENV_BLOCKED_PREFIXES: readonly string[] = [
+  'LD_', 'DYLD_', 'NODE_', 'NPM_CONFIG_', 'PYTHON', 'PYTEST_', 'GIT_', 'CARGO_', 'RUSTUP_', 'DOTNET_', 'COMPLUS_',
+  'CORECLR_', '_JAVA', 'BASH_FUNC_', 'AMABIE_', 'CLAUDE', 'CODEX_',
+];
+
+/**
+ * Why a variable NAME may not be passed through to checks, or null when it may. The sealed-environment
+ * rule is deny-by-omission; this door admits only what a human named, and never anything that changes
+ * which code runs (search paths, loaders, interpreter start-up options) or that Amabie sets itself.
+ * Case-insensitive, because Windows variable names are.
+ */
+export function passEnvNameProblem(name: string): string | null {
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,127}$/.test(name)) return `"${name}" is not a plain variable name`;
+  const upper = name.toUpperCase();
+  if (PASS_ENV_BLOCKED_NAMES.has(upper) || PASS_ENV_BLOCKED_PREFIXES.some((p) => upper.startsWith(p))) {
+    return `${name} changes which program or runtime executes (or is set by Amabie itself), so it cannot be passed through`;
+  }
+  return null;
 }
 
 export interface ObserverInjection {
@@ -195,7 +230,7 @@ export function containsPath(root: string, p: string): boolean {
   return tl.startsWith(rl + path.sep);
 }
 
-export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolchain, extraPathDirs }: EnvOptions): NodeJS.ProcessEnv {
+export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolchain, extraPathDirs, operatorEnv }: EnvOptions): NodeJS.ProcessEnv {
   const systemRoot = process.env['SystemRoot'] ?? 'C:\\WINDOWS';
   const home = path.join(ws.root, 'isolated-home');
   const tmp = path.join(ws.root, 'tmp');
@@ -207,6 +242,13 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
   // directory inside Amabie's own workspace: this door must never become a way to
   // put a subject-chosen path (or value) into a verification child's environment.
   const observed: NodeJS.ProcessEnv = {};
+  const operator: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(operatorEnv ?? {})) {
+    const problem = passEnvNameProblem(key);
+    if (problem !== null) throw new Error(`operator-authorized variable refused: ${problem}`);
+    if (typeof value !== 'string' || value.includes(' ')) throw new Error(`operator-authorized variable ${key} has no usable value`);
+    operator[key] = value;
+  }
   if (observer !== undefined) {
     const rootReal = (() => { try { return canonicalPath(ws.root); } catch { return path.resolve(ws.root); } })();
     const dirReal = (() => { try { return canonicalPath(observer.dir); } catch { return null; } })();
@@ -277,6 +319,7 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
     const homeDrive = homeParsed.root.slice(0, 2); // 'C:'
     const homeRelative = home.slice(homeParsed.root.length - 1); // '\\Users\\...'
     return {
+      ...operator,
       PATH: `${nodeDir};${path.join(systemRoot, 'System32')};${systemRoot}${extraDirs.map((d) => `;${d}`).join('')}`,
       PATHEXT: '.EXE;.CMD',
       SystemRoot: systemRoot,
@@ -300,6 +343,7 @@ export function sanitizedEnv({ ws, nodeDir, materialize = true, observer, toolch
   // POSIX analogues — the loader appends nothing here (child envp is exactly
   // what is passed); the observation test asserts equality on Linux CI.
   return {
+    ...operator,
     PATH: `${nodeDir}:/usr/bin:/bin${extraDirs.map((d) => `:${d}`).join('')}`,
     HOME: home,
     TMPDIR: tmp,
@@ -717,18 +761,23 @@ export type ProcessRow = { p: number; ppid: number; pgrp: number; sid: number };
  * could not run — the caller reports the sweep as FAILED ("could not look"
  * is never rendered as "no survivors"; audit F5 honesty law unchanged).
  */
-export function psTableRows(psBin: string = resolvePsBinary()): ProcessRow[] | null {
+export function psTableRows(psBin: string = resolvePsBinary(), platform: NodeJS.Platform = process.platform): ProcessRow[] | null {
+  // macOS `ps` has no `sid` keyword (it exits non-zero on one) and macOS has no /proc, so this is the only
+  // table there. Its rows carry no session (sid -1): the sweep follows the process group and the PPID
+  // closure, which is what a detached child's lineage reduces to without a session id.
+  const withSession = platform !== 'darwin';
   // -A: every process. The default query lists only processes attached to a terminal, so a session helper
   // without one would be invisible to the sweep.
-  const ps = spawnSync(psBin, ['-A', '-o', 'pid=,ppid=,pgid=,sid=,stat='],
+  const ps = spawnSync(psBin, ['-A', '-o', withSession ? 'pid=,ppid=,pgid=,sid=,stat=' : 'pid=,ppid=,pgid=,stat='],
     { timeout: 10_000, encoding: 'utf8', env: containmentEnv(), shell: false });
   if (ps.error || ps.status !== 0 || typeof ps.stdout !== 'string') return null;
   const rows: ProcessRow[] = [];
   for (const line of ps.stdout.split('\n')) {
     const fields = line.trim().split(/\s+/);
-    const [p, pp, pg, sd] = fields.slice(0, 4).map(Number);
+    const [p, pp, pg] = fields.slice(0, 3).map(Number);
+    const sd = withSession ? Number(fields[3]) : undefined;
     if (p === undefined || pp === undefined || !Number.isFinite(p) || !Number.isFinite(pp)) continue;
-    if (isDeadState(fields[4])) continue;
+    if (isDeadState(fields[withSession ? 4 : 3])) continue;
     rows.push({
       p, ppid: pp,
       pgrp: pg !== undefined && Number.isFinite(pg) ? pg : -1,

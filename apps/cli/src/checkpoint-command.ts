@@ -2,14 +2,17 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildFailurePayload } from './failure-payload.js';
-import { agentToolProblem, isTaskRegistration } from './agent-session-guard.js';
+import { agentToolProblem, isReadOnlyCommand, isTaskRegistration } from './agent-session-guard.js';
 import { adapterFor, planAuthorityDrift, planDigest, sha256, stepKey } from './project.js';
-import { collectDiffSignals, inferTaskKinds } from './change-signals.js';
-import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep } from './check-runner.js';
+import { candidateDiffSignals, collectDiffSignals, inferTaskKinds, isAmabieOwnArtifact } from './change-signals.js';
+import { type StepResult, attributeRunFailures, planWithFreshTests, repeatFailedStep, runPlanStep } from './check-runner.js';
 import { installedCliPrefix, installedDoctorCommand } from './cli-runtime.js';
 import { findRepoRoot, readConfig, untrustedConfigReason } from './local-config.js';
 import { obligationsFor, proofSummary } from './proof-obligations.js';
-import { discriminationObligation } from './regression-proof.js';
+import { gitWithinRoot } from './git-state.js';
+import { discriminationObligation, refactorPreservationLimit } from './regression-proof.js';
+import { openRequest, recordVerified, trustedStart } from './task-boundary.js';
+import { agentSessionStanding, MAX_SESSIONS, registerAgentSession, unregisterAgentSession } from './session-registry.js';
 import { CLAUDE_TASK_TOOL, type ClaudeTurnState, mcpInputMatchesTask, readClaudeTurnState, readTaskRecord, recordOriginalPrompt, removeClaudeTurnState, sameTask, taskFromMcpInput, writeClaudeTurnState } from './task-state.js';
 import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheckpoint, writeVerificationBundle } from './verification-evidence.js';
 
@@ -26,6 +29,13 @@ import { type BundleProvenance, deriveObservedCounts, readAgentClaim, writeCheck
  *  - corrupt local config => loud honest UNVERIFIED (GLM F-1) — absence is silent,
  *    damaged authority is NOT
  */
+/** Said when a failed check passed on a re-run: unstable, still failing, and the cause to repair is the flakiness. */
+export function unstableNote(unstable: string[]): string {
+  if (unstable.length === 0) return '';
+  return ` UNSTABLE, not passing: ${unstable.join('; ')} failed on one run and passed on another. A check that sometimes passes proves nothing, `
+    + 'so do not re-run it hoping for green: find what makes it nondeterministic (timing, ordering, shared state, the network) and fix that.';
+}
+
 export async function cmdCheckpoint(): Promise<number> {
   let input: { cwd?: string; prompt?: string; stop_hook_active?: boolean; task?: string; hook_event_name?: string; tool_name?: string; tool_input?: unknown; session_id?: string } = {};
   try { input = JSON.parse(fs.readFileSync(0, 'utf8')) as typeof input; } catch { /* interactive invocation or empty stdin */ }
@@ -38,6 +48,22 @@ export async function cmdCheckpoint(): Promise<number> {
       schema: 'amabie-turn/1', sessionDigest: sha256(sessionId), promptId: crypto.randomUUID(),
       registeredPromptId: null, task: null,
     };
+    const startHead = gitWithinRoot(root, ['rev-parse', 'HEAD'])?.trim();
+    if (startHead !== undefined && /^[0-9a-f]{40,64}$/i.test(startHead)) {
+      state.startHead = startHead;
+      // This request's own accounting may begin here only if Amabie sealed or verified the project as it is now
+      // (a clean, committed tree is not enough: a commit is not acceptance). Recorded in the trust store, not here.
+      const atStart = candidateDiffSignals(root, startHead);
+      const begun = readConfig(root);
+      const baseHead = begun && begun !== 'corrupt' && untrustedConfigReason(root, begun) === null && begun.baseline?.resolved ? begun.baseline.head : undefined;
+      if (typeof baseHead === 'string' && /^[0-9a-f]{40,64}$/i.test(baseHead)) {
+        openRequest(root, baseHead, sessionId, atStart.resolved && atStart.touched.every(isAmabieOwnArtifact) ? startHead : null);
+      }
+    }
+    // The open session is also recorded in the user trust store: `.amabie` can be deleted from inside the session.
+    const registered = registerAgentSession(root, sessionId);
+    if (registered === 'full') return emit({ decision: 'block', reason: `Amabie is tracking ${MAX_SESSIONS} open agent sessions for this project, the most it records, and will not forget a live one to make room. The prompt was stopped before project work; close the other sessions, or as a human operator remove the stale session record from the user trust store, then retry.` });
+    if (registered !== 'ok') return emit({ decision: 'block', reason: 'Amabie could not record this agent session in its trust store. The prompt was stopped before project work; repair the trust store (see: amabie doctor), then retry.' });
     if (!writeClaudeTurnState(root, sessionId, state)) return emit({ decision: 'block', reason: 'Amabie could not save request tracking for this project. The prompt was stopped before project work; repair .amabie/task state, then retry.' });
     if (typeof input.prompt === 'string') recordOriginalPrompt(root, input.prompt, state.promptId);
     return emit({ hookSpecificOutput: {
@@ -46,7 +72,7 @@ export async function cmdCheckpoint(): Promise<number> {
     } });
   }
   if (input.hook_event_name === 'SessionEnd') {
-    if (root && sessionId) removeClaudeTurnState(root, sessionId);
+    if (root && sessionId) { removeClaudeTurnState(root, sessionId); unregisterAgentSession(root, sessionId); }
     return 0;
   }
   if (input.hook_event_name === 'PostToolUse') {
@@ -105,8 +131,24 @@ export async function cmdCheckpoint(): Promise<number> {
     const toolInput = input.tool_input as { command?: unknown } | undefined;
     if ((toolName === 'Bash' || toolName === 'PowerShell') && sessionId
       && typeof toolInput?.command === 'string' && isTaskRegistration(toolInput.command, sessionId)) return 0;
+    // A pure question needs no task: a single read-only command may run before registration (it changes
+    // nothing, so there is nothing to verify). Anything that could write still waits for a task.
+    if ((toolName === 'Bash' || toolName === 'PowerShell') && typeof toolInput?.command === 'string' && isReadOnlyCommand(toolInput.command)) return 0;
     if (turn.registeredPromptId !== turn.promptId || !turn.task) return deny(`Amabie task registration is missing for this request. Approve the project MCP server in Claude's /mcp menu and call mcp__amabie__amabie_task, or run: amabie task "<intent>" --requirement "<each stated criterion>" --session ${JSON.stringify(sessionId)}. Omit --requirement when none were stated. Project changes remain blocked until registration.`);
     return 0;
+  }
+  // A session the trust store knows is open, whose project state has vanished, is NOT "nothing wired here":
+  // `.amabie` (config, seals, turn state) was removed or damaged from inside the session.
+  const standing = root && sessionId && (cfg === null || cfg === 'corrupt' || !turn) ? agentSessionStanding(root, sessionId) : 'absent';
+  // The external record being unreadable is not "no session": with local tracking gone, only the blocked answer is honest.
+  if (typeof standing === 'object') {
+    if (input.stop_hook_active === true) return emit({ systemMessage: `Amabie: its record of open agent sessions cannot be read (${standing.unreadable}) and this project's local tracking is incomplete — nothing was verified; this completion is UNVERIFIED, not a pass. A human should look.` });
+    return emit({ decision: 'block', reason: `Amabie blocked completion: its record of open agent sessions in the user trust store cannot be read (${standing.unreadable}), so it cannot tell whether this session was open when the project's Amabie state went missing. Do not recreate it; a human operator must repair the trust store and review the project.` });
+  }
+  if (root && sessionId && standing === 'open') {
+    const lost = cfg === null ? 'its .amabie configuration is missing' : cfg === 'corrupt' ? 'its local configuration is unreadable' : 'this request has no tracking record';
+    if (input.stop_hook_active === true) return emit({ systemMessage: `Amabie: this session is open in the trust store but ${lost} after one repair attempt — nothing was verified; this completion is UNVERIFIED, not a pass. A human should look.` });
+    return emit({ decision: 'block', reason: `Amabie blocked completion: this agent session is open in the user trust store but ${lost}. The project's Amabie state was removed or damaged during the session, so nothing can be verified. Do not recreate it; a human operator must review the project and run amabie setup from a terminal.` });
   }
   if (!root || cfg === null) return 0; // nothing wired here — stay out of the way
   // GLM F-1: a config file that EXISTS but cannot be read is NOT "nothing wired
@@ -143,6 +185,34 @@ export async function cmdCheckpoint(): Promise<number> {
     return emit({ decision: 'block', reason: `Amabie blocked completion: verification authority changed by candidate — ${drift}. Amabie will not certify proof commands it never sealed. Restore the sealed checks, or have the human operator review the new plan and run: amabie setup from a terminal. An agent cannot reseal its own proof through this session.` });
   }
 
+  /**
+   * THE TASK BOUNDARY. A request whose start Amabie recorded in the user trust store (the project was
+   * then exactly the sealed baseline, or exactly what an earlier Stop let through) is judged on what
+   * changed since it began (that start to HEAD, plus staged and worktree), NOT on everything since
+   * `amabie setup`. Anything else keeps the cumulative view: a request that follows work that ended
+   * blocked, unproven or released unrepaired inherits it, because a clean tree and a commit are not
+   * acceptance and the repository's own per-request file is not trusted for this. Agent commits made
+   * DURING this request are inside the range, so a commit never launders a change. The sealed
+   * authority check above is untouched, and a deleted test stays visible from the sealed baseline.
+   */
+  const scopeBase = sessionId ? trustedStart(root, sessionId) : undefined;
+  const taskSignals = (): ReturnType<typeof collectDiffSignals> => {
+    const cumulative = collectDiffSignals(root, cfg);
+    if (scopeBase === undefined) return cumulative;
+    const own = candidateDiffSignals(root, scopeBase);
+    return { ...own,
+      deletedTestsAttributable: [...new Set([...own.deletedTestsAttributable, ...cumulative.deletedTestsAttributable])],
+      deletedTestsUnattributable: [...new Set([...own.deletedTestsUnattributable, ...cumulative.deletedTestsUnattributable])] };
+  };
+  if (scopeBase !== undefined && turn && turn.registeredPromptId !== turn.promptId && typeof input.task !== 'string') {
+    // Nothing was registered and nothing changed: a question. The sealed checks have nothing to certify.
+    const sig = taskSignals();
+    if (sig.resolved && sig.touched.every(isAmabieOwnArtifact)
+      && sig.deletedTestsAttributable.length === 0 && sig.deletedTestsUnattributable.length === 0) {
+      return emit({ systemMessage: 'Amabie: this request changed nothing in the project, so the sealed checks were not re-run.' });
+    }
+  }
+
   // M4 provenance for every bundle this invocation writes — from the TRUSTED
   // in-memory config (shape-checked, non-distrusted above), never re-read from
   // the evidence dir.
@@ -169,6 +239,15 @@ export async function cmdCheckpoint(): Promise<number> {
     });
     return emit({ systemMessage: `Amabie could not run the checks (${infra.slice(0, 160)}) — this completion is UNVERIFIED, not a pass.` });
   }
+  // A failed check that the project itself is to blame for is run again (bounded) to tell a reproducible
+  // failure from an unstable one. The first failure stays the result: a later pass is never proof.
+  const unstable: string[] = [];
+  for (const f of failed) {
+    const step = executionPlan[ran.indexOf(f)];
+    if (!step || attributeRunFailures(root, cfg, [f], cfg.plan).cause !== 'project') continue;
+    const again = repeatFailedStep(root, cfg.pm, step, f);
+    if (!again.stable) unstable.push(`${f.display} (passed ${again.passed} of ${again.runs} runs)`);
+  }
   if (failed.length === 0) {
     const evidenceDir = writeVerificationBundle(root, 'checkpoint', ran, 'pass', prov);
     writeCheckpoint(root, 'pass', [], 'checkpoint', {
@@ -185,7 +264,7 @@ export async function cmdCheckpoint(): Promise<number> {
     const kinds = task && task.kinds.length > 0
       ? task.kinds
       : (typeof input.task === 'string' && input.task.trim() ? inferTaskKinds(input.task.trim().slice(0, 4000)) : []);
-    const obligations = obligationsFor(kinds, collectDiffSignals(root, cfg), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, 'setup', task, cfg);
+    const obligations = obligationsFor(kinds, taskSignals(), new Set(cfg.plan.map((s) => s.kind)), task?.requirementCount ?? 0, scopeBase === undefined ? 'setup' : 'task', task, cfg);
     /**
      * MEASUREMENT SUPERSEDES INFERENCE. `obligationsFor` decides regression evidence from the
      * DECLARED kind and the diff ("a bugfix with no test file touched is unproven"); the
@@ -193,7 +272,7 @@ export async function cmdCheckpoint(): Promise<number> {
      * a bugfix that turns an existing red check green (real regression evidence, no test file
      * touched) would be called unproven, and a test file touched for show would be called met.
      */
-    const regression = discriminationObligation(root, cfg, 600_000, undefined, undefined, ran);
+    const regression = refactorPreservationLimit(discriminationObligation(root, cfg, 600_000, scopeBase, undefined, ran, turn?.startHead), kinds);
     if (regression !== null) {
       for (let i = obligations.length - 1; i >= 0; i -= 1) {
         if (obligations[i]!.id === regression.id) obligations.splice(i, 1);
@@ -302,15 +381,23 @@ export async function cmdCheckpoint(): Promise<number> {
      * requirement was authorized to hold it to), but it must not stay silent either: an allow that
      * SAYS what the evidence is beats a READY that hides it.
      */
+    // Only a Stop that lets the work through with nothing open (a caveat is still an allow) moves the verified
+    // state forward; blocked, unproven and released-unrepaired outcomes return above and leave it where it was.
+    const verifiedState = (): void => {
+      const baseHead = cfg.baseline?.head;
+      if (cfg.baseline?.resolved && typeof baseHead === 'string') recordVerified(root, baseHead);
+    };
     const caveats = obligations.filter((x) => x.status === 'met' && x.caveat !== undefined);
     if (caveats.length > 0) {
       writeCheckpoint(root, 'pass', [], 'checkpoint', {
         checks: ran, hookResponse: 'message-and-continue', next: caveats.map((x) => x.caveat).join('; '), evidencePath: evidenceDir ?? undefined, proof,
       });
+      verifiedState();
       const evidenceHint = evidenceDir === null ? ' Full test evidence could not be written.' : ` Full test evidence: ${evidenceDir}.`;
       return emit({ systemMessage: `Amabie: the sealed checks passed — with a caveat. ${caveats.map((x) => `${x.id}: ${x.caveat}`).join(' ')}${evidenceHint}`.slice(0, 2000) });
     }
     writeCheckpoint(root, 'pass', [], 'checkpoint', { checks: ran, hookResponse: 'continued', evidencePath: evidenceDir ?? undefined, proof });
+    verifiedState();
     return 0; // silent even if an agent claim contradicts — claims never BLOCK, and never CREATE a pass
   }
   // The full runner output is written NEXT TO the evidence bundle and referred to by path, so
@@ -326,7 +413,7 @@ export async function cmdCheckpoint(): Promise<number> {
     // already one repair attempt this turn — never loop the agent; surface honestly instead
     // v1.5 §4D — MEASURED (clean-room first run): this message named what failed and why Amabie
     // stopped, but gave the human it hands off to no next action. One clause, no mechanism change.
-    return emit({ systemMessage: `Amabie: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look. Run: ${installedDoctorCommand()}` });
+    return emit({ systemMessage: `Amabie: checks still failing (${failed.map((f) => f.kind).join(', ')}) after one repair attempt — stopping anyway; a human should look.${unstableNote(unstable)} Run: ${installedDoctorCommand()}` });
   }
   writeCheckpoint(root, 'fail', failed.map((f) => f.kind), 'checkpoint', {
     checks: ran, hookResponse: 'blocked', next: 'repair the observed failures and finish again', evidencePath: bundleDir ?? undefined,
@@ -349,7 +436,8 @@ export async function cmdCheckpoint(): Promise<number> {
   // otherwise a worker spends its budget repairing a project that was never at fault. The project
   // case needs no environment advice; the failure payload names the check and repair recheck.
   const attribution = attributeRunFailures(root, cfg, failed, cfg.plan);
-  const reason = `${claimNote}${attribution.cause !== 'project' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
+  const reason = `${claimNote}${unstable.length > 0 ? `${unstableNote(unstable).trim()}
+` : ''}${attribution.cause !== 'project' ? `${attribution.reason} NEXT: ${attribution.next}\n` : ''}${buildFailurePayload({
     steps: failed.map((f) => ({
       id: stepKey(executionPlan[ran.indexOf(f)]!),
       kind: f.kind, display: f.display, exitCode: f.exitCode,

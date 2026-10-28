@@ -5,6 +5,8 @@ import { canonicalPathOrNull } from '@amabie/support';
 import { CLI_ENTRY } from './cli-runtime.js';
 import { CONFIG_DIR } from './local-config.js';
 import { containedRealPath } from './local-files.js';
+import { readSessionRegistry } from './session-registry.js';
+import { storeFromEnv } from './trust-store.js';
 
 const OPERATOR_COMMANDS = new Set(['setup', 'bind', 'accept', 'uninstall']);
 const isOperator = (word: string): boolean => word.startsWith('\0');
@@ -57,6 +59,30 @@ export function isTaskRegistration(command: string, sessionId: string): boolean 
   return sessions.length === 1 && sessions[0] === sessionId;
 }
 
+// Programs that only read: the commands a pure question needs before any task exists. Everything not named
+// here (interpreters, find, sed, awk, tee, package managers, git branch/checkout/...) stays blocked.
+const READ_PROGRAMS = new Set(['ls', 'dir', 'pwd', 'cat', 'type', 'head', 'tail', 'wc', 'get-content', 'get-childitem']);
+const READ_GIT = new Set(['status', 'diff', 'log', 'show', 'ls-files']);
+const PLAIN_ARGUMENT = /^[\p{L}\p{N}_@%+=:,./\\* ?~-]*$/u;
+
+/**
+ * A single literal command that only reads, so a pure question can look around before a task exists.
+ * Deliberately narrow: no operators or redirection (any of ; & | < > or a newline), no substitution or
+ * grouping (shellWords refuses $ and backticks; anything but plain path-like characters, so no parentheses
+ * or braces, is refused here), a fixed list of programs, and for git a fixed list of subcommands with no
+ * output-writing or external-program options. It reuses shellWords, the same parser the authority guard uses.
+ */
+export function isReadOnlyCommand(command: string): boolean {
+  const words = shellWords(command);
+  if (!words || words.length === 0 || words.some(isOperator)) return false;
+  const program = (words[0] ?? '').toLowerCase(); // a bare name only: ./cat or /tmp/x/cat is not "cat"
+  if (!words.slice(1).every(word => PLAIN_ARGUMENT.test(word))) return false;
+  if (program === 'git') {
+    return READ_GIT.has(words[1] ?? '') && !words.some(word => /^--(?:output|ext-diff|textconv|exec)/.test(word));
+  }
+  return READ_PROGRAMS.has(program);
+}
+
 function protectedPath(root: string, value: unknown): boolean {
   if (typeof value !== 'string') return false;
   const absolute = path.resolve(root, value);
@@ -106,6 +132,12 @@ export async function operatorSessionProblem(root: string | null, command: strin
   try { active = fs.readdirSync(sessions).some(file => file.endsWith('.json')); } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return 'Amabie could not inspect active agent sessions; operator changes were refused.';
   }
+  // The same fact, kept outside the repository: deleting `.amabie` (with any interpreter) and unsetting
+  // the agent markers must not make a session that is still open look closed.
+  const registry = readSessionRegistry(root);
+  // An unusable store is not an empty one: a session may be open behind it. The human is told which store, and how to point elsewhere.
+  if (registry.state === 'unreadable') return `Amabie could not inspect its record of open agent sessions (${registry.reason}); operator changes were refused. The trust store is ${storeFromEnv().root}: repair it, point AMABIE_TRUST_STORE at a usable directory, or remove the damaged record as a human operator.`;
+  if (registry.state === 'active') active = true;
   if (!active) return null;
   if (!process.stdin.isTTY || !process.stdout.isTTY) return 'An agent session is open. Close it before changing verification authority, or review and confirm this action in a human terminal.';
   const terminal = readline.createInterface({ input: process.stdin, output: process.stdout });

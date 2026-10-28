@@ -1,6 +1,6 @@
 {
   "name": "@amabie/cli",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "description": "amabie — independent verification layer CLI: run / prove / report.",
   "type": "module",

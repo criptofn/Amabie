@@ -1,0 +1,198 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { after, test } from 'node:test';
+import { sanitizedEnv } from '@amabie/support';
+import { runPlanStep } from '../src/check-runner.js';
+import { CLI_ENTRY } from '../src/cli-runtime.js';
+import { readConfig } from '../src/local-config.js';
+import { redactPassEnv, sealedPassEnvNames } from '../src/pass-env.js';
+
+/**
+ * `amabie setup --pass-env NAME`: a human allows ONE variable by name; checks receive its value from
+ * the operator's shell at run time. Nothing else from the shell reaches a check, a loader or
+ * runtime-control name is refused, and the value is never written to the config or the trust store.
+ * What a check itself PRINTS is masked (exact value, 6+ characters) at the runner boundary; see the
+ * echoed-sentinel test. Intentional exfiltration by code the project controls is not prevented.
+ */
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-pass-env-'));
+const STORE = path.join(TMP, 'store');
+process.env.AMABIE_TRUST_STORE = STORE;
+after(() => fs.rmSync(TMP, { recursive: true, force: true }));
+const SECRET = 'tok-7f3a9c1e5b2d4a60-sentinel';
+const CHECK = [
+  "const { test } = require('node:test'); const assert = require('node:assert/strict');",
+  `test('receives the allowed variable', () => assert.equal(process.env.PASS_ENV_TEST_TOKEN?.length, ${SECRET.length}));`,
+  "test('does not receive an unlisted variable', () => assert.equal(process.env.PASS_ENV_UNLISTED, undefined));",
+  '',
+].join('\n');
+
+function git(root: string, ...args: string[]): void {
+  const r = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true });
+  assert.equal(r.status, 0, r.stderr);
+}
+/** Run the CLI as a human terminal would: the shell's variables are the ones the test hands in. */
+function amabie(root: string, shell: Record<string, string>, ...args: string[]) {
+  const env: NodeJS.ProcessEnv = { ...process.env, AMABIE_TRUST_STORE: STORE, ...shell };
+  for (const name of ['CLAUDECODE', 'AI_AGENT', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID']) delete env[name];
+  const r = spawnSync(process.execPath, [CLI_ENTRY, ...args], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 120_000, env });
+  return { code: r.status, out: `${r.stdout}${r.stderr}` };
+}
+function fixture(name: string): string {
+  const root = path.join(TMP, name);
+  fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name, private: true, scripts: { test: 'node --test tests/env.test.cjs' } }));
+  fs.writeFileSync(path.join(root, 'tests/env.test.cjs'), CHECK);
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local');
+  git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
+  return root;
+}
+function filesUnder(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? filesUnder(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+}
+
+test('an allowed variable reaches the check, an unlisted one does not, and neither the config nor the trust store holds the value', () => {
+  const root = fixture('allowed');
+  const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_UNLISTED: 'also-in-the-shell' };
+  const withName = amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN');
+  assert.equal(withName.code, 0, withName.out);
+  assert.match(withName.out, /PASS_ENV_TEST_TOKEN/);
+  assert.doesNotMatch(withName.out, new RegExp(SECRET));
+  assert.deepEqual(sealedPassEnvNames(root), ['PASS_ENV_TEST_TOKEN']);
+
+  // The name is kept by a plain re-run; the VALUE is not, so a shell without it fails the check.
+  assert.equal(amabie(root, shell, 'setup', '--yes').code, 0, 'a plain re-run keeps the allowed name');
+  const without = amabie(root, { PASS_ENV_TEST_TOKEN: '' }, 'setup', '--yes');
+  assert.notEqual(without.code, 0, 'the value was read from the shell, not remembered');
+
+  for (const dir of [path.join(root, '.amabie'), STORE]) {
+    for (const file of filesUnder(dir)) {
+      assert.ok(!fs.readFileSync(file).includes(SECRET), `the secret value must not be written to ${path.relative(TMP, file)}`);
+    }
+  }
+});
+
+test('a check that prints the allowed value has it masked in the runner result (so the evidence and screen); short values are left alone', () => {
+  const root = path.join(TMP, 'echo');
+  fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'echo', private: true, scripts: { test: 'node --test tests/echo.test.cjs' } }));
+  fs.writeFileSync(path.join(root, 'tests/echo.test.cjs'), [
+    "const { test } = require('node:test'); const assert = require('node:assert/strict');",
+    "test('echoes the allowed variable and a short flag', () => {",
+    "  console.log('token=' + process.env.PASS_ENV_TEST_TOKEN + ' flag=' + process.env.PASS_ENV_SHORT);",
+    `  assert.equal(process.env.PASS_ENV_TEST_TOKEN, ${JSON.stringify(SECRET)});`,
+    '});', '',
+  ].join('\n'));
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local');
+  git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
+  const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_SHORT: '1' };
+  const setup = amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN', '--pass-env', 'PASS_ENV_SHORT');
+  assert.ok(!setup.out.includes(SECRET), 'the screen must not show the value a check printed');
+  for (const dir of [path.join(root, '.amabie'), STORE]) {
+    for (const file of filesUnder(dir)) assert.ok(!fs.readFileSync(file).includes(SECRET), `the printed value must not be written to ${path.relative(TMP, file)}`);
+  }
+
+  const cfg = readConfig(root);
+  assert.ok(cfg && cfg !== 'corrupt');
+  process.env['PASS_ENV_TEST_TOKEN'] = SECRET; process.env['PASS_ENV_SHORT'] = '1';
+  try {
+    const r = runPlanStep(root, cfg.pm, cfg.plan[0]!, 60_000);
+    const everything = [r.stdout, r.stderr, r.tail].join('\n');
+    assert.ok(!everything.includes(SECRET), 'stdout, stderr and tail are masked');
+    assert.match(r.stdout, /token=\[PASS_ENV_TEST_TOKEN redacted by Amabie\] flag=1/, 'the short flag is untouched and the runner output keeps its shape');
+    assert.match(r.stdout, /# pass 1/, 'the runner count survives masking');
+  } finally { delete process.env['PASS_ENV_TEST_TOKEN']; delete process.env['PASS_ENV_SHORT']; }
+
+  assert.equal(redactPassEnv('a 1 b', { X: '1' }), 'a 1 b', 'a short value is not masked');
+  assert.equal(redactPassEnv('abcdefgh abcdefghij', { A: 'abcdefgh', B: 'abcdefghij' }), '[A redacted by Amabie] [B redacted by Amabie]', 'longest value first');
+});
+
+test('loader and runtime-control names are refused at setup and change nothing', () => {
+  const root = fixture('refused');
+  for (const name of ['PATH', 'path', 'NODE_OPTIONS', 'LD_PRELOAD', 'DYLD_INSERT_LIBRARIES', 'PYTHONPATH', 'GIT_SSH_COMMAND', 'AMABIE_TRUST_STORE', 'bad name']) {
+    const r = amabie(root, {}, 'setup', '--yes', '--pass-env', name);
+    assert.equal(r.code, 2, `${name}: ${r.out}`);
+    assert.match(r.out, /will not pass that variable/);
+    assert.equal(readConfig(root), null, `${name} must leave the project unconfigured`);
+  }
+  assert.deepEqual(sealedPassEnvNames(root), []);
+});
+
+test('the sanitized environment door refuses a blocked name even from a forged record', () => {
+  const ws = { root: path.join(TMP, 'ws'), fixture: TMP };
+  for (const key of ['PATH', 'NODE_OPTIONS', 'LD_PRELOAD', 'PYTHONSTARTUP']) {
+    assert.throws(() => sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath), operatorEnv: { [key]: 'x' } }), /refused/);
+  }
+  const env = sanitizedEnv({ ws, nodeDir: path.dirname(process.execPath), operatorEnv: { PASS_ENV_TEST_TOKEN: SECRET } });
+  assert.equal(env['PASS_ENV_TEST_TOKEN'], SECRET);
+  assert.ok(!Object.keys(env).includes('PASS_ENV_UNLISTED'));
+});
+
+test('--clear-pass-env revokes, and a baseline copy of the project still gets the sealed variable', () => {
+  const root = fixture('revoked');
+  assert.equal(amabie(root, { PASS_ENV_TEST_TOKEN: SECRET }, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN').code, 0);
+  const cfg = readConfig(root);
+  assert.ok(cfg && cfg !== 'corrupt');
+  const step = cfg.plan[0]!;
+
+  // A throwaway copy has no .amabie of its own (as the baseline worktree); the sealed authority is the project's.
+  const copy = path.join(TMP, 'revoked-copy');
+  fs.cpSync(root, copy, { recursive: true, filter: (src) => !src.includes(`${path.sep}.amabie`) && !src.includes(`${path.sep}.git${path.sep}`) });
+  process.env['PASS_ENV_TEST_TOKEN'] = SECRET;
+  try {
+    assert.equal(runPlanStep(copy, cfg.pm, step, 60_000, root).ok, true, 'authority root supplies the variable');
+    assert.equal(runPlanStep(copy, cfg.pm, step, 60_000).ok, false, 'a copy without the project authority gets nothing');
+  } finally { delete process.env['PASS_ENV_TEST_TOKEN']; }
+
+  const cleared = amabie(root, { PASS_ENV_TEST_TOKEN: SECRET }, 'setup', '--yes', '--clear-pass-env');
+  assert.notEqual(cleared.code, 0, 'with the allowance revoked the check no longer sees the variable');
+  assert.deepEqual(sealedPassEnvNames(root), []);
+});
+
+test('isolate --verify gives the candidate AND the baseline comparison the sealed variable, and candidate-local config grants nothing', () => {
+  const marker = path.join(TMP, 'isolated-runs.txt');
+  const root = path.join(TMP, 'isolated');
+  fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'isolated', private: true, scripts: { test: 'node --test tests/env.test.cjs' } }));
+  fs.writeFileSync(path.join(root, 'lib.cjs'), 'exports.value = 1;\n');
+  const check = (expected: number) => [
+    "const { test } = require('node:test'); const assert = require('node:assert/strict'); const fs = require('node:fs');",
+    `test('runs with the sealed variable', () => {`,
+    `  fs.appendFileSync(${JSON.stringify(marker)}, process.cwd() + ' ' + (process.env.PASS_ENV_TEST_TOKEN ? 'TOKEN' : 'NOTOKEN') + ' ' + (process.env.PASS_ENV_CANDIDATE_GRANT ? 'GRANTED' : 'ungranted') + '\\n');`,
+    `  assert.equal(process.env.PASS_ENV_TEST_TOKEN?.length, ${SECRET.length});`,
+    `  assert.equal(require('../lib.cjs').value, ${expected});`,
+    '});',
+    '',
+  ].join('\n');
+  fs.writeFileSync(path.join(root, 'tests/env.test.cjs'), check(1));
+  git(root, 'init', '-b', 'main'); git(root, 'config', 'user.name', 'Amabie Regression'); git(root, 'config', 'user.email', 'regression@amabie.local');
+  git(root, 'add', '.'); git(root, 'commit', '-m', 'fixture');
+  const shell = { PASS_ENV_TEST_TOKEN: SECRET, PASS_ENV_CANDIDATE_GRANT: 'must-not-reach-a-check' };
+  assert.equal(amabie(root, shell, 'setup', '--yes', '--pass-env', 'PASS_ENV_TEST_TOKEN').code, 0);
+
+  const created = amabie(root, shell, 'isolate', 'cand', root);
+  assert.equal(created.code, 0, created.out);
+  const record = JSON.parse(fs.readFileSync(path.join(root, '.amabie', 'candidates', 'cand.json'), 'utf8')) as { root: string };
+  // The candidate carries its own "authority" files: a config granting a variable and a pass-env record cannot widen what runs.
+  fs.mkdirSync(path.join(record.root, '.amabie'), { recursive: true });
+  fs.writeFileSync(path.join(record.root, '.amabie', 'pass-env.json'), JSON.stringify({ names: ['PASS_ENV_CANDIDATE_GRANT'] }));
+  fs.writeFileSync(path.join(record.root, 'lib.cjs'), 'exports.value = 2;\n');
+  fs.writeFileSync(path.join(record.root, 'tests/env.test.cjs'), check(2));
+  git(record.root, 'add', '-A'); git(record.root, 'commit', '-m', 'candidate change');
+
+  const verified = amabie(root, shell, 'isolate', '--verify', 'cand', root);
+  const lines = fs.existsSync(marker) ? fs.readFileSync(marker, 'utf8').trim().split('\n') : [];
+  assert.ok(lines.some((l) => l.toLowerCase().includes(path.basename(record.root).toLowerCase())), `the candidate checkout's own check ran:\n${lines.join('\n')}\n${verified.out}`);
+  assert.ok(lines.some((l) => /amabie-discriminate/.test(l)), `the baseline comparison ran a check:\n${lines.join('\n')}\n${verified.out}`);
+  for (const line of lines) {
+    assert.match(line, / TOKEN ungranted$/, `every run (candidate and counterfactual) had the sealed variable and nothing else: ${line}`);
+  }
+  // The candidate's own sealed check passed (it needs the variable); the comparison then judged the base commit.
+  assert.match(verified.out, /✓ tests: npm run test \(exit 0\)/, verified.out);
+  assert.match(verified.out, /fails on the base commit/, verified.out);
+});

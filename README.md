@@ -12,11 +12,14 @@ amabie setup --yes
 Run setup once, from your own terminal, inside a Git repository with declared
 checks and Claude Code or Codex CLI. Requires Node.js 22+, npm and Git.
 
-**Version:** this source is 2.0.1, including the session guards and CLI registration
-fallback described below. These fixes are absent from 2.0.0. Check the published
+**Version:** this source is 2.0.2. It fixes false regression evidence when a
+baseline cannot find installed dependencies, and preserves open-session tracking
+outside the repository. Upgrade from 2.0.1 before relying on dependency-backed
+baseline evidence. The session guards and CLI registration fallback described
+below were introduced in 2.0.1. These fixes are absent from 2.0.0. Check the published
 version with `npm view amabie-cli version`. To test this checkout,
 run `npm ci`, `npm run build:force`, `node tooling/pack.mjs`, then install
-`./pack/npm/amabie-cli-2.0.1.tgz`.
+`./pack/npm/amabie-cli-2.0.2.tgz`.
 
 ![A simulated false completion blocked on the real escape-html repository](docs/demo.gif)
 
@@ -63,11 +66,14 @@ other integrations can be advisory. The current capability is **LOCAL**: worker
 and verifier share an OS user. These guards are not an OS sandbox against a
 determined same-user process.
 
-No token-saving or comparative superiority claim is established. Historical
-benchmarks and their withdrawn claims are kept in the
+No token-saving or comparative superiority claim is established. Whether an agent
+is helped by the gate in everyday use is also not established: the saved
+benchmarks measure what the gate catches and blocks, not better agent outcomes.
+Historical benchmarks and their withdrawn claims are kept in the
 [dated reference](https://github.com/criptofn/Amabie/blob/main/docs/history/README-2.0.md).
 
 - [Runnable quickstart](https://github.com/criptofn/Amabie/blob/main/QUICKSTART.md)
+- [Documentation index](https://github.com/criptofn/Amabie/blob/main/docs/README.md) and [how the gate works](https://github.com/criptofn/Amabie/blob/main/docs/ARCHITECTURE.md)
 - [Compatibility](https://github.com/criptofn/Amabie/blob/main/docs/COMPATIBILITY.md)
 - [Security contract](https://github.com/criptofn/Amabie/blob/main/SECURITY.md)
 - [Contributing and module map](https://github.com/criptofn/Amabie/blob/main/CONTRIBUTING.md)

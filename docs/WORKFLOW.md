@@ -48,6 +48,32 @@ Repeat `--requirement` once per stated criterion; omit it if none were stated.
 The command must stand alone. A new request resets registration. The CLI path
 does not grant evidence authority or authorize other shell commands.
 
+## Follow-up requests and the check environment
+
+Commit completed work between requests. A later request uses that starting commit
+only when its contents match the sealed baseline or a state a successful Stop
+verified. A commit alone does not adopt unproven changes or rewritten tests.
+Dirty starts retain the cumulative comparison. `amabie doctor` remains cumulative.
+
+If checks need an environment variable, allow its name from your own terminal:
+`amabie setup --pass-env API_KEY`. Repeat the option for other names; revoke with
+`amabie setup --clear-pass-env`. Values come from the process running the checks,
+not stored configuration. Exact printed values of six or more characters are
+masked; short, transformed or intentionally exfiltrated values are outside that
+masking guarantee. Runtime and loader control variables are refused.
+
+For Python, activate the project's virtual environment before setup. Its
+repository-resident interpreter is pinned by content; replacing it requires
+operator setup again. Site-packages remain project-owned under LOCAL.
+
+Amabie privately copies Node dependencies for baseline checks. External dependency
+links it cannot reproduce safely remain inconclusive. Failed checks can be repeated
+at most twice for an instability diagnosis; checks taking over two minutes are not
+repeated. A later pass does not turn the original failure into proof.
+
+Setup's hook and MCP files contain this machine's paths. Keep Amabie's entries
+out of shared commits; setup explains per-machine exclusion and shared-file edits.
+
 ## Operator review
 
 Run setup, bind, accept or uninstall from a human terminal. If a Claude request

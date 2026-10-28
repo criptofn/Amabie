@@ -11,12 +11,13 @@ import { type PlanAuthority } from './project.js';
 import { probeTrustLevel, sealRecord, storeFromEnv, projectIdForRoot } from './trust-store.js';
 import { AMABIE_VERSION } from './pipeline.js';
 import { type StepResult, attributeRunFailures, planWithFreshTests, runPlanStep, unresolvedStep } from './check-runner.js';
-import { Out, dirArg, parseGlobals, takeToolchainDirs } from './cli-output.js';
+import { Out, dirArg, parseGlobals, takePassEnv, takeToolchainDirs } from './cli-output.js';
 import { CLI_ENTRY, buildHookCommand } from './cli-runtime.js';
 import { pinPlanPrograms, stepDisplay } from './execution-environment.js';
 import { candidateIdentity, gitWithinRoot } from './git-state.js';
-import { codexHooksPath, detectHarnesses, findForeignAmabieHooks, installClaudeHooks, installCodexStopHook, settingsPath } from './harness-hooks.js';
+import { codexHooksPath, detectHarnesses, findForeignAmabieHooks, installClaudeHooks, installCodexStopHook, machineFilesNote, settingsPath } from './harness-hooks.js';
 import { type AmabieConfig, CHECKPOINT_FILE, CONFIG_DIR, configPath, configTracked, ensureAmabieSelfIgnore, findRepoRoot, readConfig, retiredPackageCliPath, untrustedConfigReason, writeConfig } from './local-config.js';
+import { sealPassEnvNames, sealedPassEnvNames } from './pass-env.js';
 import { assertPlainTarget, containedRealPath, isRecord, rel, writeFileAtomic } from './local-files.js';
 import { type McpProfile, installMcpServer, mcpArgSignature, mcpConfigPath, mcpServerArgs } from './mcp-registration.js';
 import { unboundRequirements } from './proof-obligations.js';
@@ -109,6 +110,24 @@ function takeSetupOptions(args: string[]): { rest: string[]; check: boolean; pro
   return { rest, check, ...(profile ? { profile } : {}), problems };
 }
 
+/**
+ * What to do when a project declares no check at all: a real build or typecheck its files already point
+ * to, otherwise one first smoke test that imports the code and checks one result. Amabie never writes that
+ * test itself: a generated test that cannot fail would be a false proof.
+ */
+export function starterPath(root: string, adapters: string[]): string {
+  const ids = new Set(adapters);
+  const options: string[] = [];
+  if (ids.has('node')) {
+    options.push(fs.existsSync(path.join(root, 'tsconfig.json'))
+      ? 'add "typecheck": "tsc --noEmit" to the scripts in package.json (it checks your types for real)'
+      : 'add a "test" script to package.json that runs one real test, for example "test": "node --test" with one *.test.js file that imports your code and checks one result');
+  }
+  if (ids.has('python')) options.push('write one test that imports your package and checks one result (unittest or pytest), or configure mypy, pyright or ruff');
+  if (options.length === 0) options.push('add the build or typecheck command your stack already has, or one small test that imports your code and checks one result');
+  return `${options.join('; or ')}. Amabie does not generate tests for you, because a test that cannot fail proves nothing`;
+}
+
 function setupCheckResult(
   o: Out,
   root: string,
@@ -158,9 +177,14 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.say(`REFUSED — ${setupArgs.problems.join('; ') || '--check cannot be combined with --yes'}. Nothing was changed.`);
     return 3;
   }
-  const toolchainArgs = takeToolchainDirs(rest);
+  const passArgs = takePassEnv(rest);
+  const toolchainArgs = takeToolchainDirs(passArgs.rest);
   const root = findRepoRoot(dirArg(toolchainArgs.rest) ?? process.cwd());
   if (!root) { o.verdict('UNSUPPORTED', 'this folder is not inside a git repository.', 'cd into your project and try again'); return 2; }
+  if (passArgs.problems.length > 0) {
+    o.verdict('NEEDS ATTENTION', `Amabie will not pass that variable to your checks: ${passArgs.problems.join('; ')}.`, 'name a variable that only carries data for your tests (a token or a URL), then run setup again — nothing was changed');
+    return 2;
+  }
   // The authorization is validated BEFORE anything is written: a directory inside the repository is
   // refused, because the tree the worker under verification can write is not a source of authority.
   const inventory = toolchainArgs.tools.length > 0 ? inventoryOperatorToolchain(process.env.PATH ?? '') : {};
@@ -231,7 +255,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   const rootDisc = rootScope ? planForScope(root, rootScope) : null;
   // pinning happens HERE, at the human-authorized moment, and what gets sealed
   // is the absolute path — never a name that a later PATH could re-point
-  const pin = pinPlanPrograms(composed.plan);
+  const pin = pinPlanPrograms(composed.plan, root);
   if (pin.problems.length) {
     if (setupArgs.check) return setupCheckResult(o, root, [], detectHarnesses(root).found.map((h) => ({ name: h.name, supported: h.supported })), pin.problems, 'install or explicitly locate the required program, then rerun: amabie setup --check');
     o.verdict('NEEDS ATTENTION', `Amabie could not pin a program these checks need: ${pin.problems.join('; ')}.`, 'install it (or declare its absolute path in the project), then run setup again'); return 2;
@@ -341,7 +365,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     for (const e of composed.empty) o.say(`  · declared no checks — ${e}`);
     o.verdict('NEEDS ATTENTION',
       'this project declares no check Amabie recognizes — a statement about what is DECLARED here, not about your stack. Amabie reads: Node package.json scripts (test / typecheck / type-check / build / bench / benchmark / e2e / test:e2e); Python (pytest, tox, unittest, or mypy / pyright / ruff); Rust (Cargo.toml); Go (go.mod / go.work); and the universal contract — a Makefile, Taskfile or Justfile target, a shipped gradlew or mvnw wrapper, a configured CMake, Meson, Zig, Swift, Elixir, Crystal, Rake, Composer or PHPUnit project, or a check your CI configuration already runs.',
-      'point Amabie at a check you already have (or declare one for your stack), then run setup again'); return 2;
+      `${starterPath(root, composed.scopes.map((s) => s.adapter.id))}; then run: amabie setup`); return 2;
   }
   o.say('verification plan (from what this project already declares — Amabie runs only your own checks; change them in their own files):');
   for (const s of plan) o.say(`  ✓ [${stepKey(s)}] ${s.kind}: ${stepDisplay(pm, s)}`);
@@ -364,7 +388,7 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   if (foreignHooks.length) {
     o.verdict('NEEDS ATTENTION',
       'a hook from another Amabie installation is already present. Setup will not stack another completion hook or rewrite an entry this installation does not own.',
-      'remove the listed hook with the installation that wrote it, or remove that exact entry manually, then run amabie setup again');
+      "the entry most likely came from another machine's committed copy of this file (it records that machine's absolute path): remove that exact entry, or remove the hook with the installation that wrote it, then run amabie setup again. Keep these files out of git so it does not return (.git/info/exclude)");
     for (const entry of foreignHooks) o.say('  - ' + entry);
     return 2;
   }
@@ -498,6 +522,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   try {
     sealRecord(store, { projectId, kind: 'registration', amabieVersion: AMABIE_VERSION, payload: { root: canonicalPath(root), pm, adapter: composed.scopes.map((s) => s.adapter.id).join('+') } });
     sealRecord(store, { projectId, kind: 'plan-seal', amabieVersion: AMABIE_VERSION, payload: cfg.planAuthority });
+    // Names only, outside the repo; `--clear-pass-env` is the revocation and a plain re-run keeps what a human allowed.
+    if (passArgs.clear || passArgs.names.length > 0) sealPassEnvNames(root, passArgs.clear ? passArgs.names : [...sealedPassEnvNames(root), ...passArgs.names], store);
   } catch (e) {
     // v1.4 §E — translated for the everyday path. Same refusal, same exit code, same actionable
     // next step; the ordinary user is no longer asked to know what "sealing authority" means.
@@ -547,8 +573,8 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
   // files that `git status` reports as TRACKED PROJECT files (a clone carries them), and one
   // directory that self-ignores. Nothing user-facing said which was which, and the recorded hook
   // command names an ABSOLUTE path on THIS machine — so a teammate receiving the entry verbatim
-  // gets a command their machine cannot run. One sentence, no mechanism change.
-  o.say(`  scope: ${rel(root, mcpConfigPath(root))} and the harness hook files are PROJECT files — commit them and a checkout/teammate gets them, and each person then runs \`amabie setup --yes\` once so the recorded path matches where Amabie is installed on their machine. Amabie's own state is local to you: .amabie/ (self-ignored) and this machine's trust store.`);
+  // gets a command their machine cannot run — so they are per-machine, not for committing. One sentence.
+  o.say(`  ${machineFilesNote(`${rel(root, mcpConfigPath(root))} and the harness hook files`)}`);
   // v1.3 §E, MEASURED with the real agent CLI (`claude mcp list` reports our entry as
   // "Pending approval"): the harness holds a project-scoped MCP server until a human approves it once.
   // That is one interactive step Amabie cannot take for you, so it is named here rather than left to
@@ -587,6 +613,10 @@ export async function cmdSetup(rawArgs: string[]): Promise<number> {
     o.say(`toolchain: ${effectiveToolchainDirs.length} executable director${effectiveToolchainDirs.length === 1 ? 'y' : 'ies'} you authorized${toolchainDirs.length > 0 ? '' : ' (kept from the previous setup)'} — appended AFTER Amabie's own trusted directories, never your shell's PATH:`);
     for (const d of effectiveToolchainDirs) o.say(`  + ${d}`);
     o.say('  the plan\'s own program is still pinned to an absolute path; these directories exist for what your check spawns itself. Revoke with: amabie setup --clear-toolchain-dirs');
+  }
+  const passedNames = sealedPassEnvNames(root);
+  if (passedNames.length > 0) {
+    o.say(`environment: ${passedNames.length} variable${passedNames.length === 1 ? '' : 's'} you allowed reach${passedNames.length === 1 ? 'es' : ''} your checks by name (${passedNames.join(', ')}); only the names are stored; values are read from your shell when checks run, and an exact copy of a value (6+ characters) that a check prints is masked in Amabie's log and evidence. Revoke with: amabie setup --clear-pass-env`);
   }
   o.say('\nsmoke test (running your own project scripts):');
   let allOk = true;

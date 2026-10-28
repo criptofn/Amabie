@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { adapterForStep, scopeDir } from './project.js';
-import { attributeFailures, npmScriptDirs, pathEntries, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
+import { attributeFailures, npmScriptDirs, pathEntries, projectVenv, type AttributeInput, type FailureAttribution, type ToolchainSeal } from './sealed-toolchain.js';
 import { type PlanStep } from './project.js';
-import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
+import { ENV_POLICY, PM_NAMES, execDigest, hardenedEnv, programIdentity, programInsideRoot, resolveProgram, spawnHardened, stepCommand, stepDisplay } from './execution-environment.js';
 import { type AmabieConfig, readConfig } from './local-config.js';
+import { passEnvValues, redactPassEnv } from './pass-env.js';
 
 /**
  * v1.5 BLOCKER 6 — THE OPERATOR-AUTHORIZED EXECUTABLE DIRECTORIES, AND NOTHING ELSE.
@@ -64,6 +66,7 @@ export function attributeRunFailures(root: string, cfg: AmabieConfig, failed: St
     return {
       kind: f.kind, script: step?.script ?? f.display, exitCode: f.exitCode,
       output: `${f.stdout}${f.stderr}`, childPathDirs, vanishedDirs: vanished, seal, operatorDirs,
+      ...(step?.argv?.[0] !== undefined ? { program: step.argv[0] } : {}), venv: projectVenv(cwd),
       ...(stepProcessFailures.has(f) ? { executionFailure: stepProcessFailures.get(f)! } : {}),
     };
   });
@@ -111,7 +114,13 @@ export function unresolvedStep(root: string, pm: string, step: PlanStep, err: un
   };
 }
 
-export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs = 600_000): StepResult {
+/**
+ * `authorityRoot` is the project whose sealed authority applies (toolchain directories, passed-through
+ * variable names). It differs from `root` when the step runs in a throwaway copy of the project, such
+ * as the baseline worktree, which has no `.amabie` of its own: without it the baseline would run in a
+ * poorer environment than the candidate and fail for a reason that has nothing to do with the change.
+ */
+export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs = 600_000, authorityRoot = root): StepResult {
   const argv = stepCommand(pm, step); // throws unless the step's command is fully validated
   const display = argv.join(' ');
   const program = argv[0] as string;
@@ -120,6 +129,17 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
     throw new Error(PM_NAMES.has(program)
       ? `package manager "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir and OS-managed dirs only — the calling PATH is deliberately ignored). Install it with corepack or into the same Node prefix, then re-run.`
       : `program "${program}" is not resolvable in Amabie's trusted execution environment (the running Node's install dir, the OS-managed dirs, and the directories the declaring project adapter names — the calling PATH is deliberately ignored). Install it in one of those locations, or seal its absolute path in the plan, then re-run.`);
+  }
+  // A program inside the repository (an activated virtualenv's interpreter) is writable by the worker, so it
+  // runs only while it is byte-for-byte the one setup sealed; a plan that names one without a sealed identity
+  // (sealed before this rule) is refused rather than trusted.
+  if (path.isAbsolute(program) && (step.programId !== undefined || programInsideRoot(program, authorityRoot))) {
+    if (step.programId === undefined) {
+      throw new Error(`the program ${program} is inside the repository, where it can be replaced, and setup did not record its identity. Run \`amabie setup\` again from your own terminal to seal it.`);
+    }
+    if (programIdentity(resolved.file) !== step.programId) {
+      throw new Error(`the program ${program} is not the one sealed at setup (it was replaced, moved or upgraded). If you changed it, run \`amabie setup\` again from your own terminal; if you did not, check what changed in the project directory.`);
+    }
   }
   // A step runs in ITS OWN SCOPE's directory. In a nested polyglot repo the
   // scoped check is declared by `<scope>/package.json` (or `<scope>/pyproject
@@ -141,14 +161,18 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
   // v1.5 blocker 6: the OPERATOR-authorized executable dirs sealed in this repo's config. Resolution
   // of the plan's OWN program is untouched above (never PATH); these exist for what the project's
   // check spawns transitively.
-  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(root));
-  const stdout = r.stdout ?? '';
+  const passed = passEnvValues(authorityRoot);
+  // Elapsed time of the real run only, on a monotonic clock (the repeat cap reads it; wall time can jump).
+  const began = process.hrtime.bigint();
+  const r = spawnHardened(resolved, argv.slice(1), cwd, timeoutMs, toolchain, sealedToolchainDirs(authorityRoot), passed);
+  const secs = Number(process.hrtime.bigint() - began) / 1e9;
+  const stdout = redactPassEnv(r.stdout ?? '', passed);
   const processFailure = r.error ? r.error.message : r.status === null ? 'process ended without an exit code' : undefined;
-  const stderr = (r.stderr ?? '') + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
+  const stderr = redactPassEnv(r.stderr ?? '', passed) + (processFailure ? `\nAmabie supervisor: ${processFailure}\n` : '');
   const out = `${stdout}${stderr}`;
   const result: StepResult = {
     kind: step.kind, display, ok: processFailure === undefined && r.status === 0,
-    exitCode: processFailure === undefined ? r.status : null, secs: 0,
+    exitCode: processFailure === undefined ? r.status : null, secs,
     tail: out.split(/\r?\n/).filter(Boolean).slice(-12).join('\n'),
     argv, cwd, stdout, stderr,
     execArgv: [...resolved.spawnArgv, ...argv.slice(1)],
@@ -160,12 +184,44 @@ export function runPlanStep(root: string, pm: string, step: PlanStep, timeoutMs 
 }
 
 /** A measured nonzero exit may collect further checks; an unmeasured process must halt them. */
-export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[], timeoutMs = 600_000): StepResult[] {
+export function runPlanSteps(root: string, pm: string, plan: readonly PlanStep[], timeoutMs = 600_000, authorityRoot = root): StepResult[] {
   const results: StepResult[] = [];
   for (const step of plan) {
-    const result = runPlanStep(root, pm, step, timeoutMs);
+    const result = runPlanStep(root, pm, step, timeoutMs, authorityRoot);
     results.push(result);
     if (result.exitCode === null) break;
   }
   return results;
+}
+
+/** The most extra runs a failed check gets, and the longest first run (seconds) worth repeating. */
+export const REPEAT_RUNS = 2;
+export const REPEAT_MAX_SECS = 120;
+
+export interface RepeatOutcome {
+  /** Every run failed with a measured exit code: the failure is reproducible and is reported exactly as before. */
+  stable: boolean;
+  /** Runs made including the first, and how many of them passed. */
+  runs: number; passed: number;
+}
+
+/**
+ * A failed check is run again, a bounded number of times, ONLY to tell a reproducible failure from an
+ * unstable one. The first failure is the recorded result either way: a later pass is never proof, so it
+ * cannot turn a failure into a pass. A check that failed because Amabie could not run it (no exit code),
+ * or that already took long, is not repeated. If a repeat cannot run, the failure stays reproducible
+ * as far as is known.
+ */
+export function repeatFailedStep(root: string, pm: string, step: PlanStep, first: StepResult, extra = REPEAT_RUNS): RepeatOutcome {
+  const outcome: RepeatOutcome = { stable: true, runs: 1, passed: 0 };
+  if (first.ok || first.exitCode === null || first.secs > REPEAT_MAX_SECS) return outcome;
+  for (let i = 0; i < extra; i++) {
+    let again: StepResult;
+    try { again = runPlanStep(root, pm, step); } catch { break; }
+    if (again.exitCode === null) break;
+    outcome.runs += 1;
+    if (again.ok) { outcome.passed += 1; break; } // one pass already answers the question
+  }
+  outcome.stable = outcome.passed === 0;
+  return outcome;
 }

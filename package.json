@@ -1,6 +1,6 @@
 {
   "name": "amabie",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "description": "Amabie: deterministic verification for software changes with reproducible evidence bundles.",
   "license": "Apache-2.0",

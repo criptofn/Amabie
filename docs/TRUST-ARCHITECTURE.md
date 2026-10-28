@@ -1,7 +1,7 @@
 # Trust architecture
 
-> Current v1.2 production boundary: [mechanism and limits](V1.2-CONFINED-CALLER.md).
-> Executed integration evidence and release status: [report](V1.2-HARDENED-FINAL-BLOCKERS.md).
+> Current v1.2 production boundary: [mechanism and limits](history/V1.2-CONFINED-CALLER.md).
+> Executed integration evidence and release status: [report](history/V1.2-HARDENED-FINAL-BLOCKERS.md).
 
 Where Amabie's authority physically lives, what guards it, and — stated with the
 same emphasis — which parts of the design are **contracts without an installed
@@ -67,7 +67,7 @@ and only controller-held state authorizes.
 The production Windows path is implemented in `provider/production.ts`,
 `production-measurement.ts`, `production-attacks.ts` and the small native
 launcher/pipe broker. Its complete chain, authority owners and deployment
-commands are documented in [V1.2-CONFINED-CALLER.md](V1.2-CONFINED-CALLER.md).
+commands are documented in [history/V1.2-CONFINED-CALLER.md](history/V1.2-CONFINED-CALLER.md).
 
 It reuses the existing candidate gates under confined execution, owns final
 promotion and readback, and authenticates raw measurement evidence with Ed25519

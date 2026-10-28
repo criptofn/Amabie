@@ -48,8 +48,8 @@ this kit only tells you how to attack it.
 - **Fail-closed is the product:** `INCONCLUSIVE`, `NOT PROVEN`, `BLOCKED` and `UNSUPPORTED` are
   outcomes, not bugs. A refusal is not a successful result.
 
-Sources: [`CAPABILITY-LEVELS.md`](CAPABILITY-LEVELS.md), [`TRUST-ARCHITECTURE.md`](TRUST-ARCHITECTURE.md),
-[`SECURITY.md`](SECURITY.md), [`HARDENED-1.5.md`](HARDENED-1.5.md).
+Sources: [`CAPABILITY-LEVELS.md`](../CAPABILITY-LEVELS.md), [`TRUST-ARCHITECTURE.md`](../TRUST-ARCHITECTURE.md),
+[`SECURITY.md`](../SECURITY.md), [`HARDENED-1.5.md`](HARDENED-1.5.md).
 
 ## 4. Reproduce the major claims
 

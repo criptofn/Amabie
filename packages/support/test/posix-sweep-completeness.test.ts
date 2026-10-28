@@ -74,15 +74,46 @@ describe('audit P0:19 — POSIX sweep processes the whole session (no silent 200
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ps-fallback-'));
     const ps = path.join(dir, 'ps');
     // Models the default ps query, which lists only terminal-attached processes; `-A` is the full table.
+    // Its rows carry a sid column, so it is parsed as the platform that asks for one (macOS has none).
     fs.writeFileSync(ps, '#!/bin/sh\ncase " $* " in\n  *" -A "*) printf "%s\\n" "  100 1 100 100 Ss" "  300 100 100 100 S" "  301 100 100 100 Z" ;;\n  *) printf "%s\\n" "  100 1 100 100 Ss" ;;\nesac\n');
     fs.chmodSync(ps, 0o755);
     try {
-      const rows = psTableRows(ps);
+      const rows = psTableRows(ps, 'linux');
       assert.notEqual(rows, null);
       assert.ok(rows?.some(row => row.p === 300), 'the helper without a terminal must be in the table the sweep uses');
       assert.equal(rows?.some(row => row.p === 301), false, 'a zombie is not a sweep target');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('on macOS the table is requested without a `sid` column, which macOS ps rejects; elsewhere the session is read', { skip: process.platform === 'win32' ? 'POSIX sh harness' : false }, () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ps-darwin-'));
+    const ps = path.join(dir, 'ps');
+    // Models macOS: a `sid` keyword is an error and exits non-zero; the supported columns print their rows.
+    fs.writeFileSync(ps, '#!/bin/sh\ncase "$*" in\n  *sid=*) echo "ps: sid: keyword not found" >&2; exit 1 ;;\n  *) printf "%s\\n" "  100 1 100 Ss" "  300 100 300 S" "  301 100 100 Z" ;;\nesac\n');
+    fs.chmodSync(ps, 0o755);
+    try {
+      const rows = psTableRows(ps, 'darwin');
+      assert.notEqual(rows, null, 'a macOS table must not be reported as unreadable');
+      assert.deepEqual(rows, [{ p: 100, ppid: 1, pgrp: 100, sid: -1 }, { p: 300, ppid: 100, pgrp: 300, sid: -1 }], 'a zombie is dropped and the session is unknown, not guessed');
+      assert.equal(psTableRows(ps, 'linux'), null, 'where sid is requested and the tool refuses it, the sweep still reports "could not look", never "no survivors"');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('on macOS the real ps lists this process, and a child that exits cleanly is swept as complete', { skip: process.platform === 'darwin' ? false : 'macOS only: the real BSD ps' }, async () => {
+    const rows = psTableRows();
+    assert.notEqual(rows, null, 'the macOS ps must accept the columns the sweep asks for');
+    assert.ok(rows?.some(row => row.p === process.pid && row.ppid === process.ppid), 'this process is in the table');
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'amabie-ps-real-'));
+    try {
+      const outcome = await runCommand({ ws: { root: scratch, fixture: scratch }, nodeDir: path.dirname(process.execPath), argv: [process.execPath, '-e', ''], timeoutSecs: 20 });
+      assert.equal(outcome.exitCode, 0);
+      assert.equal(outcome.sweepFailed, false, 'a command that left nothing behind is not reported as an unconfirmed sweep');
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
     }
   });
 });

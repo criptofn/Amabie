@@ -133,7 +133,8 @@ export function validateToolchainDir(root: string, dir: string): { ok: true; dir
   if (rel === null) return { ok: false, problem: `could not resolve against the repository: ${dir}` };
   const insideRepo = rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
   if (insideRepo) {
-    return { ok: false, problem: `${dir} is inside the repository — a directory the project (and therefore the worker) can write is not a trusted source of executables` };
+    const venv = path.basename(real).toLowerCase() === (process.platform === 'win32' ? 'scripts' : 'bin') && fs.existsSync(path.join(path.dirname(real), 'pyvenv.cfg'));
+    return { ok: false, problem: `${dir} is inside the repository — a directory the project (and therefore the worker) can write is not a trusted source of executables${venv ? '. For a virtual environment, activate it in your own terminal and run \`amabie setup\`: its interpreter is then pinned by content, so a replaced one is refused' : ''}` };
   }
   return { ok: true, dir: real };
 }
@@ -229,6 +230,26 @@ export interface AttributeInput {
   operatorDirs?: readonly string[];
   /** Trusted supervisor observation, never inferred from project output. */
   executionFailure?: string;
+  /** The program the step was sealed with, and the project's virtualenv if it has one (see projectVenv). */
+  program?: string;
+  venv?: ProjectVenv | null;
+}
+
+export interface ProjectVenv { dir: string; python: string; activate: string }
+
+/** A `.venv` / `venv` at `dir` whose interpreter exists, with the activation command for this platform. */
+export function projectVenv(dir: string, platform: NodeJS.Platform = process.platform): ProjectVenv | null {
+  for (const name of ['.venv', 'venv']) {
+    const python = platform === 'win32' ? path.join(dir, name, 'Scripts', 'python.exe') : path.join(dir, name, 'bin', 'python');
+    if (!fs.existsSync(python)) continue;
+    return { dir: path.join(dir, name), python, activate: platform === 'win32' ? `${name}\\Scripts\\activate` : `source ${name}/bin/activate` };
+  }
+  return null;
+}
+
+function isUnder(p: string, dir: string): boolean {
+  const rel = path.relative(path.resolve(dir), path.resolve(p));
+  return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
 /**
@@ -244,15 +265,14 @@ function locateFor(program: string, seal: ToolchainSeal | null, operatorDirs: re
 }
 
 /**
- * The project-failure line. It KEEPS the sentence the product already printed for this case
- * ("your project's own checks did not pass … That is your project talking, not Amabie.") because that
- * sentence was TRUE here and existing consumers read it — the defect was never this branch, it was
- * this branch being printed when the cause was Amabie's own restriction. Only the vocabulary word
- * (`PROJECT CHECK FAILURE`) and the named step are new.
+ * The project-failure line: one factual sentence, the failed steps and, when known, what ran and how
+ * it exited. It no longer closes with a verdict on blame ("That is your project talking, not Amabie."):
+ * even where no tool was missing, the sealed environment is Amabie's own restriction (reduced PATH, no
+ * inherited variables), so the sentence over-claimed and sent people away from the recorded output that
+ * actually says why. The detailed output stays in the evidence; this line only says what to do next.
  */
 function projectFailureReason(kinds: readonly string[], detail?: string): string {
-  return `${PROJECT_CHECK_FAILURE} — your project's own checks did not pass (${kinds.join(', ')}). `
-    + `${detail === undefined ? '' : `${detail} `}That is your project talking, not Amabie.`;
+  return `${PROJECT_CHECK_FAILURE} — your project's own checks did not pass (${kinds.join(', ')}).${detail === undefined ? '' : ` ${detail}`}`;
 }
 
 export function attributeStepFailure(input: AttributeInput): FailureAttribution {
@@ -327,6 +347,19 @@ export function attributeStepFailure(input: AttributeInput): FailureAttribution 
         : namedRepair === null
           ? `authorize the known directory: ${byDir}`
           : `authorize the missing tools from your shell PATH: ${namedRepair}; alternatively authorize the known directory: ${byDir}`,
+    };
+  }
+
+  // 2b. A Python import failed while the project has a virtualenv the pinned interpreter is not part of:
+  //    setup pinned whatever `python` the shell had, and that one lacks the project's packages. An
+  //    import error with no virtualenv to point at stays the project's own.
+  const noModule = /No module named '?([\w.]+)/.exec(output);
+  if (noModule && input.venv && !(input.program !== undefined && isUnder(input.program, input.venv.dir))) {
+    return {
+      cause: 'environment', missing: [],
+      reason: `${SEALED_ENV_CANNOT_RESOLVE} — the ${kind} check ("${script}") could not import "${noModule[1]}" with the Python setup pinned${input.program === undefined ? '' : ` (${input.program})`}. `
+        + `This project has a virtual environment at ${input.venv.dir}, and it was not the active one when setup ran.`,
+      next: `in your own terminal run \`${input.venv.activate}\`, then: amabie setup`,
     };
   }
 

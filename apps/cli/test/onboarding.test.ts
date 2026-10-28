@@ -170,7 +170,9 @@ describe('setup', () => {
     const failed = JSON.parse(fs.readFileSync(cpFile(root), 'utf8'));
     assert.equal(failed.status, 'fail');
     assert.deepEqual(failed.checks.map((s: { ok: boolean }) => s.ok), [false, true]);
-    assert.equal(fs.readFileSync(orderFile, 'utf8'), 'build\ntest\n'.repeat(5));
+    // Five full runs (setup, two Stops, doctor, the bad build), plus the two bounded repeats a failed check gets
+    // to tell a reproducible failure from an unstable one: the stale-artifact test, then the broken build.
+    assert.equal(fs.readFileSync(orderFile, 'utf8'), 'build\ntest\n'.repeat(3) + 'test\ntest\n' + 'build\ntest\n'.repeat(2) + 'build\nbuild\n');
   });
 
   it('an explicitly ordered test-before-build plan cannot certify stale artifacts at setup, doctor or Stop', () => {
@@ -363,8 +365,11 @@ describe('setup', () => {
     const mcpDoc = { mcpServers: { teammate: { command: 'node', args: ['teammate.js'] } } };
     fs.writeFileSync(mcp, JSON.stringify(mcpDoc));
     const before = [settings, codexHooks, mcp].map((file) => fs.readFileSync(file));
-    const blockedStore = path.join(TMP, 'trust-store-is-a-file');
-    fs.writeFileSync(blockedStore, 'not a directory');
+    // A readable, never-used store that refuses every write: its authority lock is held, so sealing fails
+    // AFTER setup has written the integration files (a store that is not even a directory is refused
+    // earlier, by the open-session check, and would never reach the rollback).
+    const blockedStore = path.join(TMP, 'trust-store-locked');
+    fs.mkdirSync(path.join(blockedStore, '.authority-lock'), { recursive: true });
 
     const result = amabie(['setup', '--yes', root], undefined, undefined, { AMABIE_TRUST_STORE: blockedStore });
     assert.equal(result.status, 2, result.stdout + result.stderr);
