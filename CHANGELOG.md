@@ -10,7 +10,7 @@ changed*; the evidence ledgers record *what was observed*.
 
 ## [Unreleased]
 
-### 2.0.2 candidate
+## [2.0.2] - 2026-10-28
 
 - A baseline that cannot execute its checks, including missing runners, exits 126/127
   and recognized zero-test failures, stays unestablished instead of proving a change.
